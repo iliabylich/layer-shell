@@ -20,7 +20,6 @@ fn main() {
 
     app.connect_activate(|app| {
         globals::GlobalWidgets::init();
-
         TopBar::activate(app);
         LogoutScreen::activate(app);
         Launcher::activate(app);

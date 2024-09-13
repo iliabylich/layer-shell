@@ -12,3 +12,6 @@ pub(crate) use ram::RAM;
 
 mod clock;
 pub(crate) use clock::Clock;
+
+mod sound;
+pub(crate) use sound::Sound;
