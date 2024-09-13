@@ -2,7 +2,7 @@ use gtk4::{prelude::GtkWindowExt, Application, Window};
 
 use crate::{
     utils::{layer_window, load_widget, LayerOptions},
-    widgets::{Language, Workspaces, CPU},
+    widgets::{Clock, Language, Workspaces, CPU, RAM},
 };
 
 pub(crate) struct TopBar;
@@ -32,9 +32,9 @@ impl TopBar {
         Language::init();
         // Sound();
         CPU::init();
-        // RAM();
+        RAM::init();
         // WiFi();
-        // Clock({ format: "%H:%M:%S", tooltipFormat: "%Y %B %e\n%A" });
+        Clock::init("%H:%M:%S", "%Y %B %e\n%A");
         // PowerButton();
 
         window.present();
