@@ -56,8 +56,8 @@ impl<'a> LayerOptionsBuilder<'a> {
         LayerOptions {
             layer: self.layer.unwrap(),
             auto_exclusive_zone_enabled: self.auto_exclusive_zone_enabled,
-            anchors: self.anchors.unwrap(),
-            margins: self.margins.unwrap(),
+            anchors: self.anchors.unwrap_or_default(),
+            margins: self.margins.unwrap_or_default(),
             namespace: self.namespace,
             keyboard_mode: self.keyboard_mode,
         }

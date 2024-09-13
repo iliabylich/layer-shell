@@ -8,7 +8,7 @@ mod utils;
 mod widgets;
 mod windows;
 
-use windows::TopBar;
+use windows::{Launcher, LogoutScreen, Networks, TopBar};
 
 const APP_ID: &str = "com.me.layershell";
 
@@ -21,9 +21,9 @@ fn main() {
         utils::WidgetFactory::init();
 
         TopBar::activate(app);
-        // LogoutScreen::activate();
-        // Launcher::activate();
-        // Networks::activate();
+        LogoutScreen::activate(app);
+        Launcher::activate(app);
+        Networks::activate(app);
         // Terminal::activate();
     });
 

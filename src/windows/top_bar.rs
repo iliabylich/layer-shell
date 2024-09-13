@@ -3,11 +3,14 @@ use gtk4::{prelude::GtkWindowExt, Application, Window};
 use crate::{
     utils::{layer_window, load_widget, LayerOptions},
     widgets::{Clock, Language, Workspaces, CPU, RAM},
+    windows::GloballyAccessibleWindow,
 };
 
 pub(crate) struct TopBar;
 
-static mut TOP_BAR: Option<Window> = None;
+impl GloballyAccessibleWindow for TopBar {
+    const NAME: &str = "TopBar";
+}
 
 impl TopBar {
     pub(crate) fn activate(app: &Application) {
@@ -39,10 +42,6 @@ impl TopBar {
 
         window.present();
 
-        unsafe { TOP_BAR = Some(window) };
-    }
-
-    pub(crate) fn get() -> Window {
-        unsafe { TOP_BAR.clone().unwrap() }
+        Self::set(window);
     }
 }
