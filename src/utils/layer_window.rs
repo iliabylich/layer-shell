@@ -3,7 +3,6 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 pub(crate) struct LayerOptions<'a> {
     layer: Layer,
-    auto_exclusive_zone_enabled: bool,
     anchors: &'a [Edge],
     margins: &'a [(Edge, i32)],
     namespace: Option<&'a str>,
@@ -19,7 +18,6 @@ impl<'a> LayerOptions<'a> {
 #[derive(Default)]
 pub(crate) struct LayerOptionsBuilder<'a> {
     layer: Option<Layer>,
-    auto_exclusive_zone_enabled: bool,
     anchors: Option<&'a [Edge]>,
     margins: Option<&'a [(Edge, i32)]>,
     namespace: Option<&'a str>,
@@ -29,10 +27,6 @@ pub(crate) struct LayerOptionsBuilder<'a> {
 impl<'a> LayerOptionsBuilder<'a> {
     pub(crate) fn with_layer(mut self, value: Layer) -> Self {
         self.layer = Some(value);
-        self
-    }
-    pub(crate) fn with_auto_exclusive_zone_enabled(mut self, value: bool) -> Self {
-        self.auto_exclusive_zone_enabled = value;
         self
     }
     pub(crate) fn with_anchors(mut self, anchors: &'a [Edge]) -> Self {
@@ -55,7 +49,6 @@ impl<'a> LayerOptionsBuilder<'a> {
     pub(crate) fn build(self) -> LayerOptions<'a> {
         LayerOptions {
             layer: self.layer.unwrap(),
-            auto_exclusive_zone_enabled: self.auto_exclusive_zone_enabled,
             anchors: self.anchors.unwrap_or_default(),
             margins: self.margins.unwrap_or_default(),
             namespace: self.namespace,
@@ -67,9 +60,6 @@ impl<'a> LayerOptionsBuilder<'a> {
 pub(crate) fn layer_window(window: &Window, options: LayerOptions) {
     LayerShell::init_layer_shell(window);
     LayerShell::set_layer(window, options.layer);
-    if options.auto_exclusive_zone_enabled {
-        LayerShell::auto_exclusive_zone_enable(window);
-    }
     for edge in options.anchors {
         LayerShell::set_anchor(window, *edge, true);
     }

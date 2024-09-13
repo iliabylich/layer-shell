@@ -9,3 +9,6 @@ pub(crate) use exec_async::exec_async;
 
 mod hyprlang_client;
 pub(crate) use hyprlang_client::{HyprlandClient, HyprlandEvent};
+
+mod keybindings;
+pub(crate) use keybindings::keybindings;

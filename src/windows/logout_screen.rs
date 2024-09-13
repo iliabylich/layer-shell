@@ -1,8 +1,11 @@
-use gtk4::{prelude::GtkWindowExt, Application, Window};
+use gtk4::{
+    prelude::{GtkWindowExt, WidgetExt},
+    Application, Window,
+};
 
 use crate::{
-    globals::load_widget,
-    utils::{layer_window, LayerOptions},
+    globals::{load_widget, GlobalWindows},
+    utils::{keybindings, layer_window, LayerOptions},
 };
 
 pub(crate) struct LogoutScreen;
@@ -22,8 +25,17 @@ impl LogoutScreen {
                     gtk4_layer_shell::Edge::Bottom,
                     gtk4_layer_shell::Edge::Left,
                 ])
-                // .with_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive)
+                .with_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive)
                 .build(),
         );
+
+        keybindings(window)
+            .add("Escape", || window.set_visible(false))
+            .fallback(|key| println!("Other: {key}"))
+            .finish();
+
+        GlobalWindows::set_reset_fn("LogoutScreen", || {
+            println!("Resetting logout screen");
+        });
     }
 }
