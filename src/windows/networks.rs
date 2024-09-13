@@ -3,14 +3,9 @@ use gtk4::{prelude::GtkWindowExt, Application, Window};
 use crate::{
     globals::load_widget,
     utils::{layer_window, LayerOptions},
-    windows::GloballyAccessibleWindow,
 };
 
 pub(crate) struct Networks;
-
-impl GloballyAccessibleWindow for Networks {
-    const NAME: &str = "Networks";
-}
 
 impl Networks {
     pub(crate) fn activate(app: &Application) {
@@ -26,7 +21,5 @@ impl Networks {
                 // .with_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive)
                 .build(),
         );
-
-        Self::set(window);
     }
 }

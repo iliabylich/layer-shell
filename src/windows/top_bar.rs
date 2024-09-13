@@ -4,14 +4,9 @@ use crate::{
     globals::load_widget,
     utils::{layer_window, LayerOptions},
     widgets::{Clock, Language, Workspaces, CPU, RAM},
-    windows::GloballyAccessibleWindow,
 };
 
 pub(crate) struct TopBar;
-
-impl GloballyAccessibleWindow for TopBar {
-    const NAME: &str = "TopBar";
-}
 
 impl TopBar {
     pub(crate) fn activate(app: &Application) {
@@ -42,7 +37,5 @@ impl TopBar {
         // PowerButton();
 
         window.present();
-
-        Self::set(window);
     }
 }
