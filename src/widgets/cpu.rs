@@ -4,35 +4,28 @@ use crate::{globals::load_widget, models::CPU as CPULoad};
 
 pub(crate) struct CPU;
 
-static mut LABELS: Option<Vec<&'static Label>> = None;
-fn labels() -> &'static [&'static Label] {
-    unsafe { LABELS.as_ref().unwrap() }
-}
-
 impl CPU {
     pub(crate) fn init() {
-        unsafe {
-            LABELS = Some(vec![
-                load_widget("CPU1"),
-                load_widget("CPU2"),
-                load_widget("CPU3"),
-                load_widget("CPU4"),
-                load_widget("CPU5"),
-                load_widget("CPU6"),
-                load_widget("CPU7"),
-                load_widget("CPU8"),
-                load_widget("CPU9"),
-                load_widget("CPU10"),
-                load_widget("CPU11"),
-                load_widget("CPU12"),
-            ]);
-        }
+        let labels = [
+            load_widget::<Label>("CPU1"),
+            load_widget::<Label>("CPU2"),
+            load_widget::<Label>("CPU3"),
+            load_widget::<Label>("CPU4"),
+            load_widget::<Label>("CPU5"),
+            load_widget::<Label>("CPU6"),
+            load_widget::<Label>("CPU7"),
+            load_widget::<Label>("CPU8"),
+            load_widget::<Label>("CPU9"),
+            load_widget::<Label>("CPU10"),
+            load_widget::<Label>("CPU11"),
+            load_widget::<Label>("CPU12"),
+        ];
 
         CPULoad::spawn(move |usage| {
-            assert_eq!(usage.len(), labels().len());
+            assert_eq!(usage.len(), labels.len());
 
             for (idx, load) in usage.iter().enumerate() {
-                labels()[idx].set_label(indicator(*load));
+                labels[idx].set_label(indicator(*load));
             }
         });
     }

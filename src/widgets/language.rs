@@ -14,7 +14,7 @@ fn map_language(lang: &str) -> &'static str {
 
 impl Language {
     pub(crate) fn init() {
-        let label: &Label = load_widget("LanguageLabel");
+        let label = load_widget::<Label>("LanguageLabel");
 
         HyprlandLanguage::spawn(move |lang| {
             label.set_label(map_language(&lang));
