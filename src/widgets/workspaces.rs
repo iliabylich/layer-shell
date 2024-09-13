@@ -3,12 +3,12 @@ use gtk4::{
     Button,
 };
 
-use crate::{models::HyprlandWorkspaces, utils::load_widget};
+use crate::{globals::load_widget, models::HyprlandWorkspaces};
 
 pub(crate) struct Workspaces;
 
-static mut BUTTONS: Option<[Button; 10]> = None;
-fn buttons() -> &'static [Button; 10] {
+static mut BUTTONS: Option<[&'static Button; 10]> = None;
+fn buttons() -> &'static [&'static Button; 10] {
     unsafe { BUTTONS.as_ref().unwrap() }
 }
 

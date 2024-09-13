@@ -1,11 +1,11 @@
 use gtk4::Label;
 
-use crate::{models::CPU as CPULoad, utils::load_widget};
+use crate::{globals::load_widget, models::CPU as CPULoad};
 
 pub(crate) struct CPU;
 
-static mut LABELS: Option<Vec<Label>> = None;
-fn labels() -> &'static [Label] {
+static mut LABELS: Option<Vec<&'static Label>> = None;
+fn labels() -> &'static [&'static Label] {
     unsafe { LABELS.as_ref().unwrap() }
 }
 

@@ -1,6 +1,3 @@
-mod widget_factory;
-pub(crate) use widget_factory::{load_widget, WidgetFactory};
-
 mod layer_window;
 pub(crate) use layer_window::{layer_window, LayerOptions};
 

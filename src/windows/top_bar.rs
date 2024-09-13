@@ -1,7 +1,8 @@
 use gtk4::{prelude::GtkWindowExt, Application, Window};
 
 use crate::{
-    utils::{layer_window, load_widget, LayerOptions},
+    globals::load_widget,
+    utils::{layer_window, LayerOptions},
     widgets::{Clock, Language, Workspaces, CPU, RAM},
     windows::GloballyAccessibleWindow,
 };
@@ -14,7 +15,7 @@ impl GloballyAccessibleWindow for TopBar {
 
 impl TopBar {
     pub(crate) fn activate(app: &Application) {
-        let window: Window = load_widget("TopBar");
+        let window: &Window = load_widget("TopBar");
         window.set_application(Some(app));
         layer_window(
             &window,

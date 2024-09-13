@@ -13,12 +13,12 @@ pub(crate) use logout_screen::LogoutScreen;
 mod networks;
 pub(crate) use networks::Networks;
 
-static mut WINDOWS: Option<HashMap<&'static str, Window>> = None;
+static mut WINDOWS: Option<HashMap<&'static str, &'static Window>> = None;
 
 pub(crate) trait GloballyAccessibleWindow {
     const NAME: &str;
 
-    fn set(window: Window) {
+    fn set(window: &'static Window) {
         unsafe {
             if WINDOWS.is_none() {
                 WINDOWS = Some(HashMap::new())
@@ -29,7 +29,7 @@ pub(crate) trait GloballyAccessibleWindow {
         }
     }
 
-    fn get() -> &'static mut Window {
+    fn get() -> &'static Window {
         unsafe {
             let windows = WINDOWS.as_mut().unwrap();
             windows.get_mut(Self::NAME).unwrap()
