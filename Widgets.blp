@@ -1,0 +1,390 @@
+using Gtk 4.0;
+using Gdk 4.0;
+using Pango 1.0;
+
+Window TopBar {
+    CenterBox {
+        styles ["main-wrapper"]
+
+        [start]
+        Box {
+            spacing: 8;
+
+            Box Workspaces {
+                styles ["widget", "workspaces"]
+
+                Button WorkspaceButton1  { Label { label: "1";  } }
+                Button WorkspaceButton2  { Label { label: "2";  } }
+                Button WorkspaceButton3  { Label { label: "3";  } }
+                Button WorkspaceButton4  { Label { label: "4";  } }
+                Button WorkspaceButton5  { Label { label: "5";  } }
+                Button WorkspaceButton6  { Label { label: "6";  } }
+                Button WorkspaceButton7  { Label { label: "7";  } }
+                Button WorkspaceButton8  { Label { label: "8";  } }
+                Button WorkspaceButton9  { Label { label: "9";  } }
+                Button WorkspaceButton10 { Label { label: "10"; } }
+            }
+        }
+
+        [end]
+        Box {
+            spacing: 4;
+
+            Button Terminal {
+                styles ["widget", "terminal", "padded", "clickable"]
+
+                Label {
+                    label: "Terminal";
+                }
+            }
+
+            CenterBox Language {
+                styles ["widget", "language", "padded"]
+
+                [center]
+                Label LanguageLabel {
+                }
+            }
+
+            Box Sound {
+                styles ["widget", "sound", "padded"]
+                spacing: 10;
+                orientation: horizontal;
+
+                Image SoundImage {
+                    icon-name: "dialog-question";
+                }
+
+                Scale SoundScale {
+                    styles ["sound-slider"]
+                    adjustment: Adjustment {
+                        lower: 0;
+                        upper: 1;
+                    };
+                }
+            }
+
+            Box CPU {
+                styles ["widget", "cpu", "padded"]
+                spacing: 3;
+                orientation: horizontal;
+
+                Label CPU1  { use-markup: true; }
+                Label CPU2  { use-markup: true; }
+                Label CPU3  { use-markup: true; }
+                Label CPU4  { use-markup: true; }
+                Label CPU5  { use-markup: true; }
+                Label CPU6  { use-markup: true; }
+                Label CPU7  { use-markup: true; }
+                Label CPU8  { use-markup: true; }
+                Label CPU9  { use-markup: true; }
+                Label CPU10 { use-markup: true; }
+                Label CPU11 { use-markup: true; }
+                Label CPU12 { use-markup: true; }
+            }
+
+            Button RAM {
+                styles ["widget", "memory", "padded", "clickable"]
+
+                Label RAMLabel {
+                }
+            }
+
+            Button WiFi {
+                styles ["widget", "network", "padded", "clickable"]
+                cursor: Gdk.Cursor { name: "pointer"; };
+
+                Label WiFiLabel {
+                }
+            }
+
+            CenterBox Clock {
+                styles ["widget", "clock", "padded"]
+
+                [center]
+                Label ClockLabel {
+                }
+            }
+
+            Button PowerButton {
+                styles ["widget", "power", "padded", "clickable"]
+                cursor: Gdk.Cursor { name: "pointer"; };
+
+                Label {
+                    label: "      ";
+                }
+            }
+        }
+    }
+}
+
+Window LogoutScreen {
+    styles ["widget-logout"]
+    visible: false;
+
+    Box {
+        styles ["widget-logout-wrapper"]
+        orientation: horizontal;
+        homogeneous: true;
+        spacing: 200;
+
+        Button LockButton {
+            styles ["widget-logout-button"]
+            Label { label: "Lock"; }
+        }
+
+        Button RebootButton {
+            styles ["widget-logout-button"]
+            Label { label: "Reboot"; }
+        }
+
+        Button ShutdownButton {
+            styles ["widget-logout-button"]
+            Label { label: "Shutdown"; }
+        }
+
+        Button LogoutButton {
+            styles ["widget-logout-button"]
+            Label { label: "Logout"; }
+        }
+    }
+}
+
+Window Networks {
+    styles ["widget-network"]
+    visible: false;
+    width-request: 700;
+
+    Box {
+        styles ["widget-network-row-list"]
+        orientation: vertical;
+
+        CenterBox Network1Row {
+            styles ["widget-network-row"]
+            orientation: horizontal;
+            halign: fill;
+
+            [start]
+            Label {
+                justify: left;
+                xalign: 0;
+            }
+
+            [end]
+            Image {
+                icon-name: "edit-copy";
+                icon-size: large;
+                pixel-size: 30;
+            }
+        }
+
+        CenterBox Network2Row {
+            styles ["widget-network-row"]
+            orientation: horizontal;
+            halign: fill;
+
+            [start]
+            Label {
+                justify: left;
+                xalign: 0;
+            }
+
+            [end]
+            Image {
+                icon-name: "edit-copy";
+                icon-size: large;
+                pixel-size: 30;
+            }
+        }
+
+        CenterBox Network3Row {
+            styles ["widget-network-row"]
+            orientation: horizontal;
+            halign: fill;
+
+            [start]
+            Label {
+                justify: left;
+                xalign: 0;
+            }
+
+            [end]
+            Image {
+                icon-name: "edit-copy";
+                icon-size: large;
+                pixel-size: 30;
+            }
+        }
+
+        CenterBox Network4Row {
+            styles ["widget-network-row"]
+            orientation: horizontal;
+            halign: fill;
+
+            [start]
+            Label {
+                justify: left;
+                xalign: 0;
+            }
+
+            [end]
+            Image {
+                icon-name: "edit-copy";
+                icon-size: large;
+                pixel-size: 30;
+            }
+        }
+
+        CenterBox Network5Row {
+            styles ["widget-network-row"]
+            orientation: horizontal;
+            halign: fill;
+
+            [start]
+            Label {
+                justify: left;
+                xalign: 0;
+            }
+
+            [end]
+            Image {
+                icon-name: "edit-copy";
+                icon-size: large;
+                pixel-size: 30;
+            }
+        }
+
+        CenterBox NetworkSettingsRow {
+            styles ["widget-network-row"]
+            orientation: horizontal;
+            halign: fill;
+
+            [start]
+            Label {
+                label: "Settings (nmtui)";
+                justify: left;
+                xalign: 0;
+            }
+
+            [end]
+            Image {
+                icon-name: "preferences-system-network";
+                icon-size: large;
+                pixel-size: 30;
+            }
+        }
+
+        CenterBox NetworkExitRow {
+            styles ["widget-network-row"]
+            orientation: horizontal;
+            halign: fill;
+
+            [start]
+            Label {
+                label: "Close";
+                justify: left;
+                xalign: 0;
+            }
+
+            [end]
+            Image {
+                icon-name: "window-close";
+                icon-size: large;
+                pixel-size: 30;
+            }
+        }
+    }
+}
+
+Window Launcher {
+    width-request: 700;
+
+    Box {
+        styles ["widget-launcher-wrapper"]
+        orientation: vertical;
+
+        SearchEntry LauncherEntry {
+            styles ["widget-launcher-search-box"]
+            hexpand: true;
+        }
+
+        ScrolledWindow {
+            styles ["widget-launcher-scroll-list"]
+            can-focus: false;
+
+            Box {
+                orientation: vertical;
+
+                Box LauncherRow1 {
+                    styles ["widget-launcher-row"]
+
+                    Image {
+                        icon-size: large;
+                    }
+
+                    Label {
+                        xalign: 0;
+                        valign: center;
+                        ellipsize: end;
+                    }
+                }
+
+                Box LauncherRow2 {
+                    styles ["widget-launcher-row"]
+
+                    Image {
+                        icon-size: large;
+                    }
+
+                    Label {
+                        xalign: 0;
+                        valign: center;
+                        ellipsize: end;
+                    }
+                }
+
+                Box LauncherRow3 {
+                    styles ["widget-launcher-row"]
+
+                    Image {
+                        icon-size: large;
+                    }
+
+                    Label {
+                        xalign: 0;
+                        valign: center;
+                        ellipsize: end;
+                    }
+                }
+
+                Box LauncherRow4 {
+                    styles ["widget-launcher-row"]
+
+                    Image {
+                        icon-size: large;
+                    }
+
+                    Label {
+                        xalign: 0;
+                        valign: center;
+                        ellipsize: end;
+                    }
+                }
+
+                Box LauncherRow5 {
+                    styles ["widget-launcher-row"]
+
+                    Image {
+                        icon-size: large;
+                    }
+
+                    Label {
+                        xalign: 0;
+                        valign: center;
+                        ellipsize: end;
+                    }
+                }
+            }
+        }
+    }
+}
