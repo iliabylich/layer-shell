@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use crate::utils::{exec_async, HyprlandClient, HyprlandEvent};
 
+use super::singleton;
+
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Workspace {
     pub(crate) visible: bool,
@@ -15,44 +17,38 @@ pub(crate) struct HyprlandWorkspaces {
     on_change: Box<dyn Fn([Workspace; 10])>,
 }
 
-static mut WORKSPACES: Option<HyprlandWorkspaces> = None;
-
-fn ws() -> &'static mut HyprlandWorkspaces {
-    unsafe { WORKSPACES.as_mut().unwrap() }
-}
+singleton!(HyprlandWorkspaces, WORKSPACES_INSTANCE);
 
 impl HyprlandWorkspaces {
     pub(crate) fn spawn<F>(min_workspaces: usize, on_change: F)
     where
         F: Fn([Workspace; 10]) + 'static,
     {
-        unsafe {
-            WORKSPACES = Some(Self {
-                min_workspaces,
-                workspace_ids: HashSet::new(),
-                active_id: 0,
-                on_change: Box::new(on_change),
-            });
-        }
+        Self::set(Self {
+            min_workspaces,
+            workspace_ids: HashSet::new(),
+            active_id: 0,
+            on_change: Box::new(on_change),
+        });
 
         HyprlandClient::subscribe(move |event| match event {
             HyprlandEvent::CreateWorkspace(idx) => {
-                ws().workspace_ids.insert(idx);
-                ws().changed();
+                Self::get().workspace_ids.insert(idx);
+                Self::get().changed();
             }
             HyprlandEvent::DestroyWorkspace(idx) => {
-                ws().workspace_ids.remove(&idx);
-                ws().changed();
+                Self::get().workspace_ids.remove(&idx);
+                Self::get().changed();
             }
             HyprlandEvent::Workspace(idx) => {
-                ws().active_id = idx;
-                ws().changed();
+                Self::get().active_id = idx;
+                Self::get().changed();
             }
             _ => {}
         });
 
         gtk4::glib::spawn_future_local(async {
-            ws().load_initial_data().await;
+            Self::get().load_initial_data().await;
         });
     }
 
@@ -105,32 +101,26 @@ impl HyprlandWorkspaces {
 pub(crate) struct HyprlandLanguage {
     on_change: Box<dyn Fn(String)>,
 }
-
-static mut LANGUAGE: Option<HyprlandLanguage> = None;
-fn lang() -> &'static mut HyprlandLanguage {
-    unsafe { LANGUAGE.as_mut().unwrap() }
-}
+singleton!(HyprlandLanguage, LANGUAGE_INSTANCE);
 
 impl HyprlandLanguage {
     pub(crate) fn spawn<F>(f: F)
     where
         F: Fn(String) + 'static,
     {
-        unsafe {
-            LANGUAGE = Some(Self {
-                on_change: Box::new(f),
-            });
-        }
+        Self::set(Self {
+            on_change: Box::new(f),
+        });
 
         HyprlandClient::subscribe(|event| match event {
             HyprlandEvent::LanguageChanged(new_lang) => {
-                lang().changed(new_lang);
+                Self::get().changed(new_lang);
             }
             _ => {}
         });
 
         gtk4::glib::spawn_future_local(async {
-            lang().load_initial_data().await;
+            Self::get().load_initial_data().await;
         });
     }
 

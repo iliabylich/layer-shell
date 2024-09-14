@@ -6,34 +6,36 @@ use gtk4::{
     Builder, Widget,
 };
 
-pub(crate) struct GlobalWidgets;
+use crate::models::singleton;
 
-static mut WIDGET_TO_NAME: Option<HashMap<String, Widget>> = None;
-fn widget_to_name_map() -> &'static mut HashMap<String, Widget> {
-    unsafe { WIDGET_TO_NAME.as_mut().unwrap() }
+pub(crate) struct GlobalWidgets {
+    map: HashMap<String, Widget>,
 }
-const UI: &str = include_str!("../../Widgets.ui");
+singleton!(GlobalWidgets);
 
 impl GlobalWidgets {
     pub(crate) fn init() {
+        let mut map = HashMap::new();
+
+        const UI: &str = include_str!("../../Widgets.ui");
         let builder = Builder::from_string(UI);
-        unsafe {
-            WIDGET_TO_NAME = Some(HashMap::new());
-        }
 
         for object in builder.objects() {
             if let Ok(widget) = object.dynamic_cast::<Widget>() {
                 if let Some(id) = widget.buildable_id() {
                     let id = id.to_string();
-                    widget_to_name_map().insert(id, widget);
+                    map.insert(id, widget);
                 }
             }
         }
+
+        Self::set(Self { map });
     }
 }
 
 pub(crate) fn load_widget<T: IsA<Object>>(name: &str) -> &'static T {
-    widget_to_name_map()
+    GlobalWidgets::get()
+        .map
         .get(name)
         .unwrap_or_else(|| panic!("Can't find widget {name}"))
         .dynamic_cast_ref()

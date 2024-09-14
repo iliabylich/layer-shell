@@ -7,8 +7,8 @@ pub(crate) use load_css::load_css;
 mod exec_async;
 pub(crate) use exec_async::exec_async;
 
-mod hyprlang_client;
-pub(crate) use hyprlang_client::{HyprlandClient, HyprlandEvent};
+mod hyprland_client;
+pub(crate) use hyprland_client::{HyprlandClient, HyprlandEvent};
 
 mod keybindings;
 pub(crate) use keybindings::keybindings;

@@ -15,6 +15,7 @@ const APP_ID: &str = "com.me.layershell";
 
 fn main() {
     utils::HyprlandClient::start();
+    globals::GlobalWindows::init();
 
     let app = Application::builder().application_id(APP_ID).build();
 

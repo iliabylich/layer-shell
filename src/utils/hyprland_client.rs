@@ -6,12 +6,12 @@ use gtk4::{
     prelude::{DataInputStreamExtManual, IOStreamExt, SocketClientExt},
 };
 
-use super::exec_async;
+use crate::{models::singleton, utils::exec_async};
 
-type Handler = Box<dyn Fn(HyprlandEvent)>;
-static mut HANDLERS: Vec<Handler> = vec![];
-
-pub(crate) struct HyprlandClient;
+pub(crate) struct HyprlandClient {
+    handlers: Vec<Box<dyn Fn(HyprlandEvent)>>,
+}
+singleton!(HyprlandClient);
 
 fn socker_path() -> String {
     format!(
@@ -31,6 +31,8 @@ pub(crate) enum HyprlandEvent {
 
 impl HyprlandClient {
     pub(crate) fn start() {
+        Self::set(Self { handlers: vec![] });
+
         gtk4::glib::spawn_future_local(async {
             let unix_socket = UnixSocketAddress::new(&Path::new(&socker_path()));
             let socket = SocketClient::new();
@@ -57,10 +59,8 @@ impl HyprlandClient {
                     _ => continue,
                 };
 
-                unsafe {
-                    for handler in HANDLERS.iter() {
-                        handler(event.clone());
-                    }
+                for handler in Self::get().handlers.iter() {
+                    handler(event.clone());
                 }
             }
         });
@@ -70,7 +70,7 @@ impl HyprlandClient {
     where
         F: Fn(HyprlandEvent) + 'static,
     {
-        unsafe { HANDLERS.push(Box::new(f)) }
+        Self::get().handlers.push(Box::new(f))
     }
 
     pub(crate) async fn get_workspaces() -> Vec<Workspace> {

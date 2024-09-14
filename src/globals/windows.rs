@@ -1,29 +1,28 @@
-use crate::globals::load_widget;
+use crate::{globals::load_widget, models::singleton};
 use gtk4::prelude::WidgetExt;
 use std::collections::HashMap;
 
-static mut WINDOW_TO_RESET_FN: Option<HashMap<&'static str, Box<dyn Fn()>>> = None;
-
-pub(crate) struct GlobalWindows;
+pub(crate) struct GlobalWindows {
+    map: HashMap<&'static str, Box<dyn Fn()>>,
+}
+singleton!(GlobalWindows);
 
 impl GlobalWindows {
+    pub(crate) fn init() {
+        Self::set(Self {
+            map: HashMap::new(),
+        })
+    }
+
     pub(crate) fn set_reset_fn<F>(name: &'static str, f: F)
     where
         F: Fn() + 'static,
     {
-        unsafe {
-            if WINDOW_TO_RESET_FN.is_none() {
-                WINDOW_TO_RESET_FN = Some(HashMap::new());
-            }
-
-            let map = WINDOW_TO_RESET_FN.as_mut().unwrap();
-
-            map.insert(name, Box::new(f));
-        }
+        Self::get().map.insert(name, Box::new(f));
     }
 
     fn get_reset_fn(name: &'static str) -> &'static dyn Fn() {
-        unsafe { WINDOW_TO_RESET_FN.as_ref().unwrap().get(name).unwrap() }
+        Self::get().map.get(name).unwrap()
     }
 }
 
