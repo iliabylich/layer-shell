@@ -112,11 +112,10 @@ impl HyprlandLanguage {
             on_change: Box::new(f),
         });
 
-        HyprlandClient::subscribe(|event| match event {
-            HyprlandEvent::LanguageChanged(new_lang) => {
+        HyprlandClient::subscribe(|event| {
+            if let HyprlandEvent::LanguageChanged(new_lang) = event {
                 Self::get().changed(new_lang);
             }
-            _ => {}
         });
 
         gtk4::glib::spawn_future_local(async {

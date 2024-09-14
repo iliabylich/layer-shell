@@ -1,3 +1,6 @@
+#![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::missing_transmute_annotations)]
+
 use gtk4::{
     prelude::{ApplicationExt, ApplicationExtManual},
     Application,

@@ -5,10 +5,13 @@ use gtk4::{
     EventControllerKey, Window,
 };
 
+type KeybindingFn = Box<dyn Fn()>;
+type FallbackFn = Box<dyn Fn(&str)>;
+
 pub(crate) struct Keybindings {
     window: &'static Window,
-    map: HashMap<&'static str, Box<dyn Fn()>>,
-    fallback: Option<Box<dyn Fn(&str)>>,
+    map: HashMap<&'static str, KeybindingFn>,
+    fallback: Option<FallbackFn>,
 }
 
 impl Keybindings {

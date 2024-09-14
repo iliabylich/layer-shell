@@ -21,7 +21,7 @@ impl Memory {
 
     async fn parse() -> Memory {
         let stdout = exec_async(&["free", "-m"]).await;
-        let line = stdout.split("\n").skip(1).next().unwrap();
+        let line = stdout.split("\n").nth(1).unwrap();
         let mut parts = line.split_ascii_whitespace().skip(1);
         let total = parts.next().unwrap();
         let used = parts.next().unwrap();

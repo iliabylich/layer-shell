@@ -16,11 +16,11 @@ impl Sound {
             scale.set_value(volume);
             if volume == 0.0 {
                 icon.set_icon_name(Some("audio-volume-muted-symbolic"));
-            } else if volume >= 0.01 && volume < 0.34 {
+            } else if (0.01..0.34).contains(&volume) {
                 icon.set_icon_name(Some("audio-volume-low-symbolic"));
-            } else if volume >= 0.34 && volume < 0.67 {
+            } else if (0.34..0.67).contains(&volume) {
                 icon.set_icon_name(Some("audio-volume-medium-symbolic"));
-            } else if volume >= 0.67 && volume < 1.0 {
+            } else if (0.67..1.0).contains(&volume) {
                 icon.set_icon_name(Some("audio-volume-high-symbolic"));
             } else {
                 icon.set_icon_name(Some("audio-volume-overamplified-symbolic"));

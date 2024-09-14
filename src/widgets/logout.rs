@@ -53,7 +53,7 @@ impl Logout {
         });
 
         Self {
-            reset: Box::new(|| LogoutModel::reset()),
+            reset: Box::new(LogoutModel::reset),
             on_key_press: Box::new(|key| match key {
                 "Left" => LogoutModel::left(),
                 "Right" => LogoutModel::right(),

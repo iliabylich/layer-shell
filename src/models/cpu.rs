@@ -46,7 +46,7 @@ impl CPU {
         stdout
             .split("\n")
             .filter(|line| line.starts_with("cpu") && line.as_bytes()[3].is_ascii_digit())
-            .map(|line| CpuCoreInfo::parse(line))
+            .map(CpuCoreInfo::parse)
             .collect()
     }
 }

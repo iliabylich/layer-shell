@@ -15,7 +15,7 @@ impl Networks {
         let window: &Window = load_widget("Networks");
         window.set_application(Some(app));
         layer_window(
-            &window,
+            window,
             LayerOptions::builder()
                 .with_namespace("Networks")
                 .with_layer(gtk4_layer_shell::Layer::Overlay)

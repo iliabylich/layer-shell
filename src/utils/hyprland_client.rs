@@ -34,7 +34,7 @@ impl HyprlandClient {
         Self::set(Self { handlers: vec![] });
 
         gtk4::glib::spawn_future_local(async {
-            let unix_socket = UnixSocketAddress::new(&Path::new(&socker_path()));
+            let unix_socket = UnixSocketAddress::new(Path::new(&socker_path()));
             let socket = SocketClient::new();
             let connection = socket.connect(&unix_socket, Cancellable::NONE).unwrap();
             let stream = DataInputStream::builder()

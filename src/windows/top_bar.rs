@@ -13,7 +13,7 @@ impl TopBar {
         let window: &Window = load_widget("TopBar");
         window.set_application(Some(app));
         layer_window(
-            &window,
+            window,
             LayerOptions::builder()
                 .with_namespace("TopBar")
                 .with_layer(gtk4_layer_shell::Layer::Overlay)
