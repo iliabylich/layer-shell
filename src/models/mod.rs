@@ -18,3 +18,6 @@ pub(crate) use output_sound::OutputSound;
 
 mod logout;
 pub(crate) use logout::Logout;
+
+mod network_manager;
+pub(crate) use network_manager::{all_networks, Iface, WiFiStatus};

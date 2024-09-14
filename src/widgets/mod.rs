@@ -21,3 +21,9 @@ pub(crate) use power_button::PowerButton;
 
 mod logout;
 pub(crate) use logout::Logout;
+
+mod wifi;
+pub(crate) use wifi::WiFi;
+
+mod network_list;
+pub(crate) use network_list::NetworkList;

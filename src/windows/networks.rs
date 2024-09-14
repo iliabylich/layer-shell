@@ -6,6 +6,7 @@ use gtk4::{
 use crate::{
     globals::{load_widget, GlobalWindows},
     utils::{keybindings, layer_window, LayerOptions},
+    widgets::NetworkList,
 };
 
 pub(crate) struct Networks;
@@ -25,13 +26,15 @@ impl Networks {
                 .build(),
         );
 
+        let widget = NetworkList::init();
+
         keybindings(window)
             .add("Escape", || window.set_visible(false))
-            .fallback(|key| println!("Other: {key}"))
+            .fallback(|_key| {})
             .finish();
 
-        GlobalWindows::set_reset_fn("Networks", || {
-            println!("Resetting Networks");
+        GlobalWindows::set_reset_fn("Networks", move || {
+            (widget.reset)();
         });
     }
 }

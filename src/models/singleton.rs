@@ -10,6 +10,11 @@ macro_rules! singleton {
             fn set(v: Self) {
                 unsafe { $name = Some(v) }
             }
+
+            #[allow(dead_code)]
+            fn is_set() -> bool {
+                unsafe { $name.as_ref().is_some() }
+            }
         }
     };
 

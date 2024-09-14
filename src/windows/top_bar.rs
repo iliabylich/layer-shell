@@ -3,7 +3,7 @@ use gtk4::{prelude::GtkWindowExt, Application, Window};
 use crate::{
     globals::load_widget,
     utils::{layer_window, LayerOptions},
-    widgets::{Clock, Language, PowerButton, Sound, Workspaces, CPU, RAM},
+    widgets::{Clock, Language, PowerButton, Sound, WiFi, Workspaces, CPU, RAM},
 };
 
 pub(crate) struct TopBar;
@@ -32,7 +32,7 @@ impl TopBar {
         Sound::init();
         CPU::init();
         RAM::init();
-        // WiFi();
+        WiFi::init();
         Clock::init("%H:%M:%S", "%Y %B %e\n%A");
         PowerButton::init();
 
