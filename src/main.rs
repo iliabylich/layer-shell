@@ -6,6 +6,7 @@ use gtk4::{
     Application,
 };
 
+mod ffi;
 mod globals;
 mod models;
 mod utils;
