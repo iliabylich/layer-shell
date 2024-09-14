@@ -1,3 +1,6 @@
+mod singleton;
+pub(crate) use singleton::singleton;
+
 mod hyprland;
 pub(crate) use hyprland::{HyprlandLanguage, HyprlandWorkspaces};
 
@@ -12,3 +15,6 @@ pub(crate) use time::Time;
 
 mod output_sound;
 pub(crate) use output_sound::OutputSound;
+
+mod logout;
+pub(crate) use logout::Logout;

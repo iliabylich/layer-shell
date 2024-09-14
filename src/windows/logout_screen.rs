@@ -6,6 +6,7 @@ use gtk4::{
 use crate::{
     globals::{load_widget, GlobalWindows},
     utils::{keybindings, layer_window, LayerOptions},
+    widgets::Logout,
 };
 
 pub(crate) struct LogoutScreen;
@@ -29,13 +30,15 @@ impl LogoutScreen {
                 .build(),
         );
 
+        let widget = Logout::init();
+
         keybindings(window)
             .add("Escape", || window.set_visible(false))
-            .fallback(|key| println!("Other: {key}"))
+            .fallback(move |key| (widget.on_key_press)(key))
             .finish();
 
-        GlobalWindows::set_reset_fn("LogoutScreen", || {
-            println!("Resetting logout screen");
+        GlobalWindows::set_reset_fn("LogoutScreen", move || {
+            (widget.reset)();
         });
     }
 }

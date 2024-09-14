@@ -41,7 +41,7 @@ impl Keybindings {
                 Some(f) => f(),
                 None => {
                     if let Some(fallback) = fallback.as_ref() {
-                        fallback(key.as_str())
+                        fallback(&key)
                     }
                 }
             }

@@ -18,3 +18,6 @@ pub(crate) use sound::Sound;
 
 mod power_button;
 pub(crate) use power_button::PowerButton;
+
+mod logout;
+pub(crate) use logout::Logout;
