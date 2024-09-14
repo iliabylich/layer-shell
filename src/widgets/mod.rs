@@ -27,3 +27,6 @@ pub(crate) use wifi::WiFi;
 
 mod network_list;
 pub(crate) use network_list::NetworkList;
+
+mod app_list;
+pub(crate) use app_list::AppList;

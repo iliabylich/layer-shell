@@ -6,6 +6,7 @@ use gtk4::{
 use crate::{
     globals::{load_widget, GlobalWindows},
     utils::{keybindings, layer_window, LayerOptions},
+    widgets::AppList,
 };
 
 pub(crate) struct Launcher;
@@ -23,13 +24,17 @@ impl Launcher {
                 .build(),
         );
 
+        let widget = AppList::init();
+
         keybindings(window)
             .add("Escape", || window.set_visible(false))
-            .fallback(|key| println!("Other: {key}"))
+            .fallback(move |key| (widget.on_key_press)(key))
             .finish();
 
-        GlobalWindows::set_reset_fn("Launcher", || {
-            println!("Resetting Launcher");
+        window.present();
+
+        GlobalWindows::set_reset_fn("Launcher", move || {
+            (widget.reset)();
         });
     }
 }
