@@ -9,11 +9,12 @@ pub(crate) fn load_css() {
         );
     });
 
-    let path = format!(
-        "{}/.config/layer-shell/css/style.css",
-        std::env::var("HOME").unwrap()
-    );
-    provider.load_from_path(path);
+    let theme = std::fs::read_to_string(format!("{}/.theme.css", std::env::var("HOME").unwrap()))
+        .unwrap_or_default();
+    let builtin = include_str!("../../main.css");
+    let css = format!("{}\n{}", theme, builtin);
+
+    provider.load_from_string(&css);
 
     let display = gtk4::gdk::Display::default().unwrap();
 
