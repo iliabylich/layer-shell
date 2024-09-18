@@ -18,10 +18,7 @@ pub(crate) struct AppList {
 singleton!(AppList);
 
 fn exclude(app: &DesktopAppInfo) -> bool {
-    match app.name().as_str() {
-        "Google Chrome" => true,
-        _ => false,
-    }
+    matches!(app.name().as_str(), "Google Chrome")
 }
 
 impl AppList {
@@ -89,8 +86,8 @@ impl AppList {
             .filter(|app_info| app_info.should_show())
             .filter_map(|app_info| app_info.id())
             .filter_map(|app_id| gtk4::gio::DesktopAppInfo::new(app_id.as_str()))
-            .filter(|app| !exclude(&app))
-            .map(|app| App::Default(app));
+            .filter(|app| !exclude(app))
+            .map(App::Default);
 
         apps.extend(builtin_apps);
 
@@ -105,7 +102,6 @@ impl AppList {
         self.visible_app_list = self
             .global_app_list
             .iter()
-            .cloned()
             .filter(|app| {
                 if let Some(re) = re.as_ref() {
                     re.is_match(&app.name())
@@ -114,6 +110,7 @@ impl AppList {
                 }
             })
             .take(self.max_items)
+            .cloned()
             .collect::<Vec<_>>();
     }
     fn changed() {
