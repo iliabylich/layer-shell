@@ -37,6 +37,9 @@ impl LogoutScreen {
             .fallback(move |key| (widget.on_key_press)(key))
             .finish();
 
+        window.present();
+        window.set_visible(false);
+
         GlobalWindows::set_reset_fn("LogoutScreen", move || {
             (widget.reset)();
         });

@@ -13,14 +13,14 @@ mod utils;
 mod widgets;
 mod windows;
 
-use utils::init_messaging;
+use utils::DBus;
 use windows::{Launcher, LogoutScreen, Networks, TopBar};
 
-const APP_ID: &str = "com.me.layershell";
+const APP_ID: &str = "com.me.LayerShell";
 
 fn main() {
     utils::parse_args();
-    init_messaging();
+    DBus::subscribe();
 
     utils::HyprlandClient::start();
     globals::GlobalWindows::init();

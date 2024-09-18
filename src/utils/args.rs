@@ -1,3 +1,4 @@
+use crate::utils::{DBus, DBusMessage};
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate, Shell};
 
@@ -30,19 +31,20 @@ pub(crate) fn parse_args() {
             // The only case in which we proceeed
         }
         Args::Stop => {
-            send_command("STOP");
+            DBus::send(DBusMessage::Stop);
             std::process::exit(1);
         }
-        Args::Toggle { window_name } => {
-            send_command(format!("TOGGLE {:?}", window_name));
+        Args::Toggle {
+            window_name: WindowName::Launcher,
+        } => {
+            DBus::send(DBusMessage::ToggleLauncher);
+            std::process::exit(1);
+        }
+        Args::Toggle {
+            window_name: WindowName::LogoutScreen,
+        } => {
+            DBus::send(DBusMessage::ToggleLogoutScreen);
             std::process::exit(1);
         }
     }
-}
-
-fn send_command<T>(command: T)
-where
-    T: AsRef<str>,
-{
-    todo!("Sending {}", command.as_ref())
 }
