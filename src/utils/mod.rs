@@ -12,3 +12,9 @@ pub(crate) use hyprland_client::{HyprlandClient, HyprlandEvent};
 
 mod keybindings;
 pub(crate) use keybindings::keybindings;
+
+mod messaging;
+pub(crate) use messaging::init_messaging;
+
+mod args;
+pub(crate) use args::parse_args;

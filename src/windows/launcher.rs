@@ -31,8 +31,6 @@ impl Launcher {
             .fallback(move |key| (widget.on_key_press)(key))
             .finish();
 
-        window.present();
-
         GlobalWindows::set_reset_fn("Launcher", move || {
             (widget.reset)();
         });
