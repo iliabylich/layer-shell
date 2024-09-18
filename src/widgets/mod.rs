@@ -30,3 +30,6 @@ pub(crate) use network_list::NetworkList;
 
 mod app_list;
 pub(crate) use app_list::AppList;
+
+mod terminal;
+pub(crate) use terminal::Terminal;

@@ -1,6 +1,5 @@
 using Gtk 4.0;
 using Gdk 4.0;
-using Pango 1.0;
 
 Window TopBar {
     CenterBox {
@@ -387,4 +386,11 @@ Window Launcher {
             }
         }
     }
+}
+
+Window Htop {
+    styles ["widget-htop"]
+
+    width-request: 1000;
+    height-request: 700;
 }

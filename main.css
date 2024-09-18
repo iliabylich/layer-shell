@@ -84,7 +84,6 @@ tooltip {
     border-radius: 5px;
 }
 
-
 /* network */
 .widget-network-row-list {
     border: 5px solid var(--theme-accent-color);
@@ -168,7 +167,7 @@ tooltip {
 }
 
 /* terminal */
-.widget-terminal {
+.widget-htop {
     border: 5px solid var(--theme-accent-color);
     border-radius: 10px;
 }
