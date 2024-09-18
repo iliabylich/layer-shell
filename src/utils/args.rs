@@ -22,7 +22,6 @@ pub(crate) fn parse_args() {
     match args {
         Args::Generate { shell } => {
             let mut cmd = Args::command();
-            eprintln!("Generating completion file for {shell:?}");
             let bin_name = cmd.get_name().to_string();
             generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
             std::process::exit(0);
