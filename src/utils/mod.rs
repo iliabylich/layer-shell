@@ -13,8 +13,8 @@ pub(crate) use hyprland_client::{HyprlandClient, HyprlandEvent};
 mod keybindings;
 pub(crate) use keybindings::keybindings;
 
-mod messaging;
-pub(crate) use messaging::{DBus, DBusMessage};
+mod ipc;
+pub(crate) use ipc::{IPCMessage, IPC};
 
 mod args;
 pub(crate) use args::parse_args;

@@ -1,4 +1,4 @@
-use crate::utils::{DBus, DBusMessage};
+use crate::utils::{IPCMessage, IPC};
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate, Shell};
 
@@ -30,19 +30,19 @@ pub(crate) fn parse_args() {
             // The only case in which we proceeed
         }
         Args::Stop => {
-            DBus::send(DBusMessage::Stop);
+            IPC::send(IPCMessage::Stop);
             std::process::exit(1);
         }
         Args::Toggle {
             window_name: WindowName::Launcher,
         } => {
-            DBus::send(DBusMessage::ToggleLauncher);
+            IPC::send(IPCMessage::ToggleLauncher);
             std::process::exit(1);
         }
         Args::Toggle {
             window_name: WindowName::LogoutScreen,
         } => {
-            DBus::send(DBusMessage::ToggleLogoutScreen);
+            IPC::send(IPCMessage::ToggleLogoutScreen);
             std::process::exit(1);
         }
     }

@@ -15,7 +15,7 @@ use gtk4::{
 
 use crate::{
     globals::{GlobalWidgets, GlobalWindows},
-    utils::{load_css, parse_args, DBus, HyprlandClient},
+    utils::{load_css, parse_args, HyprlandClient, IPC},
     windows::{Launcher, LogoutScreen, Networks, Terminal, TopBar},
 };
 
@@ -23,7 +23,7 @@ const APP_ID: &str = "com.me.LayerShell";
 
 fn main() {
     parse_args();
-    DBus::subscribe();
+    IPC::subscribe();
 
     HyprlandClient::start();
     GlobalWindows::init();
