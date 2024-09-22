@@ -84,6 +84,10 @@ tooltip {
     border-radius: 5px;
 }
 
+.widget.weather label {
+    font-family: Roboto, "Weather Icons";
+}
+
 /* network */
 .widget-network-row-list {
     border: 5px solid var(--theme-accent-color);
@@ -170,4 +174,19 @@ tooltip {
 .widget-htop {
     border: 5px solid var(--theme-accent-color);
     border-radius: 10px;
+}
+
+/* weather */
+.widget-weather {
+    border: 3px solid var(--theme-accent-color);
+    border-radius: 10px;
+    background-color: var(--theme-solid-bg-color);
+    padding: 10px;
+}
+.widget-weather label {
+    padding: 5px;
+    font-family: Roboto, "Weather Icons";
+}
+.weather-hourly-list {
+    border-right: 3px solid var(--theme-accent-color);
 }

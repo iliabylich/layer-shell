@@ -134,6 +134,21 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
+              <object class="GtkButton" id="WeatherButton">
+                <style>
+                  <class name="widget"/>
+                  <class name="weather"/>
+                  <class name="padded"/>
+                  <class name="clickable"/>
+                </style>
+                <child>
+                  <object class="GtkLabel" id="WeatherLabel">
+                    <property name="label">Weather</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
               <object class="GtkCenterBox" id="Language">
                 <style>
                   <class name="widget"/>
@@ -681,5 +696,89 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
     </style>
     <property name="width-request">1000</property>
     <property name="height-request">700</property>
+  </object>
+  <object class="GtkWindow" id="Weather">
+    <style>
+      <class name="widget-weather"/>
+    </style>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">0</property>
+        <child>
+          <object class="GtkBox">
+            <style>
+              <class name="weather-hourly-list"/>
+            </style>
+            <property name="orientation">1</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Hourly</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly1"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly2"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly3"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly4"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly5"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly6"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly7"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly8"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly9"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Hourly10"></object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <style>
+              <class name="weather-daily-list"/>
+            </style>
+            <property name="orientation">1</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Daily</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Daily1"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Daily2"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Daily3"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Daily4"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Daily5"></object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="Daily6"></object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
   </object>
 </interface>

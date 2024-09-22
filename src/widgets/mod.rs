@@ -33,3 +33,9 @@ pub(crate) use app_list::AppList;
 
 mod terminal;
 pub(crate) use terminal::Terminal;
+
+mod weather;
+pub(crate) use weather::Weather;
+
+mod weather_forecast;
+pub(crate) use weather_forecast::WeatherForecast;

@@ -37,6 +37,14 @@ Window TopBar {
                 }
             }
 
+            Button WeatherButton {
+                styles ["widget", "weather", "padded", "clickable"]
+
+                Label WeatherLabel {
+                    label: "Weather";
+                }
+            }
+
             CenterBox Language {
                 styles ["widget", "language", "padded"]
 
@@ -393,4 +401,42 @@ Window Htop {
 
     width-request: 1000;
     height-request: 700;
+}
+
+Window Weather {
+    styles ["widget-weather"]
+
+    Box {
+        orientation: horizontal;
+
+        Box {
+            styles ["weather-hourly-list"]
+            orientation: vertical;
+
+            Label { label: "Hourly"; }
+            Label Hourly1 {}
+            Label Hourly2 {}
+            Label Hourly3 {}
+            Label Hourly4 {}
+            Label Hourly5 {}
+            Label Hourly6 {}
+            Label Hourly7 {}
+            Label Hourly8 {}
+            Label Hourly9 {}
+            Label Hourly10 {}
+        }
+
+        Box {
+            styles ["weather-daily-list"]
+            orientation: vertical;
+
+            Label { label: "Daily"; }
+            Label Daily1 {}
+            Label Daily2 {}
+            Label Daily3 {}
+            Label Daily4 {}
+            Label Daily5 {}
+            Label Daily6 {}
+        }
+    }
 }

@@ -24,3 +24,6 @@ pub(crate) use network_manager::{all_networks, Iface, WiFiStatus};
 
 mod app_list;
 pub(crate) use app_list::AppList;
+
+mod weather_api;
+pub(crate) use weather_api::WeatherApi;
