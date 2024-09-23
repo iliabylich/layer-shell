@@ -30,7 +30,7 @@ pub(crate) enum HyprlandEvent {
 }
 
 impl HyprlandClient {
-    pub(crate) fn start() {
+    pub(crate) fn spawn() {
         Self::set(Self { handlers: vec![] });
 
         gtk4::glib::spawn_future_local(async {

@@ -5,7 +5,7 @@ pub(crate) struct CPU {
 }
 
 impl CPU {
-    pub(crate) fn spawn<F>(on_change: F)
+    pub(crate) fn subscribe<F>(on_change: F)
     where
         F: Fn(Vec<usize>) + 'static,
     {

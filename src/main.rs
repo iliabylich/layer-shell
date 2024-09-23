@@ -15,7 +15,7 @@ use gtk4::{
 use crate::{
     globals::GlobalWidgets,
     layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
-    models::{NetworkList, WeatherApi},
+    models::{NetworkList, OutputSound, WeatherApi},
     utils::{load_css, parse_args, HyprlandClient, IPC},
 };
 
@@ -23,16 +23,18 @@ const APP_ID: &str = "com.me.LayerShell";
 
 fn main() {
     parse_args();
-    IPC::subscribe();
+    IPC::spawn();
 
-    HyprlandClient::start();
+    HyprlandClient::spawn();
     WeatherApi::spawn();
-    NetworkList::spawn_once();
+    NetworkList::spawn();
+    OutputSound::spawn();
 
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
         GlobalWidgets::init();
+
         TopBar::activate(app);
         LogoutScreen::activate(app);
         Launcher::activate(app);

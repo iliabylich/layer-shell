@@ -23,7 +23,7 @@ impl IPCMessage {
 pub(crate) struct IPC {}
 
 impl IPC {
-    pub(crate) fn subscribe() {
+    pub(crate) fn spawn() {
         let config = Config::new();
         config.write_pid();
         gtk4::glib::unix_signal_add(10 /* USR1 */, move || {
@@ -34,7 +34,7 @@ impl IPC {
         });
     }
 
-    pub(crate) fn send(message: IPCMessage) {
+    pub(crate) fn send_to_running_instance(message: IPCMessage) {
         let config = Config::new();
         if let Some(pid) = config.read_pid() {
             config.write_message(message);

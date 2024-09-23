@@ -30,19 +30,19 @@ pub(crate) fn parse_args() {
             // The only case in which we proceeed
         }
         Args::Stop => {
-            IPC::send(IPCMessage::Stop);
+            IPC::send_to_running_instance(IPCMessage::Stop);
             std::process::exit(1);
         }
         Args::Toggle {
             window_name: WindowName::Launcher,
         } => {
-            IPC::send(IPCMessage::ToggleLauncher);
+            IPC::send_to_running_instance(IPCMessage::ToggleLauncher);
             std::process::exit(1);
         }
         Args::Toggle {
             window_name: WindowName::LogoutScreen,
         } => {
-            IPC::send(IPCMessage::ToggleLogoutScreen);
+            IPC::send_to_running_instance(IPCMessage::ToggleLogoutScreen);
             std::process::exit(1);
         }
     }

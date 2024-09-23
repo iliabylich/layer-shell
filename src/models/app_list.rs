@@ -5,11 +5,12 @@ use gtk4::{
     prelude::AppInfoExt,
 };
 
+const MAX_ITEMS: usize = 5;
+
 pub(crate) struct AppList {
     selected_idx: usize,
     global_app_list: Vec<App>,
     visible_app_list: Vec<App>,
-    max_items: usize,
     on_change: Box<dyn Fn(Vec<AppRow>)>,
 }
 singleton!(AppList);
@@ -19,7 +20,7 @@ fn exclude(app: &DesktopAppInfo) -> bool {
 }
 
 impl AppList {
-    pub(crate) fn spawn<F>(max_items: usize, f: F)
+    pub(crate) fn subscribe<F>(f: F)
     where
         F: Fn(Vec<AppRow>) + 'static,
     {
@@ -27,7 +28,6 @@ impl AppList {
             selected_idx: 0,
             global_app_list: vec![],
             visible_app_list: vec![],
-            max_items,
             on_change: Box::new(f),
         });
 
@@ -44,8 +44,7 @@ impl AppList {
         Self::changed();
     }
     pub(crate) fn down() {
-        Self::get().selected_idx =
-            std::cmp::min(Self::get().max_items - 1, Self::get().selected_idx + 1);
+        Self::get().selected_idx = std::cmp::min(MAX_ITEMS - 1, Self::get().selected_idx + 1);
         Self::changed();
     }
     pub(crate) fn set_search(q: &str) {
@@ -97,7 +96,7 @@ impl AppList {
             .global_app_list
             .iter()
             .filter(|app| app.name().to_lowercase().contains(&pattern))
-            .take(self.max_items)
+            .take(MAX_ITEMS)
             .cloned()
             .collect::<Vec<_>>();
     }

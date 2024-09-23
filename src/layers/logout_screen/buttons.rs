@@ -32,7 +32,7 @@ pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {
         Logout::logout();
     });
 
-    Logout::spawn(buttons.len(), move |active_idx| {
+    Logout::subscribe(buttons.len(), move |active_idx| {
         for (idx, button) in buttons.iter().enumerate() {
             if idx == active_idx {
                 button.add_css_class("widget-logout-button-action");

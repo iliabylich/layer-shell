@@ -10,7 +10,7 @@ pub(crate) fn init() {
     let widget = load_widget::<Button>("RAMWidget");
     let label = widget.first_child_as::<Label>();
 
-    Memory::spawn(|mem| {
+    Memory::subscribe(|mem| {
         label.set_label(&format!("RAM {:.1}G/{:.1}G", mem.used, mem.total));
     });
 

@@ -3,7 +3,7 @@ use chrono::{DateTime, Local};
 pub(crate) struct Time;
 
 impl Time {
-    pub(crate) fn spawn<F>(f: F)
+    pub(crate) fn subscribe<F>(f: F)
     where
         F: Fn(DateTime<Local>) + 'static,
     {

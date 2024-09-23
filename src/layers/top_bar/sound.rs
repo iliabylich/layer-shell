@@ -10,7 +10,7 @@ pub(crate) fn init() {
     let icon = widget.first_child_as::<Image>();
     let scale = widget.last_child_as::<Scale>();
 
-    OutputSound::spawn(|volume| {
+    OutputSound::subscribe(|volume| {
         scale.set_value(volume);
         icon.set_icon_name(Some(volume_to_icon(volume)));
     });

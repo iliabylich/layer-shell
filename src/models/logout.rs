@@ -5,11 +5,10 @@ pub(crate) struct Logout {
     max: usize,
     on_change: Box<dyn Fn(usize)>,
 }
-
 singleton!(Logout);
 
 impl Logout {
-    pub(crate) fn spawn<F>(max: usize, on_change: F)
+    pub(crate) fn subscribe<F>(max: usize, on_change: F)
     where
         F: Fn(usize) + 'static,
     {

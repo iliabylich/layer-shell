@@ -6,7 +6,7 @@ pub(crate) fn init() {
     let widget = load_widget::<CenterBox>("LanguageWidget");
     let [label] = widget.children_as::<1, Label>();
 
-    HyprlandLanguage::spawn(move |lang| {
+    HyprlandLanguage::subscribe(move |lang| {
         label.set_label(map_language(&lang));
     })
 }

@@ -9,7 +9,7 @@ pub(crate) fn init(min_workspaces: usize) {
     let widget = load_widget::<gtk4::Box>("WorkspacesWidget");
     let buttons = widget.children_as::<10, Button>();
 
-    HyprlandWorkspaces::spawn(min_workspaces, move |workspaces| {
+    HyprlandWorkspaces::subscribe(min_workspaces, move |workspaces| {
         for (button, workspace) in buttons.iter().zip(workspaces.iter()) {
             button.set_visible(workspace.visible);
             button.set_css_classes(if workspace.active {

@@ -6,8 +6,9 @@ use crate::utils::{singleton, Singleton};
 
 pub(crate) struct WeatherApi {
     callbacks: Vec<Box<dyn Fn(&'static Weather) + 'static>>,
+    weather: Option<Weather>,
 }
-singleton!(WeatherApi, WEATHER_API_INSTANCE);
+singleton!(WeatherApi);
 
 impl WeatherApi {
     pub(crate) fn subscribe<F>(f: F)
@@ -18,22 +19,21 @@ impl WeatherApi {
     }
 
     pub(crate) fn get_cached() -> Option<&'static Weather> {
-        if Weather::is_set() {
-            Some(Weather::get())
-        } else {
-            None
-        }
+        Self::get().weather.as_ref()
     }
 
     pub(crate) fn spawn() {
-        Self::set(Self { callbacks: vec![] });
+        Self::set(Self {
+            callbacks: vec![],
+            weather: None,
+        });
 
         gtk4::glib::spawn_future_local(async move {
-            match Self::get_weather().await {
+            match Self::get_weather_from_api().await {
                 Ok(weather) => {
-                    Weather::set(weather);
+                    Self::get().weather = Some(weather);
                     for f in Self::get().callbacks.iter() {
-                        f(Weather::get());
+                        f(Self::get_cached().unwrap());
                     }
                 }
                 Err(err) => eprintln!("{err}"),
@@ -42,7 +42,7 @@ impl WeatherApi {
         });
     }
 
-    async fn get_weather() -> Result<Weather, Box<dyn std::error::Error>> {
+    async fn get_weather_from_api() -> Result<Weather, Box<dyn std::error::Error>> {
         let session = Session::new();
         let uri = Self::uri();
         let message = Message::builder().method("GET").uri(&uri).build();
@@ -123,7 +123,6 @@ pub(crate) struct Weather {
     pub(crate) hourly: Vec<HourlyWeather>,
     pub(crate) daily: Vec<DailyWeather>,
 }
-singleton!(Weather);
 
 #[derive(Debug)]
 pub(crate) struct CurrentWeather {
