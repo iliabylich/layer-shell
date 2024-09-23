@@ -1,19 +1,22 @@
+use crate::{
+    globals::load_widget,
+    utils::{keybindings, layer_window, singleton, LayerOptions, Singleton, ToggleWindow},
+};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application, Window,
 };
 
-use crate::{
-    globals::{load_widget, GlobalWindows},
-    utils::{keybindings, layer_window, LayerOptions},
-    widgets::Logout,
-};
+mod buttons;
 
-pub(crate) struct LogoutScreen;
+pub(crate) struct LogoutScreen {
+    reset: Box<dyn Fn()>,
+}
+singleton!(LogoutScreen);
 
 impl LogoutScreen {
     pub(crate) fn activate(app: &Application) {
-        let window: &Window = load_widget("LogoutScreen");
+        let window = load_widget::<Window>("LogoutScreen");
         window.set_application(Some(app));
         layer_window(
             window,
@@ -30,18 +33,26 @@ impl LogoutScreen {
                 .build(),
         );
 
-        let widget = Logout::init();
+        let (reset, on_key_press) = buttons::init();
 
         keybindings(window)
-            .add("Escape", || window.set_visible(false))
-            .fallback(move |key| (widget.on_key_press)(key))
+            .add("Escape", || Self::toggle())
+            .fallback(on_key_press)
             .finish();
 
         window.present();
         window.set_visible(false);
 
-        GlobalWindows::set_reset_fn("LogoutScreen", move || {
-            (widget.reset)();
-        });
+        Self::set(Self { reset })
+    }
+}
+
+impl ToggleWindow for LogoutScreen {
+    fn reset(&self) {
+        (self.reset)()
+    }
+
+    fn window(&self) -> &'static Window {
+        load_widget::<Window>("LogoutScreen")
     }
 }

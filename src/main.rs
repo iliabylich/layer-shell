@@ -16,10 +16,10 @@ use gtk4::{
 
 use crate::{
     globals::{GlobalWidgets, GlobalWindows},
-    layers::{Launcher, Networks, TopBar},
+    layers::{Launcher, LogoutScreen, Networks, TopBar},
     models::{NetworkList, WeatherApi},
     utils::{load_css, parse_args, HyprlandClient, IPC},
-    windows::{LogoutScreen, Terminal, Weather},
+    windows::{Terminal, Weather},
 };
 
 const APP_ID: &str = "com.me.LayerShell";
