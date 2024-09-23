@@ -17,7 +17,7 @@ mod logout;
 pub(crate) use logout::Logout;
 
 mod network_manager;
-pub(crate) use network_manager::{all_networks, Iface, WiFiStatus};
+pub(crate) use network_manager::{NetworkList, WiFiStatus};
 
 mod app_list;
 pub(crate) use app_list::AppList;

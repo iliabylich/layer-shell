@@ -1,5 +1,4 @@
-use gtk4::Label;
-use vte4::WidgetExt;
+use gtk4::{prelude::WidgetExt, Label};
 
 use crate::{globals::load_widget, models::WeatherApi};
 

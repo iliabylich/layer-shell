@@ -1,10 +1,10 @@
-use gtk4::{prelude::ButtonExt, Button, Label};
-
 use crate::{
-    globals::{load_widget, toggle_window},
+    globals::load_widget,
+    layers::Networks,
     models::WiFiStatus,
-    utils::TypedChildren,
+    utils::{ToggleWindow, TypedChildren},
 };
+use gtk4::{prelude::ButtonExt, Button, Label};
 
 pub(crate) fn init() {
     let widget = load_widget::<Button>("NetworkWidget");
@@ -19,6 +19,6 @@ pub(crate) fn init() {
     });
 
     widget.connect_clicked(|_| {
-        toggle_window("Networks");
+        Networks::toggle();
     });
 }

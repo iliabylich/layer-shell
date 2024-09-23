@@ -1,19 +1,22 @@
+use crate::{
+    globals::load_widget,
+    utils::{keybindings, layer_window, singleton, LayerOptions, Singleton, ToggleWindow},
+};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application, Window,
 };
 
-use crate::{
-    globals::{load_widget, GlobalWindows},
-    utils::{keybindings, layer_window, LayerOptions},
-    widgets::NetworkList,
-};
+mod network_list;
 
-pub(crate) struct Networks;
+pub(crate) struct Networks {
+    reset: Box<dyn Fn()>,
+}
+singleton!(Networks);
 
 impl Networks {
     pub(crate) fn activate(app: &Application) {
-        let window: &Window = load_widget("Networks");
+        let window = load_widget::<Window>("Networks");
         window.set_application(Some(app));
         layer_window(
             window,
@@ -26,15 +29,23 @@ impl Networks {
                 .build(),
         );
 
-        let widget = NetworkList::init();
+        let (reset, on_key_press) = network_list::init();
 
         keybindings(window)
             .add("Escape", || window.set_visible(false))
-            .fallback(|_key| {})
+            .fallback(on_key_press)
             .finish();
 
-        GlobalWindows::set_reset_fn("Networks", move || {
-            (widget.reset)();
-        });
+        Self::set(Self { reset })
+    }
+}
+
+impl ToggleWindow for Networks {
+    fn reset(&self) {
+        (self.reset)()
+    }
+
+    fn window(&self) -> &'static Window {
+        load_widget("Networks")
     }
 }

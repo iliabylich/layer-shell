@@ -1,10 +1,9 @@
-use gtk4::{gio::Cancellable, Application, Window};
-use vte4::{GtkWindowExt, TerminalExtManual};
-
 use crate::{
     globals::{load_widget, GlobalWindows},
     utils::{keybindings, layer_window, LayerOptions},
 };
+use gtk4::{gio::Cancellable, prelude::GtkWindowExt, Application, Window};
+use vte4::TerminalExtManual;
 
 pub(crate) struct Terminal;
 

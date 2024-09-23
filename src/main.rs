@@ -13,13 +13,13 @@ use gtk4::{
     prelude::{ApplicationExt, ApplicationExtManual},
     Application,
 };
-use models::WeatherApi;
 
 use crate::{
     globals::{GlobalWidgets, GlobalWindows},
-    layers::{Launcher, TopBar},
+    layers::{Launcher, Networks, TopBar},
+    models::{NetworkList, WeatherApi},
     utils::{load_css, parse_args, HyprlandClient, IPC},
-    windows::{LogoutScreen, Networks, Terminal, Weather},
+    windows::{LogoutScreen, Terminal, Weather},
 };
 
 const APP_ID: &str = "com.me.LayerShell";
@@ -31,6 +31,7 @@ fn main() {
     HyprlandClient::start();
     GlobalWindows::init();
     WeatherApi::spawn();
+    NetworkList::spawn_once();
 
     let app = Application::builder().application_id(APP_ID).build();
 
