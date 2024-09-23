@@ -5,27 +5,25 @@ pub(crate) trait Singleton: Sized {
 }
 
 macro_rules! singleton {
-    ($t:tt, $name:ident) => {
-        static mut $name: Option<$t> = None;
+    ($t:tt) => {
+        use $crate::utils::Singleton;
 
-        impl $crate::utils::Singleton for $t {
+        static mut INSTANCE: Option<$t> = None;
+
+        impl Singleton for $t {
             fn get() -> &'static mut Self {
-                unsafe { $name.as_mut().unwrap() }
+                unsafe { INSTANCE.as_mut().unwrap() }
             }
 
             fn set(v: Self) {
-                unsafe { $name = Some(v) }
+                unsafe { INSTANCE = Some(v) }
             }
 
             #[allow(dead_code)]
             fn is_set() -> bool {
-                unsafe { $name.as_ref().is_some() }
+                unsafe { INSTANCE.as_ref().is_some() }
             }
         }
-    };
-
-    ($t:tt) => {
-        singleton!($t, INSTANCE);
     };
 }
 

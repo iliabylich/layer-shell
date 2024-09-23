@@ -1,9 +1,6 @@
 use rusty_network_manager::{DeviceProxy, IP4ConfigProxy};
 
-use crate::{
-    models::NM,
-    utils::{singleton, Singleton},
-};
+use crate::{models::NM, utils::singleton};
 
 #[derive(Debug)]
 pub(crate) struct Iface {

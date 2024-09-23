@@ -1,6 +1,6 @@
 use crate::{
     globals::load_widget,
-    utils::{keybindings, layer_window, singleton, LayerOptions, Singleton, ToggleWindow},
+    utils::{keybindings, layer_window, singleton, LayerOptions, ToggleWindow},
 };
 use gtk4::{gio::Cancellable, prelude::GtkWindowExt, Application, Window};
 use vte4::TerminalExtManual;

@@ -1,7 +1,7 @@
 use rusty_network_manager::NetworkManagerProxy;
 use zbus::Connection;
 
-use crate::utils::{singleton, Singleton};
+use crate::utils::singleton;
 
 pub(crate) struct NM {
     pub(crate) connection: Connection,

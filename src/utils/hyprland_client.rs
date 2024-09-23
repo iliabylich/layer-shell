@@ -6,7 +6,7 @@ use gtk4::{
     prelude::{DataInputStreamExtManual, IOStreamExt, SocketClientExt},
 };
 
-use crate::utils::{exec_async, singleton, Singleton};
+use crate::utils::{exec_async, singleton};
 
 pub(crate) struct HyprlandClient {
     handlers: Vec<Box<dyn Fn(HyprlandEvent)>>,

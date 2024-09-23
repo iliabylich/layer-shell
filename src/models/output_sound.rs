@@ -1,7 +1,4 @@
-use crate::{
-    ffi::gvc,
-    utils::{singleton, Singleton},
-};
+use crate::{ffi::gvc, utils::singleton};
 
 pub(crate) struct OutputSound {
     handlers: Vec<Box<dyn Fn(f64)>>,

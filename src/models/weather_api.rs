@@ -2,7 +2,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use gtk4::glib::Priority;
 use soup::{prelude::SessionExt, Message, Session};
 
-use crate::utils::{singleton, Singleton};
+use crate::utils::singleton;
 
 pub(crate) struct WeatherApi {
     callbacks: Vec<Box<dyn Fn(&'static Weather) + 'static>>,

@@ -1,4 +1,4 @@
-use crate::utils::{singleton, HyprlandClient, HyprlandEvent, Singleton};
+use crate::utils::{singleton, HyprlandClient, HyprlandEvent};
 
 pub(crate) struct HyprlandLanguage {
     on_change: Box<dyn Fn(String)>,
