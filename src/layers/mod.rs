@@ -12,3 +12,6 @@ pub(crate) use logout_screen::LogoutScreen;
 
 mod htop;
 pub(crate) use htop::Htop;
+
+mod weather;
+pub(crate) use weather::Weather;

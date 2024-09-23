@@ -1,15 +1,18 @@
+use crate::{
+    globals::load_widget,
+    utils::{keybindings, layer_window, singleton, LayerOptions, Singleton, ToggleWindow},
+};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application, Window,
 };
 
-use crate::{
-    globals::{load_widget, GlobalWindows},
-    utils::{keybindings, layer_window, LayerOptions},
-    widgets::WeatherForecast,
-};
+mod forecast;
 
-pub(crate) struct Weather;
+pub(crate) struct Weather {
+    reset: Box<dyn Fn()>,
+}
+singleton!(Weather);
 
 impl Weather {
     pub(crate) fn activate(app: &Application) {
@@ -30,15 +33,23 @@ impl Weather {
                 .build(),
         );
 
-        let widget = WeatherForecast::init();
+        let (reset, on_key_press) = forecast::init();
 
         keybindings(window)
             .add("Escape", || window.set_visible(false))
-            .fallback(|_key| {})
+            .fallback(on_key_press)
             .finish();
 
-        GlobalWindows::set_reset_fn("Weather", move || {
-            (widget.reset)();
-        });
+        Self::set(Self { reset })
+    }
+}
+
+impl ToggleWindow for Weather {
+    fn reset(&self) {
+        (self.reset)();
+    }
+
+    fn window(&self) -> &'static Window {
+        load_widget::<Window>("Weather")
     }
 }

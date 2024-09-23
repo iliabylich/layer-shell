@@ -2,34 +2,8 @@ use gtk4::{prelude::WidgetExt, Label};
 
 use crate::{globals::load_widget, models::WeatherApi};
 
-pub(crate) struct WeatherForecast {
-    pub(crate) reset: Box<dyn Fn() + 'static>,
-}
-
-fn hourly_labels() -> [&'static Label; 10] {
-    [
-        load_widget::<Label>("Hourly1"),
-        load_widget::<Label>("Hourly2"),
-        load_widget::<Label>("Hourly3"),
-        load_widget::<Label>("Hourly4"),
-        load_widget::<Label>("Hourly5"),
-        load_widget::<Label>("Hourly6"),
-        load_widget::<Label>("Hourly7"),
-        load_widget::<Label>("Hourly8"),
-        load_widget::<Label>("Hourly9"),
-        load_widget::<Label>("Hourly10"),
-    ]
-}
-
-fn daily_labels() -> [&'static Label; 6] {
-    [
-        load_widget::<Label>("Daily1"),
-        load_widget::<Label>("Daily2"),
-        load_widget::<Label>("Daily3"),
-        load_widget::<Label>("Daily4"),
-        load_widget::<Label>("Daily5"),
-        load_widget::<Label>("Daily6"),
-    ]
+pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {
+    (Box::new(sync_ui), Box::new(|_key| {}))
 }
 
 fn sync_ui() {
@@ -61,10 +35,28 @@ fn sync_ui() {
     }
 }
 
-impl WeatherForecast {
-    pub(crate) fn init() -> Self {
-        Self {
-            reset: Box::new(sync_ui),
-        }
-    }
+fn hourly_labels() -> [&'static Label; 10] {
+    [
+        load_widget::<Label>("Hourly1"),
+        load_widget::<Label>("Hourly2"),
+        load_widget::<Label>("Hourly3"),
+        load_widget::<Label>("Hourly4"),
+        load_widget::<Label>("Hourly5"),
+        load_widget::<Label>("Hourly6"),
+        load_widget::<Label>("Hourly7"),
+        load_widget::<Label>("Hourly8"),
+        load_widget::<Label>("Hourly9"),
+        load_widget::<Label>("Hourly10"),
+    ]
+}
+
+fn daily_labels() -> [&'static Label; 6] {
+    [
+        load_widget::<Label>("Daily1"),
+        load_widget::<Label>("Daily2"),
+        load_widget::<Label>("Daily3"),
+        load_widget::<Label>("Daily4"),
+        load_widget::<Label>("Daily5"),
+        load_widget::<Label>("Daily6"),
+    ]
 }

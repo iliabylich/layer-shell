@@ -1,9 +1,10 @@
 use gtk4::{prelude::ButtonExt, Button, Label};
 
 use crate::{
-    globals::{load_widget, toggle_window},
+    globals::load_widget,
+    layers::Weather,
     models::WeatherApi,
-    utils::TypedChildren,
+    utils::{ToggleWindow, TypedChildren},
 };
 
 pub(crate) fn init() {
@@ -11,7 +12,7 @@ pub(crate) fn init() {
     let [label] = button.children_as::<1, Label>();
 
     button.connect_clicked(|_| {
-        toggle_window("Weather");
+        Weather::toggle();
     });
 
     WeatherApi::subscribe(|weather| {

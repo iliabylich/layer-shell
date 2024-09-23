@@ -6,8 +6,6 @@ mod globals;
 mod layers;
 mod models;
 mod utils;
-mod widgets;
-mod windows;
 
 use gtk4::{
     prelude::{ApplicationExt, ApplicationExtManual},
@@ -15,11 +13,10 @@ use gtk4::{
 };
 
 use crate::{
-    globals::{GlobalWidgets, GlobalWindows},
-    layers::{Htop, Launcher, LogoutScreen, Networks, TopBar},
+    globals::GlobalWidgets,
+    layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
     models::{NetworkList, WeatherApi},
     utils::{load_css, parse_args, HyprlandClient, IPC},
-    windows::Weather,
 };
 
 const APP_ID: &str = "com.me.LayerShell";
@@ -29,7 +26,6 @@ fn main() {
     IPC::subscribe();
 
     HyprlandClient::start();
-    GlobalWindows::init();
     WeatherApi::spawn();
     NetworkList::spawn_once();
 
