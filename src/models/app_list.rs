@@ -94,21 +94,12 @@ impl AppList {
         self.global_app_list = apps;
     }
     fn refresh_visible_app_list(&mut self, q: &str) {
-        let re = regex::RegexBuilder::new(q)
-            .case_insensitive(true)
-            .build()
-            .ok();
+        let pattern = q.to_lowercase();
 
         self.visible_app_list = self
             .global_app_list
             .iter()
-            .filter(|app| {
-                if let Some(re) = re.as_ref() {
-                    re.is_match(&app.name())
-                } else {
-                    true
-                }
-            })
+            .filter(|app| app.name().to_lowercase().contains(&pattern))
             .take(self.max_items)
             .cloned()
             .collect::<Vec<_>>();
