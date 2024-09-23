@@ -3,7 +3,7 @@ use rusty_network_manager::{
 };
 use zbus::Connection;
 
-use super::singleton;
+use crate::utils::{singleton, Singleton};
 
 pub(crate) struct NM {
     connection: Connection,

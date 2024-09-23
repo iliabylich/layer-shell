@@ -6,7 +6,7 @@ use gtk4::{
     Builder, Widget,
 };
 
-use crate::models::singleton;
+use crate::utils::{singleton, Singleton};
 
 pub(crate) struct GlobalWidgets {
     map: HashMap<String, Widget>,

@@ -1,8 +1,14 @@
+pub(crate) trait Singleton: Sized {
+    fn get() -> &'static mut Self;
+    fn set(v: Self);
+    fn is_set() -> bool;
+}
+
 macro_rules! singleton {
     ($t:tt, $name:ident) => {
         static mut $name: Option<$t> = None;
 
-        impl $t {
+        impl $crate::utils::Singleton for $t {
             fn get() -> &'static mut Self {
                 unsafe { $name.as_mut().unwrap() }
             }

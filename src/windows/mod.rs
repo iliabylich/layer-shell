@@ -1,6 +1,3 @@
-mod launcher;
-pub(crate) use launcher::Launcher;
-
 mod logout_screen;
 pub(crate) use logout_screen::LogoutScreen;
 

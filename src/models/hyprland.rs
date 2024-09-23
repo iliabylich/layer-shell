@@ -1,8 +1,6 @@
 use std::collections::HashSet;
 
-use crate::utils::{exec_async, HyprlandClient, HyprlandEvent};
-
-use super::singleton;
+use crate::utils::{exec_async, singleton, HyprlandClient, HyprlandEvent, Singleton};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Workspace {

@@ -1,4 +1,4 @@
-use crate::{models::singleton, utils::exec_async};
+use crate::utils::{exec_async, singleton, Singleton};
 
 pub(crate) struct Logout {
     idx: usize,

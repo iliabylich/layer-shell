@@ -1,6 +1,3 @@
-mod singleton;
-pub(crate) use singleton::singleton;
-
 mod hyprland;
 pub(crate) use hyprland::{HyprlandLanguage, HyprlandWorkspaces};
 

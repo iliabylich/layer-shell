@@ -1,4 +1,6 @@
-use crate::globals::toggle_window;
+use crate::{globals::toggle_window, layers::Launcher};
+
+use super::ToggleWindow;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum IPCMessage {
@@ -11,7 +13,7 @@ impl IPCMessage {
     fn execute(self) {
         match self {
             IPCMessage::Stop => std::process::exit(0),
-            IPCMessage::ToggleLauncher => toggle_window("Launcher"),
+            IPCMessage::ToggleLauncher => Launcher::toggle(),
             IPCMessage::ToggleLogoutScreen => toggle_window("LogoutScreen"),
         }
     }

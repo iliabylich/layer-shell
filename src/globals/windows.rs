@@ -1,4 +1,7 @@
-use crate::{globals::load_widget, models::singleton};
+use crate::{
+    globals::load_widget,
+    utils::{singleton, Singleton},
+};
 use gtk4::prelude::WidgetExt;
 use std::collections::HashMap;
 

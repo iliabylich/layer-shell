@@ -1,15 +1,18 @@
+use crate::{
+    globals::load_widget,
+    utils::{keybindings, layer_window, singleton, LayerOptions, Singleton, ToggleWindow},
+};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application, Window,
 };
 
-use crate::{
-    globals::{load_widget, GlobalWindows},
-    utils::{keybindings, layer_window, LayerOptions},
-    widgets::AppList,
-};
+mod app_list;
 
-pub(crate) struct Launcher;
+pub(crate) struct Launcher {
+    reset: Box<dyn Fn()>,
+}
+singleton!(Launcher);
 
 impl Launcher {
     pub(crate) fn activate(app: &Application) {
@@ -24,18 +27,26 @@ impl Launcher {
                 .build(),
         );
 
-        let widget = AppList::init();
+        let (reset, on_key_press) = app_list::init();
 
         keybindings(window)
-            .add("Escape", || window.set_visible(false))
-            .fallback(move |key| (widget.on_key_press)(key))
+            .add("Escape", || Self::toggle())
+            .fallback(on_key_press)
             .finish();
 
         window.present();
         window.set_visible(false);
 
-        GlobalWindows::set_reset_fn("Launcher", move || {
-            (widget.reset)();
-        });
+        Self::set(Self { reset });
+    }
+}
+
+impl ToggleWindow for Launcher {
+    fn reset(&self) {
+        (self.reset)();
+    }
+
+    fn window(&self) -> &'static Window {
+        load_widget("Launcher")
     }
 }

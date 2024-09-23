@@ -1,6 +1,6 @@
 use crate::{
-    ffi::gvc::{self, MixerControl},
-    models::singleton,
+    ffi::gvc,
+    utils::{singleton, Singleton},
 };
 
 pub(crate) struct OutputSound {
@@ -15,7 +15,7 @@ struct OutputSubscription {
 }
 static mut OUTPUT_SUBSCRIPTION_INSTANCE: Option<OutputSubscription> = None;
 
-unsafe extern "C" fn on_output_changed(control: MixerControl, id: std::ffi::c_uint) {
+unsafe extern "C" fn on_output_changed(control: gvc::MixerControl, id: std::ffi::c_uint) {
     if let Some(OutputSubscription { stream, sub_id }) = OUTPUT_SUBSCRIPTION_INSTANCE {
         stream.disconnect(sub_id);
     }
@@ -47,7 +47,7 @@ impl OutputSound {
     where
         F: Fn(f64) + 'static,
     {
-        let control = MixerControl::new();
+        let control = gvc::MixerControl::new();
 
         Self::set(Self {
             control,

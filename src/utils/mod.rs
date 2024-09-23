@@ -21,3 +21,9 @@ pub(crate) use args::parse_args;
 
 mod typed_children;
 pub(crate) use typed_children::TypedChildren;
+
+mod toggle_window;
+pub(crate) use toggle_window::ToggleWindow;
+
+mod singleton;
+pub(crate) use singleton::{singleton, Singleton};

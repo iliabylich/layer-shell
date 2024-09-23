@@ -1,12 +1,9 @@
+use crate::utils::{exec_async, singleton, Singleton};
 use gtk4::{
     gdk::AppLaunchContext,
     gio::{DesktopAppInfo, Icon},
     prelude::AppInfoExt,
 };
-
-use crate::utils::exec_async;
-
-use super::singleton;
 
 pub(crate) struct AppList {
     selected_idx: usize,

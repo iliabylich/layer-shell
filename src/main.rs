@@ -17,9 +17,9 @@ use models::WeatherApi;
 
 use crate::{
     globals::{GlobalWidgets, GlobalWindows},
-    layers::TopBar,
+    layers::{Launcher, TopBar},
     utils::{load_css, parse_args, HyprlandClient, IPC},
-    windows::{Launcher, LogoutScreen, Networks, Terminal, Weather},
+    windows::{LogoutScreen, Networks, Terminal, Weather},
 };
 
 const APP_ID: &str = "com.me.LayerShell";

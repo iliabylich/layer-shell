@@ -5,8 +5,8 @@ use gtk4::{
 
 use crate::{
     globals::{load_widget, toggle_window},
-    models::{all_networks, singleton, Iface},
-    utils::exec_async,
+    models::{all_networks, Iface},
+    utils::{exec_async, singleton, Singleton},
 };
 
 pub(crate) struct NetworkList {
