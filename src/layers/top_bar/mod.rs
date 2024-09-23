@@ -1,18 +1,25 @@
-use gtk4::{prelude::GtkWindowExt, Application, Window};
-
 use crate::{
     globals::load_widget,
     utils::{layer_window, LayerOptions},
-    widgets::{
-        Clock, HtopWidget, Language, PowerButton, Sound, Weather, WiFi, Workspaces, CPU, RAM,
-    },
 };
+use gtk4::{prelude::GtkWindowExt, Application, Window};
+
+mod clock;
+mod cpu;
+mod htop;
+mod language;
+mod network;
+mod power;
+mod ram;
+mod sound;
+mod weather;
+mod workspaces;
 
 pub(crate) struct TopBar;
 
 impl TopBar {
     pub(crate) fn activate(app: &Application) {
-        let window: &Window = load_widget("TopBar");
+        let window = load_widget::<Window>("TopBar");
         window.set_application(Some(app));
         layer_window(
             window,
@@ -28,16 +35,16 @@ impl TopBar {
                 .build(),
         );
 
-        Workspaces::init(5);
-        HtopWidget::init();
-        Language::init();
-        Sound::init();
-        CPU::init();
-        RAM::init();
-        WiFi::init();
-        Clock::init("%H:%M:%S", "%Y %B %e\n%A");
-        PowerButton::init();
-        Weather::init();
+        workspaces::init(5);
+        htop::init();
+        language::init();
+        sound::init();
+        cpu::init();
+        ram::init();
+        network::init();
+        clock::init("%H:%M:%S", "%Y %B %e\n%A");
+        power::init();
+        weather::init();
 
         window.present();
     }
