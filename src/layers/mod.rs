@@ -9,3 +9,6 @@ pub(crate) use networks::Networks;
 
 mod logout_screen;
 pub(crate) use logout_screen::LogoutScreen;
+
+mod htop;
+pub(crate) use htop::Htop;
