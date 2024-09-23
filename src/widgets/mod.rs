@@ -31,8 +31,8 @@ pub(crate) use network_list::NetworkList;
 mod app_list;
 pub(crate) use app_list::AppList;
 
-mod terminal;
-pub(crate) use terminal::Terminal;
+mod htop_widget;
+pub(crate) use htop_widget::HtopWidget;
 
 mod weather;
 pub(crate) use weather::Weather;

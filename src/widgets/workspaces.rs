@@ -3,24 +3,14 @@ use gtk4::{
     Button,
 };
 
-use crate::{globals::load_widget, models::HyprlandWorkspaces};
+use crate::{globals::load_widget, models::HyprlandWorkspaces, utils::TypedChildren};
 
 pub(crate) struct Workspaces;
 
 impl Workspaces {
     pub(crate) fn init(min_workspaces: usize) {
-        let buttons = [
-            load_widget::<Button>("WorkspaceButton1"),
-            load_widget::<Button>("WorkspaceButton2"),
-            load_widget::<Button>("WorkspaceButton3"),
-            load_widget::<Button>("WorkspaceButton4"),
-            load_widget::<Button>("WorkspaceButton5"),
-            load_widget::<Button>("WorkspaceButton6"),
-            load_widget::<Button>("WorkspaceButton7"),
-            load_widget::<Button>("WorkspaceButton8"),
-            load_widget::<Button>("WorkspaceButton9"),
-            load_widget::<Button>("WorkspaceButton10"),
-        ];
+        let widget = load_widget::<gtk4::Box>("WorkspacesWidget");
+        let buttons = widget.children_as::<10, Button>();
 
         HyprlandWorkspaces::spawn(min_workspaces, move |workspaces| {
             for (button, workspace) in buttons.iter().zip(workspaces.iter()) {

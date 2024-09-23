@@ -6,7 +6,7 @@ pub(crate) struct PowerButton;
 
 impl PowerButton {
     pub(crate) fn init() {
-        let widget = load_widget::<Button>("PowerButton");
+        let widget = load_widget::<Button>("PowerWidget");
 
         widget.connect_clicked(|_| {
             toggle_window("LogoutScreen");

@@ -1,13 +1,17 @@
 use gtk4::{prelude::ButtonExt, Button, Label};
 
-use crate::{globals::load_widget, models::Memory, utils::exec_async};
+use crate::{
+    globals::load_widget,
+    models::Memory,
+    utils::{exec_async, TypedChildren},
+};
 
 pub(crate) struct RAM;
 
 impl RAM {
     pub(crate) fn init() {
-        let widget = load_widget::<Button>("RAM");
-        let label = load_widget::<Label>("RAMLabel");
+        let widget = load_widget::<Button>("RAMWidget");
+        let label = widget.first_child_as::<Label>();
 
         Memory::spawn(|mem| {
             label.set_label(&format!("RAM {:.1}G/{:.1}G", mem.used, mem.total));

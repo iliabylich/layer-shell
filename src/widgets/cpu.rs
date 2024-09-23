@@ -1,25 +1,13 @@
 use gtk4::Label;
 
-use crate::{globals::load_widget, models::CPU as CPULoad};
+use crate::{globals::load_widget, models::CPU as CPULoad, utils::TypedChildren};
 
 pub(crate) struct CPU;
 
 impl CPU {
     pub(crate) fn init() {
-        let labels = [
-            load_widget::<Label>("CPU1"),
-            load_widget::<Label>("CPU2"),
-            load_widget::<Label>("CPU3"),
-            load_widget::<Label>("CPU4"),
-            load_widget::<Label>("CPU5"),
-            load_widget::<Label>("CPU6"),
-            load_widget::<Label>("CPU7"),
-            load_widget::<Label>("CPU8"),
-            load_widget::<Label>("CPU9"),
-            load_widget::<Label>("CPU10"),
-            load_widget::<Label>("CPU11"),
-            load_widget::<Label>("CPU12"),
-        ];
+        let widget = load_widget::<gtk4::Box>("CPUWidget");
+        let labels = widget.children_as::<12, Label>();
 
         CPULoad::spawn(move |usage| {
             assert_eq!(usage.len(), labels.len());

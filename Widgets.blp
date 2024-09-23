@@ -9,19 +9,19 @@ Window TopBar {
         Box {
             spacing: 8;
 
-            Box Workspaces {
+            Box WorkspacesWidget {
                 styles ["widget", "workspaces"]
 
-                Button WorkspaceButton1  { Label { label: "1";  } }
-                Button WorkspaceButton2  { Label { label: "2";  } }
-                Button WorkspaceButton3  { Label { label: "3";  } }
-                Button WorkspaceButton4  { Label { label: "4";  } }
-                Button WorkspaceButton5  { Label { label: "5";  } }
-                Button WorkspaceButton6  { Label { label: "6";  } }
-                Button WorkspaceButton7  { Label { label: "7";  } }
-                Button WorkspaceButton8  { Label { label: "8";  } }
-                Button WorkspaceButton9  { Label { label: "9";  } }
-                Button WorkspaceButton10 { Label { label: "10"; } }
+                Button { Label { label: "1";  } }
+                Button { Label { label: "2";  } }
+                Button { Label { label: "3";  } }
+                Button { Label { label: "4";  } }
+                Button { Label { label: "5";  } }
+                Button { Label { label: "6";  } }
+                Button { Label { label: "7";  } }
+                Button { Label { label: "8";  } }
+                Button { Label { label: "9";  } }
+                Button { Label { label: "10"; } }
             }
         }
 
@@ -29,40 +29,37 @@ Window TopBar {
         Box {
             spacing: 4;
 
-            Button Terminal {
+            Button HtopWidget {
                 styles ["widget", "terminal", "padded", "clickable"]
 
                 Label {
-                    label: "Terminal";
+                    label: "Htop";
                 }
             }
 
-            Button WeatherButton {
+            Button WeatherWidget {
                 styles ["widget", "weather", "padded", "clickable"]
 
-                Label WeatherLabel {
-                    label: "Weather";
-                }
+                Label {}
             }
 
-            CenterBox Language {
+            CenterBox LanguageWidget {
                 styles ["widget", "language", "padded"]
 
                 [center]
-                Label LanguageLabel {
-                }
+                Label {}
             }
 
-            Box Sound {
+            Box SoundWidget {
                 styles ["widget", "sound", "padded"]
                 spacing: 10;
                 orientation: horizontal;
 
-                Image SoundImage {
+                Image {
                     icon-name: "dialog-question";
                 }
 
-                Scale SoundScale {
+                Scale {
                     styles ["sound-slider"]
                     adjustment: Adjustment {
                         lower: 0;
@@ -71,49 +68,46 @@ Window TopBar {
                 }
             }
 
-            Box CPU {
+            Box CPUWidget {
                 styles ["widget", "cpu", "padded"]
                 spacing: 3;
                 orientation: horizontal;
 
-                Label CPU1  { use-markup: true; }
-                Label CPU2  { use-markup: true; }
-                Label CPU3  { use-markup: true; }
-                Label CPU4  { use-markup: true; }
-                Label CPU5  { use-markup: true; }
-                Label CPU6  { use-markup: true; }
-                Label CPU7  { use-markup: true; }
-                Label CPU8  { use-markup: true; }
-                Label CPU9  { use-markup: true; }
-                Label CPU10 { use-markup: true; }
-                Label CPU11 { use-markup: true; }
-                Label CPU12 { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
+                Label { use-markup: true; }
             }
 
-            Button RAM {
+            Button RAMWidget {
                 styles ["widget", "memory", "padded", "clickable"]
 
-                Label RAMLabel {
-                }
+                Label {}
             }
 
-            Button WiFi {
+            Button NetworkWidget {
                 styles ["widget", "network", "padded", "clickable"]
                 cursor: Gdk.Cursor { name: "pointer"; };
 
-                Label WiFiLabel {
-                }
+                Label {}
             }
 
-            CenterBox Clock {
+            CenterBox ClockWidget {
                 styles ["widget", "clock", "padded"]
 
                 [center]
-                Label ClockLabel {
-                }
+                Label {}
             }
 
-            Button PowerButton {
+            Button PowerWidget {
                 styles ["widget", "power", "padded", "clickable"]
                 cursor: Gdk.Cursor { name: "pointer"; };
 

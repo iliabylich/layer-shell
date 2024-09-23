@@ -3,14 +3,15 @@ use gtk4::{
     Image, Scale,
 };
 
-use crate::{globals::load_widget, models::OutputSound};
+use crate::{globals::load_widget, models::OutputSound, utils::TypedChildren};
 
 pub(crate) struct Sound;
 
 impl Sound {
     pub(crate) fn init() {
-        let icon = load_widget::<Image>("SoundImage");
-        let scale = load_widget::<Scale>("SoundScale");
+        let widget = load_widget::<gtk4::Box>("SoundWidget");
+        let icon = widget.first_child_as::<Image>();
+        let scale = widget.last_child_as::<Scale>();
 
         OutputSound::spawn(|volume| {
             scale.set_value(volume);

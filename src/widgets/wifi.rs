@@ -3,14 +3,15 @@ use gtk4::{prelude::ButtonExt, Button, Label};
 use crate::{
     globals::{load_widget, toggle_window},
     models::WiFiStatus,
+    utils::TypedChildren,
 };
 
 pub(crate) struct WiFi;
 
 impl WiFi {
     pub(crate) fn init() {
-        let widget = load_widget::<Button>("WiFi");
-        let label = load_widget::<Label>("WiFiLabel");
+        let widget = load_widget::<Button>("NetworkWidget");
+        let label = widget.first_child_as::<Label>();
 
         WiFiStatus::spawn(|status| {
             if let Some(status) = status {

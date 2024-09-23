@@ -18,3 +18,6 @@ pub(crate) use ipc::{IPCMessage, IPC};
 
 mod args;
 pub(crate) use args::parse_args;
+
+mod typed_children;
+pub(crate) use typed_children::TypedChildren;

@@ -3,11 +3,11 @@ use vte4::ButtonExt;
 
 use crate::globals::{load_widget, toggle_window};
 
-pub(crate) struct Terminal;
+pub(crate) struct HtopWidget;
 
-impl Terminal {
+impl HtopWidget {
     pub(crate) fn init() {
-        let widget = load_widget::<Button>("Terminal");
+        let widget = load_widget::<Button>("HtopWidget");
 
         widget.connect_clicked(|_| {
             toggle_window("Htop");
