@@ -11,14 +11,16 @@ pub(crate) struct Htop {
 singleton!(Htop);
 
 impl Htop {
+    const NAME: &str = "Htop";
+
     pub(crate) fn activate(app: &Application) {
-        let window = load_widget::<Window>("Htop");
+        let window = load_widget::<Window>(Self::NAME);
         window.set_application(Some(app));
 
         layer_window(
             window,
             LayerOptions::builder()
-                .with_namespace("Htop")
+                .with_namespace(Self::NAME)
                 .with_layer(gtk4_layer_shell::Layer::Overlay)
                 .with_anchors(&[gtk4_layer_shell::Edge::Top, gtk4_layer_shell::Edge::Right])
                 .with_margins(&[
@@ -64,6 +66,6 @@ impl ToggleWindow for Htop {
     }
 
     fn window(&self) -> &'static Window {
-        load_widget::<Window>("Htop")
+        load_widget::<Window>(Self::NAME)
     }
 }

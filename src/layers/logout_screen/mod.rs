@@ -15,13 +15,15 @@ pub(crate) struct LogoutScreen {
 singleton!(LogoutScreen);
 
 impl LogoutScreen {
+    const NAME: &str = "LogoutScreen";
+
     pub(crate) fn activate(app: &Application) {
-        let window = load_widget::<Window>("LogoutScreen");
+        let window = load_widget::<Window>(Self::NAME);
         window.set_application(Some(app));
         layer_window(
             window,
             LayerOptions::builder()
-                .with_namespace("LogoutScreen")
+                .with_namespace(Self::NAME)
                 .with_layer(gtk4_layer_shell::Layer::Overlay)
                 .with_anchors(&[
                     gtk4_layer_shell::Edge::Top,
@@ -53,6 +55,6 @@ impl ToggleWindow for LogoutScreen {
     }
 
     fn window(&self) -> &'static Window {
-        load_widget::<Window>("LogoutScreen")
+        load_widget::<Window>(Self::NAME)
     }
 }

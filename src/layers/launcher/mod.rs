@@ -15,13 +15,15 @@ pub(crate) struct Launcher {
 singleton!(Launcher);
 
 impl Launcher {
+    const NAME: &str = "Launcher";
+
     pub(crate) fn activate(app: &Application) {
-        let window: &Window = load_widget("Launcher");
+        let window: &Window = load_widget(Self::NAME);
         window.set_application(Some(app));
         layer_window(
             window,
             LayerOptions::builder()
-                .with_namespace("Launcher")
+                .with_namespace(Self::NAME)
                 .with_layer(gtk4_layer_shell::Layer::Overlay)
                 .with_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive)
                 .build(),
@@ -47,6 +49,6 @@ impl ToggleWindow for Launcher {
     }
 
     fn window(&self) -> &'static Window {
-        load_widget("Launcher")
+        load_widget(Self::NAME)
     }
 }

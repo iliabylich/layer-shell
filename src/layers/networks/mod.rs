@@ -15,13 +15,15 @@ pub(crate) struct Networks {
 singleton!(Networks);
 
 impl Networks {
+    const NAME: &str = "Networks";
+
     pub(crate) fn activate(app: &Application) {
-        let window = load_widget::<Window>("Networks");
+        let window = load_widget::<Window>(Self::NAME);
         window.set_application(Some(app));
         layer_window(
             window,
             LayerOptions::builder()
-                .with_namespace("Networks")
+                .with_namespace(Self::NAME)
                 .with_layer(gtk4_layer_shell::Layer::Overlay)
                 .with_anchors(&[gtk4_layer_shell::Edge::Top, gtk4_layer_shell::Edge::Right])
                 .with_margins(&[(gtk4_layer_shell::Edge::Top, 50)])
@@ -46,6 +48,6 @@ impl ToggleWindow for Networks {
     }
 
     fn window(&self) -> &'static Window {
-        load_widget("Networks")
+        load_widget(Self::NAME)
     }
 }

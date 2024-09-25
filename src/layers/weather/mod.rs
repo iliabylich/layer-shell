@@ -15,14 +15,16 @@ pub(crate) struct Weather {
 singleton!(Weather);
 
 impl Weather {
+    const NAME: &str = "Weather";
+
     pub(crate) fn activate(app: &Application) {
-        let window = load_widget::<Window>("Weather");
+        let window = load_widget::<Window>(Self::NAME);
         window.set_application(Some(app));
 
         layer_window(
             window,
             LayerOptions::builder()
-                .with_namespace("Weather")
+                .with_namespace(Self::NAME)
                 .with_layer(gtk4_layer_shell::Layer::Overlay)
                 .with_anchors(&[gtk4_layer_shell::Edge::Top, gtk4_layer_shell::Edge::Right])
                 .with_margins(&[
@@ -50,6 +52,6 @@ impl ToggleWindow for Weather {
     }
 
     fn window(&self) -> &'static Window {
-        load_widget::<Window>("Weather")
+        load_widget::<Window>(Self::NAME)
     }
 }

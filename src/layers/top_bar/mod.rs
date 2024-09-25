@@ -18,13 +18,15 @@ mod workspaces;
 pub(crate) struct TopBar;
 
 impl TopBar {
+    const NAME: &str = "TopBar";
+
     pub(crate) fn activate(app: &Application) {
-        let window = load_widget::<Window>("TopBar");
+        let window = load_widget::<Window>(Self::NAME);
         window.set_application(Some(app));
         layer_window(
             window,
             LayerOptions::builder()
-                .with_namespace("TopBar")
+                .with_namespace(Self::NAME)
                 .with_layer(gtk4_layer_shell::Layer::Overlay)
                 .with_anchors(&[
                     gtk4_layer_shell::Edge::Top,
