@@ -7,7 +7,7 @@ use crate::{
     globals::load_widget,
     layers::Networks,
     models::NetworkList,
-    utils::{exec_async, ToggleWindow},
+    utils::{exec_async, LayerWindow},
 };
 
 pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {

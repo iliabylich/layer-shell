@@ -2,7 +2,7 @@ use crate::{
     globals::load_widget,
     layers::Launcher,
     models::AppList,
-    utils::{ToggleWindow, TypedChildren},
+    utils::{LayerWindow, TypedChildren},
 };
 use gtk4::{
     prelude::{EditableExt, WidgetExt},

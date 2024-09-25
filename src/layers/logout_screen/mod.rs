@@ -1,11 +1,9 @@
-use crate::{
-    globals::load_widget,
-    utils::{keybindings, layer_window, singleton, LayerOptions, ToggleWindow},
-};
+use crate::utils::{keybindings, singleton, LayerWindow};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
-    Application, Window,
+    Application,
 };
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 
 mod buttons;
 
@@ -14,31 +12,26 @@ pub(crate) struct LogoutScreen {
 }
 singleton!(LogoutScreen);
 
-impl LogoutScreen {
+impl LayerWindow for LogoutScreen {
     const NAME: &str = "LogoutScreen";
+    const LAYER: Layer = Layer::Overlay;
+    const ANCHORS: &[Edge] = &[Edge::Top, Edge::Right, Edge::Bottom, Edge::Left];
+    const MARGINS: &[(Edge, i32)] = &[];
+    const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
+    fn reset(&self) {
+        (self.reset)()
+    }
+}
+
+impl LogoutScreen {
     pub(crate) fn activate(app: &Application) {
-        let window = load_widget::<Window>(Self::NAME);
-        window.set_application(Some(app));
-        layer_window(
-            window,
-            LayerOptions::builder()
-                .with_namespace(Self::NAME)
-                .with_layer(gtk4_layer_shell::Layer::Overlay)
-                .with_anchors(&[
-                    gtk4_layer_shell::Edge::Top,
-                    gtk4_layer_shell::Edge::Right,
-                    gtk4_layer_shell::Edge::Bottom,
-                    gtk4_layer_shell::Edge::Left,
-                ])
-                .with_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive)
-                .build(),
-        );
+        let window = Self::layer_window(app);
 
         let (reset, on_key_press) = buttons::init();
 
         keybindings(window)
-            .add("Escape", || Self::toggle())
+            .add("Escape", Self::toggle)
             .fallback(on_key_press)
             .finish();
 
@@ -46,15 +39,5 @@ impl LogoutScreen {
         window.set_visible(false);
 
         Self::set(Self { reset })
-    }
-}
-
-impl ToggleWindow for LogoutScreen {
-    fn reset(&self) {
-        (self.reset)()
-    }
-
-    fn window(&self) -> &'static Window {
-        load_widget::<Window>(Self::NAME)
     }
 }

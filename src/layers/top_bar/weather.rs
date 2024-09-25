@@ -4,7 +4,7 @@ use crate::{
     globals::load_widget,
     layers::Weather,
     models::WeatherApi,
-    utils::{ToggleWindow, TypedChildren},
+    utils::{LayerWindow, TypedChildren},
 };
 
 pub(crate) fn init() {

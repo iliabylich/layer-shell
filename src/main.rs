@@ -1,5 +1,6 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::missing_transmute_annotations)]
+#![allow(clippy::type_complexity)]
 
 mod ffi;
 mod globals;

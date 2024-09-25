@@ -1,11 +1,9 @@
-use crate::{
-    globals::load_widget,
-    utils::{keybindings, layer_window, singleton, LayerOptions, ToggleWindow},
-};
+use crate::utils::{keybindings, singleton, LayerWindow};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
-    Application, Window,
+    Application,
 };
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 
 mod app_list;
 
@@ -14,25 +12,26 @@ pub(crate) struct Launcher {
 }
 singleton!(Launcher);
 
-impl Launcher {
+impl LayerWindow for Launcher {
     const NAME: &str = "Launcher";
+    const LAYER: Layer = Layer::Overlay;
+    const ANCHORS: &[Edge] = &[];
+    const MARGINS: &[(Edge, i32)] = &[];
+    const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
+    fn reset(&self) {
+        (self.reset)();
+    }
+}
+
+impl Launcher {
     pub(crate) fn activate(app: &Application) {
-        let window: &Window = load_widget(Self::NAME);
-        window.set_application(Some(app));
-        layer_window(
-            window,
-            LayerOptions::builder()
-                .with_namespace(Self::NAME)
-                .with_layer(gtk4_layer_shell::Layer::Overlay)
-                .with_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive)
-                .build(),
-        );
+        let window = Self::layer_window(app);
 
         let (reset, on_key_press) = app_list::init();
 
         keybindings(window)
-            .add("Escape", || Self::toggle())
+            .add("Escape", Self::toggle)
             .fallback(on_key_press)
             .finish();
 
@@ -40,15 +39,5 @@ impl Launcher {
         window.set_visible(false);
 
         Self::set(Self { reset });
-    }
-}
-
-impl ToggleWindow for Launcher {
-    fn reset(&self) {
-        (self.reset)();
-    }
-
-    fn window(&self) -> &'static Window {
-        load_widget(Self::NAME)
     }
 }

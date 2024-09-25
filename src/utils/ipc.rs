@@ -1,6 +1,6 @@
 use crate::{
     layers::{Launcher, LogoutScreen},
-    utils::ToggleWindow,
+    utils::LayerWindow,
 };
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

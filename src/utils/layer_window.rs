@@ -1,75 +1,46 @@
-use gtk4::Window;
+use gtk4::{
+    prelude::{GtkWindowExt, WidgetExt},
+    Application, Window,
+};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-pub(crate) struct LayerOptions<'a> {
-    layer: Layer,
-    anchors: &'a [Edge],
-    margins: &'a [(Edge, i32)],
-    namespace: Option<&'a str>,
-    keyboard_mode: Option<KeyboardMode>,
-}
+use crate::{globals::load_widget, utils::Singleton};
 
-impl<'a> LayerOptions<'a> {
-    pub(crate) fn builder() -> LayerOptionsBuilder<'a> {
-        LayerOptionsBuilder::default()
-    }
-}
+pub(crate) trait LayerWindow: Singleton + 'static {
+    const NAME: &str;
+    const LAYER: Layer;
+    const ANCHORS: &[Edge];
+    const MARGINS: &[(Edge, i32)];
+    const KEYBOARD_MODE: Option<KeyboardMode>;
 
-#[derive(Default)]
-pub(crate) struct LayerOptionsBuilder<'a> {
-    layer: Option<Layer>,
-    anchors: Option<&'a [Edge]>,
-    margins: Option<&'a [(Edge, i32)]>,
-    namespace: Option<&'a str>,
-    keyboard_mode: Option<KeyboardMode>,
-}
+    fn layer_window(app: &Application) -> &'static Window {
+        let w = load_widget::<Window>(Self::NAME);
+        w.set_application(Some(app));
 
-impl<'a> LayerOptionsBuilder<'a> {
-    pub(crate) fn with_layer(mut self, value: Layer) -> Self {
-        self.layer = Some(value);
-        self
-    }
-    pub(crate) fn with_anchors(mut self, anchors: &'a [Edge]) -> Self {
-        self.anchors = Some(anchors);
-        self
-    }
-    pub(crate) fn with_margins(mut self, value: &'a [(Edge, i32)]) -> Self {
-        self.margins = Some(value);
-        self
-    }
-    pub(crate) fn with_namespace(mut self, value: &'a str) -> Self {
-        self.namespace = Some(value);
-        self
-    }
-    pub(crate) fn with_keyboard_mode(mut self, value: KeyboardMode) -> Self {
-        self.keyboard_mode = Some(value);
-        self
-    }
-
-    pub(crate) fn build(self) -> LayerOptions<'a> {
-        LayerOptions {
-            layer: self.layer.unwrap(),
-            anchors: self.anchors.unwrap_or_default(),
-            margins: self.margins.unwrap_or_default(),
-            namespace: self.namespace,
-            keyboard_mode: self.keyboard_mode,
+        LayerShell::init_layer_shell(w);
+        LayerShell::set_layer(w, Self::LAYER);
+        for edge in Self::ANCHORS {
+            LayerShell::set_anchor(w, *edge, true);
         }
-    }
-}
+        for (edge, margin) in Self::MARGINS {
+            LayerShell::set_margin(w, *edge, *margin);
+        }
+        LayerShell::set_namespace(w, Self::NAME);
+        if let Some(keyboard_mode) = Self::KEYBOARD_MODE {
+            LayerShell::set_keyboard_mode(w, keyboard_mode)
+        }
 
-pub(crate) fn layer_window(window: &Window, options: LayerOptions) {
-    LayerShell::init_layer_shell(window);
-    LayerShell::set_layer(window, options.layer);
-    for edge in options.anchors {
-        LayerShell::set_anchor(window, *edge, true);
+        w
     }
-    for (edge, margin) in options.margins {
-        LayerShell::set_margin(window, *edge, *margin);
+
+    fn toggle() {
+        let instance = Self::get();
+        let window = load_widget::<Window>(Self::NAME);
+
+        if !window.get_visible() {
+            instance.reset();
+        }
+        window.set_visible(!window.get_visible())
     }
-    if let Some(namespace) = options.namespace {
-        LayerShell::set_namespace(window, namespace);
-    }
-    if let Some(keyboard_mode) = options.keyboard_mode {
-        LayerShell::set_keyboard_mode(window, keyboard_mode)
-    }
+    fn reset(&self);
 }

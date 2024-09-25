@@ -1,4 +1,4 @@
-use crate::{globals::load_widget, layers::LogoutScreen, utils::ToggleWindow};
+use crate::{globals::load_widget, layers::LogoutScreen, utils::LayerWindow};
 use gtk4::{prelude::ButtonExt, Button};
 
 pub(crate) fn init() {

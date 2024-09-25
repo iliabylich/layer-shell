@@ -2,7 +2,7 @@ use crate::{
     globals::load_widget,
     layers::Networks,
     models::WiFiStatus,
-    utils::{ToggleWindow, TypedChildren},
+    utils::{LayerWindow, TypedChildren},
 };
 use gtk4::{prelude::ButtonExt, Button, Label};
 

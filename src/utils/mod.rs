@@ -1,5 +1,5 @@
 mod layer_window;
-pub(crate) use layer_window::{layer_window, LayerOptions};
+pub(crate) use layer_window::LayerWindow;
 
 mod load_css;
 pub(crate) use load_css::load_css;
@@ -21,9 +21,6 @@ pub(crate) use args::parse_args;
 
 mod typed_children;
 pub(crate) use typed_children::TypedChildren;
-
-mod toggle_window;
-pub(crate) use toggle_window::ToggleWindow;
 
 mod singleton;
 pub(crate) use singleton::{singleton, Singleton};

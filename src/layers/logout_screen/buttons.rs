@@ -1,4 +1,4 @@
-use crate::{globals::load_widget, layers::LogoutScreen, models::Logout, utils::ToggleWindow};
+use crate::{globals::load_widget, layers::LogoutScreen, models::Logout, utils::LayerWindow};
 use gtk4::{
     prelude::{ButtonExt, WidgetExt},
     Button,
