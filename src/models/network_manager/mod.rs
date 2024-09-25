@@ -1,6 +1,3 @@
-mod nm;
-pub(crate) use nm::NM;
-
 mod wifi_status;
 pub(crate) use wifi_status::WiFiStatus;
 

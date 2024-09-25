@@ -27,13 +27,13 @@ fn main() {
 
     HyprlandClient::spawn();
     WeatherApi::spawn();
-    NetworkList::spawn();
     OutputSound::spawn();
 
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
         GlobalWidgets::init();
+        NetworkList::spawn();
 
         TopBar::activate(app);
         LogoutScreen::activate(app);

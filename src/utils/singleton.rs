@@ -1,6 +1,7 @@
 pub(crate) trait Singleton: Sized {
     fn get() -> &'static mut Self;
     fn set(v: Self);
+    #[allow(dead_code)]
     fn is_set() -> bool;
 }
 
@@ -19,7 +20,6 @@ macro_rules! singleton {
                 unsafe { INSTANCE = Some(v) }
             }
 
-            #[allow(dead_code)]
             fn is_set() -> bool {
                 unsafe { INSTANCE.as_ref().is_some() }
             }
