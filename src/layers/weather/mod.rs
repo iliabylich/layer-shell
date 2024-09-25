@@ -10,10 +10,10 @@ pub(crate) struct Weather {
 singleton!(Weather);
 
 impl LayerWindow for Weather {
-    const NAME: &str = "Weather";
+    const NAME: &'static str = "Weather";
     const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &[Edge] = &[Edge::Top, Edge::Right];
-    const MARGINS: &[(Edge, i32)] = &[(Edge::Top, 50), (Edge::Right, 800)];
+    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Right];
+    const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 50), (Edge::Right, 800)];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
     fn reset(&self) {

@@ -13,10 +13,10 @@ pub(crate) struct Launcher {
 singleton!(Launcher);
 
 impl LayerWindow for Launcher {
-    const NAME: &str = "Launcher";
+    const NAME: &'static str = "Launcher";
     const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &[Edge] = &[];
-    const MARGINS: &[(Edge, i32)] = &[];
+    const ANCHORS: &'static [Edge] = &[];
+    const MARGINS: &'static [(Edge, i32)] = &[];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
     fn reset(&self) {

@@ -9,10 +9,10 @@ pub(crate) struct Htop {
 singleton!(Htop);
 
 impl LayerWindow for Htop {
-    const NAME: &str = "Htop";
+    const NAME: &'static str = "Htop";
     const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &[Edge] = &[Edge::Top, Edge::Right];
-    const MARGINS: &[(Edge, i32)] = &[(Edge::Top, 50), (Edge::Right, 600)];
+    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Right];
+    const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 50), (Edge::Right, 600)];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
     fn reset(&self) {

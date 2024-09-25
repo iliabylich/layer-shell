@@ -13,10 +13,10 @@ pub(crate) struct LogoutScreen {
 singleton!(LogoutScreen);
 
 impl LayerWindow for LogoutScreen {
-    const NAME: &str = "LogoutScreen";
+    const NAME: &'static str = "LogoutScreen";
     const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &[Edge] = &[Edge::Top, Edge::Right, Edge::Bottom, Edge::Left];
-    const MARGINS: &[(Edge, i32)] = &[];
+    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Right, Edge::Bottom, Edge::Left];
+    const MARGINS: &'static [(Edge, i32)] = &[];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
     fn reset(&self) {

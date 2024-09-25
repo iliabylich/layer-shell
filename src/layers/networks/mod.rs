@@ -10,10 +10,10 @@ pub(crate) struct Networks {
 singleton!(Networks);
 
 impl LayerWindow for Networks {
-    const NAME: &str = "Networks";
+    const NAME: &'static str = "Networks";
     const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &[Edge] = &[Edge::Top, Edge::Right];
-    const MARGINS: &[(Edge, i32)] = &[(Edge::Top, 50)];
+    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Right];
+    const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 50)];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
     fn reset(&self) {

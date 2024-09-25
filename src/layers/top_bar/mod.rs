@@ -17,10 +17,10 @@ pub(crate) struct TopBar;
 singleton!(TopBar);
 
 impl LayerWindow for TopBar {
-    const NAME: &str = "TopBar";
+    const NAME: &'static str = "TopBar";
     const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &[Edge] = &[Edge::Top, Edge::Left, Edge::Right];
-    const MARGINS: &[(Edge, i32)] = &[(Edge::Top, 0)];
+    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Left, Edge::Right];
+    const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 0)];
     const KEYBOARD_MODE: Option<KeyboardMode> = None;
 
     fn reset(&self) {}

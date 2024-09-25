@@ -7,10 +7,10 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use crate::{globals::load_widget, utils::Singleton};
 
 pub(crate) trait LayerWindow: Singleton + 'static {
-    const NAME: &str;
+    const NAME: &'static str;
     const LAYER: Layer;
-    const ANCHORS: &[Edge];
-    const MARGINS: &[(Edge, i32)];
+    const ANCHORS: &'static [Edge];
+    const MARGINS: &'static [(Edge, i32)];
     const KEYBOARD_MODE: Option<KeyboardMode>;
 
     fn layer_window(app: &Application) -> &'static Window {
