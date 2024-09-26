@@ -29,51 +29,50 @@ impl HyprlandWorkspaces {
             on_change: Box::new(on_change),
         });
 
-        HyprlandClient::subscribe(move |event| match event {
-            HyprlandEvent::CreateWorkspace(idx) => {
-                Self::get().workspace_ids.insert(idx);
-                Self::get().changed();
+        HyprlandClient::subscribe(move |event| {
+            let this = Self::get();
+            match event {
+                HyprlandEvent::CreateWorkspace(idx) => {
+                    this.workspace_ids.insert(idx);
+                    this.changed();
+                }
+                HyprlandEvent::DestroyWorkspace(idx) => {
+                    this.workspace_ids.remove(&idx);
+                    this.changed();
+                }
+                HyprlandEvent::Workspace(idx) => {
+                    this.active_id = idx;
+                    this.changed();
+                }
+                _ => {}
             }
-            HyprlandEvent::DestroyWorkspace(idx) => {
-                Self::get().workspace_ids.remove(&idx);
-                Self::get().changed();
-            }
-            HyprlandEvent::Workspace(idx) => {
-                Self::get().active_id = idx;
-                Self::get().changed();
-            }
-            _ => {}
         });
 
         gtk4::glib::spawn_future_local(async {
-            Self::get().load_initial_data().await;
+            let this = Self::get();
+            let (workspace_ids, active_id) = Self::load_initial_data().await;
+            this.workspace_ids = workspace_ids;
+            this.active_id = active_id;
+            this.changed();
         });
     }
 
-    #[allow(unused_must_use)]
     pub(crate) fn go_to(idx: usize) {
         gtk4::glib::spawn_future_local(async move {
             exec_async(&["hyprctl", "dispatch", "workspace", &format!("{idx}")]).await;
         });
     }
 
-    async fn resync(&mut self) {
+    async fn load_initial_data() -> (HashSet<usize>, usize) {
         let workspaces = HyprlandClient::get_workspaces().await;
-        self.workspace_ids = HashSet::from_iter(workspaces.into_iter().map(|w| w.id));
-
         let active_workspace = HyprlandClient::get_active_workspace().await;
-        self.active_id = active_workspace.id;
-    }
-    async fn load_initial_data(&mut self) {
-        self.resync().await;
-        self.changed();
+        (
+            HashSet::from_iter(workspaces.into_iter().map(|w| w.id)),
+            active_workspace.id,
+        )
     }
 
     fn changed(&self) {
-        (self.on_change)(self.get_data())
-    }
-
-    fn get_data(&self) -> [Workspace; 10] {
         let mut ids_to_show = HashSet::new();
         for id in self.workspace_ids.iter() {
             ids_to_show.insert(*id);
@@ -92,6 +91,7 @@ impl HyprlandWorkspaces {
                 active: id == self.active_id,
             }
         }
-        workspaces
+
+        (self.on_change)(workspaces)
     }
 }
