@@ -58,7 +58,7 @@ impl OutputSound {
     where
         F: Fn(f64) + 'static,
     {
-        Self::get().handlers.push(Box::new(f));
+        this().handlers.push(Box::new(f));
     }
 
     pub(crate) fn set_volume(value: f64) {

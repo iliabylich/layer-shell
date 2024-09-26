@@ -31,29 +31,29 @@ impl AppList {
             on_change: Box::new(f),
         });
 
-        Self::get().refresh_global_app_list();
-        Self::get().refresh_visible_app_list("");
+        this().refresh_global_app_list();
+        this().refresh_visible_app_list("");
         Self::changed();
     }
 
     pub(crate) fn up() {
-        if Self::get().selected_idx == 0 {
+        if this().selected_idx == 0 {
             return;
         }
-        Self::get().selected_idx = std::cmp::max(0, Self::get().selected_idx - 1);
+        this().selected_idx = std::cmp::max(0, this().selected_idx - 1);
         Self::changed();
     }
     pub(crate) fn down() {
-        Self::get().selected_idx = std::cmp::min(MAX_ITEMS - 1, Self::get().selected_idx + 1);
+        this().selected_idx = std::cmp::min(MAX_ITEMS - 1, this().selected_idx + 1);
         Self::changed();
     }
     pub(crate) fn set_search(q: &str) {
-        Self::get().selected_idx = 0;
-        Self::get().refresh_visible_app_list(q);
+        this().selected_idx = 0;
+        this().refresh_visible_app_list(q);
         Self::changed();
     }
     pub(crate) fn run_selected() -> bool {
-        if let Some(app) = Self::get().visible_app_list.get(Self::get().selected_idx) {
+        if let Some(app) = this().visible_app_list.get(this().selected_idx) {
             app.launch();
             true
         } else {
@@ -61,9 +61,9 @@ impl AppList {
         }
     }
     pub(crate) fn reset() {
-        Self::get().selected_idx = 0;
-        Self::get().refresh_global_app_list();
-        Self::get().refresh_visible_app_list("");
+        this().selected_idx = 0;
+        this().refresh_global_app_list();
+        this().refresh_visible_app_list("");
     }
 
     fn refresh_global_app_list(&mut self) {
@@ -101,17 +101,17 @@ impl AppList {
             .collect::<Vec<_>>();
     }
     fn changed() {
-        let apps = Self::get()
+        let apps = this()
             .visible_app_list
             .iter()
             .cloned()
             .enumerate()
             .map(|(idx, app)| AppRow {
                 app,
-                selected: idx == Self::get().selected_idx,
+                selected: idx == this().selected_idx,
             })
             .collect::<Vec<_>>();
-        (Self::get().on_change)(apps);
+        (this().on_change)(apps);
     }
 }
 

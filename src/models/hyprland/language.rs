@@ -17,14 +17,13 @@ impl HyprlandLanguage {
 
         HyprlandClient::subscribe(|event| {
             if let HyprlandEvent::LanguageChanged(new_lang) = event {
-                Self::get().changed(new_lang);
+                this().changed(new_lang);
             }
         });
 
         gtk4::glib::spawn_future_local(async {
-            let this = Self::get();
             match Self::load_initial_data().await {
-                Ok(layout) => this.changed(layout),
+                Ok(layout) => this().changed(layout),
                 Err(err) => {
                     eprintln!("Failed to get hyprland language\n{}", err);
                 }

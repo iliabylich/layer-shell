@@ -24,6 +24,11 @@ macro_rules! singleton {
                 unsafe { INSTANCE.as_ref().is_some() }
             }
         }
+
+        #[allow(dead_code)]
+        fn this() -> &'static mut $t {
+            $t::get()
+        }
     };
 }
 

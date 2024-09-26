@@ -15,11 +15,11 @@ impl WeatherApi {
     where
         F: Fn(&'static Weather) + 'static,
     {
-        Self::get().callbacks.push(Box::new(f));
+        this().callbacks.push(Box::new(f));
     }
 
     pub(crate) fn get_cached() -> Option<&'static Weather> {
-        Self::get().weather.as_ref()
+        this().weather.as_ref()
     }
 
     pub(crate) fn spawn() {
@@ -31,8 +31,8 @@ impl WeatherApi {
         gtk4::glib::spawn_future_local(async move {
             match Self::get_weather_from_api().await {
                 Ok(weather) => {
-                    Self::get().weather = Some(weather);
-                    for f in Self::get().callbacks.iter() {
+                    this().weather = Some(weather);
+                    for f in this().callbacks.iter() {
                         f(Self::get_cached().unwrap());
                     }
                 }

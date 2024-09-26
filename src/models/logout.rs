@@ -20,7 +20,7 @@ impl Logout {
     }
 
     pub(crate) fn reset() {
-        Self::get().idx = 0;
+        this().idx = 0;
         Self::changed();
     }
 
@@ -46,19 +46,19 @@ impl Logout {
     }
 
     pub(crate) fn left() {
-        if Self::get().idx == 0 {
+        if this().idx == 0 {
             return;
         }
-        Self::get().idx = std::cmp::max(0, Self::get().idx - 1);
+        this().idx = std::cmp::max(0, this().idx - 1);
         Self::changed();
     }
     pub(crate) fn right() {
-        Self::get().idx = std::cmp::min(Self::get().max - 1, Self::get().idx + 1);
+        this().idx = std::cmp::min(this().max - 1, this().idx + 1);
         Self::changed();
     }
 
     fn changed() {
-        let instance = Self::get();
+        let instance = this();
         (instance.on_change)(instance.idx);
     }
 }

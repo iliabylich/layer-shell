@@ -29,31 +29,27 @@ impl HyprlandWorkspaces {
             on_change: Box::new(on_change),
         });
 
-        HyprlandClient::subscribe(move |event| {
-            let this = Self::get();
-            match event {
-                HyprlandEvent::CreateWorkspace(idx) => {
-                    this.workspace_ids.insert(idx);
-                    this.changed();
-                }
-                HyprlandEvent::DestroyWorkspace(idx) => {
-                    this.workspace_ids.remove(&idx);
-                    this.changed();
-                }
-                HyprlandEvent::Workspace(idx) => {
-                    this.active_id = idx;
-                    this.changed();
-                }
-                _ => {}
+        HyprlandClient::subscribe(move |event| match event {
+            HyprlandEvent::CreateWorkspace(idx) => {
+                this().workspace_ids.insert(idx);
+                this().changed();
             }
+            HyprlandEvent::DestroyWorkspace(idx) => {
+                this().workspace_ids.remove(&idx);
+                this().changed();
+            }
+            HyprlandEvent::Workspace(idx) => {
+                this().active_id = idx;
+                this().changed();
+            }
+            _ => {}
         });
 
         gtk4::glib::spawn_future_local(async {
-            let this = Self::get();
             let (workspace_ids, active_id) = Self::load_initial_data().await;
-            this.workspace_ids = workspace_ids;
-            this.active_id = active_id;
-            this.changed();
+            this().workspace_ids = workspace_ids;
+            this().active_id = active_id;
+            this().changed();
         });
     }
 

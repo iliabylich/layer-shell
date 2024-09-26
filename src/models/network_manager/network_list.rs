@@ -28,7 +28,7 @@ impl NetworkList {
             loop {
                 match Self::get_state().await {
                     Ok(ifaces) => {
-                        Self::get().list = ifaces;
+                        this().list = ifaces;
                     }
                     Err(err) => {
                         eprintln!("failed to get list of networks:\n{}", err);
@@ -41,7 +41,7 @@ impl NetworkList {
     }
 
     pub(crate) fn get_current() -> &'static [Iface] {
-        &Self::get().list
+        &this().list
     }
 
     async fn get_state() -> Result<Vec<Iface>> {

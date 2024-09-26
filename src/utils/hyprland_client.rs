@@ -59,7 +59,7 @@ impl HyprlandClient {
                     _ => continue,
                 };
 
-                for handler in Self::get().handlers.iter() {
+                for handler in this().handlers.iter() {
                     handler(event.clone());
                 }
             }
@@ -70,7 +70,7 @@ impl HyprlandClient {
     where
         F: Fn(HyprlandEvent) + 'static,
     {
-        Self::get().handlers.push(Box::new(f))
+        this().handlers.push(Box::new(f))
     }
 
     pub(crate) async fn get_workspaces() -> Vec<Workspace> {
