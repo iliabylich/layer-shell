@@ -1,4 +1,5 @@
 use crate::utils::{IPCMessage, IPC};
+use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate, Shell};
 
@@ -16,7 +17,7 @@ enum WindowName {
     LogoutScreen,
 }
 
-pub(crate) fn parse_args() {
+pub(crate) fn parse_args() -> Result<()> {
     let args = Args::parse();
 
     match args {
@@ -28,21 +29,22 @@ pub(crate) fn parse_args() {
         }
         Args::Start => {
             // The only case in which we proceeed
+            Ok(())
         }
         Args::Stop => {
-            IPC::send_to_running_instance(IPCMessage::Stop);
+            IPC::send_to_running_instance(IPCMessage::Stop)?;
             std::process::exit(1);
         }
         Args::Toggle {
             window_name: WindowName::Launcher,
         } => {
-            IPC::send_to_running_instance(IPCMessage::ToggleLauncher);
+            IPC::send_to_running_instance(IPCMessage::ToggleLauncher)?;
             std::process::exit(1);
         }
         Args::Toggle {
             window_name: WindowName::LogoutScreen,
         } => {
-            IPC::send_to_running_instance(IPCMessage::ToggleLogoutScreen);
+            IPC::send_to_running_instance(IPCMessage::ToggleLogoutScreen)?;
             std::process::exit(1);
         }
     }

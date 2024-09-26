@@ -22,9 +22,9 @@ use crate::{
 
 const APP_ID: &str = "com.me.LayerShell";
 
-fn main() {
-    parse_args();
-    IPC::spawn();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    parse_args()?;
+    IPC::spawn()?;
 
     HyprlandClient::spawn();
     WeatherApi::spawn();
@@ -49,4 +49,6 @@ fn main() {
     });
 
     app.run_with_args(&[""]);
+
+    Ok(())
 }
