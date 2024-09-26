@@ -39,10 +39,10 @@ pub(crate) fn load_widget<T: IsA<Object>>(name: &str) -> &'static T {
         .get(name)
         .unwrap_or_else(|| panic!("Can't find widget {name}"))
         .dynamic_cast_ref()
-        .unwrap()
+        .expect("failed to cast")
 }
 
 pub(crate) fn globalize_widget<T: IsA<Object>>(w: &Widget) -> &'static T {
-    let id = w.buildable_id().unwrap();
+    let id = w.buildable_id().expect("failed to get buildable_id");
     load_widget(id.as_str())
 }

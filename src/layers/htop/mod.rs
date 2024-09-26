@@ -27,7 +27,7 @@ impl Htop {
         let terminal = vte4::Terminal::builder().build();
         terminal.spawn_async(
             vte4::PtyFlags::DEFAULT,
-            Some(&std::env::var("HOME").unwrap()),
+            Some(&std::env::var("HOME").expect("$HOME is not defined")),
             &["htop"],
             &[],
             gtk4::glib::SpawnFlags::DEFAULT,
