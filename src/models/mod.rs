@@ -2,7 +2,7 @@ mod hyprland;
 pub(crate) use hyprland::{HyprlandLanguage, HyprlandWorkspaces};
 
 mod cpu;
-pub(crate) use cpu::CPU;
+pub(crate) use cpu::{CPUData, CPU};
 
 mod memory;
 pub(crate) use memory::{Memory, MemoryData};
@@ -33,7 +33,7 @@ pub(crate) fn spawn_all() {
             .unwrap();
 
         rt.block_on(async {
-            tokio::join!(Memory::spawn());
+            tokio::join!(Memory::spawn(), CPU::spawn());
         });
     });
 }
