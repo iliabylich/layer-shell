@@ -1,34 +1,38 @@
 use crate::{
     globals::load_widget,
-    models::{CPUData, CPU},
+    models::{subscribe, Event},
 };
 use gtk4::Label;
 
 pub(crate) fn init() {
-    fn on_change(data: CPUData) {
-        let labels = [
-            load_widget::<Label>("CPUWidgetLabel1"),
-            load_widget::<Label>("CPUWidgetLabel2"),
-            load_widget::<Label>("CPUWidgetLabel3"),
-            load_widget::<Label>("CPUWidgetLabel4"),
-            load_widget::<Label>("CPUWidgetLabel5"),
-            load_widget::<Label>("CPUWidgetLabel6"),
-            load_widget::<Label>("CPUWidgetLabel7"),
-            load_widget::<Label>("CPUWidgetLabel8"),
-            load_widget::<Label>("CPUWidgetLabel9"),
-            load_widget::<Label>("CPUWidgetLabel10"),
-            load_widget::<Label>("CPUWidgetLabel11"),
-            load_widget::<Label>("CPUWidgetLabel12"),
-        ];
+    subscribe(on_change);
+}
 
-        assert_eq!(data.cores.len(), labels.len());
+fn on_change(event: &Event) {
+    let Event::Cpu { usage_per_core } = event else {
+        return;
+    };
 
-        for (idx, load) in data.cores.iter().enumerate() {
-            labels[idx].set_label(indicator(*load));
-        }
+    let labels = [
+        load_widget::<Label>("CPUWidgetLabel1"),
+        load_widget::<Label>("CPUWidgetLabel2"),
+        load_widget::<Label>("CPUWidgetLabel3"),
+        load_widget::<Label>("CPUWidgetLabel4"),
+        load_widget::<Label>("CPUWidgetLabel5"),
+        load_widget::<Label>("CPUWidgetLabel6"),
+        load_widget::<Label>("CPUWidgetLabel7"),
+        load_widget::<Label>("CPUWidgetLabel8"),
+        load_widget::<Label>("CPUWidgetLabel9"),
+        load_widget::<Label>("CPUWidgetLabel10"),
+        load_widget::<Label>("CPUWidgetLabel11"),
+        load_widget::<Label>("CPUWidgetLabel12"),
+    ];
+
+    assert_eq!(usage_per_core.len(), labels.len());
+
+    for (idx, load) in usage_per_core.iter().enumerate() {
+        labels[idx].set_label(indicator(*load));
     }
-
-    CPU::subscribe(on_change);
 }
 
 const INDICATORS: &[&str] = &[

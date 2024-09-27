@@ -1,14 +1,9 @@
+mod cpu;
+mod memory;
+mod time;
+
 mod hyprland;
 pub(crate) use hyprland::{HyprlandLanguage, HyprlandWorkspaces};
-
-mod cpu;
-pub(crate) use cpu::{CPUData, CPU};
-
-mod memory;
-pub(crate) use memory::{Memory, MemoryData};
-
-mod time;
-pub(crate) use time::{Time, TimeData};
 
 mod output_sound;
 pub(crate) use output_sound::OutputSound;
@@ -25,15 +20,44 @@ pub(crate) use app_list::AppList;
 mod weather_api;
 pub(crate) use weather_api::WeatherApi;
 
+mod event;
+pub(crate) use event::Event;
+
+struct Model {
+    subscriptions: Vec<fn(&Event)>,
+}
+crate::utils::singleton!(Model);
+
 pub(crate) fn spawn_all() {
-    std::thread::spawn(|| {
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Event>(100);
+    Model::set(Model {
+        subscriptions: vec![],
+    });
+
+    std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build()
             .unwrap();
 
         rt.block_on(async {
-            tokio::join!(Memory::spawn(), CPU::spawn(), Time::spawn());
+            tokio::join!(
+                memory::spawn(tx.clone()),
+                cpu::spawn(tx.clone()),
+                time::spawn(tx.clone())
+            );
         });
     });
+
+    gtk4::glib::spawn_future_local(async move {
+        while let Some(event) = rx.recv().await {
+            for f in Model::get().subscriptions.iter() {
+                (f)(&event);
+            }
+        }
+    });
+}
+
+pub(crate) fn subscribe(f: fn(&Event)) {
+    Model::get().subscriptions.push(f);
 }

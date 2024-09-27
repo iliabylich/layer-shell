@@ -1,40 +1,28 @@
-use crate::utils::singleton;
+use crate::models::Event;
 use anyhow::{Context, Result};
-use tokio::{fs::File, io::AsyncReadExt};
+use tokio::{fs::File, io::AsyncReadExt, sync::mpsc::Sender};
 
-pub(crate) struct Memory {
-    callbacks: Vec<fn(MemoryData)>,
-}
-singleton!(Memory);
-
-impl Memory {
-    pub(crate) async fn spawn() {
-        Self::set(Self { callbacks: vec![] });
-
-        loop {
-            match parse().await {
-                Ok(data) => Self::changed(data),
-                Err(err) => {
-                    eprintln!("failed to read system memory:\n{}", err)
-                }
+pub(crate) async fn spawn(tx: Sender<Event>) {
+    loop {
+        match parse().await {
+            Ok(data) => {
+                tx.send(Event::Memory {
+                    used: data.used,
+                    total: data.total,
+                })
+                .await
+                .unwrap();
             }
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            Err(err) => {
+                eprintln!("failed to read system memory:\n{}", err)
+            }
         }
-    }
-
-    pub(crate) fn subscribe(f: fn(MemoryData)) {
-        this().callbacks.push(f);
-    }
-
-    fn changed(data: MemoryData) {
-        for callback in this().callbacks.iter() {
-            (callback)(data)
-        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct MemoryData {
+struct MemoryData {
     pub(crate) used: f64,
     pub(crate) total: f64,
 }

@@ -1,65 +1,50 @@
-use crate::utils::singleton;
+use crate::models::Event;
 use anyhow::{Context, Result};
-use tokio::{fs::File, io::AsyncReadExt};
+use tokio::{fs::File, io::AsyncReadExt, sync::mpsc::Sender};
 
-pub(crate) struct CPU {
-    previous: Option<Vec<CpuCoreInfo>>,
-    callbacks: Vec<fn(CPUData)>,
-}
-singleton!(CPU);
+pub(crate) async fn spawn(tx: Sender<Event>) {
+    let mut previous: Option<Vec<CpuCoreInfo>> = None;
 
-impl CPU {
-    pub(crate) async fn spawn() {
-        Self::set(Self {
-            previous: None,
-            callbacks: vec![],
-        });
-
-        loop {
-            match parse().await {
-                Ok(data) => Self::changed(data),
-                Err(err) => {
-                    eprintln!("failed to read system CPU usage:\n{}", err)
-                }
+    loop {
+        match parse(&mut previous).await {
+            Ok(data) => {
+                tx.send(Event::Cpu {
+                    usage_per_core: data.cores,
+                })
+                .await
+                .unwrap();
             }
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            Err(err) => {
+                eprintln!("failed to read system CPU usage:\n{}", err)
+            }
         }
-    }
-
-    pub(crate) fn subscribe(f: fn(CPUData)) {
-        this().callbacks.push(f);
-    }
-
-    fn changed(data: CPUData) {
-        for callback in this().callbacks.iter() {
-            (callback)(data.clone());
-        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct CPUData {
+struct CPUData {
     pub(crate) cores: Vec<usize>,
 }
 
-async fn parse() -> Result<CPUData> {
+async fn parse(previous: &mut Option<Vec<CpuCoreInfo>>) -> Result<CPUData> {
     let current = parse_current().await?;
     let count = current.len();
 
-    if let Some(previous) = this().previous.take() {
-        assert_eq!(previous.len(), current.len());
+    if let Some(previous_owned) = previous.take() {
+        assert_eq!(previous_owned.len(), current.len());
 
-        let usage = previous
+        let usage = previous_owned
             .iter()
             .zip(current.iter())
             .map(|(prev, next)| next.load_comparing_to(prev))
             .collect::<Vec<_>>();
 
-        this().previous = Some(current);
+        *previous = Some(current);
 
         Ok(CPUData { cores: usage })
     } else {
-        this().previous = Some(current);
+        *previous = Some(current);
         Ok(CPUData {
             cores: vec![0; count],
         })

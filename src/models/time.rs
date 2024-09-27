@@ -1,36 +1,17 @@
-use crate::utils::singleton;
+use crate::models::Event;
 use chrono::Local;
+use tokio::sync::mpsc::Sender;
 
-pub(crate) struct Time {
-    callbacks: Vec<fn(TimeData)>,
-}
-singleton!(Time);
+pub(crate) async fn spawn(tx: Sender<Event>) {
+    loop {
+        let now = Local::now();
+        tx.send(Event::Time {
+            time: now.format("%H:%M:%S").to_string(),
+            date: now.format("%Y %B %e").to_string(),
+        })
+        .await
+        .unwrap();
 
-impl Time {
-    pub(crate) async fn spawn() {
-        Self::set(Self { callbacks: vec![] });
-
-        loop {
-            let now = Local::now();
-            let data = TimeData {
-                label: now.format("%H:%M:%S").to_string(),
-                tooltip: now.format("%Y %B %e\n%A").to_string(),
-            };
-            for callback in this().callbacks.iter() {
-                (callback)(data.clone());
-            }
-
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
-
-    pub(crate) fn subscribe(f: fn(TimeData)) {
-        this().callbacks.push(f);
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct TimeData {
-    pub(crate) label: String,
-    pub(crate) tooltip: String,
 }
