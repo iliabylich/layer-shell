@@ -5,7 +5,7 @@ mod cpu;
 pub(crate) use cpu::CPU;
 
 mod memory;
-pub(crate) use memory::Memory;
+pub(crate) use memory::{Memory, MemoryData};
 
 mod time;
 pub(crate) use time::Time;
@@ -24,3 +24,16 @@ pub(crate) use app_list::AppList;
 
 mod weather_api;
 pub(crate) use weather_api::WeatherApi;
+
+pub(crate) fn spawn_all() {
+    std::thread::spawn(|| {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
+
+        rt.block_on(async {
+            tokio::join!(Memory::spawn());
+        });
+    });
+}

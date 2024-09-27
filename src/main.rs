@@ -26,6 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     parse_args()?;
     IPC::spawn()?;
 
+    crate::models::spawn_all();
+
     HyprlandClient::spawn();
     WeatherApi::spawn();
     OutputSound::spawn();
