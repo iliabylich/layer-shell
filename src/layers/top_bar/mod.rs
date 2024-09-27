@@ -18,7 +18,7 @@ singleton!(TopBar);
 
 impl LayerWindow for TopBar {
     const NAME: &'static str = "TopBar";
-    const LAYER: Layer = Layer::Overlay;
+    const LAYER: Layer = Layer::Top;
     const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Left, Edge::Right];
     const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 0)];
     const KEYBOARD_MODE: Option<KeyboardMode> = None;
