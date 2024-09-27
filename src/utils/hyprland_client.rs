@@ -1,25 +1,16 @@
-use std::path::Path;
-
+use crate::utils::{exec_async, singleton};
+use anyhow::{Context, Result};
 use gtk4::{
     gio::{Cancellable, DataInputStream, SocketClient, UnixSocketAddress},
     glib::Priority,
     prelude::{DataInputStreamExtManual, IOStreamExt, SocketClientExt},
 };
-
-use crate::utils::{exec_async, singleton};
+use std::path::Path;
 
 pub(crate) struct HyprlandClient {
     handlers: Vec<Box<dyn Fn(HyprlandEvent)>>,
 }
 singleton!(HyprlandClient);
-
-fn socker_path() -> String {
-    format!(
-        "{}/hypr/{}/.socket2.sock",
-        std::env::var("XDG_RUNTIME_DIR").unwrap(),
-        std::env::var("HYPRLAND_INSTANCE_SIGNATURE").unwrap(),
-    )
-}
 
 #[derive(Clone, Debug)]
 pub(crate) enum HyprlandEvent {
@@ -34,34 +25,20 @@ impl HyprlandClient {
         Self::set(Self { handlers: vec![] });
 
         gtk4::glib::spawn_future_local(async {
-            let unix_socket = UnixSocketAddress::new(Path::new(&socker_path()));
-            let socket = SocketClient::new();
-            let connection = socket.connect(&unix_socket, Cancellable::NONE).unwrap();
-            let stream = DataInputStream::builder()
-                .base_stream(&connection.input_stream())
-                .close_base_stream(true)
-                .build();
-
-            loop {
-                let line = stream.read_line_future(Priority::DEFAULT).await.unwrap();
-                let line = std::str::from_utf8(line.as_ref()).unwrap();
-
-                let (event, payload) = line.split_once(">>").unwrap();
-
-                let event = match event {
-                    "createworkspace" => HyprlandEvent::CreateWorkspace(payload.parse().unwrap()),
-                    "destroyworkspace" => HyprlandEvent::DestroyWorkspace(payload.parse().unwrap()),
-                    "workspace" => HyprlandEvent::Workspace(payload.parse().unwrap()),
-                    "activelayout" => {
-                        let lang = payload.split(",").last().unwrap();
-                        HyprlandEvent::LanguageChanged(lang.to_string())
+            match connect_to_hyprland_socket() {
+                Ok(stream) => loop {
+                    match read_line_from_stream(&stream).await {
+                        Ok(line) => {
+                            if let Ok(event) = HyprlandEvent::try_from(line.as_str()) {
+                                Self::dispatch(event);
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("failed to read line from Hyprland socket:\n{}", err);
+                        }
                     }
-                    _ => continue,
-                };
-
-                for handler in this().handlers.iter() {
-                    handler(event.clone());
-                }
+                },
+                Err(_) => todo!(),
             }
         });
     }
@@ -87,6 +64,12 @@ impl HyprlandClient {
         let json = exec_async(&["hyprctl", "devices", "-j"]).await;
         serde_json::from_str(&json).unwrap()
     }
+
+    fn dispatch(event: HyprlandEvent) {
+        for handler in this().handlers.iter() {
+            handler(event.clone());
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -103,4 +86,67 @@ pub(crate) struct Devices {
 pub(crate) struct Keyboard {
     pub(crate) main: bool,
     pub(crate) active_keymap: String,
+}
+
+fn connect_to_hyprland_socket() -> Result<DataInputStream> {
+    let socket_path = format!(
+        "{}/hypr/{}/.socket2.sock",
+        std::env::var("XDG_RUNTIME_DIR").expect("no XDG_RUNTIME_DIR variable"),
+        std::env::var("HYPRLAND_INSTANCE_SIGNATURE")
+            .expect("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?"),
+    );
+
+    fn g<T>(value: T) -> &'static T {
+        Box::leak(Box::new(value))
+    }
+
+    let unix_socket = g(UnixSocketAddress::new(Path::new(&socket_path)));
+    let socket = g(SocketClient::new());
+    let connection = g(socket
+        .connect(unix_socket, Cancellable::NONE)
+        .context("failed to connect to Hyprland socket")?);
+    let stream = DataInputStream::builder()
+        .base_stream(&connection.input_stream())
+        .close_base_stream(true)
+        .build();
+
+    Ok(stream)
+}
+
+async fn read_line_from_stream(stream: &DataInputStream) -> Result<String> {
+    let line = stream
+        .read_line_future(Priority::DEFAULT)
+        .await
+        .context("failed to read line")?;
+    let line = std::str::from_utf8(line.as_ref()).context("non-utf-8 line from Hyprland socket")?;
+    Ok(line.to_string())
+}
+
+impl TryFrom<&str> for HyprlandEvent {
+    type Error = ();
+
+    fn try_from(line: &str) -> Result<Self, Self::Error> {
+        let (event, payload) = line.split_once(">>").ok_or(())?;
+
+        let payload_as_usize = || {
+            payload
+                .parse::<usize>()
+                .map_err(|_| ())
+                .inspect_err(|_| eprintln!("non integer payload of event {event}: {payload}"))
+        };
+
+        match event {
+            "createworkspace" => Ok(Self::CreateWorkspace(payload_as_usize()?)),
+            "destroyworkspace" => Ok(Self::DestroyWorkspace(payload_as_usize()?)),
+            "workspace" => Ok(Self::Workspace(payload_as_usize()?)),
+            "activelayout" => match payload.split(",").last() {
+                Some(lang) => Ok(Self::LanguageChanged(lang.to_string())),
+                None => {
+                    eprintln!("unexpected payload of activelayout: {payload}");
+                    Err(())
+                }
+            },
+            _ => Err(()),
+        }
+    }
 }
