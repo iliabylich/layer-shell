@@ -1,13 +1,22 @@
+use crate::{globals::load_widget, models::HyprlandWorkspaces};
 use gtk4::{
     prelude::{ButtonExt, WidgetExt},
     Button,
 };
 
-use crate::{globals::load_widget, models::HyprlandWorkspaces, utils::TypedChildren};
-
 pub(crate) fn init(min_workspaces: usize) {
-    let widget = load_widget::<gtk4::Box>("WorkspacesWidget");
-    let buttons = widget.children_as::<10, Button>();
+    let buttons = [
+        load_widget::<Button>("WorkspacesWidgetButton1"),
+        load_widget::<Button>("WorkspacesWidgetButton2"),
+        load_widget::<Button>("WorkspacesWidgetButton3"),
+        load_widget::<Button>("WorkspacesWidgetButton4"),
+        load_widget::<Button>("WorkspacesWidgetButton5"),
+        load_widget::<Button>("WorkspacesWidgetButton6"),
+        load_widget::<Button>("WorkspacesWidgetButton7"),
+        load_widget::<Button>("WorkspacesWidgetButton8"),
+        load_widget::<Button>("WorkspacesWidgetButton9"),
+        load_widget::<Button>("WorkspacesWidgetButton10"),
+    ];
 
     HyprlandWorkspaces::subscribe(min_workspaces, move |workspaces| {
         for (button, workspace) in buttons.iter().zip(workspaces.iter()) {

@@ -1,2 +1,2 @@
 mod widgets;
-pub(crate) use widgets::{globalize_widget, load_widget, GlobalWidgets};
+pub(crate) use widgets::{load_widget, GlobalWidgets};

@@ -1,14 +1,9 @@
-use crate::{
-    globals::load_widget,
-    layers::Networks,
-    models::WiFiStatus,
-    utils::{LayerWindow, TypedChildren},
-};
+use crate::{globals::load_widget, layers::Networks, models::WiFiStatus, utils::LayerWindow};
 use gtk4::{prelude::ButtonExt, Button, Label};
 
 pub(crate) fn init() {
     let widget = load_widget::<Button>("NetworkWidget");
-    let label = widget.first_child_as::<Label>();
+    let label = load_widget::<Label>("NetworkWidgetLabel");
 
     WiFiStatus::spawn(|status| {
         if let Some(status) = status {

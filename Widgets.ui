@@ -22,7 +22,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   <class name="workspaces"/>
                 </style>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton1">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">1</property>
@@ -31,7 +31,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton2">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">2</property>
@@ -40,7 +40,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton3">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">3</property>
@@ -49,7 +49,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton4">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">4</property>
@@ -58,7 +58,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton5">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">5</property>
@@ -67,7 +67,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton6">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">6</property>
@@ -76,7 +76,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton7">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">7</property>
@@ -85,7 +85,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton8">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">8</property>
@@ -94,7 +94,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton9">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">9</property>
@@ -103,7 +103,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="WorkspacesWidgetButton10">
                     <child>
                       <object class="GtkLabel">
                         <property name="label">10</property>
@@ -142,7 +142,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   <class name="clickable"/>
                 </style>
                 <child>
-                  <object class="GtkLabel"></object>
+                  <object class="GtkLabel" id="WeatherWidgetLabel"></object>
                 </child>
               </object>
             </child>
@@ -154,7 +154,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   <class name="padded"/>
                 </style>
                 <child type="center">
-                  <object class="GtkLabel"></object>
+                  <object class="GtkLabel" id="LanguageWidgetLabel"></object>
                 </child>
               </object>
             </child>
@@ -168,12 +168,12 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                 <property name="spacing">10</property>
                 <property name="orientation">0</property>
                 <child>
-                  <object class="GtkImage">
+                  <object class="GtkImage" id="SoundWidgetImage">
                     <property name="icon-name">dialog-question</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkScale">
+                  <object class="GtkScale" id="SoundWidgetScale">
                     <style>
                       <class name="sound-slider"/>
                     </style>
@@ -197,62 +197,62 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                 <property name="spacing">3</property>
                 <property name="orientation">0</property>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel1">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel2">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel3">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel4">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel5">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel6">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel7">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel8">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel9">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel10">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel11">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="CPUWidgetLabel12">
                     <property name="use-markup">true</property>
                   </object>
                 </child>
@@ -267,7 +267,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   <class name="clickable"/>
                 </style>
                 <child>
-                  <object class="GtkLabel"></object>
+                  <object class="GtkLabel" id="RAMWidgetLabel"></object>
                 </child>
               </object>
             </child>
@@ -285,7 +285,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </property>
                 <child>
-                  <object class="GtkLabel"></object>
+                  <object class="GtkLabel" id="NetworkWidgetLabel"></object>
                 </child>
               </object>
             </child>
@@ -297,7 +297,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   <class name="padded"/>
                 </style>
                 <child type="center">
-                  <object class="GtkLabel"></object>
+                  <object class="GtkLabel" id="ClockWidgetLabel"></object>
                 </child>
               </object>
             </child>
@@ -340,7 +340,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
         <property name="homogeneous">true</property>
         <property name="spacing">200</property>
         <child>
-          <object class="GtkButton" id="LockButton">
+          <object class="GtkButton" id="LogoutScreenLockButton">
             <style>
               <class name="widget-logout-button"/>
             </style>
@@ -352,7 +352,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <child>
-          <object class="GtkButton" id="RebootButton">
+          <object class="GtkButton" id="LogoutScreenRebootButton">
             <style>
               <class name="widget-logout-button"/>
             </style>
@@ -364,7 +364,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <child>
-          <object class="GtkButton" id="ShutdownButton">
+          <object class="GtkButton" id="LogoutScreenShutdownButton">
             <style>
               <class name="widget-logout-button"/>
             </style>
@@ -376,7 +376,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <child>
-          <object class="GtkButton" id="LogoutButton">
+          <object class="GtkButton" id="LogoutScreenLogoutButton">
             <style>
               <class name="widget-logout-button"/>
             </style>
@@ -592,12 +592,12 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                       <class name="widget-launcher-row"/>
                     </style>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkImage" id="LauncherRow1Image">
                         <property name="icon-size">2</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkLabel">
+                      <object class="GtkLabel" id="LauncherRow1Label">
                         <property name="xalign">0</property>
                         <property name="valign">3</property>
                         <property name="ellipsize">3</property>
@@ -611,12 +611,12 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                       <class name="widget-launcher-row"/>
                     </style>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkImage" id="LauncherRow2Image">
                         <property name="icon-size">2</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkLabel">
+                      <object class="GtkLabel" id="LauncherRow2Label">
                         <property name="xalign">0</property>
                         <property name="valign">3</property>
                         <property name="ellipsize">3</property>
@@ -630,12 +630,12 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                       <class name="widget-launcher-row"/>
                     </style>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkImage" id="LauncherRow3Image">
                         <property name="icon-size">2</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkLabel">
+                      <object class="GtkLabel" id="LauncherRow3Label">
                         <property name="xalign">0</property>
                         <property name="valign">3</property>
                         <property name="ellipsize">3</property>
@@ -649,12 +649,12 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                       <class name="widget-launcher-row"/>
                     </style>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkImage" id="LauncherRow4Image">
                         <property name="icon-size">2</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkLabel">
+                      <object class="GtkLabel" id="LauncherRow4Label">
                         <property name="xalign">0</property>
                         <property name="valign">3</property>
                         <property name="ellipsize">3</property>
@@ -668,12 +668,12 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                       <class name="widget-launcher-row"/>
                     </style>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkImage" id="LauncherRow5Image">
                         <property name="icon-size">2</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkLabel">
+                      <object class="GtkLabel" id="LauncherRow5Label">
                         <property name="xalign">0</property>
                         <property name="valign">3</property>
                         <property name="ellipsize">3</property>

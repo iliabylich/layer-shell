@@ -1,14 +1,12 @@
+use crate::{globals::load_widget, models::OutputSound};
 use gtk4::{
     prelude::{AdjustmentExt, RangeExt},
     Image, Scale,
 };
 
-use crate::{globals::load_widget, models::OutputSound, utils::TypedChildren};
-
 pub(crate) fn init() {
-    let widget = load_widget::<gtk4::Box>("SoundWidget");
-    let icon = widget.first_child_as::<Image>();
-    let scale = widget.last_child_as::<Scale>();
+    let icon = load_widget::<Image>("SoundWidgetImage");
+    let scale = load_widget::<Scale>("SoundWidgetScale");
 
     OutputSound::subscribe(|volume| {
         scale.set_value(volume);

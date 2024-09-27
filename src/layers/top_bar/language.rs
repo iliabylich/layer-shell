@@ -1,10 +1,8 @@
-use gtk4::{CenterBox, Label};
-
-use crate::{globals::load_widget, models::HyprlandLanguage, utils::TypedChildren};
+use crate::{globals::load_widget, models::HyprlandLanguage};
+use gtk4::Label;
 
 pub(crate) fn init() {
-    let widget = load_widget::<CenterBox>("LanguageWidget");
-    let [label] = widget.children_as::<1, Label>();
+    let label = load_widget::<Label>("LanguageWidgetLabel");
 
     HyprlandLanguage::subscribe(move |lang| {
         label.set_label(map_language(&lang));

@@ -12,16 +12,16 @@ Window TopBar {
             Box WorkspacesWidget {
                 styles ["widget", "workspaces"]
 
-                Button { Label { label: "1";  } }
-                Button { Label { label: "2";  } }
-                Button { Label { label: "3";  } }
-                Button { Label { label: "4";  } }
-                Button { Label { label: "5";  } }
-                Button { Label { label: "6";  } }
-                Button { Label { label: "7";  } }
-                Button { Label { label: "8";  } }
-                Button { Label { label: "9";  } }
-                Button { Label { label: "10"; } }
+                Button WorkspacesWidgetButton1  { Label { label: "1";  } }
+                Button WorkspacesWidgetButton2  { Label { label: "2";  } }
+                Button WorkspacesWidgetButton3  { Label { label: "3";  } }
+                Button WorkspacesWidgetButton4  { Label { label: "4";  } }
+                Button WorkspacesWidgetButton5  { Label { label: "5";  } }
+                Button WorkspacesWidgetButton6  { Label { label: "6";  } }
+                Button WorkspacesWidgetButton7  { Label { label: "7";  } }
+                Button WorkspacesWidgetButton8  { Label { label: "8";  } }
+                Button WorkspacesWidgetButton9  { Label { label: "9";  } }
+                Button WorkspacesWidgetButton10 { Label { label: "10"; } }
             }
         }
 
@@ -40,14 +40,14 @@ Window TopBar {
             Button WeatherWidget {
                 styles ["widget", "weather", "padded", "clickable"]
 
-                Label {}
+                Label WeatherWidgetLabel {}
             }
 
             CenterBox LanguageWidget {
                 styles ["widget", "language", "padded"]
 
                 [center]
-                Label {}
+                Label LanguageWidgetLabel {}
             }
 
             Box SoundWidget {
@@ -55,11 +55,11 @@ Window TopBar {
                 spacing: 10;
                 orientation: horizontal;
 
-                Image {
+                Image SoundWidgetImage {
                     icon-name: "dialog-question";
                 }
 
-                Scale {
+                Scale SoundWidgetScale {
                     styles ["sound-slider"]
                     adjustment: Adjustment {
                         lower: 0;
@@ -73,38 +73,38 @@ Window TopBar {
                 spacing: 3;
                 orientation: horizontal;
 
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
-                Label { use-markup: true; }
+                Label CPUWidgetLabel1  { use-markup: true; }
+                Label CPUWidgetLabel2  { use-markup: true; }
+                Label CPUWidgetLabel3  { use-markup: true; }
+                Label CPUWidgetLabel4  { use-markup: true; }
+                Label CPUWidgetLabel5  { use-markup: true; }
+                Label CPUWidgetLabel6  { use-markup: true; }
+                Label CPUWidgetLabel7  { use-markup: true; }
+                Label CPUWidgetLabel8  { use-markup: true; }
+                Label CPUWidgetLabel9  { use-markup: true; }
+                Label CPUWidgetLabel10 { use-markup: true; }
+                Label CPUWidgetLabel11 { use-markup: true; }
+                Label CPUWidgetLabel12 { use-markup: true; }
             }
 
             Button RAMWidget {
                 styles ["widget", "memory", "padded", "clickable"]
 
-                Label {}
+                Label RAMWidgetLabel {}
             }
 
             Button NetworkWidget {
                 styles ["widget", "network", "padded", "clickable"]
                 cursor: Gdk.Cursor { name: "pointer"; };
 
-                Label {}
+                Label NetworkWidgetLabel {}
             }
 
             CenterBox ClockWidget {
                 styles ["widget", "clock", "padded"]
 
                 [center]
-                Label {}
+                Label ClockWidgetLabel {}
             }
 
             Button PowerWidget {
@@ -129,22 +129,22 @@ Window LogoutScreen {
         homogeneous: true;
         spacing: 200;
 
-        Button LockButton {
+        Button LogoutScreenLockButton {
             styles ["widget-logout-button"]
             Label { label: "Lock"; }
         }
 
-        Button RebootButton {
+        Button LogoutScreenRebootButton {
             styles ["widget-logout-button"]
             Label { label: "Reboot"; }
         }
 
-        Button ShutdownButton {
+        Button LogoutScreenShutdownButton {
             styles ["widget-logout-button"]
             Label { label: "Shutdown"; }
         }
 
-        Button LogoutButton {
+        Button LogoutScreenLogoutButton {
             styles ["widget-logout-button"]
             Label { label: "Logout"; }
         }
@@ -319,11 +319,11 @@ Window Launcher {
                 Box LauncherRow1 {
                     styles ["widget-launcher-row"]
 
-                    Image {
+                    Image LauncherRow1Image {
                         icon-size: large;
                     }
 
-                    Label {
+                    Label LauncherRow1Label {
                         xalign: 0;
                         valign: center;
                         ellipsize: end;
@@ -333,11 +333,11 @@ Window Launcher {
                 Box LauncherRow2 {
                     styles ["widget-launcher-row"]
 
-                    Image {
+                    Image LauncherRow2Image {
                         icon-size: large;
                     }
 
-                    Label {
+                    Label LauncherRow2Label {
                         xalign: 0;
                         valign: center;
                         ellipsize: end;
@@ -347,11 +347,11 @@ Window Launcher {
                 Box LauncherRow3 {
                     styles ["widget-launcher-row"]
 
-                    Image {
+                    Image LauncherRow3Image {
                         icon-size: large;
                     }
 
-                    Label {
+                    Label LauncherRow3Label {
                         xalign: 0;
                         valign: center;
                         ellipsize: end;
@@ -361,11 +361,11 @@ Window Launcher {
                 Box LauncherRow4 {
                     styles ["widget-launcher-row"]
 
-                    Image {
+                    Image LauncherRow4Image {
                         icon-size: large;
                     }
 
-                    Label {
+                    Label LauncherRow4Label {
                         xalign: 0;
                         valign: center;
                         ellipsize: end;
@@ -375,11 +375,11 @@ Window Launcher {
                 Box LauncherRow5 {
                     styles ["widget-launcher-row"]
 
-                    Image {
+                    Image LauncherRow5Image {
                         icon-size: large;
                     }
 
-                    Label {
+                    Label LauncherRow5Label {
                         xalign: 0;
                         valign: center;
                         ellipsize: end;

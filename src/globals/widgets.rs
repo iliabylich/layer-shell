@@ -41,8 +41,3 @@ pub(crate) fn load_widget<T: IsA<Object>>(name: &str) -> &'static T {
         .dynamic_cast_ref()
         .expect("failed to cast")
 }
-
-pub(crate) fn globalize_widget<T: IsA<Object>>(w: &Widget) -> &'static T {
-    let id = w.buildable_id().expect("failed to get buildable_id");
-    load_widget(id.as_str())
-}

@@ -1,15 +1,9 @@
+use crate::{globals::load_widget, layers::Weather, models::WeatherApi, utils::LayerWindow};
 use gtk4::{prelude::ButtonExt, Button, Label};
-
-use crate::{
-    globals::load_widget,
-    layers::Weather,
-    models::WeatherApi,
-    utils::{LayerWindow, TypedChildren},
-};
 
 pub(crate) fn init() {
     let button = load_widget::<Button>("WeatherWidget");
-    let [label] = button.children_as::<1, Label>();
+    let label = load_widget::<Label>("WeatherWidgetLabel");
 
     button.connect_clicked(|_| {
         Weather::toggle();

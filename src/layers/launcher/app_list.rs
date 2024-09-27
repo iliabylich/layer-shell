@@ -1,9 +1,4 @@
-use crate::{
-    globals::load_widget,
-    layers::Launcher,
-    models::AppList,
-    utils::{LayerWindow, TypedChildren},
-};
+use crate::{globals::load_widget, layers::Launcher, models::AppList, utils::LayerWindow};
 use gtk4::{
     prelude::{EditableExt, WidgetExt},
     Image, Label, SearchEntry,
@@ -20,9 +15,26 @@ pub(crate) fn init() -> Output {
         load_widget::<gtk4::Box>("LauncherRow4"),
         load_widget::<gtk4::Box>("LauncherRow5"),
     ];
+    let images = [
+        load_widget::<Image>("LauncherRow1Image"),
+        load_widget::<Image>("LauncherRow2Image"),
+        load_widget::<Image>("LauncherRow3Image"),
+        load_widget::<Image>("LauncherRow4Image"),
+        load_widget::<Image>("LauncherRow5Image"),
+    ];
+    let labels = [
+        load_widget::<Label>("LauncherRow1Label"),
+        load_widget::<Label>("LauncherRow2Label"),
+        load_widget::<Label>("LauncherRow3Label"),
+        load_widget::<Label>("LauncherRow4Label"),
+        load_widget::<Label>("LauncherRow5Label"),
+    ];
 
     AppList::subscribe(move |apps| {
-        for (idx, row) in rows.iter().enumerate() {
+        for idx in 0..5 {
+            let row = rows[idx];
+            let image = images[idx];
+            let label = labels[idx];
             if let Some(app) = apps.get(idx) {
                 row.set_visible(true);
                 if app.selected {
@@ -30,8 +42,6 @@ pub(crate) fn init() -> Output {
                 } else {
                     row.remove_css_class("active");
                 }
-                let image = row.first_child_as::<Image>();
-                let label = row.last_child_as::<Label>();
 
                 if let Some(icon) = app.icon() {
                     image.set_from_gicon(&icon);
