@@ -1,12 +1,15 @@
+use crate::{
+    globals::load_widget,
+    models::{Time, TimeData},
+};
 use gtk4::{prelude::WidgetExt, Label};
 
-use crate::{globals::load_widget, models::Time};
+pub(crate) fn init() {
+    fn on_change(data: TimeData) {
+        let label = load_widget::<Label>("ClockWidgetLabel");
+        label.set_label(&data.label);
+        label.set_tooltip_text(Some(&data.tooltip));
+    }
 
-pub(crate) fn init(format: &'static str, tooltip_format: &'static str) {
-    let label = load_widget::<Label>("ClockWidgetLabel");
-
-    Time::subscribe(|now| {
-        label.set_label(&now.format(format).to_string());
-        label.set_tooltip_text(Some(&now.format(tooltip_format).to_string()));
-    });
+    Time::subscribe(on_change);
 }

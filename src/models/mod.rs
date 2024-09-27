@@ -8,7 +8,7 @@ mod memory;
 pub(crate) use memory::{Memory, MemoryData};
 
 mod time;
-pub(crate) use time::Time;
+pub(crate) use time::{Time, TimeData};
 
 mod output_sound;
 pub(crate) use output_sound::OutputSound;
@@ -33,7 +33,7 @@ pub(crate) fn spawn_all() {
             .unwrap();
 
         rt.block_on(async {
-            tokio::join!(Memory::spawn(), CPU::spawn());
+            tokio::join!(Memory::spawn(), CPU::spawn(), Time::spawn());
         });
     });
 }

@@ -37,7 +37,7 @@ impl TopBar {
         cpu::init();
         ram::init();
         network::init();
-        clock::init("%H:%M:%S", "%Y %B %e\n%A");
+        clock::init();
         power::init();
         weather::init();
 
