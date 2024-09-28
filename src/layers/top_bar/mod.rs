@@ -30,7 +30,7 @@ impl TopBar {
     pub(crate) fn activate(app: &Application) {
         let window = Self::layer_window(app);
 
-        workspaces::init(5);
+        workspaces::init();
         htop::init();
         language::init();
         sound::init();

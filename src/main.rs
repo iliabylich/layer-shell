@@ -17,7 +17,7 @@ use crate::{
     globals::GlobalWidgets,
     layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
     models::{NetworkList, OutputSound, WeatherApi},
-    utils::{load_css, parse_args, HyprlandClient, IPC},
+    utils::{load_css, parse_args, IPC},
 };
 
 const APP_ID: &str = "com.me.LayerShell";
@@ -28,7 +28,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     crate::models::spawn_all();
 
-    HyprlandClient::spawn();
     WeatherApi::spawn();
     OutputSound::spawn();
 
