@@ -21,6 +21,7 @@ pub(crate) enum Event {
         lang: String,
     },
     AppList(Vec<App>),
+    Volume(f64),
 }
 
 #[derive(Debug, Clone)]

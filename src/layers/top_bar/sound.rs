@@ -1,26 +1,34 @@
-use crate::{globals::load_widget, models::OutputSound};
+use crate::{
+    globals::load_widget,
+    models::{publish, subscribe, Command, Event},
+};
 use gtk4::{
     prelude::{AdjustmentExt, RangeExt},
     Image, Scale,
 };
 
 pub(crate) fn init() {
-    let icon = load_widget::<Image>("SoundWidgetImage");
+    subscribe(on_event);
+
     let scale = load_widget::<Scale>("SoundWidgetScale");
-
-    OutputSound::subscribe(|volume| {
-        scale.set_value(volume);
-        icon.set_icon_name(Some(volume_to_icon(volume)));
-    });
-
     scale.connect_change_value(|_, _, _| {
         let mut volume = scale.adjustment().value();
         if volume > 1.0 {
             volume = 1.0
         }
-        OutputSound::set_volume(volume);
+        publish(Command::SetVolume(volume));
         gtk4::glib::Propagation::Proceed
     });
+}
+
+fn on_event(event: &Event) {
+    if let Event::Volume(volume) = event {
+        let icon = load_widget::<Image>("SoundWidgetImage");
+        let scale = load_widget::<Scale>("SoundWidgetScale");
+
+        scale.set_value(*volume);
+        icon.set_icon_name(Some(volume_to_icon(*volume)));
+    }
 }
 
 fn volume_to_icon(volume: f64) -> &'static str {

@@ -1,4 +1,4 @@
-use crate::models::app_list;
+use crate::models::{app_list, output_sound};
 use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug)]
@@ -10,6 +10,8 @@ pub(crate) enum Command {
     LauncherGoDown,
     LauncherSetSearch(String),
     LauncherExecSelected,
+
+    SetVolume(f64),
 }
 
 pub(crate) async fn start_processing(mut rx: Receiver<Command>) {
@@ -36,6 +38,8 @@ impl Command {
 
             LauncherReset | LauncherGoUp | LauncherGoDown | LauncherSetSearch(_)
             | LauncherExecSelected => app_list::on_command(self).await,
+
+            SetVolume(_) => output_sound::on_command(self).await,
         }
     }
 }

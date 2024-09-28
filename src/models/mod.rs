@@ -2,10 +2,8 @@ mod app_list;
 mod cpu;
 mod hyprland;
 mod memory;
-mod time;
-
 mod output_sound;
-pub(crate) use output_sound::OutputSound;
+mod time;
 
 mod logout;
 pub(crate) use logout::Logout;
@@ -53,15 +51,14 @@ pub(crate) fn spawn_all() {
                 time::spawn(etx.clone()),
                 hyprland::spawn(etx.clone()),
                 app_list::spawn(etx.clone()),
+                output_sound::spawn(etx.clone()),
             );
         });
     });
 
     gtk4::glib::spawn_future_local(async move {
         while let Some(event) = erx.recv().await {
-            for f in subscriptions::all().iter() {
-                (f)(&event);
-            }
+            fire_event_on_current_thread(&event);
         }
     });
 }
@@ -76,4 +73,12 @@ pub(crate) fn publish(c: Command) {
 
 pub(crate) fn init() {
     subscriptions::init();
+}
+
+fn fire_event_on_current_thread(event: &Event) {
+    log::info!("Received event {:?}", event);
+
+    for f in subscriptions::all().iter() {
+        (f)(event);
+    }
 }

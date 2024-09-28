@@ -1,7 +1,25 @@
-use crate::{ffi::gvc, utils::singleton};
+use tokio::sync::mpsc::Sender;
 
-pub(crate) struct OutputSound {
-    handlers: Vec<Box<dyn Fn(f64)>>,
+use super::fire_event_on_current_thread;
+use crate::{
+    ffi::gvc,
+    models::{Command, Event},
+    utils::singleton,
+};
+
+pub(crate) async fn spawn(_tx: Sender<Event>) {
+    let control = gvc::MixerControl::new();
+
+    OutputSound::set(OutputSound {
+        control,
+        subscription: None,
+    });
+
+    control.connect_default_sink_changed(on_output_changed);
+    control.open();
+}
+
+struct OutputSound {
     control: gvc::MixerControl,
     subscription: Option<Subscription>,
 }
@@ -25,9 +43,10 @@ unsafe extern "C" fn on_output_changed(control: gvc::MixerControl, id: std::ffi:
 }
 
 unsafe extern "C" fn on_volume_changed() {
-    for f in OutputSound::get().handlers.iter() {
-        f(current_volume())
-    }
+    // GVC is based on glib which calls all GObject callbacks
+    // on the main UI thread. Yes, here we are in UI thread,
+    // so it's safe to directly fire an event here.
+    fire_event_on_current_thread(&Event::Volume(current_volume()));
 }
 
 unsafe fn current_volume() -> f64 {
@@ -40,32 +59,12 @@ unsafe fn current_volume() -> f64 {
     0.0
 }
 
-impl OutputSound {
-    pub(crate) fn spawn() {
-        let control = gvc::MixerControl::new();
-
-        Self::set(Self {
-            control,
-            handlers: vec![],
-            subscription: None,
-        });
-
-        control.connect_default_sink_changed(on_output_changed);
-        control.open();
-    }
-
-    pub(crate) fn subscribe<F>(f: F)
-    where
-        F: Fn(f64) + 'static,
-    {
-        this().handlers.push(Box::new(f));
-    }
-
-    pub(crate) fn set_volume(value: f64) {
+pub(crate) async fn on_command(command: &Command) {
+    if let Command::SetVolume(volume) = command {
         let control = OutputSound::get().control;
         let max = control.get_vol_max_norm();
         if let Some(Subscription { stream, .. }) = OutputSound::get().subscription {
-            stream.set_volume((value * max) as u32);
+            stream.set_volume((volume * max) as u32);
             stream.push_volume();
         }
     }
