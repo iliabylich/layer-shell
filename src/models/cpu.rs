@@ -3,31 +3,28 @@ use anyhow::{Context, Result};
 use tokio::{fs::File, io::AsyncReadExt, sync::mpsc::Sender};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
+    if let Err(err) = try_spawn(tx).await {
+        eprintln!("CPU model error:\n{}\n{}", err, err.backtrace());
+        return;
+    }
+}
+
+async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     let mut previous: Option<Vec<CpuCoreInfo>> = None;
 
     loop {
-        match parse(&mut previous).await {
-            Ok(data) => {
-                tx.send(Event::Cpu {
-                    usage_per_core: data.cores,
-                })
-                .await
-                .unwrap();
-            }
-            Err(err) => {
-                eprintln!("failed to read system CPU usage:\n{}", err)
-            }
-        }
+        let usage_per_core = parse(&mut previous)
+            .await
+            .context("failed to get CPU data")?;
+        tx.send(Event::Cpu { usage_per_core })
+            .await
+            .context("failed to send event")?;
+
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
 
-#[derive(Clone, Debug)]
-struct CPUData {
-    pub(crate) cores: Vec<usize>,
-}
-
-async fn parse(previous: &mut Option<Vec<CpuCoreInfo>>) -> Result<CPUData> {
+async fn parse(previous: &mut Option<Vec<CpuCoreInfo>>) -> Result<Vec<usize>> {
     let current = parse_current().await?;
     let count = current.len();
 
@@ -42,12 +39,10 @@ async fn parse(previous: &mut Option<Vec<CpuCoreInfo>>) -> Result<CPUData> {
 
         *previous = Some(current);
 
-        Ok(CPUData { cores: usage })
+        Ok(usage)
     } else {
         *previous = Some(current);
-        Ok(CPUData {
-            cores: vec![0; count],
-        })
+        Ok(vec![0; count])
     }
 }
 

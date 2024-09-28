@@ -1,4 +1,5 @@
 use crate::models::Event;
+use anyhow::{bail, Context, Result};
 use std::collections::HashSet;
 use tokio::{
     io::{AsyncBufReadExt, BufReader, Lines},
@@ -7,19 +8,28 @@ use tokio::{
 };
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
-    let mut lines = match connect_to_hyprland().await {
-        Some(lines) => lines,
-        None => {
-            eprintln!("Failed to connect to Hyprland");
-            return;
-        }
-    };
+    if let Err(err) = try_spawn(tx).await {
+        eprintln!("Hyprland model error:\n{}\n{}", err, err.backtrace());
+        return;
+    }
+}
 
-    let mut workspaces = Workspaces::new().await;
-    tx.send(Event::from(&workspaces)).await.unwrap();
+async fn try_spawn(tx: Sender<Event>) -> Result<()> {
+    let mut lines = connect_to_hyprland().await?;
 
-    let lang = get_language().await;
-    tx.send(Event::Language { lang }).await.unwrap();
+    let mut workspaces = Workspaces::new()
+        .await
+        .context("failed to get initial workspaces")?;
+    tx.send(Event::from(&workspaces))
+        .await
+        .context("failed to send event")?;
+
+    let lang = get_language()
+        .await
+        .context("failed to get initial language")?;
+    tx.send(Event::Language { lang })
+        .await
+        .context("failed to send event")?;
 
     while let Ok(Some(line)) = lines.next_line().await {
         if let Ok(hyprland_event) = HyprlandEvent::try_from(line) {
@@ -28,34 +38,37 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
                 | HyprlandEvent::DestroyWorkspace(_)
                 | HyprlandEvent::Workspace(_) => {
                     workspaces.apply(hyprland_event);
-                    tx.send(Event::from(&workspaces)).await.unwrap();
+                    tx.send(Event::from(&workspaces))
+                        .await
+                        .context("failed to send event")?;
                 }
                 HyprlandEvent::LanguageChanged(lang) => {
-                    tx.send(Event::Language { lang }).await.unwrap();
+                    tx.send(Event::Language { lang })
+                        .await
+                        .context("failed to send event")?;
                 }
+                HyprlandEvent::Other => {}
             }
         }
     }
+
+    Ok(())
 }
 
-async fn connect_to_hyprland() -> Option<Lines<BufReader<UnixStream>>> {
+async fn connect_to_hyprland() -> Result<Lines<BufReader<UnixStream>>> {
     let socket_path = format!(
         "{}/hypr/{}/.socket2.sock",
-        std::env::var("XDG_RUNTIME_DIR").expect("no XDG_RUNTIME_DIR variable"),
+        std::env::var("XDG_RUNTIME_DIR").context("no XDG_RUNTIME_DIR variable")?,
         std::env::var("HYPRLAND_INSTANCE_SIGNATURE")
-            .expect("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?"),
+            .context("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?")?,
     );
 
-    let socket = match UnixStream::connect(&socket_path).await {
-        Ok(socket) => socket,
-        Err(err) => {
-            eprintln!("Failed to connect to Hyprland socket: {}", err);
-            return None;
-        }
-    };
+    let socket = UnixStream::connect(&socket_path)
+        .await
+        .context("failed to open unix socket")?;
     let buffered = BufReader::new(socket);
     let lines = buffered.lines();
-    Some(lines)
+    Ok(lines)
 }
 
 #[derive(Clone, Debug)]
@@ -64,19 +77,19 @@ pub(crate) enum HyprlandEvent {
     DestroyWorkspace(usize),
     Workspace(usize),
     LanguageChanged(String),
+    Other,
 }
 
 impl TryFrom<String> for HyprlandEvent {
-    type Error = ();
+    type Error = anyhow::Error;
 
-    fn try_from(line: String) -> Result<Self, Self::Error> {
-        let (event, payload) = line.split_once(">>").ok_or(())?;
+    fn try_from(line: String) -> Result<Self> {
+        let (event, payload) = line.split_once(">>").context("expected >> separator")?;
 
         let payload_as_usize = || {
             payload
                 .parse::<usize>()
-                .map_err(|_| ())
-                .inspect_err(|_| eprintln!("non integer payload of event {event}: {payload}"))
+                .with_context(|| format!("non integer payload of event {event}: {payload}"))
         };
 
         match event {
@@ -86,11 +99,10 @@ impl TryFrom<String> for HyprlandEvent {
             "activelayout" => match payload.split(",").last() {
                 Some(lang) => Ok(Self::LanguageChanged(lang.to_string())),
                 None => {
-                    eprintln!("unexpected payload of activelayout: {payload}");
-                    Err(())
+                    bail!("unexpected payload of activelayout: {payload}")
                 }
             },
-            _ => Err(()),
+            _ => Ok(Self::Other),
         }
     }
 }
@@ -100,21 +112,23 @@ struct Workspaces {
     active_id: usize,
 }
 impl Workspaces {
-    async fn new() -> Self {
+    async fn new() -> Result<Self> {
         #[derive(serde::Deserialize)]
         pub(crate) struct Workspace {
             pub(crate) id: usize,
         }
-        let stdout = exec_hyprctl("workspaces").await;
-        let workspaces: Vec<Workspace> = serde_json::from_str(&stdout).unwrap();
+        let stdout = exec_hyprctl("workspaces").await?;
+        let workspaces: Vec<Workspace> =
+            serde_json::from_str(&stdout).context("invalid response from hyprctl workspaces -j")?;
 
-        let stdout = exec_hyprctl("activeworkspace").await;
-        let active_workspace: Workspace = serde_json::from_str(&stdout).unwrap();
+        let stdout = exec_hyprctl("activeworkspace").await?;
+        let active_workspace: Workspace = serde_json::from_str(&stdout)
+            .context("invalid response from hyprctl activeworkspace -j")?;
 
-        Self {
+        Ok(Self {
             workspace_ids: HashSet::from_iter(workspaces.into_iter().map(|w| w.id)),
             active_id: active_workspace.id,
-        }
+        })
     }
 
     fn apply(&mut self, event: HyprlandEvent) {
@@ -141,7 +155,7 @@ impl From<&Workspaces> for Event {
     }
 }
 
-async fn get_language() -> String {
+async fn get_language() -> Result<String> {
     #[derive(serde::Deserialize)]
     pub(crate) struct Devices {
         pub(crate) keyboards: Vec<Keyboard>,
@@ -152,25 +166,26 @@ async fn get_language() -> String {
         pub(crate) active_keymap: String,
     }
 
-    let stdout = exec_hyprctl("devices").await;
-    let devices: Devices = serde_json::from_str(&stdout).unwrap();
+    let stdout = exec_hyprctl("devices").await?;
+    let devices: Devices =
+        serde_json::from_str(&stdout).context("invalid response from hyprctl devices -j")?;
 
     let main_keyboard = devices
         .keyboards
         .into_iter()
         .find(|keyboard| keyboard.main)
-        .unwrap();
+        .context("expected at least one hyprland device")?;
 
-    main_keyboard.active_keymap
+    Ok(main_keyboard.active_keymap)
 }
 
-async fn exec_hyprctl(command: &str) -> String {
+async fn exec_hyprctl(command: &str) -> Result<String> {
     let stdout = tokio::process::Command::new("hyprctl")
         .args([command, "-j"])
         .output()
         .await
-        .unwrap()
+        .with_context(|| format!("failed to spawn hyprctl {command} -j"))?
         .stdout;
     String::from_utf8(stdout)
-        .unwrap_or_else(|_| panic!("hyprctl {command} -j returned non-utf-8 stdout"))
+        .with_context(|| format!("hyprctl {command} -j returned non-utf-8 stdout"))
 }

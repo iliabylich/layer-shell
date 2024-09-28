@@ -26,10 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     parse_args()?;
     IPC::spawn()?;
 
-    crate::models::spawn_all();
-
     WeatherApi::spawn();
     OutputSound::spawn();
+    models::init();
 
     let app = Application::builder().application_id(APP_ID).build();
 
@@ -43,6 +42,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Networks::activate(app);
         Htop::activate(app);
         Weather::activate(app);
+
+        models::spawn_all();
     });
 
     app.connect_startup(|_app| {

@@ -25,20 +25,19 @@ pub(crate) use event::Event;
 mod command;
 pub(crate) use command::Command;
 
-struct Model {
-    subscriptions: Vec<fn(&Event)>,
-    commander: Sender<Command>,
-}
-crate::utils::singleton!(Model);
+mod subscriptions;
+pub(crate) use subscriptions::subscribe;
+
+use crate::utils::singleton;
+
+struct Commander(Sender<Command>);
+singleton!(Commander);
 
 pub(crate) fn spawn_all() {
     let (etx, mut erx) = tokio::sync::mpsc::channel::<Event>(100);
     let (ctx, crx) = tokio::sync::mpsc::channel::<Command>(100);
 
-    Model::set(Model {
-        subscriptions: vec![],
-        commander: ctx,
-    });
+    Commander::set(Commander(ctx));
 
     std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -60,19 +59,19 @@ pub(crate) fn spawn_all() {
 
     gtk4::glib::spawn_future_local(async move {
         while let Some(event) = erx.recv().await {
-            for f in Model::get().subscriptions.iter() {
+            for f in subscriptions::all().iter() {
                 (f)(&event);
             }
         }
     });
 }
 
-pub(crate) fn subscribe(f: fn(&Event)) {
-    Model::get().subscriptions.push(f);
-}
-
 pub(crate) fn publish(c: Command) {
     gtk4::glib::spawn_future_local(async move {
-        Model::get().commander.send(c).await.unwrap();
+        Commander::get().0.send(c).await.unwrap();
     });
+}
+
+pub(crate) fn init() {
+    subscriptions::init();
 }

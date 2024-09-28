@@ -3,20 +3,22 @@ use anyhow::{Context, Result};
 use tokio::{fs::File, io::AsyncReadExt, sync::mpsc::Sender};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
+    if let Err(err) = try_spawn(tx).await {
+        eprintln!("Memory model error:\n{}\n{}", err, err.backtrace());
+        return;
+    }
+}
+
+async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     loop {
-        match parse().await {
-            Ok(data) => {
-                tx.send(Event::Memory {
-                    used: data.used,
-                    total: data.total,
-                })
-                .await
-                .unwrap();
-            }
-            Err(err) => {
-                eprintln!("failed to read system memory:\n{}", err)
-            }
-        }
+        let data = parse().await.context("failed to get memory info")?;
+        tx.send(Event::Memory {
+            used: data.used,
+            total: data.total,
+        })
+        .await
+        .context("failed to send event")?;
+
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
