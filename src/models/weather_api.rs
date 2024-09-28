@@ -36,7 +36,7 @@ impl WeatherApi {
                         f(Self::get_cached().unwrap());
                     }
                 }
-                Err(err) => eprintln!("{err}"),
+                Err(err) => log::error!("Failed to get weather data: {}", err),
             }
             gtk4::glib::timeout_future_seconds(60).await;
         });

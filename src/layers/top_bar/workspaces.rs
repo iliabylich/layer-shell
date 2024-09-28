@@ -18,20 +18,17 @@ pub(crate) fn init() {
 }
 
 fn on_change(event: &Event) {
-    match event {
-        Event::Workspaces { ids, active_id } => {
-            let buttons = buttons();
-            for idx in 1..=10 {
-                let button = buttons[idx - 1];
-                button.set_visible(ids.contains(&idx) || idx <= 5);
-                button.set_css_classes(if idx == *active_id {
-                    &["active"]
-                } else {
-                    &["inactive"]
-                })
-            }
+    if let Event::Workspaces { ids, active_id } = event {
+        let buttons = buttons();
+        for idx in 1..=10 {
+            let button = buttons[idx - 1];
+            button.set_visible(ids.contains(&idx) || idx <= 5);
+            button.set_css_classes(if idx == *active_id {
+                &["active"]
+            } else {
+                &["inactive"]
+            })
         }
-        _ => {}
     }
 }
 

@@ -2,7 +2,7 @@ pub(crate) fn load_css() {
     let provider = gtk4::CssProvider::new();
 
     provider.connect_parsing_error(|_, section, error| {
-        eprintln!(
+        log::error!(
             "Failed to parse CSS: {} {}",
             section.to_str(),
             error.message()

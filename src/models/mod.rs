@@ -1,3 +1,4 @@
+mod app_list;
 mod cpu;
 mod hyprland;
 mod memory;
@@ -12,15 +13,11 @@ pub(crate) use logout::Logout;
 mod network_manager;
 pub(crate) use network_manager::{NetworkList, WiFiStatus};
 
-mod app_list;
-pub(crate) use app_list::AppList;
-
 mod weather_api;
-use tokio::sync::mpsc::Sender;
 pub(crate) use weather_api::WeatherApi;
 
 mod event;
-pub(crate) use event::Event;
+pub(crate) use event::{App, AppIcon, Event};
 
 mod command;
 pub(crate) use command::Command;
@@ -30,7 +27,7 @@ pub(crate) use subscriptions::subscribe;
 
 use crate::utils::singleton;
 
-struct Commander(Sender<Command>);
+struct Commander(tokio::sync::mpsc::Sender<Command>);
 singleton!(Commander);
 
 pub(crate) fn spawn_all() {
@@ -48,11 +45,14 @@ pub(crate) fn spawn_all() {
 
         rt.block_on(async {
             tokio::join!(
+                // command processing actor
                 command::start_processing(crx),
+                // and all models
                 memory::spawn(etx.clone()),
                 cpu::spawn(etx.clone()),
                 time::spawn(etx.clone()),
                 hyprland::spawn(etx.clone()),
+                app_list::spawn(etx.clone()),
             );
         });
     });
@@ -68,7 +68,9 @@ pub(crate) fn spawn_all() {
 
 pub(crate) fn publish(c: Command) {
     gtk4::glib::spawn_future_local(async move {
-        Commander::get().0.send(c).await.unwrap();
+        if let Err(err) = Commander::get().0.send(c).await {
+            log::error!("failed to publish event: {}", err);
+        }
     });
 }
 

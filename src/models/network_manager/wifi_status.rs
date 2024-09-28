@@ -24,7 +24,7 @@ impl WiFiStatus {
                     Ok(state) => on_change(Some(state)),
                     Err(err) => {
                         on_change(None);
-                        eprintln!("WiFiStatus error: {err:?}")
+                        log::error!("WiFiStatus error: {}\n{}", err, err.backtrace());
                     }
                 }
 

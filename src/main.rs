@@ -23,6 +23,8 @@ use crate::{
 const APP_ID: &str = "com.me.LayerShell";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+
     parse_args()?;
     IPC::spawn()?;
 

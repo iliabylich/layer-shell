@@ -31,7 +31,11 @@ impl NetworkList {
                         this().list = ifaces;
                     }
                     Err(err) => {
-                        eprintln!("failed to get list of networks:\n{}", err);
+                        log::error!(
+                            "failed to get list of networks:\n{}\n{}",
+                            err,
+                            err.backtrace()
+                        );
                     }
                 }
 
@@ -60,7 +64,7 @@ impl NetworkList {
 
                 ifaces.push(Iface { name, ip });
             } else {
-                println!("Failed to get data for Device {device_id} (not connected?)");
+                log::warn!("Failed to get data for Device {device_id} (not connected?)");
             }
         }
 

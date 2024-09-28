@@ -9,8 +9,7 @@ use tokio::{
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
-        eprintln!("Hyprland model error:\n{}\n{}", err, err.backtrace());
-        return;
+        log::error!("Hyprland model error: {}\n{}", err, err.backtrace());
     }
 }
 

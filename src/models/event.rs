@@ -20,4 +20,17 @@ pub(crate) enum Event {
     Language {
         lang: String,
     },
+    AppList(Vec<App>),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct App {
+    pub(crate) name: String,
+    pub(crate) selected: bool,
+    pub(crate) icon: AppIcon,
+}
+#[derive(Debug, Clone)]
+pub(crate) enum AppIcon {
+    IconPath(String),
+    IconName(String),
 }

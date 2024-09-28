@@ -9,12 +9,9 @@ pub(crate) fn init() {
 }
 
 fn on_change(event: &Event) {
-    match event {
-        Event::Language { lang } => {
-            let label = load_widget::<Label>("LanguageWidgetLabel");
-            label.set_label(map_language(lang));
-        }
-        _ => {}
+    if let Event::Language { lang } = event {
+        let label = load_widget::<Label>("LanguageWidgetLabel");
+        label.set_label(map_language(lang));
     }
 }
 
