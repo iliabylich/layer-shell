@@ -8,8 +8,8 @@ use gtk4::{prelude::ButtonExt, Button, Label};
 pub(crate) fn init() {
     subscribe(on_change);
 
-    let widget = load_widget::<Button>("RAMWidget");
-    widget.connect_clicked(|_| {
+    let button = load_widget::<Button>("RAMWidget");
+    button.connect_clicked(|_| {
         gtk4::glib::spawn_future_local(async {
             exec_async(&["gnome-system-monitor"]).await;
         });
