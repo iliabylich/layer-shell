@@ -1,4 +1,4 @@
-use crate::models::Event;
+use crate::models::{Command, Event};
 use anyhow::{bail, Context, Result};
 use std::collections::HashSet;
 use tokio::{
@@ -187,4 +187,16 @@ async fn exec_hyprctl(command: &str) -> Result<String> {
         .stdout;
     String::from_utf8(stdout)
         .with_context(|| format!("hyprctl {command} -j returned non-utf-8 stdout"))
+}
+
+pub(crate) async fn on_command(command: &Command) {
+    if let Command::GoToWorkspace(workspace_idx) = command {
+        tokio::process::Command::new("hyprctl")
+            .args(["dispatch", "workspace", &format!("{}", workspace_idx + 1)])
+            .spawn()
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+    }
 }

@@ -3,10 +3,8 @@ mod cpu;
 mod hyprland;
 mod memory;
 mod output_sound;
+mod session;
 mod time;
-
-mod logout;
-pub(crate) use logout::Logout;
 
 mod network_manager;
 pub(crate) use network_manager::{NetworkList, WiFiStatus};
@@ -52,6 +50,7 @@ pub(crate) fn spawn_all() {
                 hyprland::spawn(etx.clone()),
                 app_list::spawn(etx.clone()),
                 output_sound::spawn(etx.clone()),
+                session::spawn(etx.clone())
             );
         });
     });

@@ -1,53 +1,64 @@
-use crate::{globals::load_widget, layers::LogoutScreen, models::Logout, utils::LayerWindow};
+use crate::{
+    globals::load_widget,
+    layers::LogoutScreen,
+    models::{publish, subscribe, Command, Event},
+    utils::LayerWindow,
+};
 use gtk4::{
     prelude::{ButtonExt, WidgetExt},
     Button,
 };
 
 pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {
-    let lock_button = load_widget::<Button>("LogoutScreenLockButton");
-    let reboot_button = load_widget::<Button>("LogoutScreenRebootButton");
-    let shutdown_button = load_widget::<Button>("LogoutScreenShutdownButton");
-    let logout_button = load_widget::<Button>("LogoutScreenLogoutButton");
-
+    let [lock_button, reboot_button, shutdown_button, logout_button] = buttons();
     lock_button.connect_clicked(|_| {
         LogoutScreen::toggle();
-        Logout::lock();
+        publish(Command::Lock);
     });
 
     reboot_button.connect_clicked(|_| {
         LogoutScreen::toggle();
-        Logout::reboot();
+        publish(Command::Reboot);
     });
 
     shutdown_button.connect_clicked(|_| {
         LogoutScreen::toggle();
-        Logout::shutdown();
+        publish(Command::Shutdown);
     });
 
     logout_button.connect_clicked(|_| {
         LogoutScreen::toggle();
-        Logout::logout();
+        publish(Command::Logout);
     });
 
-    let buttons = [lock_button, reboot_button, shutdown_button, logout_button];
+    subscribe(on_event);
 
-    Logout::subscribe(buttons.len(), move |active_idx| {
-        for (idx, button) in buttons.iter().enumerate() {
-            if idx == active_idx {
+    (
+        Box::new(|| publish(Command::SessionReset)),
+        Box::new(|key| match key {
+            "Left" => publish(Command::SessionGoLeft),
+            "Right" => publish(Command::SessionGoRight),
+            _ => {}
+        }),
+    )
+}
+
+fn on_event(event: &Event) {
+    if let Event::SessionScreen(active_idx) = event {
+        for (idx, button) in buttons().iter().enumerate() {
+            if idx == *active_idx {
                 button.add_css_class("widget-logout-button-action");
             } else {
                 button.remove_css_class("widget-logout-button-action");
             }
         }
-    });
+    }
+}
 
-    (
-        Box::new(Logout::reset),
-        Box::new(|key| match key {
-            "Left" => Logout::left(),
-            "Right" => Logout::right(),
-            _ => {}
-        }),
-    )
+fn buttons() -> [&'static Button; 4] {
+    let lock_button = load_widget::<Button>("LogoutScreenLockButton");
+    let reboot_button = load_widget::<Button>("LogoutScreenRebootButton");
+    let shutdown_button = load_widget::<Button>("LogoutScreenShutdownButton");
+    let logout_button = load_widget::<Button>("LogoutScreenLogoutButton");
+    [lock_button, reboot_button, shutdown_button, logout_button]
 }

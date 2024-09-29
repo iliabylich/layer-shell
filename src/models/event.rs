@@ -22,6 +22,7 @@ pub(crate) enum Event {
     },
     AppList(Vec<App>),
     Volume(f64),
+    SessionScreen(usize),
 }
 
 #[derive(Debug, Clone)]

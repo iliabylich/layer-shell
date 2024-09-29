@@ -1,9 +1,9 @@
-use crate::models::{app_list, output_sound};
+use crate::models::{app_list, hyprland, output_sound, session};
 use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 pub(crate) enum Command {
-    GoToWorkspace { idx: usize },
+    GoToWorkspace(usize),
 
     LauncherReset,
     LauncherGoUp,
@@ -12,6 +12,14 @@ pub(crate) enum Command {
     LauncherExecSelected,
 
     SetVolume(f64),
+
+    Lock,
+    Reboot,
+    Shutdown,
+    Logout,
+    SessionGoLeft,
+    SessionGoRight,
+    SessionReset,
 }
 
 pub(crate) async fn start_processing(mut rx: Receiver<Command>) {
@@ -26,20 +34,16 @@ impl Command {
         use Command::*;
 
         match self {
-            GoToWorkspace { idx } => {
-                tokio::process::Command::new("hyprctl")
-                    .args(["dispatch", "workspace", &format!("{}", idx + 1)])
-                    .spawn()
-                    .unwrap()
-                    .wait()
-                    .await
-                    .unwrap();
-            }
+            GoToWorkspace(_) => hyprland::on_command(self).await,
 
             LauncherReset | LauncherGoUp | LauncherGoDown | LauncherSetSearch(_)
             | LauncherExecSelected => app_list::on_command(self).await,
 
             SetVolume(_) => output_sound::on_command(self).await,
+
+            Lock | Reboot | Shutdown | Logout | SessionGoLeft | SessionGoRight | SessionReset => {
+                session::on_command(self).await
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ use gtk4::{
 pub(crate) fn init() {
     for (idx, button) in buttons().iter().enumerate() {
         button.connect_clicked(move |_| {
-            publish(Command::GoToWorkspace { idx });
+            publish(Command::GoToWorkspace(idx));
         });
     }
 
