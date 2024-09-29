@@ -1,13 +1,11 @@
-use crate::utils::{keybindings, singleton, LayerWindow};
+use crate::utils::{global, keybindings, LayerWindow};
 use gtk4::{prelude::WidgetExt, Application};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 
 mod network_list;
 
-pub(crate) struct Networks {
-    reset: Box<dyn Fn()>,
-}
-singleton!(Networks);
+pub(crate) struct Networks;
+global!(RESET, Box<dyn Fn()>);
 
 impl LayerWindow for Networks {
     const NAME: &'static str = "Networks";
@@ -16,8 +14,8 @@ impl LayerWindow for Networks {
     const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 50)];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
-    fn reset(&self) {
-        (self.reset)()
+    fn reset() {
+        (RESET::get())()
     }
 }
 
@@ -32,6 +30,6 @@ impl Networks {
             .fallback(on_key_press)
             .finish();
 
-        Self::set(Self { reset })
+        RESET::set(reset)
     }
 }

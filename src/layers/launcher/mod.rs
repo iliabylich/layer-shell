@@ -1,4 +1,4 @@
-use crate::utils::{keybindings, singleton, LayerWindow};
+use crate::utils::{global, keybindings, LayerWindow};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application,
@@ -7,10 +7,8 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 
 mod app_list;
 
-pub(crate) struct Launcher {
-    reset: Box<dyn Fn()>,
-}
-singleton!(Launcher);
+pub(crate) struct Launcher;
+global!(RESET, Box<dyn Fn()>);
 
 impl LayerWindow for Launcher {
     const NAME: &'static str = "Launcher";
@@ -19,8 +17,8 @@ impl LayerWindow for Launcher {
     const MARGINS: &'static [(Edge, i32)] = &[];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
-    fn reset(&self) {
-        (self.reset)();
+    fn reset() {
+        (RESET::get())();
     }
 }
 
@@ -38,6 +36,6 @@ impl Launcher {
         window.present();
         window.set_visible(false);
 
-        Self::set(Self { reset });
+        RESET::set(reset);
     }
 }

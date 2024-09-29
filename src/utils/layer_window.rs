@@ -4,9 +4,9 @@ use gtk4::{
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-use crate::{globals::load_widget, utils::Singleton};
+use crate::globals::load_widget;
 
-pub(crate) trait LayerWindow: Singleton + 'static {
+pub(crate) trait LayerWindow {
     const NAME: &'static str;
     const LAYER: Layer;
     const ANCHORS: &'static [Edge];
@@ -34,13 +34,12 @@ pub(crate) trait LayerWindow: Singleton + 'static {
     }
 
     fn toggle() {
-        let instance = Self::get();
         let window = load_widget::<Window>(Self::NAME);
 
         if !window.get_visible() {
-            instance.reset();
+            Self::reset();
         }
         window.set_visible(!window.get_visible())
     }
-    fn reset(&self);
+    fn reset();
 }

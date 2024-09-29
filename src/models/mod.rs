@@ -21,16 +21,15 @@ pub(crate) use command::Command;
 mod subscriptions;
 pub(crate) use subscriptions::subscribe;
 
-use crate::utils::singleton;
+use crate::utils::global;
 
-struct Commander(tokio::sync::mpsc::Sender<Command>);
-singleton!(Commander);
+global!(COMMANDER, tokio::sync::mpsc::Sender<Command>);
 
 pub(crate) fn spawn_all() {
     let (etx, mut erx) = tokio::sync::mpsc::channel::<Event>(100);
     let (ctx, crx) = tokio::sync::mpsc::channel::<Command>(100);
 
-    Commander::set(Commander(ctx));
+    COMMANDER::set(ctx);
 
     std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -64,7 +63,7 @@ pub(crate) fn spawn_all() {
 
 pub(crate) fn publish(c: Command) {
     gtk4::glib::spawn_future_local(async move {
-        if let Err(err) = Commander::get().0.send(c).await {
+        if let Err(err) = COMMANDER::get().send(c).await {
             log::error!("failed to publish event: {}", err);
         }
     });

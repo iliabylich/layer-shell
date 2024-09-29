@@ -1,12 +1,10 @@
-use crate::utils::{keybindings, singleton, LayerWindow};
+use crate::utils::{global, keybindings, LayerWindow};
 use gtk4::{gio::Cancellable, prelude::GtkWindowExt, Application};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 use vte4::TerminalExtManual;
 
-pub(crate) struct Htop {
-    reset: Box<dyn Fn()>,
-}
-singleton!(Htop);
+pub(crate) struct Htop;
+global!(RESET, Box<dyn Fn()>);
 
 impl LayerWindow for Htop {
     const NAME: &'static str = "Htop";
@@ -15,8 +13,8 @@ impl LayerWindow for Htop {
     const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 50), (Edge::Right, 600)];
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
-    fn reset(&self) {
-        (self.reset)()
+    fn reset() {
+        (RESET::get())()
     }
 }
 
@@ -49,6 +47,6 @@ impl Htop {
 
         let reset = Box::new(|| {});
 
-        Self::set(Self { reset })
+        RESET::set(reset)
     }
 }

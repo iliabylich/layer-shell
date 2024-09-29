@@ -1,4 +1,4 @@
-use crate::utils::singleton;
+use crate::utils::global;
 use anyhow::{Context, Result};
 use gtk4::{
     gio::{DBusCallFlags, DBusConnection},
@@ -15,20 +15,18 @@ pub(crate) struct Iface {
     pub(crate) ip: String,
 }
 #[derive(Debug)]
-pub(crate) struct NetworkList {
-    list: Vec<Iface>,
-}
-singleton!(NetworkList);
+pub(crate) struct NetworkList;
+global!(NETWORK_LIST, Vec<Iface>);
 
 impl NetworkList {
     pub(crate) fn spawn() {
-        Self::set(Self { list: vec![] });
+        NETWORK_LIST::set(vec![]);
 
         gtk4::glib::spawn_future_local(async {
             loop {
                 match Self::get_state().await {
                     Ok(ifaces) => {
-                        this().list = ifaces;
+                        NETWORK_LIST::set(ifaces);
                     }
                     Err(err) => {
                         log::error!(
@@ -45,7 +43,7 @@ impl NetworkList {
     }
 
     pub(crate) fn get_current() -> &'static [Iface] {
-        &this().list
+        NETWORK_LIST::get()
     }
 
     async fn get_state() -> Result<Vec<Iface>> {

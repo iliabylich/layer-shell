@@ -2,28 +2,28 @@ use chrono::{NaiveDate, NaiveDateTime};
 use gtk4::glib::Priority;
 use soup::{prelude::SessionExt, Message, Session};
 
-use crate::utils::singleton;
+use crate::utils::global;
 
 pub(crate) struct WeatherApi {
     callbacks: Vec<Box<dyn Fn(&'static Weather) + 'static>>,
     weather: Option<Weather>,
 }
-singleton!(WeatherApi);
+global!(WEATHER_API, WeatherApi);
 
 impl WeatherApi {
     pub(crate) fn subscribe<F>(f: F)
     where
         F: Fn(&'static Weather) + 'static,
     {
-        this().callbacks.push(Box::new(f));
+        WEATHER_API::get().callbacks.push(Box::new(f));
     }
 
     pub(crate) fn get_cached() -> Option<&'static Weather> {
-        this().weather.as_ref()
+        WEATHER_API::get().weather.as_ref()
     }
 
     pub(crate) fn spawn() {
-        Self::set(Self {
+        WEATHER_API::set(Self {
             callbacks: vec![],
             weather: None,
         });
@@ -31,8 +31,8 @@ impl WeatherApi {
         gtk4::glib::spawn_future_local(async move {
             match Self::get_weather_from_api().await {
                 Ok(weather) => {
-                    this().weather = Some(weather);
-                    for f in this().callbacks.iter() {
+                    WEATHER_API::get().weather = Some(weather);
+                    for f in WEATHER_API::get().callbacks.iter() {
                         f(Self::get_cached().unwrap());
                     }
                 }

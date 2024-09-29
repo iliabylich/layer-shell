@@ -16,5 +16,5 @@ pub(crate) use ipc::{IPCMessage, IPC};
 mod args;
 pub(crate) use args::parse_args;
 
-mod singleton;
-pub(crate) use singleton::{singleton, Singleton};
+mod global;
+pub(crate) use global::global;

@@ -6,12 +6,10 @@ use gtk4::{
     Builder, Widget,
 };
 
-use crate::utils::singleton;
+use crate::utils::global;
 
-pub(crate) struct GlobalWidgets {
-    map: HashMap<String, Widget>,
-}
-singleton!(GlobalWidgets);
+pub(crate) struct GlobalWidgets;
+global!(MAP, HashMap<String, Widget>);
 
 impl GlobalWidgets {
     pub(crate) fn init() {
@@ -29,13 +27,12 @@ impl GlobalWidgets {
             }
         }
 
-        Self::set(Self { map });
+        MAP::set(map);
     }
 }
 
 pub(crate) fn load_widget<T: IsA<Object>>(name: &str) -> &'static T {
-    GlobalWidgets::get()
-        .map
+    MAP::get()
         .get(name)
         .unwrap_or_else(|| panic!("Can't find widget {name}"))
         .dynamic_cast_ref()

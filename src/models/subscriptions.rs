@@ -1,16 +1,15 @@
-use crate::{models::Event, utils::singleton};
+use crate::{models::Event, utils::global};
 
-struct Subscriptions(Vec<fn(&Event)>);
-singleton!(Subscriptions);
+global!(SUBSCRIPTIONS, Vec<fn(&Event)>);
 
 pub(crate) fn subscribe(f: fn(&Event)) {
-    Subscriptions::get().0.push(f);
+    SUBSCRIPTIONS::get().push(f);
 }
 
 pub(crate) fn all() -> &'static mut Vec<fn(&Event)> {
-    &mut Subscriptions::get().0
+    SUBSCRIPTIONS::get()
 }
 
 pub(crate) fn init() {
-    Subscriptions::set(Subscriptions(vec![]))
+    SUBSCRIPTIONS::set(vec![])
 }

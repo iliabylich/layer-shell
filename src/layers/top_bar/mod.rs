@@ -1,4 +1,4 @@
-use crate::utils::{singleton, LayerWindow};
+use crate::utils::LayerWindow;
 use gtk4::{prelude::GtkWindowExt, Application};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 
@@ -14,7 +14,6 @@ mod weather;
 mod workspaces;
 
 pub(crate) struct TopBar;
-singleton!(TopBar);
 
 impl LayerWindow for TopBar {
     const NAME: &'static str = "TopBar";
@@ -23,7 +22,7 @@ impl LayerWindow for TopBar {
     const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 0)];
     const KEYBOARD_MODE: Option<KeyboardMode> = None;
 
-    fn reset(&self) {}
+    fn reset() {}
 }
 
 impl TopBar {

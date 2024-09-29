@@ -1,6 +1,6 @@
 use crate::{
     models::{Command, Event},
-    utils::singleton,
+    utils::global,
 };
 use tokio::sync::mpsc::Sender;
 
@@ -8,11 +8,12 @@ struct Session {
     idx: usize,
     sender: Sender<Event>,
 }
-singleton!(Session);
+global!(SESSION, Session);
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
-    Session::set(Session { idx: 0, sender: tx });
-    Session::get().send().await;
+    let session = Session { idx: 0, sender: tx };
+    session.send().await;
+    SESSION::set(session);
 }
 
 impl Session {
@@ -70,10 +71,10 @@ pub(crate) async fn on_command(command: &Command) {
         Command::Shutdown => exec("systemctl", &["poweroff"]).await,
         Command::Logout => exec("hyprctl", &["dispatch", "exit"]).await,
 
-        Command::SessionGoLeft => Session::get().go_left().await,
-        Command::SessionGoRight => Session::get().go_right().await,
+        Command::SessionGoLeft => SESSION::get().go_left().await,
+        Command::SessionGoRight => SESSION::get().go_right().await,
 
-        Command::SessionReset => Session::get().reset().await,
+        Command::SessionReset => SESSION::get().reset().await,
         _ => {}
     }
 }

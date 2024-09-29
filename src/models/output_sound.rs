@@ -4,13 +4,13 @@ use super::fire_event_on_current_thread;
 use crate::{
     ffi::gvc,
     models::{Command, Event},
-    utils::singleton,
+    utils::global,
 };
 
 pub(crate) async fn spawn(_tx: Sender<Event>) {
     let control = gvc::MixerControl::new();
 
-    OutputSound::set(OutputSound {
+    OUTPUT_SOUND::set(OutputSound {
         control,
         subscription: None,
     });
@@ -23,7 +23,7 @@ struct OutputSound {
     control: gvc::MixerControl,
     subscription: Option<Subscription>,
 }
-singleton!(OutputSound);
+global!(OUTPUT_SOUND, OutputSound);
 
 struct Subscription {
     stream: gvc::MixerStream,
@@ -31,12 +31,12 @@ struct Subscription {
 }
 
 unsafe extern "C" fn on_output_changed(control: gvc::MixerControl, id: std::ffi::c_uint) {
-    if let Some(Subscription { stream, sub_id }) = OutputSound::get().subscription {
+    if let Some(Subscription { stream, sub_id }) = OUTPUT_SOUND::get().subscription {
         stream.disconnect(sub_id);
     }
     if let Some(stream) = control.lookup_stream_id(id) {
         let sub_id = stream.connect_volume_changed(on_volume_changed);
-        OutputSound::get().subscription = Some(Subscription { stream, sub_id });
+        OUTPUT_SOUND::get().subscription = Some(Subscription { stream, sub_id });
 
         on_volume_changed();
     }
@@ -50,8 +50,8 @@ unsafe extern "C" fn on_volume_changed() {
 }
 
 unsafe fn current_volume() -> f64 {
-    let control = OutputSound::get().control;
-    if let Some(Subscription { stream, .. }) = OutputSound::get().subscription {
+    let control = OUTPUT_SOUND::get().control;
+    if let Some(Subscription { stream, .. }) = OUTPUT_SOUND::get().subscription {
         let max = control.get_vol_max_norm();
         let volume = stream.get_volume() as f64;
         return volume / max;
@@ -61,9 +61,9 @@ unsafe fn current_volume() -> f64 {
 
 pub(crate) async fn on_command(command: &Command) {
     if let Command::SetVolume(volume) = command {
-        let control = OutputSound::get().control;
+        let control = OUTPUT_SOUND::get().control;
         let max = control.get_vol_max_norm();
-        if let Some(Subscription { stream, .. }) = OutputSound::get().subscription {
+        if let Some(Subscription { stream, .. }) = OUTPUT_SOUND::get().subscription {
             stream.set_volume((volume * max) as u32);
             stream.push_volume();
         }

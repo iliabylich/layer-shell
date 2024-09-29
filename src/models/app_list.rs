@@ -1,6 +1,6 @@
 use crate::{
     models::{App, AppIcon, Command, Event},
-    utils::singleton,
+    utils::global,
 };
 use anyhow::{Context, Result};
 use std::{collections::HashMap, path::PathBuf};
@@ -15,7 +15,7 @@ struct AppList {
     pattern: String,
     tx: Sender<Event>,
 }
-singleton!(AppList);
+global!(APP_LIST, AppList);
 
 impl AppList {
     const MAX_ITEMS: usize = 5;
@@ -35,7 +35,7 @@ impl AppList {
         if self.selected_idx == 0 {
             return;
         }
-        self.selected_idx = std::cmp::max(0, this().selected_idx - 1);
+        self.selected_idx = std::cmp::max(0, self.selected_idx - 1);
         self.emit().await;
     }
     async fn go_down(&mut self) {
@@ -123,7 +123,7 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
 async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     let app_list = AppList::new(tx).await?;
     app_list.emit().await;
-    AppList::set(app_list);
+    APP_LIST::set(app_list);
 
     Ok(())
 }
@@ -235,7 +235,7 @@ async fn parse_file(path: &PathBuf) -> Result<DesktopApp> {
 }
 
 pub(crate) async fn on_command(command: &Command) {
-    let app_list = AppList::get();
+    let app_list = APP_LIST::get();
 
     match command {
         Command::LauncherReset => app_list.reset().await,
