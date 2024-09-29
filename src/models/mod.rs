@@ -56,7 +56,11 @@ pub(crate) fn spawn_all() {
 
     gtk4::glib::spawn_future_local(async move {
         while let Some(event) = erx.recv().await {
-            fire_event_on_current_thread(&event);
+            log::info!("Received event {:?}", event);
+
+            for f in subscriptions::all().iter() {
+                (f)(&event);
+            }
         }
     });
 }
@@ -71,12 +75,4 @@ pub(crate) fn publish(c: Command) {
 
 pub(crate) fn init() {
     subscriptions::init();
-}
-
-fn fire_event_on_current_thread(event: &Event) {
-    log::info!("Received event {:?}", event);
-
-    for f in subscriptions::all().iter() {
-        (f)(event);
-    }
 }

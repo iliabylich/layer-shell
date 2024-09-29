@@ -1,71 +1,76 @@
-use tokio::sync::mpsc::Sender;
-
-use super::fire_event_on_current_thread;
 use crate::{
-    ffi::gvc,
     models::{Command, Event},
     utils::global,
 };
+use alsa::{
+    mixer::{Selem, SelemChannelId},
+    Ctl,
+};
+use tokio::sync::mpsc::Sender;
 
-pub(crate) async fn spawn(_tx: Sender<Event>) {
-    let control = gvc::MixerControl::new();
+global!(MIXER, alsa::Mixer);
+global!(OUTPUT_SELEM, Selem<'static>);
 
-    OUTPUT_SOUND::set(OutputSound {
-        control,
-        subscription: None,
-    });
+pub(crate) async fn spawn(tx: Sender<Event>) {
+    let mixer = alsa::Mixer::new("default", true).unwrap();
+    MIXER::set(mixer);
 
-    control.connect_default_sink_changed(on_output_changed);
-    control.open();
-}
-
-struct OutputSound {
-    control: gvc::MixerControl,
-    subscription: Option<Subscription>,
-}
-global!(OUTPUT_SOUND, OutputSound);
-
-struct Subscription {
-    stream: gvc::MixerStream,
-    sub_id: u64,
-}
-
-unsafe extern "C" fn on_output_changed(control: gvc::MixerControl, id: std::ffi::c_uint) {
-    if let Some(Subscription { stream, sub_id }) = OUTPUT_SOUND::get().subscription {
-        stream.disconnect(sub_id);
+    if let Some(selem) = MIXER::get()
+        .iter()
+        .map(|elem| Selem::new(elem).unwrap())
+        .find(|selem| selem.can_playback())
+    {
+        OUTPUT_SELEM::set(selem);
+    } else {
+        log::error!("Failed to get default output device");
+        return;
     }
-    if let Some(stream) = control.lookup_stream_id(id) {
-        let sub_id = stream.connect_volume_changed(on_volume_changed);
-        OUTPUT_SOUND::get().subscription = Some(Subscription { stream, sub_id });
 
-        on_volume_changed();
+    if let Some(volume) = get_volume() {
+        if tx.send(Event::Volume(volume)).await.is_err() {
+            log::error!("failed to send Volume event");
+        }
+    }
+
+    let ctl = Ctl::new("hw:0", true).unwrap();
+    ctl.subscribe_events(true).unwrap();
+    ctl.wait(Some(50)).unwrap();
+    loop {
+        if let Ok(Some(event)) = ctl.read() {
+            if OUTPUT_SELEM::get().get_id().get_index() == event.get_id().get_index() {
+                MIXER::get().handle_events().unwrap();
+                if let Some(volume) = get_volume() {
+                    if tx.send(Event::Volume(volume)).await.is_err() {
+                        log::error!("failed to send Volume event");
+                    }
+                } else {
+                    log::error!("failed to get volume");
+                }
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 }
 
-unsafe extern "C" fn on_volume_changed() {
-    // GVC is based on glib which calls all GObject callbacks
-    // on the main UI thread. Yes, here we are in UI thread,
-    // so it's safe to directly fire an event here.
-    fire_event_on_current_thread(&Event::Volume(current_volume()));
+fn get_volume() -> Option<f64> {
+    MIXER::get().handle_events().unwrap();
+    if let Ok(volume) = OUTPUT_SELEM::get().get_playback_volume(SelemChannelId::mono()) {
+        let (_, max) = OUTPUT_SELEM::get().get_playback_volume_range();
+        let volume = (volume as f64) / (max as f64);
+        Some(volume)
+    } else {
+        None
+    }
 }
 
-unsafe fn current_volume() -> f64 {
-    let control = OUTPUT_SOUND::get().control;
-    if let Some(Subscription { stream, .. }) = OUTPUT_SOUND::get().subscription {
-        let max = control.get_vol_max_norm();
-        let volume = stream.get_volume() as f64;
-        return volume / max;
-    }
-    0.0
+fn set_volume(volume: f64) {
+    let (_, max) = OUTPUT_SELEM::get().get_playback_volume_range();
+    let volume = (volume * (max as f64)) as i64;
+    OUTPUT_SELEM::get().set_playback_volume_all(volume).unwrap();
 }
 
 pub(crate) async fn on_command(command: &Command) {
     if let Command::SetVolume(volume) = command {
-        let control = OUTPUT_SOUND::get().control;
-        let max = control.get_vol_max_norm();
-        if let Some(Subscription { stream, .. }) = OUTPUT_SOUND::get().subscription {
-            stream.set_volume((volume * max) as u32);
-            stream.push_volume();
-        }
+        set_volume(*volume);
     }
 }

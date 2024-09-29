@@ -2,7 +2,6 @@
 #![allow(clippy::missing_transmute_annotations)]
 #![allow(clippy::type_complexity)]
 
-mod ffi;
 mod globals;
 mod layers;
 mod models;
