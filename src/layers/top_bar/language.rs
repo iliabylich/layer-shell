@@ -5,10 +5,10 @@ use crate::{
 use gtk4::Label;
 
 pub(crate) fn init() {
-    subscribe(on_change);
+    subscribe(on_event);
 }
 
-fn on_change(event: &Event) {
+fn on_event(event: &Event) {
     if let Event::Language { lang } = event {
         let label = load_widget::<Label>("LanguageWidgetLabel");
         label.set_label(map_language(lang));

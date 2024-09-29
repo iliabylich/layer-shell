@@ -6,7 +6,7 @@ use crate::{
 use gtk4::{prelude::ButtonExt, Button, Label};
 
 pub(crate) fn init() {
-    subscribe(on_change);
+    subscribe(on_event);
 
     let button = load_widget::<Button>("RAMWidget");
     button.connect_clicked(|_| {
@@ -16,10 +16,9 @@ pub(crate) fn init() {
     });
 }
 
-fn on_change(event: &Event) {
-    let Event::Memory { used, total } = event else {
-        return;
-    };
-    let label = load_widget::<Label>("RAMWidgetLabel");
-    label.set_label(&format!("RAM {:.1}G/{:.1}G", used, total));
+fn on_event(event: &Event) {
+    if let Event::Memory { used, total } = event {
+        let label = load_widget::<Label>("RAMWidgetLabel");
+        label.set_label(&format!("RAM {:.1}G/{:.1}G", used, total));
+    }
 }

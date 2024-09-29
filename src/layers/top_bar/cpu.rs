@@ -5,15 +5,23 @@ use crate::{
 use gtk4::Label;
 
 pub(crate) fn init() {
-    subscribe(on_change);
+    subscribe(on_event);
 }
 
-fn on_change(event: &Event) {
-    let Event::Cpu { usage_per_core } = event else {
-        return;
-    };
+fn on_event(event: &Event) {
+    if let Event::Cpu { usage_per_core } = event {
+        let labels = labels();
 
-    let labels = [
+        assert_eq!(usage_per_core.len(), labels.len());
+
+        for (idx, load) in usage_per_core.iter().enumerate() {
+            labels[idx].set_label(indicator(*load));
+        }
+    }
+}
+
+fn labels() -> [&'static Label; 12] {
+    [
         load_widget::<Label>("CPUWidgetLabel1"),
         load_widget::<Label>("CPUWidgetLabel2"),
         load_widget::<Label>("CPUWidgetLabel3"),
@@ -26,13 +34,7 @@ fn on_change(event: &Event) {
         load_widget::<Label>("CPUWidgetLabel10"),
         load_widget::<Label>("CPUWidgetLabel11"),
         load_widget::<Label>("CPUWidgetLabel12"),
-    ];
-
-    assert_eq!(usage_per_core.len(), labels.len());
-
-    for (idx, load) in usage_per_core.iter().enumerate() {
-        labels[idx].set_label(indicator(*load));
-    }
+    ]
 }
 
 const INDICATORS: &[&str] = &[

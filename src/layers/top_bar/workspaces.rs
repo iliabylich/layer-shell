@@ -14,10 +14,10 @@ pub(crate) fn init() {
         });
     }
 
-    subscribe(on_change);
+    subscribe(on_event);
 }
 
-fn on_change(event: &Event) {
+fn on_event(event: &Event) {
     if let Event::Workspaces { ids, active_id } = event {
         let buttons = buttons();
         for idx in 1..=10 {
