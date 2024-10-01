@@ -5,12 +5,10 @@ mod memory;
 mod output_sound;
 mod session;
 mod time;
+mod weather;
 
 mod network_manager;
 pub(crate) use network_manager::{NetworkList, WiFiStatus};
-
-mod weather_api;
-pub(crate) use weather_api::WeatherApi;
 
 mod event;
 pub(crate) use event::{App, AppIcon, Event};
@@ -49,7 +47,8 @@ pub(crate) fn spawn_all() {
                 hyprland::spawn(etx.clone()),
                 app_list::spawn(etx.clone()),
                 output_sound::spawn(etx.clone()),
-                session::spawn(etx.clone())
+                session::spawn(etx.clone()),
+                weather::spawn(etx.clone()),
             );
         });
     });

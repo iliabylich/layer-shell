@@ -1,36 +1,26 @@
 use gtk4::{prelude::WidgetExt, Label};
 
-use crate::{globals::load_widget, models::WeatherApi};
+use crate::{
+    globals::load_widget,
+    models::{subscribe, Event},
+};
 
 pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {
-    (Box::new(sync_ui), Box::new(|_key| {}))
+    subscribe(on_event);
+
+    (Box::new(|| {}), Box::new(|_key| {}))
 }
 
-fn sync_ui() {
-    if let Some(weather) = WeatherApi::get_cached() {
-        let now = chrono::Local::now().naive_local();
-        let matching_hours = weather.hourly.iter().filter(|hourly| hourly.hour > now);
-        for (label, weather) in hourly_labels().iter().zip(matching_hours) {
-            label.set_label(&format!(
-                "{}' {} {}",
-                weather.hour.format("%H"),
-                weather.temperature,
-                weather.code.icon()
-            ));
-            label.set_tooltip_text(Some(&format!("{}", weather.code)));
+fn on_event(event: &Event) {
+    if let Event::WeatherForecast { daily, hourly } = event {
+        for (label, (text, tooltip)) in hourly_labels().iter().zip(hourly) {
+            label.set_label(text);
+            label.set_tooltip_text(Some(tooltip));
         }
 
-        let today = chrono::Local::now().date_naive();
-        let matching_days = weather.daily.iter().filter(|daily| daily.day > today);
-        for (label, weather) in daily_labels().iter().zip(matching_days) {
-            label.set_label(&format!(
-                "{}: {:.1} - {:.1} {}",
-                weather.day.format("%m-%d"),
-                weather.temperature_min,
-                weather.temperature_max,
-                weather.code.icon()
-            ));
-            label.set_tooltip_text(Some(&format!("{}", weather.code)));
+        for (label, (text, tooltip)) in daily_labels().iter().zip(daily) {
+            label.set_label(text);
+            label.set_tooltip_text(Some(tooltip));
         }
     }
 }

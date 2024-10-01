@@ -1,4 +1,9 @@
-use crate::{globals::load_widget, layers::Weather, models::WeatherApi, utils::LayerWindow};
+use crate::{
+    globals::load_widget,
+    layers::Weather,
+    models::{subscribe, Event},
+    utils::LayerWindow,
+};
 use gtk4::{prelude::ButtonExt, Button, Label};
 
 pub(crate) fn init() {
@@ -7,12 +12,12 @@ pub(crate) fn init() {
         Weather::toggle();
     });
 
-    WeatherApi::subscribe(|weather| {
+    subscribe(on_event);
+}
+
+fn on_event(event: &Event) {
+    if let Event::WeatherCurrent(weather) = event {
         let label = load_widget::<Label>("WeatherWidgetLabel");
-        label.set_label(&format!(
-            "{} {}",
-            weather.current.temperature,
-            weather.current.code.icon(),
-        ));
-    });
+        label.set_label(weather);
+    }
 }

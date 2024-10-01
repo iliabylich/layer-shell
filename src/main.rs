@@ -15,7 +15,7 @@ use gtk4::{
 use crate::{
     globals::GlobalWidgets,
     layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
-    models::{NetworkList, WeatherApi},
+    models::NetworkList,
     utils::{load_css, parse_args, IPC},
 };
 
@@ -27,7 +27,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     parse_args()?;
     IPC::spawn()?;
 
-    WeatherApi::spawn();
     models::init();
 
     let app = Application::builder().application_id(APP_ID).build();
