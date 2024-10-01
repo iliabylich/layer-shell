@@ -8,7 +8,7 @@ mod time;
 mod weather;
 
 mod network_manager;
-pub(crate) use network_manager::{NetworkList, WiFiStatus};
+pub(crate) use network_manager::NetworkList;
 
 mod event;
 pub(crate) use event::{App, AppIcon, Event};
@@ -49,6 +49,7 @@ pub(crate) fn spawn_all() {
                 output_sound::spawn(etx.clone()),
                 session::spawn(etx.clone()),
                 weather::spawn(etx.clone()),
+                network_manager::wifi_status::spawn(etx.clone()),
             );
         });
     });

@@ -1,19 +1,28 @@
-use crate::{globals::load_widget, layers::Networks, models::WiFiStatus, utils::LayerWindow};
+use crate::{
+    globals::load_widget,
+    layers::Networks,
+    models::{subscribe, Event},
+    utils::LayerWindow,
+};
 use gtk4::{prelude::ButtonExt, Button, Label};
 
 pub(crate) fn init() {
-    let label = load_widget::<Label>("NetworkWidgetLabel");
-
-    WiFiStatus::spawn(|status| {
-        if let Some(status) = status {
-            label.set_label(&format!("{} ({})% ", status.ssid, status.strength));
-        } else {
-            label.set_label("Not connected");
-        }
-    });
+    subscribe(on_event);
 
     let button = load_widget::<Button>("NetworkWidget");
     button.connect_clicked(|_| {
         Networks::toggle();
     });
+}
+
+fn on_event(event: &Event) {
+    if let Event::WiFi(state) = event {
+        let label = load_widget::<Label>("NetworkWidgetLabel");
+
+        if let Some((ssid, strength)) = state {
+            label.set_label(&format!("{} ({})% ", ssid, strength));
+        } else {
+            label.set_label("Not connected");
+        }
+    }
 }

@@ -31,7 +31,7 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
                 }
             }
             Err(err) => {
-                log::error!("Failed to get weather: {}", err);
+                log::error!("Failed to get weather: {}\n{}", err, err.backtrace());
             }
         }
 

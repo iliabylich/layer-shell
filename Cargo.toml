@@ -39,6 +39,7 @@ tokio = { version = "1", default-features = false, features = [
     "process",
 ] }
 vte4 = { version = "0.8", features = ["v0_78"] }
+zbus = { version = "4.4", default-features = false, features = ["async-io"] }
 
 [profile.release]
 lto = true
