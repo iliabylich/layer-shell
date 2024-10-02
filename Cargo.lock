@@ -1199,25 +1199,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
-name = "layer-shell"
+name = "layer-shell-io"
 version = "0.1.0"
 dependencies = [
  "alsa",
  "anyhow",
  "chrono",
- "clap",
- "clap_complete",
- "gtk4",
- "gtk4-layer-shell",
+ "glib",
+ "layer-shell-utils",
  "log",
- "paste",
  "pretty_env_logger",
  "reqwest",
  "serde",
  "serde_json",
  "tokio",
- "vte4",
  "zbus",
+]
+
+[[package]]
+name = "layer-shell-ui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "clap_complete",
+ "gtk4",
+ "gtk4-layer-shell",
+ "layer-shell-io",
+ "layer-shell-utils",
+ "serde",
+ "serde_json",
+ "vte4",
+]
+
+[[package]]
+name = "layer-shell-utils"
+version = "0.1.0"
+dependencies = [
+ "paste",
 ]
 
 [[package]]

@@ -1,0 +1,33 @@
+[package]
+name = "layer-shell-io"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+alsa = "0.9.1"
+anyhow = { workspace = true }
+chrono = { version = "0.4", default-features = false, features = [
+    "serde",
+    "clock",
+] }
+log = "0.4"
+pretty_env_logger = "0.5"
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", default-features = false, features = [
+    "rt",
+    "macros",
+    "time",
+    "fs",
+    "io-util",
+    "sync",
+    "net",
+    "process",
+] }
+zbus = { version = "4.4", default-features = false, features = ["async-io"] }
+glib = { version = "0.20" }
+layer-shell-utils = { path = "../utils" }
