@@ -1,104 +1,78 @@
-use crate::utils::global;
+use crate::models::Event;
 use anyhow::{Context, Result};
-use gtk4::{
-    gio::{DBusCallFlags, DBusConnection},
-    glib::{
-        prelude::{FromVariant, ToVariant},
-        Variant,
-    },
-};
 use std::collections::HashMap;
+use tokio::sync::mpsc::Sender;
 
-#[derive(Debug)]
-pub(crate) struct Iface {
-    pub(crate) name: String,
-    pub(crate) ip: String,
+pub(crate) async fn spawn(tx: Sender<Event>) {
+    if let Err(err) = try_spawn(tx).await {
+        log::error!("NM model error: {}\n{}", err, err.backtrace());
+    }
 }
-#[derive(Debug)]
-pub(crate) struct NetworkList;
-global!(NETWORK_LIST, Vec<Iface>);
 
-impl NetworkList {
-    pub(crate) fn spawn() {
-        NETWORK_LIST::set(vec![]);
+async fn try_spawn(tx: Sender<Event>) -> Result<()> {
+    let dbus = zbus::Connection::system()
+        .await
+        .context("failed to connect to system DBus")?;
 
-        gtk4::glib::spawn_future_local(async {
-            loop {
-                match Self::get_state().await {
-                    Ok(ifaces) => {
-                        NETWORK_LIST::set(ifaces);
-                    }
-                    Err(err) => {
-                        log::error!(
-                            "failed to get list of networks:\n{}\n{}",
-                            err,
-                            err.backtrace()
-                        );
-                    }
+    loop {
+        match get_state(&dbus).await {
+            Ok(ifaces) => {
+                if tx.send(Event::NetworkList(ifaces)).await.is_err() {
+                    log::error!("failed to send NetworkList event");
                 }
-
-                gtk4::glib::timeout_future_seconds(5).await;
             }
-        });
-    }
-
-    pub(crate) fn get_current() -> &'static [Iface] {
-        NETWORK_LIST::get()
-    }
-
-    async fn get_state() -> Result<Vec<Iface>> {
-        let mut ifaces = vec![];
-
-        let dbus = new_dbus().await?;
-        let device_ids = get_device_ids(&dbus).await?;
-
-        for device_id in device_ids {
-            if let Ok((name, mut ip)) = get_iface(&dbus, device_id).await {
-                if ip.is_none() {
-                    ip = Some(get_ip4_config(&dbus, device_id).await?);
-                }
-
-                let ip = ip.unwrap_or_else(|| String::from("unknown"));
-
-                ifaces.push(Iface { name, ip });
-            } else {
-                log::warn!("Failed to get data for Device {device_id} (not connected?)");
+            Err(err) => {
+                log::error!("NetworkList error: {}\n{}", err, err.backtrace());
             }
         }
 
-        Ok(ifaces)
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 }
 
-async fn new_dbus() -> Result<DBusConnection> {
-    gtk4::gio::bus_get_future(gtk4::gio::BusType::System)
-        .await
-        .context("failed to connect to DBus")
+async fn get_state(dbus: &zbus::Connection) -> Result<Vec<(String, String)>> {
+    let mut ifaces = vec![];
+
+    let device_ids = get_device_ids(dbus).await?;
+
+    for device_id in device_ids {
+        if let Ok((name, mut ip)) = get_iface(dbus, device_id).await {
+            if ip.is_none() {
+                ip = Some(get_ip4_config(dbus, device_id).await?);
+            }
+
+            let ip = ip.unwrap_or_else(|| String::from("unknown"));
+
+            ifaces.push((name, ip));
+        } else {
+            log::warn!("Failed to get data for Device {device_id} (not connected?)");
+        }
+    }
+
+    Ok(ifaces)
 }
 
-async fn get_device_ids(dbus: &DBusConnection) -> Result<Vec<usize>> {
+async fn get_device_ids(dbus: &zbus::Connection) -> Result<Vec<usize>> {
     use gtk4::glib;
     #[derive(Debug, glib::Variant)]
     struct Response {
         devices: Vec<String>,
     }
-    let res = dbus
-        .call_future(
+    let body = dbus
+        .call_method(
             Some("org.freedesktop.NetworkManager"),
             "/org/freedesktop/NetworkManager",
-            "org.freedesktop.NetworkManager",
+            Some("org.freedesktop.NetworkManager"),
             "GetAllDevices",
-            None,
-            None,
-            DBusCallFlags::NONE,
-            -1,
+            &(),
         )
         .await
-        .context("failed to call GetAllDevices on NetworkManager")?;
+        .context("failed to call GetAllDevices on NetworkManager")?
+        .body();
 
-    let devices = Response::from_variant(&res)
-        .context("unexpected GetAllDevices response from NetworkManager")?
-        .devices;
+    let devices = body
+        .deserialize::<Vec<zbus::zvariant::ObjectPath>>()
+        .context("unexpected GetAllDevices response from NetworkManager")?;
 
     let mut out = vec![];
 
@@ -115,39 +89,29 @@ async fn get_device_ids(dbus: &DBusConnection) -> Result<Vec<usize>> {
     Ok(out)
 }
 
-async fn get_iface(dbus: &DBusConnection, device_id: usize) -> Result<(String, Option<String>)> {
-    use gtk4::glib;
-    #[derive(Debug, glib::Variant)]
-    struct Request(u32);
-    let req = Request(0).to_variant();
-
-    #[derive(Debug, glib::Variant)]
-    struct Response {
-        data: HashMap<String, HashMap<String, Variant>>,
-        n: u64,
-    }
-
-    let res = dbus
-        .call_future(
+async fn get_iface(dbus: &zbus::Connection, device_id: usize) -> Result<(String, Option<String>)> {
+    let body = dbus
+        .call_method(
             Some("org.freedesktop.NetworkManager"),
-            &format!("/org/freedesktop/NetworkManager/Devices/{device_id}"),
-            "org.freedesktop.NetworkManager.Device",
+            format!("/org/freedesktop/NetworkManager/Devices/{device_id}").as_str(),
+            Some("org.freedesktop.NetworkManager.Device"),
             "GetAppliedConnection",
-            Some(&req),
-            None,
-            DBusCallFlags::NONE,
-            -1,
+            &(0_u32),
         )
         .await
-        .context("failed to call GetAppliedConnection on Device")?;
+        .context("failed to call GetAppliedConnection on Device")?
+        .body();
 
-    let data = Response::from_variant(&res).unwrap().data;
+    let (data, _) = body
+        .deserialize::<(HashMap<String, HashMap<String, zbus::zvariant::Value>>, u64)>()
+        .context("failed to deserialize")?;
+
     let iface = data
         .get("connection")
         .context("failed to get connection field")?
         .get("interface-name")
         .context("failed to get interface-name field")?
-        .str()
+        .downcast_ref::<zbus::zvariant::Str>()
         .context("expected interface-name to be a string")?
         .to_string();
 
@@ -155,51 +119,44 @@ async fn get_iface(dbus: &DBusConnection, device_id: usize) -> Result<(String, O
         .get("ipv4")
         .context("failed to get ipv4 field")?
         .get("address-data")
-        .context("failed to get address-data field")?;
+        .context("failed to get address-data field")?
+        .downcast_ref::<zbus::zvariant::Array>()
+        .context("expected address-data to be an array")?;
     let ip = ip_from_address_data(address_data).ok();
 
     Ok((iface, ip))
 }
 
-fn ip_from_address_data(variant: &Variant) -> Result<String> {
-    let addresses =
-        Vec::<HashMap<String, Variant>>::from_variant(variant).context("not a Vec<HashMap>")?;
-    let first_address = addresses
+fn ip_from_address_data(variant: zbus::zvariant::Array<'_>) -> Result<String> {
+    let map = variant
         .first()
-        .context("expected at least one ip address")?;
-    let address = first_address.get("address").context("no address field")?;
-    address
-        .str()
-        .map(|s| s.to_string())
-        .context("expected address to be a string")
+        .context("expected at least one element")?
+        .downcast_ref::<zbus::zvariant::Dict>()
+        .context("expected 1st element to be Dict")?;
+    let address: zbus::zvariant::Str = map
+        .get(&"address")
+        .context("expected address field to be a Str")?
+        .context("no address field")?;
+    Ok(address.to_string())
 }
 
-async fn get_ip4_config(dbus: &DBusConnection, device_id: usize) -> Result<String> {
-    use gtk4::glib;
-    #[derive(Debug, glib::Variant)]
-    struct Request {
-        iface: String,
-        property: String,
-    }
-    let req = Request {
-        iface: String::from("org.freedesktop.NetworkManager.IP4Config"),
-        property: String::from("AddressData"),
-    }
-    .to_variant();
-
-    let res = dbus
-        .call_future(
+async fn get_ip4_config(dbus: &zbus::Connection, device_id: usize) -> Result<String> {
+    let body = dbus
+        .call_method(
             Some("org.freedesktop.NetworkManager"),
-            &format!("/org/freedesktop/NetworkManager/IP4Config/{device_id}"),
-            "org.freedesktop.DBus.Properties",
+            format!("/org/freedesktop/NetworkManager/IP4Config/{device_id}").as_str(),
+            Some("org.freedesktop.DBus.Properties"),
             "Get",
-            Some(&req),
-            None,
-            DBusCallFlags::NONE,
-            -1,
+            &("org.freedesktop.NetworkManager.IP4Config", "AddressData"),
         )
         .await
-        .context("failed to call Get on Device")?;
+        .context("failed to call Get on Device")?
+        .body();
 
-    ip_from_address_data(&res.child_value(0).child_value(0))
+    let res = body.deserialize::<zbus::zvariant::Value>().unwrap();
+
+    ip_from_address_data(
+        res.downcast_ref::<zbus::zvariant::Array>()
+            .context("expected an array")?,
+    )
 }

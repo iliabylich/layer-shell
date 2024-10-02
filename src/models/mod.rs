@@ -2,13 +2,11 @@ mod app_list;
 mod cpu;
 mod hyprland;
 mod memory;
+mod network_manager;
 mod output_sound;
 mod session;
 mod time;
 mod weather;
-
-mod network_manager;
-pub(crate) use network_manager::NetworkList;
 
 mod event;
 pub(crate) use event::{App, AppIcon, Event};
@@ -50,6 +48,7 @@ pub(crate) fn spawn_all() {
                 session::spawn(etx.clone()),
                 weather::spawn(etx.clone()),
                 network_manager::wifi_status::spawn(etx.clone()),
+                network_manager::network_list::spawn(etx.clone()),
             );
         });
     });

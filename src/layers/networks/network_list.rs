@@ -6,7 +6,7 @@ use gtk4::{
 use crate::{
     globals::load_widget,
     layers::Networks,
-    models::NetworkList,
+    models::{subscribe, Event},
     utils::{exec_async, LayerWindow},
 };
 
@@ -25,20 +25,38 @@ pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {
         Networks::toggle();
     });
 
-    for (idx, row) in rows().iter().enumerate() {
+    subscribe(on_event);
+
+    for row in rows() {
         set_on_click(row, move |label| {
-            if let Some(network) = NetworkList::get_current().get(idx) {
-                copy_to_clipboard(&network.ip);
+            if let Some(ip) = label.tooltip_text().map(|s| s.to_string()) {
+                let original_label = label.label().as_str().to_string();
+                copy_to_clipboard(&ip);
                 label.set_label("Copied!");
                 gtk4::glib::spawn_future_local(async move {
                     gtk4::glib::timeout_future_seconds(1).await;
-                    label.set_label(&format!("{}: {}", network.name, network.ip));
+                    label.set_label(&original_label);
                 });
             }
         });
     }
 
-    (Box::new(sync_ui), Box::new(|_key| {}))
+    (Box::new(|| {}), Box::new(|_key| {}))
+}
+
+fn on_event(event: &Event) {
+    if let Event::NetworkList(list) = event {
+        for (idx, row) in rows().iter().enumerate() {
+            if let Some((name, ip)) = list.get(idx) {
+                row.set_visible(true);
+                let label = row.start_widget().unwrap().dynamic_cast::<Label>().unwrap();
+                label.set_label(&format!("{}: {}", name, ip));
+                label.set_tooltip_text(Some(ip));
+            } else {
+                row.set_visible(false);
+            }
+        }
+    }
 }
 
 fn rows() -> [&'static CenterBox; 5] {
@@ -66,19 +84,4 @@ where
 fn copy_to_clipboard(text: &str) {
     let clipboard = gtk4::gdk::Display::default().unwrap().clipboard();
     clipboard.set_text(text);
-}
-
-fn sync_ui() {
-    for (idx, row) in rows().iter().enumerate() {
-        if let Some(network) = NetworkList::get_current().get(idx) {
-            row.set_visible(true);
-            row.start_widget()
-                .unwrap()
-                .dynamic_cast::<Label>()
-                .unwrap()
-                .set_label(&format!("{}: {}", network.name, network.ip));
-        } else {
-            row.set_visible(false);
-        }
-    }
 }

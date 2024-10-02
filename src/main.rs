@@ -15,7 +15,6 @@ use gtk4::{
 use crate::{
     globals::GlobalWidgets,
     layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
-    models::NetworkList,
     utils::{load_css, parse_args, IPC},
 };
 
@@ -33,7 +32,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app.connect_activate(|app| {
         GlobalWidgets::init();
-        NetworkList::spawn();
 
         TopBar::activate(app);
         LogoutScreen::activate(app);

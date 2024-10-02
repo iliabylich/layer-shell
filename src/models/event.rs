@@ -29,6 +29,7 @@ pub(crate) enum Event {
         daily: Vec<(String, String)>,
     },
     WiFi(Option<(String, u8)>),
+    NetworkList(Vec<(String, String)>),
 }
 
 #[derive(Debug, Clone)]
