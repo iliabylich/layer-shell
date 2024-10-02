@@ -193,6 +193,8 @@ pub(crate) async fn on_command(command: &Command) {
     if let Command::GoToWorkspace(workspace_idx) = command {
         tokio::process::Command::new("hyprctl")
             .args(["dispatch", "workspace", &format!("{}", workspace_idx + 1)])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()
             .unwrap()
             .wait()

@@ -29,9 +29,9 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
 }
 
 async fn get_state(dbus: &zbus::Connection, iface: &str) -> Result<(String, u8)> {
-    let device_path = get_device_path_by_iface(&dbus, iface).await?;
-    let access_point_path = get_access_point_path(&dbus, &device_path).await?;
-    get_ssid_and_strength(&dbus, &access_point_path).await
+    let device_path = get_device_path_by_iface(dbus, iface).await?;
+    let access_point_path = get_access_point_path(dbus, &device_path).await?;
+    get_ssid_and_strength(dbus, &access_point_path).await
 }
 
 async fn get_device_path_by_iface(dbus: &zbus::Connection, iface: &str) -> Result<String> {

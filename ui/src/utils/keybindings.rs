@@ -39,12 +39,13 @@ impl Keybindings {
         } = self;
         let ctrl = EventControllerKey::new();
         ctrl.connect_key_pressed(move |_, keyval, _, _| {
-            let key = keyval.name().unwrap().to_string();
-            match map.get(key.as_str()) {
-                Some(f) => f(),
-                None => {
-                    if let Some(fallback) = fallback.as_ref() {
-                        fallback(&key)
+            if let Some(key) = keyval.name() {
+                match map.get(key.as_str()) {
+                    Some(f) => f(),
+                    None => {
+                        if let Some(fallback) = fallback.as_ref() {
+                            fallback(&key)
+                        }
                     }
                 }
             }

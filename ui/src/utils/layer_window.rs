@@ -1,10 +1,9 @@
+use crate::globals::load_widget;
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application, Window,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-
-use crate::globals::load_widget;
 
 pub(crate) trait LayerWindow {
     const NAME: &'static str;

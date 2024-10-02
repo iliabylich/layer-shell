@@ -7,7 +7,7 @@ use clap_complete::{generate, Shell};
 enum Args {
     Generate { shell: Shell },
     Start,
-    Stop,
+    Exit,
     Toggle { window_name: WindowName },
 }
 
@@ -31,8 +31,8 @@ pub(crate) fn parse_args() -> Result<()> {
             // The only case in which we proceeed
             Ok(())
         }
-        Args::Stop => {
-            IPC::send_to_running_instance(IPCMessage::Stop)?;
+        Args::Exit => {
+            IPC::send_to_running_instance(IPCMessage::Exit)?;
             std::process::exit(1);
         }
         Args::Toggle {

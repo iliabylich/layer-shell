@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum IPCMessage {
-    Stop,
+    Exit,
     ToggleLauncher,
     ToggleLogoutScreen,
 }
@@ -15,7 +15,7 @@ pub(crate) enum IPCMessage {
 impl IPCMessage {
     fn execute(self) {
         match self {
-            IPCMessage::Stop => std::process::exit(0),
+            IPCMessage::Exit => std::process::exit(0),
             IPCMessage::ToggleLauncher => Launcher::toggle(),
             IPCMessage::ToggleLogoutScreen => LogoutScreen::toggle(),
         }

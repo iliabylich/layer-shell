@@ -1,11 +1,11 @@
 use crate::Event;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveDateTime};
 use reqwest::Client;
 use tokio::sync::mpsc::Sender;
 
 mod api;
-use api::{get_weather, Response};
+use api::{get_weather, DailyResponse, HourlyResponse, Response};
 mod code;
 use code::WeatherCode;
 
@@ -20,16 +20,20 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
 
     loop {
         match get_weather(&client).await {
-            Ok(response) => {
-                let (current, forecast) = map_response_to_events(response);
-                if let Err(err) = tx.send(current).await {
-                    log::error!("Failed to send WeatherCurrent event: {}", err);
-                }
+            Ok(response) => match map_response_to_events(response) {
+                Ok((current, forecast)) => {
+                    if let Err(err) = tx.send(current).await {
+                        log::error!("Failed to send WeatherCurrent event: {}", err);
+                    }
 
-                if let Err(err) = tx.send(forecast).await {
-                    log::error!("Failed to send WeatherForecast event: {}", err);
+                    if let Err(err) = tx.send(forecast).await {
+                        log::error!("Failed to send WeatherForecast event: {}", err);
+                    }
                 }
-            }
+                Err(err) => {
+                    log::error!("Failed to map weather: {}\n{}", err, err.backtrace());
+                }
+            },
             Err(err) => {
                 log::error!("Failed to get weather: {}\n{}", err, err.backtrace());
             }
@@ -45,56 +49,71 @@ fn map_response_to_events(
         hourly,
         daily,
     }: Response,
-) -> (Event, Event) {
+) -> Result<(Event, Event)> {
     let current = format!(
         "{} {}",
         current.temperature_2m,
         WeatherCode::from(current.weather_code)
     );
+    let hourly = map_hourly(hourly)?;
+    let daily = map_daily(daily)?;
 
+    Ok((
+        Event::WeatherCurrent(current),
+        Event::WeatherForecast { hourly, daily },
+    ))
+}
+
+fn map_hourly(
+    HourlyResponse {
+        time,
+        temperature_2m,
+        weather_code,
+    }: HourlyResponse,
+) -> Result<Vec<(String, String)>> {
     let now = chrono::Local::now().naive_local();
-    let today = chrono::Local::now().date_naive();
 
-    let hourly = hourly
-        .temperature_2m
-        .into_iter()
-        .zip(hourly.weather_code)
-        .zip(hourly.time)
-        .map(|((temp, code), time)| {
-            (
-                temp,
-                WeatherCode::from(code),
-                NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M").unwrap(),
-            )
-        })
-        .filter(|(_, _, time)| *time > now)
-        .take(10)
-        .map(|(temp, code, time)| {
-            (
+    let mut hourly = vec![];
+    for ((temp, code), time) in temperature_2m.into_iter().zip(weather_code).zip(time) {
+        let code = WeatherCode::from(code);
+        let time = NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M")
+            .context("invalid date format")?;
+        if time > now {
+            hourly.push((
                 format!("{}' {} {}", time.format("%H"), temp, code.icon()),
                 code.to_string(),
-            )
-        })
-        .collect::<Vec<_>>();
+            ));
+        }
+        if hourly.len() == 10 {
+            break;
+        }
+    }
 
-    let daily = daily
-        .temperature_2m_min
+    assert_eq!(hourly.len(), 10);
+    Ok(hourly)
+}
+
+fn map_daily(
+    DailyResponse {
+        time,
+        temperature_2m_min,
+        temperature_2m_max,
+        weather_code,
+    }: DailyResponse,
+) -> Result<Vec<(String, String)>> {
+    let today = chrono::Local::now().date_naive();
+
+    let mut daily = vec![];
+    for (((min, max), code), time) in temperature_2m_min
         .into_iter()
-        .zip(daily.temperature_2m_max)
-        .zip(daily.weather_code)
-        .zip(daily.time)
-        .map(|(((min, max), code), time)| {
-            (
-                min,
-                max,
-                WeatherCode::from(code),
-                NaiveDate::parse_from_str(&time, "%Y-%m-%d").unwrap(),
-            )
-        })
-        .filter(|(_, _, _, date)| *date > today)
-        .take(6)
-        .map(|(min, max, code, date)| {
-            (
+        .zip(temperature_2m_max)
+        .zip(weather_code)
+        .zip(time)
+    {
+        let code = WeatherCode::from(code);
+        let date = NaiveDate::parse_from_str(&time, "%Y-%m-%d").context("invalid date format")?;
+        if date > today {
+            daily.push((
                 format!(
                     "{}: {:.1} - {:.1} {}",
                     date.format("%m-%d"),
@@ -103,12 +122,13 @@ fn map_response_to_events(
                     code.icon()
                 ),
                 code.to_string(),
-            )
-        })
-        .collect::<Vec<_>>();
+            ));
+        }
+        if daily.len() == 6 {
+            break;
+        }
+    }
 
-    (
-        Event::WeatherCurrent(current),
-        Event::WeatherForecast { hourly, daily },
-    )
+    assert_eq!(daily.len(), 6);
+    Ok(daily)
 }

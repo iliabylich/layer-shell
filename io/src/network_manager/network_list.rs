@@ -148,7 +148,9 @@ async fn get_ip4_config(dbus: &zbus::Connection, device_id: usize) -> Result<Str
         .context("failed to call Get on Device")?
         .body();
 
-    let res = body.deserialize::<zbus::zvariant::Value>().unwrap();
+    let res = body
+        .deserialize::<zbus::zvariant::Value>()
+        .context("expected Variant")?;
 
     ip_from_address_data(
         res.downcast_ref::<zbus::zvariant::Array>()
