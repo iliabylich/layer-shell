@@ -23,8 +23,7 @@ pub(crate) fn parse_args() -> Result<()> {
     match args {
         Args::Generate { shell } => {
             let mut cmd = Args::command();
-            let bin_name = cmd.get_name().to_string();
-            generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
+            generate(shell, &mut cmd, "layer-shell", &mut std::io::stdout());
             std::process::exit(0);
         }
         Args::Start => {
