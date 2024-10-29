@@ -19,7 +19,7 @@ use crate::{
 
 const APP_ID: &str = "com.me.LayerShell";
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     gtk4::glib::unix_signal_add(10 /* USR1 */, move || {
         layer_shell_io::on_sigusr1();
         gtk4::glib::ControlFlow::Continue
@@ -52,6 +52,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     app.run_with_args(&[""]);
-
-    Ok(())
 }
