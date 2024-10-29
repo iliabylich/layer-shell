@@ -1,23 +1,17 @@
-use crate::{
-    globals::load_widget,
-    layers::Networks,
-    utils::{exec_async, LayerWindow},
-};
+use crate::{globals::load_widget, layers::Networks, utils::LayerWindow};
 use gtk4::{
     prelude::{Cast, DisplayExt, WidgetExt},
     CenterBox, Label,
 };
-use layer_shell_io::{subscribe, Event};
+use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
     let settings_row = load_widget::<CenterBox>("NetworkSettingsRow");
     let exit_row = load_widget::<CenterBox>("NetworkExitRow");
 
     set_on_click(settings_row, |_| {
-        gtk4::glib::spawn_future_local(async move {
-            Networks::toggle();
-            exec_async(&["kitty", "--name", "nmtui", "nmtui"]).await;
-        });
+        Networks::toggle();
+        publish(Command::SpawnNetworkEditor);
     });
 
     set_on_click(exit_row, |_| {

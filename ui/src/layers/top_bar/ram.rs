@@ -1,15 +1,13 @@
-use crate::{globals::load_widget, utils::exec_async};
+use crate::globals::load_widget;
 use gtk4::{prelude::ButtonExt, Button, Label};
-use layer_shell_io::{subscribe, Event};
+use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
     subscribe(on_event);
 
     let button = load_widget::<Button>("RAMWidget");
     button.connect_clicked(|_| {
-        gtk4::glib::spawn_future_local(async {
-            exec_async(&["gnome-system-monitor"]).await;
-        });
+        publish(Command::SpawnSystemMonitor);
     });
 }
 

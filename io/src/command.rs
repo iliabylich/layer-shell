@@ -20,6 +20,9 @@ pub enum Command {
     SessionGoLeft,
     SessionGoRight,
     SessionReset,
+
+    SpawnNetworkEditor,
+    SpawnSystemMonitor,
 }
 
 pub(crate) async fn start_processing(mut rx: Receiver<Command>) {
@@ -44,6 +47,22 @@ impl Command {
             Lock | Reboot | Shutdown | Logout | SessionGoLeft | SessionGoRight | SessionReset => {
                 session::on_command(self).await
             }
+
+            SpawnNetworkEditor => spawn_network_editor(),
+            SpawnSystemMonitor => spawn_system_monitor(),
         }
     }
+}
+
+fn spawn_network_editor() {
+    std::process::Command::new("kitty")
+        .args(&["--name", "nmtui", "nmtui"])
+        .spawn()
+        .unwrap();
+}
+
+fn spawn_system_monitor() {
+    std::process::Command::new("gnome-system-monitor")
+        .spawn()
+        .unwrap();
 }
