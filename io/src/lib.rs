@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use layer_shell_utils::global;
 
 mod app_list;
@@ -17,7 +15,10 @@ mod weather;
 pub use command::Command;
 pub use event::{App, AppIcon, Event};
 
-global!(COMMANDER, std::sync::mpsc::Sender<Command>);
+use std::sync::mpsc::{channel, Receiver, Sender};
+
+global!(COMMAND_SENDER, Sender<Command>);
+global!(EVENT_RECEIVER, Receiver<Event>);
 global!(SUBSCRIPTIONS, Vec<fn(&Event)>);
 
 pub fn subscribe(f: fn(&Event)) {
@@ -30,10 +31,11 @@ pub fn init() {
 }
 
 pub fn spawn_all() {
-    let (etx, erx) = std::sync::mpsc::channel::<Event>();
-    let (ctx, crx) = std::sync::mpsc::channel::<Command>();
+    let (etx, erx) = channel::<Event>();
+    let (ctx, crx) = channel::<Command>();
 
-    COMMANDER::set(ctx);
+    COMMAND_SENDER::set(ctx);
+    EVENT_RECEIVER::set(erx);
 
     std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -60,21 +62,20 @@ pub fn spawn_all() {
             );
         });
     });
+}
 
-    glib::timeout_add(Duration::from_millis(50), move || {
-        while let Ok(event) = erx.try_recv() {
-            log::info!("Received event {:?}", event);
+pub fn poll_events() {
+    while let Ok(event) = EVENT_RECEIVER::get().try_recv() {
+        log::info!("Received event {:?}", event);
 
-            for f in SUBSCRIPTIONS::get().iter() {
-                (f)(&event);
-            }
+        for f in SUBSCRIPTIONS::get().iter() {
+            (f)(&event);
         }
-        return glib::ControlFlow::Continue;
-    });
+    }
 }
 
 pub fn publish(c: Command) {
-    if let Err(err) = COMMANDER::get().send(c) {
+    if let Err(err) = COMMAND_SENDER::get().send(c) {
         log::error!("failed to publish event: {}", err);
     }
 }

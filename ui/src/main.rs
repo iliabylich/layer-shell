@@ -38,6 +38,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Weather::activate(app);
 
         layer_shell_io::spawn_all();
+
+        gtk4::glib::timeout_add(std::time::Duration::from_millis(50), || {
+            layer_shell_io::poll_events();
+            gtk4::glib::ControlFlow::Continue
+        });
     });
 
     app.connect_startup(|_app| {
