@@ -4,7 +4,7 @@ use alsa::{
     Ctl,
 };
 use layer_shell_utils::global;
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
 
 global!(MIXER, alsa::Mixer);
 global!(OUTPUT_SELEM, Selem<'static>);
@@ -25,7 +25,7 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
     }
 
     if let Some(volume) = get_volume() {
-        if tx.send(Event::Volume(volume)).await.is_err() {
+        if tx.send(Event::Volume(volume)).is_err() {
             log::error!("failed to send Volume event");
         }
     }
@@ -38,7 +38,7 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
             if OUTPUT_SELEM::get().get_id().get_index() == event.get_id().get_index() {
                 MIXER::get().handle_events().unwrap();
                 if let Some(volume) = get_volume() {
-                    if tx.send(Event::Volume(volume)).await.is_err() {
+                    if tx.send(Event::Volume(volume)).is_err() {
                         log::error!("failed to send Volume event");
                     }
                 } else {

@@ -2,7 +2,7 @@ use crate::Event;
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveDateTime};
 use reqwest::Client;
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
 
 mod api;
 use api::{get_weather, DailyResponse, HourlyResponse, Response};
@@ -22,11 +22,11 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
         match get_weather(&client).await {
             Ok(response) => match map_response_to_events(response) {
                 Ok((current, forecast)) => {
-                    if let Err(err) = tx.send(current).await {
+                    if let Err(err) = tx.send(current) {
                         log::error!("Failed to send WeatherCurrent event: {}", err);
                     }
 
-                    if let Err(err) = tx.send(forecast).await {
+                    if let Err(err) = tx.send(forecast) {
                         log::error!("Failed to send WeatherForecast event: {}", err);
                     }
                 }

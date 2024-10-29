@@ -1,6 +1,7 @@
 use crate::Event;
 use anyhow::{Context, Result};
-use tokio::{fs::File, io::AsyncReadExt, sync::mpsc::Sender};
+use std::sync::mpsc::Sender;
+use tokio::{fs::File, io::AsyncReadExt};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
@@ -16,7 +17,6 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
             .await
             .context("failed to get CPU data")?;
         tx.send(Event::Cpu { usage_per_core })
-            .await
             .context("failed to send event")?;
 
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

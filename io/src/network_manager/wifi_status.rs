@@ -1,7 +1,6 @@
 use crate::Event;
 use anyhow::{Context, Result};
-use std::collections::HashMap;
-use tokio::sync::mpsc::Sender;
+use std::{collections::HashMap, sync::mpsc::Sender};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
@@ -20,7 +19,7 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
             .inspect_err(|err| log::error!("WiFiStatus error: {}\n{}", err, err.backtrace()))
             .ok();
 
-        if tx.send(Event::WiFi(state)).await.is_err() {
+        if tx.send(Event::WiFi(state)).is_err() {
             log::error!("failed to send WiFi event");
         }
 

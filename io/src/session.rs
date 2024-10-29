@@ -1,6 +1,6 @@
 use crate::{Command, Event};
 use layer_shell_utils::global;
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
 
 struct Session {
     idx: usize,
@@ -10,35 +10,30 @@ global!(SESSION, Session);
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     let session = Session { idx: 0, sender: tx };
-    session.send().await;
+    session.send();
     SESSION::set(session);
 }
 
 impl Session {
     const MAX: usize = 4;
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.idx = 0;
-        self.send().await;
+        self.send();
     }
-    async fn go_left(&mut self) {
+    fn go_left(&mut self) {
         if self.idx == 0 {
             return;
         }
         self.idx = std::cmp::max(0, self.idx - 1);
-        self.send().await;
+        self.send();
     }
-    async fn go_right(&mut self) {
+    fn go_right(&mut self) {
         self.idx = std::cmp::min(Self::MAX - 1, self.idx + 1);
-        self.send().await;
+        self.send();
     }
-    async fn send(&self) {
-        if self
-            .sender
-            .send(Event::SessionScreen(self.idx))
-            .await
-            .is_err()
-        {
+    fn send(&self) {
+        if self.sender.send(Event::SessionScreen(self.idx)).is_err() {
             log::error!("Failed to send SessionScreen event");
         }
     }
@@ -69,10 +64,10 @@ pub(crate) async fn on_command(command: &Command) {
         Command::Shutdown => exec("systemctl", &["poweroff"]).await,
         Command::Logout => exec("hyprctl", &["dispatch", "exit"]).await,
 
-        Command::SessionGoLeft => SESSION::get().go_left().await,
-        Command::SessionGoRight => SESSION::get().go_right().await,
+        Command::SessionGoLeft => SESSION::get().go_left(),
+        Command::SessionGoRight => SESSION::get().go_right(),
 
-        Command::SessionReset => SESSION::get().reset().await,
+        Command::SessionReset => SESSION::get().reset(),
         _ => {}
     }
 }

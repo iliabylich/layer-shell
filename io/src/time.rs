@@ -1,7 +1,7 @@
 use crate::Event;
 use anyhow::{Context, Result};
 use chrono::Local;
-use tokio::sync::mpsc::Sender;
+use std::sync::mpsc::Sender;
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
@@ -16,7 +16,6 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
             time: now.format("%H:%M:%S").to_string(),
             date: now.format("%Y %B %e").to_string(),
         })
-        .await
         .context("failed to send event")?;
 
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

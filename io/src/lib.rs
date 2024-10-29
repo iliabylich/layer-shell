@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use layer_shell_utils::global;
 
 mod app_list;
@@ -15,7 +17,7 @@ mod weather;
 pub use command::Command;
 pub use event::{App, AppIcon, Event};
 
-global!(COMMANDER, tokio::sync::mpsc::Sender<Command>);
+global!(COMMANDER, std::sync::mpsc::Sender<Command>);
 global!(SUBSCRIPTIONS, Vec<fn(&Event)>);
 
 pub fn subscribe(f: fn(&Event)) {
@@ -28,8 +30,8 @@ pub fn init() {
 }
 
 pub fn spawn_all() {
-    let (etx, mut erx) = tokio::sync::mpsc::channel::<Event>(100);
-    let (ctx, crx) = tokio::sync::mpsc::channel::<Command>(100);
+    let (etx, erx) = std::sync::mpsc::channel::<Event>();
+    let (ctx, crx) = std::sync::mpsc::channel::<Command>();
 
     COMMANDER::set(ctx);
 
@@ -59,21 +61,20 @@ pub fn spawn_all() {
         });
     });
 
-    glib::spawn_future_local(async move {
-        while let Some(event) = erx.recv().await {
+    glib::timeout_add(Duration::from_millis(50), move || {
+        while let Ok(event) = erx.try_recv() {
             log::info!("Received event {:?}", event);
 
             for f in SUBSCRIPTIONS::get().iter() {
                 (f)(&event);
             }
         }
+        return glib::ControlFlow::Continue;
     });
 }
 
 pub fn publish(c: Command) {
-    glib::spawn_future_local(async move {
-        if let Err(err) = COMMANDER::get().send(c).await {
-            log::error!("failed to publish event: {}", err);
-        }
-    });
+    if let Err(err) = COMMANDER::get().send(c) {
+        log::error!("failed to publish event: {}", err);
+    }
 }

@@ -1,7 +1,6 @@
 use crate::Event;
 use anyhow::{Context, Result};
-use std::collections::HashMap;
-use tokio::sync::mpsc::Sender;
+use std::{collections::HashMap, sync::mpsc::Sender};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
@@ -17,7 +16,7 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     loop {
         match get_state(&dbus).await {
             Ok(ifaces) => {
-                if tx.send(Event::NetworkList(ifaces)).await.is_err() {
+                if tx.send(Event::NetworkList(ifaces)).is_err() {
                     log::error!("failed to send NetworkList event");
                 }
             }

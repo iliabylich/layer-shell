@@ -1,11 +1,8 @@
 use crate::{App, AppIcon, Command, Event};
 use anyhow::{Context, Result};
 use layer_shell_utils::global;
-use std::{collections::HashMap, path::PathBuf};
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    sync::mpsc::Sender,
-};
+use std::{collections::HashMap, path::PathBuf, sync::mpsc::Sender};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 struct AppList {
     selected_idx: usize,
@@ -82,7 +79,7 @@ impl AppList {
             })
             .collect::<Vec<_>>();
 
-        if self.tx.send(Event::AppList(apps)).await.is_err() {
+        if self.tx.send(Event::AppList(apps)).is_err() {
             log::error!("failed to send AppList event");
         }
     }

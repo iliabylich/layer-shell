@@ -1,5 +1,5 @@
 use crate::{app_list, hyprland, output_sound, session};
-use tokio::sync::mpsc::Receiver;
+use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 pub enum Command {
@@ -25,9 +25,12 @@ pub enum Command {
     SpawnSystemMonitor,
 }
 
-pub(crate) async fn start_processing(mut rx: Receiver<Command>) {
-    while let Some(command) = rx.recv().await {
-        command.execute().await;
+pub(crate) async fn start_processing(rx: Receiver<Command>) {
+    loop {
+        while let Ok(command) = rx.try_recv() {
+            command.execute().await;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 }
 

@@ -1,10 +1,9 @@
 use crate::{Command, Event};
 use anyhow::{bail, Context, Result};
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::mpsc::Sender};
 use tokio::{
     io::{AsyncBufReadExt, BufReader, Lines},
     net::UnixStream,
-    sync::mpsc::Sender,
 };
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
@@ -20,14 +19,12 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
         .await
         .context("failed to get initial workspaces")?;
     tx.send(Event::from(&workspaces))
-        .await
         .context("failed to send event")?;
 
     let lang = get_language()
         .await
         .context("failed to get initial language")?;
     tx.send(Event::Language { lang })
-        .await
         .context("failed to send event")?;
 
     while let Ok(Some(line)) = lines.next_line().await {
@@ -38,12 +35,10 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
                 | HyprlandEvent::Workspace(_) => {
                     workspaces.apply(hyprland_event);
                     tx.send(Event::from(&workspaces))
-                        .await
                         .context("failed to send event")?;
                 }
                 HyprlandEvent::LanguageChanged(lang) => {
                     tx.send(Event::Language { lang })
-                        .await
                         .context("failed to send event")?;
                 }
                 HyprlandEvent::Other => {}
