@@ -1,4 +1,4 @@
-use crate::{app_list, hyprland, output_sound, session};
+use crate::actors::{app_list, hyprland, output_sound, session};
 use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]

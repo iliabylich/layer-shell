@@ -1,16 +1,8 @@
 use layer_shell_utils::global;
 
-mod app_list;
+mod actors;
 mod command;
-mod cpu;
 mod event;
-mod hyprland;
-mod memory;
-mod network_manager;
-mod output_sound;
-mod session;
-mod time;
-mod weather;
 
 pub use command::Command;
 pub use event::{App, AppIcon, Event};
@@ -49,16 +41,16 @@ pub fn spawn_all() {
                 // command processing actor
                 command::start_processing(crx),
                 // and all models
-                memory::spawn(etx.clone()),
-                cpu::spawn(etx.clone()),
-                time::spawn(etx.clone()),
-                hyprland::spawn(etx.clone()),
-                app_list::spawn(etx.clone()),
-                output_sound::spawn(etx.clone()),
-                session::spawn(etx.clone()),
-                weather::spawn(etx.clone()),
-                network_manager::wifi_status::spawn(etx.clone()),
-                network_manager::network_list::spawn(etx.clone()),
+                actors::memory::spawn(etx.clone()),
+                actors::cpu::spawn(etx.clone()),
+                actors::time::spawn(etx.clone()),
+                actors::hyprland::spawn(etx.clone()),
+                actors::app_list::spawn(etx.clone()),
+                actors::output_sound::spawn(etx.clone()),
+                actors::session::spawn(etx.clone()),
+                actors::weather::spawn(etx.clone()),
+                actors::network_manager::wifi_status::spawn(etx.clone()),
+                actors::network_manager::network_list::spawn(etx.clone()),
             );
         });
     });
