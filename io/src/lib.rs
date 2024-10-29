@@ -1,3 +1,5 @@
+use layer_shell_utils::global;
+
 mod app_list;
 mod command;
 mod cpu;
@@ -7,19 +9,25 @@ mod memory;
 mod network_manager;
 mod output_sound;
 mod session;
-mod subscriptions;
 mod time;
 mod weather;
 
 pub use command::Command;
 pub use event::{App, AppIcon, Event};
-pub use subscriptions::subscribe;
 
-layer_shell_utils::global!(COMMANDER, tokio::sync::mpsc::Sender<Command>);
+global!(COMMANDER, tokio::sync::mpsc::Sender<Command>);
+global!(SUBSCRIPTIONS, Vec<fn(&Event)>);
+
+pub fn subscribe(f: fn(&Event)) {
+    SUBSCRIPTIONS::get().push(f);
+}
+
+pub fn init() {
+    pretty_env_logger::init();
+    SUBSCRIPTIONS::set(vec![]);
+}
 
 pub fn spawn_all() {
-    pretty_env_logger::init();
-
     let (etx, mut erx) = tokio::sync::mpsc::channel::<Event>(100);
     let (ctx, crx) = tokio::sync::mpsc::channel::<Command>(100);
 
@@ -55,7 +63,7 @@ pub fn spawn_all() {
         while let Some(event) = erx.recv().await {
             log::info!("Received event {:?}", event);
 
-            for f in subscriptions::all().iter() {
+            for f in SUBSCRIPTIONS::get().iter() {
                 (f)(&event);
             }
         }
@@ -68,8 +76,4 @@ pub fn publish(c: Command) {
             log::error!("failed to publish event: {}", err);
         }
     });
-}
-
-pub fn init() {
-    subscriptions::init();
 }
