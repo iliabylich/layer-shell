@@ -30,6 +30,8 @@ pub enum Event {
     },
     WiFi(Option<(String, u8)>),
     NetworkList(Vec<(String, String)>),
+    ToggleLauncher,
+    ToggleLogoutScreen,
 }
 
 #[derive(Debug, Clone)]

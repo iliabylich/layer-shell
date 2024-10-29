@@ -4,13 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.5", default-features = false, features = [
-    "std",
-    "help",
-    "derive",
-    "suggestions",
-] }
-clap_complete = "4.5"
 gtk4 = { version = "0.9", features = ["v4_14"] }
 gtk4-layer-shell = "0.4"
 vte4 = { version = "0.8", features = ["v0_78"] }

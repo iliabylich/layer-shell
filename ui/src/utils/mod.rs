@@ -6,9 +6,3 @@ pub(crate) use load_css::load_css;
 
 mod keybindings;
 pub(crate) use keybindings::keybindings;
-
-mod ipc;
-pub(crate) use ipc::{IPCMessage, IPC};
-
-mod args;
-pub(crate) use args::parse_args;

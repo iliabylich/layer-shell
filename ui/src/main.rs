@@ -14,14 +14,16 @@ use gtk4::{
 use crate::{
     globals::GlobalWidgets,
     layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
-    utils::{load_css, parse_args, IPC},
+    utils::load_css,
 };
 
 const APP_ID: &str = "com.me.LayerShell";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    parse_args()?;
-    IPC::spawn()?;
+    gtk4::glib::unix_signal_add(10 /* USR1 */, move || {
+        layer_shell_io::on_sigusr1();
+        gtk4::glib::ControlFlow::Continue
+    });
 
     layer_shell_io::init();
 

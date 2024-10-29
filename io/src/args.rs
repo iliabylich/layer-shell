@@ -1,4 +1,4 @@
-use crate::utils::{IPCMessage, IPC};
+use crate::ipc::{IPCMessage, IPC};
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate, Shell};

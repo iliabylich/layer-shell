@@ -1,16 +1,22 @@
 use layer_shell_utils::global;
 
 mod actors;
+mod args;
 mod command;
 mod event;
+mod ipc;
 
 pub use command::Command;
 pub use event::{App, AppIcon, Event};
+pub use ipc::on_sigusr1;
 
+use args::parse_args;
+use ipc::IPC;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 global!(COMMAND_SENDER, Sender<Command>);
 global!(EVENT_RECEIVER, Receiver<Event>);
+global!(EVENT_SENDER, Sender<Event>);
 global!(SUBSCRIPTIONS, Vec<fn(&Event)>);
 
 pub fn subscribe(f: fn(&Event)) {
@@ -20,6 +26,14 @@ pub fn subscribe(f: fn(&Event)) {
 pub fn init() {
     pretty_env_logger::init();
     SUBSCRIPTIONS::set(vec![]);
+    if let Err(err) = parse_args() {
+        log::error!("Error while parsing args: {}", err);
+        std::process::exit(1);
+    }
+    if let Err(err) = IPC::init() {
+        log::error!("Failed to start IPC: {}", err);
+        std::process::exit(1);
+    }
 }
 
 pub fn spawn_all() {
@@ -28,6 +42,7 @@ pub fn spawn_all() {
 
     COMMAND_SENDER::set(ctx);
     EVENT_RECEIVER::set(erx);
+    EVENT_SENDER::set(etx.clone());
 
     std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -68,6 +83,12 @@ pub fn poll_events() {
 
 pub fn publish(c: Command) {
     if let Err(err) = COMMAND_SENDER::get().send(c) {
+        log::error!("failed to publish event: {}", err);
+    }
+}
+
+pub(crate) fn publish_event(e: Event) {
+    if let Err(err) = EVENT_SENDER::get().send(e) {
         log::error!("failed to publish event: {}", err);
     }
 }

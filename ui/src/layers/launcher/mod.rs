@@ -4,6 +4,7 @@ use gtk4::{
     Application,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
+use layer_shell_io::{subscribe, Event};
 use layer_shell_utils::global;
 
 mod app_list;
@@ -37,6 +38,14 @@ impl Launcher {
         window.present();
         window.set_visible(false);
 
+        subscribe(on_event);
+
         RESET::set(reset);
+    }
+}
+
+fn on_event(event: &Event) {
+    if let Event::ToggleLauncher = event {
+        Launcher::toggle();
     }
 }

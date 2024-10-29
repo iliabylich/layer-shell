@@ -1,9 +1,6 @@
+use crate::{publish_event, Event};
 use anyhow::{Context, Result};
-
-use crate::{
-    layers::{Launcher, LogoutScreen},
-    utils::LayerWindow,
-};
+use layer_shell_utils::global;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum IPCMessage {
@@ -16,31 +13,25 @@ impl IPCMessage {
     fn execute(self) {
         match self {
             IPCMessage::Exit => std::process::exit(0),
-            IPCMessage::ToggleLauncher => Launcher::toggle(),
-            IPCMessage::ToggleLogoutScreen => LogoutScreen::toggle(),
+            IPCMessage::ToggleLauncher => publish_event(Event::ToggleLauncher),
+            IPCMessage::ToggleLogoutScreen => publish_event(Event::ToggleLogoutScreen),
         }
     }
 }
 
-pub(crate) struct IPC {}
+pub(crate) struct IPC;
 
 impl IPC {
-    pub(crate) fn spawn() -> Result<()> {
-        let config = Config::new()?;
-        config.write_pid()?;
-        gtk4::glib::unix_signal_add(10 /* USR1 */, move || {
-            if let Some(message) = config.read_message() {
-                message.execute();
-            }
-            gtk4::glib::ControlFlow::Continue
-        });
+    pub(crate) fn init() -> Result<()> {
+        Config::init()?;
+        Config::write_pid()?;
+
         Ok(())
     }
 
     pub(crate) fn send_to_running_instance(message: IPCMessage) -> Result<()> {
-        let config = Config::new()?;
-        if let Some(pid) = config.read_pid() {
-            config.write_message(message);
+        if let Some(pid) = Config::read_pid() {
+            Config::write_message(message);
             std::process::Command::new("kill")
                 .args(["-USR1", pid.as_str()])
                 .spawn()
@@ -50,13 +41,20 @@ impl IPC {
     }
 }
 
+pub fn on_sigusr1() {
+    if let Some(message) = Config::read_message() {
+        message.execute();
+    }
+}
+
 struct Config {
     pipe: String,
     pidfile: String,
 }
+global!(CONFIG, Config);
 
 impl Config {
-    fn new() -> Result<Self> {
+    fn init() -> Result<()> {
         let dir = format!(
             "{}/.config/layer-shell",
             std::env::var("HOME").context("no $HOME")?
@@ -68,25 +66,27 @@ impl Config {
 
         let pidfile = format!("{}/.pid", dir);
 
-        Ok(Self { pipe, pidfile })
+        CONFIG::set(Self { pipe, pidfile });
+
+        Ok(())
     }
 
-    fn write_pid(&self) -> Result<()> {
-        std::fs::write(&self.pidfile, format!("{}", std::process::id()))
+    fn write_pid() -> Result<()> {
+        std::fs::write(&CONFIG::get().pidfile, format!("{}", std::process::id()))
             .context("failed to write PID to pidfile")
     }
 
-    fn read_pid(&self) -> Option<String> {
-        std::fs::read_to_string(&self.pidfile).ok()
+    fn read_pid() -> Option<String> {
+        std::fs::read_to_string(&CONFIG::get().pidfile).ok()
     }
 
-    fn write_message(&self, message: IPCMessage) {
+    fn write_message(message: IPCMessage) {
         let message = serde_json::to_string(&message).expect("failed to serialize IPCMessage");
-        std::fs::write(&self.pipe, message).unwrap();
+        std::fs::write(&CONFIG::get().pipe, message).unwrap();
     }
 
-    fn read_message(&self) -> Option<IPCMessage> {
-        let command = std::fs::read_to_string(&self.pipe).ok()?;
+    fn read_message() -> Option<IPCMessage> {
+        let command = std::fs::read_to_string(&CONFIG::get().pipe).ok()?;
         serde_json::from_str::<IPCMessage>(&command).ok()
     }
 }

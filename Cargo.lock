@@ -1157,6 +1157,8 @@ dependencies = [
  "alsa",
  "anyhow",
  "chrono",
+ "clap",
+ "clap_complete",
  "layer-shell-utils",
  "log",
  "pretty_env_logger",
@@ -1172,8 +1174,6 @@ name = "layer-shell-ui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
- "clap_complete",
  "gtk4",
  "gtk4-layer-shell",
  "layer-shell-io",
