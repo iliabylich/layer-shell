@@ -22,11 +22,12 @@ impl IPCMessage {
 pub(crate) struct IPC;
 
 impl IPC {
-    pub(crate) fn init() -> Result<()> {
-        Config::init()?;
-        Config::write_pid()?;
+    pub(crate) fn prepare() -> Result<()> {
+        Config::init()
+    }
 
-        Ok(())
+    pub(crate) fn set_current_process_as_main() -> Result<()> {
+        Config::write_pid()
     }
 
     pub(crate) fn send_to_running_instance(message: IPCMessage) -> Result<()> {

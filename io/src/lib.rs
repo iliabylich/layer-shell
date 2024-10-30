@@ -26,12 +26,16 @@ pub fn subscribe(f: fn(&Event)) {
 pub fn init() {
     pretty_env_logger::init();
     SUBSCRIPTIONS::set(vec![]);
+    if let Err(err) = IPC::prepare() {
+        log::error!("Failed to start IPC: {}", err);
+        std::process::exit(1);
+    }
     if let Err(err) = parse_args() {
         log::error!("Error while parsing args: {}", err);
         std::process::exit(1);
     }
-    if let Err(err) = IPC::init() {
-        log::error!("Failed to start IPC: {}", err);
+    if let Err(err) = IPC::set_current_process_as_main() {
+        log::error!("Failed to set current process as main in IPC: {}", err);
         std::process::exit(1);
     }
 }
