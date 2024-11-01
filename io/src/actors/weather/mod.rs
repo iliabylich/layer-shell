@@ -80,7 +80,7 @@ fn map_hourly(
             .context("invalid date format")?;
         if time > now {
             hourly.push((
-                format!("{}' {} {}", time.format("%H"), temp, code.icon()),
+                format!("{}' {:>5.1} {}", time.format("%H"), temp, code.icon()),
                 code.to_string(),
             ));
         }
@@ -115,7 +115,7 @@ fn map_daily(
         if date > today {
             daily.push((
                 format!(
-                    "{}: {:.1} - {:.1} {}",
+                    "{}: {:>5.1} - {:>5.1} {}",
                     date.format("%m-%d"),
                     min,
                     max,
