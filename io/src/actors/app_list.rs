@@ -26,24 +26,24 @@ impl AppList {
         })
     }
 
-    async fn go_up(&mut self) {
+    fn go_up(&mut self) {
         if self.selected_idx == 0 {
             return;
         }
         self.selected_idx = std::cmp::max(0, self.selected_idx - 1);
-        self.emit().await;
+        self.emit();
     }
-    async fn go_down(&mut self) {
+    fn go_down(&mut self) {
         self.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, self.selected_idx + 1);
-        self.emit().await;
+        self.emit();
     }
-    async fn set_search(&mut self, pattern: &str) {
+    fn set_search(&mut self, pattern: &str) {
         self.selected_idx = 0;
         self.pattern = pattern.to_string();
-        self.emit().await;
+        self.emit();
     }
-    async fn exec_selected(&mut self) {
-        if let Some(app) = self.visible_apps().await.get(self.selected_idx) {
+    fn exec_selected(&mut self) {
+        if let Some(app) = self.visible_apps().get(self.selected_idx) {
             let parts = app.exec.split(" ").map(|s| s.trim()).collect::<Vec<_>>();
             let child = tokio::process::Command::new(parts[0])
                 .args(&parts[1..])
@@ -63,13 +63,12 @@ impl AppList {
             Ok(apps) => self.apps = apps,
             Err(err) => log::error!("failed to refresh app list: {}\n{}", err, err.backtrace()),
         }
-        self.emit().await;
+        self.emit();
     }
 
-    async fn emit(&self) {
+    fn emit(&self) {
         let apps = self
             .visible_apps()
-            .await
             .into_iter()
             .enumerate()
             .map(|(idx, app)| App {
@@ -84,27 +83,13 @@ impl AppList {
         }
     }
 
-    async fn visible_apps(&self) -> Vec<DesktopApp> {
-        let apps = vec![DesktopApp {
-            name: String::from("Google Chrome (wayland, gtk4)"),
-            exec: String::from(
-                "google-chrome-stable --gtk-version=4 --ozone-platform-hint=wayland",
-            ),
-            icon: AppIcon::IconName(String::from("google-chrome")),
-        }]
-        .into_iter();
-
-        let desktop_apps = self
-            .apps
-            .iter()
-            .filter(|app| !matches!(app.name.as_str(), "Google Chrome"))
-            .cloned();
-
-        let apps = apps.chain(desktop_apps);
-
+    fn visible_apps(&self) -> Vec<DesktopApp> {
         let pattern = self.pattern.to_lowercase();
-        apps.filter(|app| app.name.to_lowercase().contains(&pattern))
+        self.apps
+            .iter()
+            .filter(|app| app.name.to_lowercase().contains(&pattern))
             .take(Self::MAX_ITEMS)
+            .cloned()
             .collect()
     }
 }
@@ -117,7 +102,7 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
 
 async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     let app_list = AppList::new(tx).await?;
-    app_list.emit().await;
+    app_list.emit();
     APP_LIST::set(app_list);
 
     Ok(())
@@ -222,9 +207,12 @@ async fn parse_file(path: &PathBuf) -> Result<DesktopApp> {
         }
     }
 
+    let name = name.context("failed to get Name")?;
+    let exec = exec.context("failed to get Exec")?.replace(" %u", "");
+
     Ok(DesktopApp {
-        name: name.context("failed to get Name")?,
-        exec: exec.context("failed to get Exec")?,
+        name,
+        exec,
         icon: AppIcon::from(icon.context("failed to get Icon")?),
     })
 }
@@ -234,10 +222,10 @@ pub(crate) async fn on_command(command: &Command) {
 
     match command {
         Command::LauncherReset => app_list.reset().await,
-        Command::LauncherGoUp => app_list.go_up().await,
-        Command::LauncherGoDown => app_list.go_down().await,
-        Command::LauncherSetSearch(search) => app_list.set_search(search).await,
-        Command::LauncherExecSelected => app_list.exec_selected().await,
+        Command::LauncherGoUp => app_list.go_up(),
+        Command::LauncherGoDown => app_list.go_down(),
+        Command::LauncherSetSearch(search) => app_list.set_search(search),
+        Command::LauncherExecSelected => app_list.exec_selected(),
 
         _ => {}
     }
