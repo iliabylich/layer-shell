@@ -35,5 +35,6 @@ tokio = { version = "1", default-features = false, features = [
     "net",
     "process",
 ] }
-zbus = { version = "5", default-features = false, features = ["async-io"] }
 layer-shell-utils = { path = "../utils" }
+dbus-tokio = "0.7"
+dbus = "0.9"

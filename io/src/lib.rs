@@ -68,8 +68,7 @@ pub fn spawn_all() {
                 actors::output_sound::spawn(etx.clone()),
                 actors::session::spawn(etx.clone()),
                 actors::weather::spawn(etx.clone()),
-                actors::network_manager::wifi_status::spawn(etx.clone()),
-                actors::network_manager::network_list::spawn(etx.clone()),
+                actors::network_manager::spawn(etx.clone()),
             );
         });
     });
