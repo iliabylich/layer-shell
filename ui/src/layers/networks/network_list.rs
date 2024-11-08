@@ -1,9 +1,6 @@
 use crate::{
     layers::Networks,
-    widgets::{
-        NetworkExitRow, NetworkRow1, NetworkRow2, NetworkRow3, NetworkRow4, NetworkRow5,
-        NetworkSettingsRow,
-    },
+    widgets::{self, NetworkExitRow, NetworkSettingsRow},
 };
 use gtk4::{
     prelude::{Cast, DisplayExt, WidgetExt},
@@ -23,7 +20,7 @@ pub(crate) fn init() {
 
     subscribe(on_event);
 
-    for row in rows() {
+    for row in widgets::networks::rows() {
         set_on_click(row, move |label| {
             if let Some(ip) = label.tooltip_text().map(|s| s.to_string()) {
                 let original_label = label.label().as_str().to_string();
@@ -40,7 +37,7 @@ pub(crate) fn init() {
 
 fn on_event(event: &Event) {
     if let Event::NetworkList(list) = event {
-        for (idx, row) in rows().iter().enumerate() {
+        for (idx, row) in widgets::networks::rows().iter().enumerate() {
             if let Some((name, ip)) = list.get(idx) {
                 row.set_visible(true);
                 let label = row.start_widget().unwrap().dynamic_cast::<Label>().unwrap();
@@ -51,16 +48,6 @@ fn on_event(event: &Event) {
             }
         }
     }
-}
-
-fn rows() -> [&'static CenterBox; 5] {
-    [
-        NetworkRow1(),
-        NetworkRow2(),
-        NetworkRow3(),
-        NetworkRow4(),
-        NetworkRow5(),
-    ]
 }
 
 fn set_on_click<F>(row: &'static CenterBox, f: F)

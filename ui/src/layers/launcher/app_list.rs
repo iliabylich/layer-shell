@@ -1,16 +1,8 @@
 use crate::{
     layers::Launcher,
-    widgets::{
-        LauncherEntry, LauncherRow1, LauncherRow1Image, LauncherRow1Label, LauncherRow2,
-        LauncherRow2Image, LauncherRow2Label, LauncherRow3, LauncherRow3Image, LauncherRow3Label,
-        LauncherRow4, LauncherRow4Image, LauncherRow4Label, LauncherRow5, LauncherRow5Image,
-        LauncherRow5Label,
-    },
+    widgets::{self, LauncherEntry},
 };
-use gtk4::{
-    prelude::{EditableExt, WidgetExt},
-    Image, Label,
-};
+use gtk4::prelude::{EditableExt, WidgetExt};
 use layer_shell_io::{publish, subscribe, AppIcon, Command, Event};
 
 type Output = (Box<dyn Fn()>, Box<dyn Fn(&str)>);
@@ -43,9 +35,9 @@ pub(crate) fn init() -> Output {
 
 fn on_event(event: &Event) {
     if let Event::AppList(apps) = event {
-        let rows = rows();
-        let images = images();
-        let labels = labels();
+        let rows = widgets::launcher::rows();
+        let images = widgets::launcher::images();
+        let labels = widgets::launcher::labels();
 
         for idx in 0..5 {
             let row = rows[idx];
@@ -71,34 +63,4 @@ fn on_event(event: &Event) {
             }
         }
     }
-}
-
-fn rows() -> [&'static gtk4::Box; 5] {
-    [
-        LauncherRow1(),
-        LauncherRow2(),
-        LauncherRow3(),
-        LauncherRow4(),
-        LauncherRow5(),
-    ]
-}
-
-fn images() -> [&'static Image; 5] {
-    [
-        LauncherRow1Image(),
-        LauncherRow2Image(),
-        LauncherRow3Image(),
-        LauncherRow4Image(),
-        LauncherRow5Image(),
-    ]
-}
-
-fn labels() -> [&'static Label; 5] {
-    [
-        LauncherRow1Label(),
-        LauncherRow2Label(),
-        LauncherRow3Label(),
-        LauncherRow4Label(),
-        LauncherRow5Label(),
-    ]
 }

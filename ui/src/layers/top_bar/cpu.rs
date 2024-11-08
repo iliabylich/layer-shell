@@ -1,9 +1,4 @@
-use crate::widgets::{
-    CPUWidgetLabel1, CPUWidgetLabel10, CPUWidgetLabel11, CPUWidgetLabel12, CPUWidgetLabel2,
-    CPUWidgetLabel3, CPUWidgetLabel4, CPUWidgetLabel5, CPUWidgetLabel6, CPUWidgetLabel7,
-    CPUWidgetLabel8, CPUWidgetLabel9,
-};
-use gtk4::Label;
+use crate::widgets;
 use layer_shell_io::{subscribe, Event};
 
 pub(crate) fn init() {
@@ -12,29 +7,12 @@ pub(crate) fn init() {
 
 fn on_event(event: &Event) {
     if let Event::Cpu { usage_per_core } = event {
-        assert_eq!(usage_per_core.len(), labels().len());
+        assert_eq!(usage_per_core.len(), widgets::cpu::labels().len());
 
         for (idx, load) in usage_per_core.iter().enumerate() {
-            labels()[idx].set_label(indicator(*load));
+            widgets::cpu::labels()[idx].set_label(indicator(*load));
         }
     }
-}
-
-fn labels() -> [&'static Label; 12] {
-    [
-        CPUWidgetLabel1(),
-        CPUWidgetLabel2(),
-        CPUWidgetLabel3(),
-        CPUWidgetLabel4(),
-        CPUWidgetLabel5(),
-        CPUWidgetLabel6(),
-        CPUWidgetLabel7(),
-        CPUWidgetLabel8(),
-        CPUWidgetLabel9(),
-        CPUWidgetLabel10(),
-        CPUWidgetLabel11(),
-        CPUWidgetLabel12(),
-    ]
 }
 
 const INDICATORS: &[&str] = &[
