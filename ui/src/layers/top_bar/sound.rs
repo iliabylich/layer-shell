@@ -3,7 +3,12 @@ use gtk4::prelude::{AdjustmentExt, RangeExt};
 use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
-    subscribe(on_event);
+    subscribe(|event| {
+        if let Event::Volume(volume) = event {
+            SoundWidgetScale().set_value(*volume);
+            SoundWidgetImage().set_icon_name(Some(volume_to_icon(*volume)));
+        }
+    });
 
     SoundWidgetScale().connect_change_value(|_, _, _| {
         let mut volume = SoundWidgetScale().adjustment().value();
@@ -13,13 +18,6 @@ pub(crate) fn init() {
         publish(Command::SetVolume(volume));
         gtk4::glib::Propagation::Proceed
     });
-}
-
-fn on_event(event: &Event) {
-    if let Event::Volume(volume) = event {
-        SoundWidgetScale().set_value(*volume);
-        SoundWidgetImage().set_icon_name(Some(volume_to_icon(*volume)));
-    }
 }
 
 fn volume_to_icon(volume: f64) -> &'static str {

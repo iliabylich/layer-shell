@@ -28,7 +28,6 @@ impl Weather {
 
         keybindings(window)
             .add("Escape", || window.set_visible(false))
-            .fallback(|_| {})
             .finish();
     }
 

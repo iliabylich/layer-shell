@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::upper_case_acronyms)]
+
 use layer_shell_utils::global;
 
 mod actors;
@@ -17,10 +20,13 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 global!(COMMAND_SENDER, Sender<Command>);
 global!(EVENT_RECEIVER, Receiver<Event>);
 global!(EVENT_SENDER, Sender<Event>);
-global!(SUBSCRIPTIONS, Vec<fn(&Event)>);
+global!(SUBSCRIPTIONS, Vec<Box<dyn Fn(&Event)>>);
 
-pub fn subscribe(f: fn(&Event)) {
-    SUBSCRIPTIONS::get().push(f);
+pub fn subscribe<F>(f: F)
+where
+    F: Fn(&Event) + 'static,
+{
+    SUBSCRIPTIONS::get().push(Box::new(f));
 }
 
 pub fn init() {
@@ -66,7 +72,6 @@ pub fn spawn_all() {
                 actors::hyprland::spawn(etx.clone()),
                 actors::app_list::spawn(etx.clone()),
                 actors::output_sound::spawn(etx.clone()),
-                actors::session::spawn(etx.clone()),
                 actors::weather::spawn(etx.clone()),
                 actors::network_manager::spawn(etx.clone()),
             );

@@ -18,7 +18,20 @@ pub(crate) fn init() {
         Networks::toggle();
     });
 
-    subscribe(on_event);
+    subscribe(|event| {
+        if let Event::NetworkList(list) = event {
+            for (idx, row) in widgets::networks::rows().iter().enumerate() {
+                if let Some((name, ip)) = list.get(idx) {
+                    row.set_visible(true);
+                    let label = row.start_widget().unwrap().dynamic_cast::<Label>().unwrap();
+                    label.set_label(&format!("{}: {}", name, ip));
+                    label.set_tooltip_text(Some(ip));
+                } else {
+                    row.set_visible(false);
+                }
+            }
+        }
+    });
 
     for row in widgets::networks::rows() {
         set_on_click(row, move |label| {
@@ -32,21 +45,6 @@ pub(crate) fn init() {
                 });
             }
         });
-    }
-}
-
-fn on_event(event: &Event) {
-    if let Event::NetworkList(list) = event {
-        for (idx, row) in widgets::networks::rows().iter().enumerate() {
-            if let Some((name, ip)) = list.get(idx) {
-                row.set_visible(true);
-                let label = row.start_widget().unwrap().dynamic_cast::<Label>().unwrap();
-                label.set_label(&format!("{}: {}", name, ip));
-                label.set_tooltip_text(Some(ip));
-            } else {
-                row.set_visible(false);
-            }
-        }
     }
 }
 

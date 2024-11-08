@@ -43,8 +43,7 @@ impl Htop {
         window.set_child(Some(&terminal));
 
         keybindings(window)
-            .add("Escape", Self::toggle)
-            .fallback(|_| {})
+            .add("Escape", || window.set_visible(false))
             .finish();
     }
 

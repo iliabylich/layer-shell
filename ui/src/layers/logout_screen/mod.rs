@@ -5,12 +5,10 @@ use gtk4::{
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use layer_shell_io::{subscribe, Event};
-use layer_shell_utils::global;
 
 mod buttons;
 
 pub(crate) struct LogoutScreen;
-global!(RESET, Box<dyn Fn()>);
 
 impl LogoutScreen {
     pub(crate) fn activate(app: &Application) {
@@ -27,33 +25,24 @@ impl LogoutScreen {
         LayerShell::set_namespace(window, "LogoutScreen");
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
-        let (reset, on_key_press) = buttons::init();
+        buttons::init();
 
         keybindings(window)
-            .add("Escape", Self::toggle)
-            .fallback(on_key_press)
+            .add("Escape", || window.set_visible(false))
             .finish();
 
         window.present();
         window.set_visible(false);
 
-        subscribe(on_event);
-
-        RESET::set(reset)
+        subscribe(|event| {
+            if let Event::ToggleLogoutScreen = event {
+                Self::toggle();
+            }
+        });
     }
 
     pub(crate) fn toggle() {
         let window = LogoutScreenWindow();
-
-        if !window.get_visible() {
-            (RESET::get())();
-        }
         window.set_visible(!window.get_visible())
-    }
-}
-
-fn on_event(event: &Event) {
-    if let Event::ToggleLogoutScreen = event {
-        LogoutScreen::toggle();
     }
 }

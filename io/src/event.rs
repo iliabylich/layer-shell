@@ -22,7 +22,6 @@ pub enum Event {
     },
     AppList(Vec<App>),
     Volume(f64),
-    SessionScreen(usize),
     WeatherCurrent(String),
     WeatherForecast {
         hourly: Vec<(String, String)>,

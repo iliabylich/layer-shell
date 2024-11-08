@@ -10,11 +10,9 @@ pub(crate) fn init() {
         Weather::toggle();
     });
 
-    subscribe(on_event);
-}
-
-fn on_event(event: &Event) {
-    if let Event::WeatherCurrent(weather) = event {
-        WeatherWidgetLabel().set_label(weather);
-    }
+    subscribe(|event| {
+        if let Event::WeatherCurrent(weather) = event {
+            WeatherWidgetLabel().set_label(weather);
+        }
+    });
 }

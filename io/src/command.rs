@@ -17,9 +17,6 @@ pub enum Command {
     Reboot,
     Shutdown,
     Logout,
-    SessionGoLeft,
-    SessionGoRight,
-    SessionReset,
 
     SpawnNetworkEditor,
     SpawnSystemMonitor,
@@ -47,9 +44,7 @@ impl Command {
 
             SetVolume(_) => output_sound::on_command(self).await,
 
-            Lock | Reboot | Shutdown | Logout | SessionGoLeft | SessionGoRight | SessionReset => {
-                session::on_command(self).await
-            }
+            Lock | Reboot | Shutdown | Logout => session::on_command(self).await,
 
             SpawnNetworkEditor => spawn_network_editor(),
             SpawnSystemMonitor => spawn_system_monitor(),
@@ -59,7 +54,7 @@ impl Command {
 
 fn spawn_network_editor() {
     std::process::Command::new("kitty")
-        .args(&["--name", "nmtui", "nmtui"])
+        .args(["--name", "nmtui", "nmtui"])
         .spawn()
         .unwrap();
 }

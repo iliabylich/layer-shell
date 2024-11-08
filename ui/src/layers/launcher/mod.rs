@@ -4,13 +4,11 @@ use gtk4::{
     Application,
 };
 use gtk4_layer_shell::{KeyboardMode, Layer, LayerShell};
-use layer_shell_io::{subscribe, Event};
-use layer_shell_utils::global;
+use layer_shell_io::{publish, subscribe, Command, Event};
 
 mod app_list;
 
 pub(crate) struct Launcher;
-global!(RESET, Box<dyn Fn()>);
 
 impl Launcher {
     pub(crate) fn activate(app: &Application) {
@@ -23,33 +21,31 @@ impl Launcher {
         LayerShell::set_namespace(window, "Launcher");
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
-        let (reset, on_key_press) = app_list::init();
+        app_list::init();
 
         keybindings(window)
-            .add("Escape", Self::toggle)
-            .fallback(on_key_press)
+            .add("Escape", || window.set_visible(false))
+            .add("Up", || publish(Command::LauncherGoUp))
+            .add("Down", || publish(Command::LauncherGoDown))
             .finish();
 
         window.present();
         window.set_visible(false);
 
-        subscribe(on_event);
-
-        RESET::set(reset);
+        subscribe(|event| {
+            if let Event::ToggleLauncher = event {
+                Self::toggle();
+            }
+        });
     }
 
     pub(crate) fn toggle() {
         let window = LauncherWindow();
 
         if !window.get_visible() {
-            (RESET::get())();
+            publish(Command::LauncherReset);
+            app_list::reset();
         }
         window.set_visible(!window.get_visible())
-    }
-}
-
-fn on_event(event: &Event) {
-    if let Event::ToggleLauncher = event {
-        Launcher::toggle();
     }
 }

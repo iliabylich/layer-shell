@@ -5,13 +5,9 @@ use gtk4::{
     EventControllerKey, Window,
 };
 
-type KeybindingFn = Box<dyn Fn()>;
-type FallbackFn = Box<dyn Fn(&str)>;
-
 pub(crate) struct Keybindings {
     window: &'static Window,
-    map: HashMap<&'static str, KeybindingFn>,
-    fallback: Option<FallbackFn>,
+    map: HashMap<&'static str, Box<dyn Fn()>>,
 }
 
 impl Keybindings {
@@ -23,30 +19,13 @@ impl Keybindings {
         self
     }
 
-    pub(crate) fn fallback<F>(mut self, f: F) -> Self
-    where
-        F: Fn(&str) + 'static,
-    {
-        self.fallback = Some(Box::new(f));
-        self
-    }
-
     pub(crate) fn finish(self) {
-        let Self {
-            window,
-            map,
-            fallback,
-        } = self;
+        let Self { window, map } = self;
         let ctrl = EventControllerKey::new();
         ctrl.connect_key_pressed(move |_, keyval, _, _| {
             if let Some(key) = keyval.name() {
-                match map.get(key.as_str()) {
-                    Some(f) => f(),
-                    None => {
-                        if let Some(fallback) = fallback.as_ref() {
-                            fallback(&key)
-                        }
-                    }
+                if let Some(f) = map.get(key.as_str()) {
+                    f();
                 }
             }
             gtk4::glib::Propagation::Proceed
@@ -60,6 +39,5 @@ pub(crate) fn keybindings(window: &'static Window) -> Keybindings {
     Keybindings {
         window,
         map: HashMap::new(),
-        fallback: None,
     }
 }
