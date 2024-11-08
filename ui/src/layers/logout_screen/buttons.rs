@@ -1,6 +1,5 @@
 use crate::{
     layers::LogoutScreen,
-    utils::LayerWindow,
     widgets::{
         LogoutScreenLockButton, LogoutScreenLogoutButton, LogoutScreenRebootButton,
         LogoutScreenShutdownButton,

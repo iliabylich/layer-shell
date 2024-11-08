@@ -1,6 +1,5 @@
 use crate::{
     layers::Launcher,
-    utils::LayerWindow,
     widgets::{
         LauncherEntry, LauncherRow1, LauncherRow1Image, LauncherRow1Label, LauncherRow2,
         LauncherRow2Image, LauncherRow2Label, LauncherRow3, LauncherRow3Image, LauncherRow3Label,

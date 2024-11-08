@@ -1,4 +1,4 @@
-use crate::{layers::LogoutScreen, utils::LayerWindow, widgets::PowerWidget};
+use crate::{layers::LogoutScreen, widgets::PowerWidget};
 use gtk4::prelude::ButtonExt;
 
 pub(crate) fn init() {

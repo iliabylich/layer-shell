@@ -1,31 +1,27 @@
-use crate::{
-    utils::{keybindings, LayerWindow},
-    widgets::NetworksWindow,
+use crate::{utils::keybindings, widgets::NetworksWindow};
+use gtk4::{
+    prelude::{GtkWindowExt, WidgetExt},
+    Application,
 };
-use gtk4::{prelude::WidgetExt, Application};
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 mod network_list;
 
 pub(crate) struct Networks;
 
-impl LayerWindow for Networks {
-    const NAME: &'static str = "Networks";
-    const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Right];
-    const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 50)];
-    const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
-
-    fn reset() {}
-
-    fn window() -> &'static gtk4::Window {
-        NetworksWindow()
-    }
-}
-
 impl Networks {
     pub(crate) fn activate(app: &Application) {
-        let window = Self::layer_window(app);
+        let window = NetworksWindow();
+
+        window.set_application(Some(app));
+
+        LayerShell::init_layer_shell(window);
+        LayerShell::set_layer(window, Layer::Overlay);
+        LayerShell::set_anchor(window, Edge::Top, true);
+        LayerShell::set_anchor(window, Edge::Right, true);
+        LayerShell::set_margin(window, Edge::Top, 50);
+        LayerShell::set_namespace(window, "Networks");
+        LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         network_list::init();
 
@@ -33,5 +29,10 @@ impl Networks {
             .add("Escape", || window.set_visible(false))
             .fallback(|_| {})
             .finish();
+    }
+
+    pub(crate) fn toggle() {
+        let window = NetworksWindow();
+        window.set_visible(!window.get_visible())
     }
 }

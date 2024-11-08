@@ -1,6 +1,5 @@
 use crate::{
     layers::Networks,
-    utils::LayerWindow,
     widgets::{
         NetworkExitRow, NetworkRow1, NetworkRow2, NetworkRow3, NetworkRow4, NetworkRow5,
         NetworkSettingsRow,

@@ -1,12 +1,9 @@
-use crate::{
-    utils::{keybindings, LayerWindow},
-    widgets::LauncherWindow,
-};
+use crate::{utils::keybindings, widgets::LauncherWindow};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application,
 };
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
+use gtk4_layer_shell::{KeyboardMode, Layer, LayerShell};
 use layer_shell_io::{subscribe, Event};
 use layer_shell_utils::global;
 
@@ -15,25 +12,16 @@ mod app_list;
 pub(crate) struct Launcher;
 global!(RESET, Box<dyn Fn()>);
 
-impl LayerWindow for Launcher {
-    const NAME: &'static str = "Launcher";
-    const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &'static [Edge] = &[];
-    const MARGINS: &'static [(Edge, i32)] = &[];
-    const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
-
-    fn reset() {
-        (RESET::get())();
-    }
-
-    fn window() -> &'static gtk4::Window {
-        LauncherWindow()
-    }
-}
-
 impl Launcher {
     pub(crate) fn activate(app: &Application) {
-        let window = Self::layer_window(app);
+        let window = LauncherWindow();
+
+        window.set_application(Some(app));
+
+        LayerShell::init_layer_shell(window);
+        LayerShell::set_layer(window, Layer::Overlay);
+        LayerShell::set_namespace(window, "Launcher");
+        LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         let (reset, on_key_press) = app_list::init();
 
@@ -48,6 +36,15 @@ impl Launcher {
         subscribe(on_event);
 
         RESET::set(reset);
+    }
+
+    pub(crate) fn toggle() {
+        let window = LauncherWindow();
+
+        if !window.get_visible() {
+            (RESET::get())();
+        }
+        window.set_visible(!window.get_visible())
     }
 }
 

@@ -1,6 +1,6 @@
-use crate::{utils::LayerWindow, widgets::TopBarWindow};
+use crate::widgets::TopBarWindow;
 use gtk4::{prelude::GtkWindowExt, Application};
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
 
 mod clock;
 mod cpu;
@@ -15,23 +15,19 @@ mod workspaces;
 
 pub(crate) struct TopBar;
 
-impl LayerWindow for TopBar {
-    const NAME: &'static str = "TopBar";
-    const LAYER: Layer = Layer::Top;
-    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Left, Edge::Right];
-    const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 0)];
-    const KEYBOARD_MODE: Option<KeyboardMode> = None;
-
-    fn reset() {}
-
-    fn window() -> &'static gtk4::Window {
-        TopBarWindow()
-    }
-}
-
 impl TopBar {
     pub(crate) fn activate(app: &Application) {
-        let window = Self::layer_window(app);
+        let window = TopBarWindow();
+
+        window.set_application(Some(app));
+
+        LayerShell::init_layer_shell(window);
+        LayerShell::set_layer(window, Layer::Top);
+        LayerShell::set_anchor(window, Edge::Top, true);
+        LayerShell::set_anchor(window, Edge::Left, true);
+        LayerShell::set_anchor(window, Edge::Right, true);
+        LayerShell::set_margin(window, Edge::Top, 0);
+        LayerShell::set_namespace(window, "TopBar");
 
         workspaces::init();
         htop::init();

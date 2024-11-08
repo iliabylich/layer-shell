@@ -1,4 +1,4 @@
-use crate::{layers::Htop, utils::LayerWindow, widgets::HtopWidget};
+use crate::{layers::Htop, widgets::HtopWidget};
 use gtk4::prelude::ButtonExt;
 
 pub(crate) fn init() {

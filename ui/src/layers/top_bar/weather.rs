@@ -1,6 +1,5 @@
 use crate::{
     layers::Weather,
-    utils::LayerWindow,
     widgets::{WeatherWidget, WeatherWidgetLabel},
 };
 use gtk4::prelude::ButtonExt;

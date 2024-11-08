@@ -1,29 +1,28 @@
-use crate::{
-    utils::{keybindings, LayerWindow},
-    widgets::HtopWindow,
+use crate::{utils::keybindings, widgets::HtopWindow};
+use gtk4::{
+    gio::Cancellable,
+    prelude::{GtkWindowExt, WidgetExt},
+    Application,
 };
-use gtk4::{gio::Cancellable, prelude::GtkWindowExt, Application};
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use vte4::TerminalExtManual;
 
 pub(crate) struct Htop;
 
-impl LayerWindow for Htop {
-    const NAME: &'static str = "Htop";
-    const LAYER: Layer = Layer::Overlay;
-    const ANCHORS: &'static [Edge] = &[Edge::Top, Edge::Right];
-    const MARGINS: &'static [(Edge, i32)] = &[(Edge::Top, 50), (Edge::Right, 600)];
-    const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
-
-    fn reset() {}
-    fn window() -> &'static gtk4::Window {
-        HtopWindow()
-    }
-}
-
 impl Htop {
     pub(crate) fn activate(app: &Application) {
-        let window = Self::layer_window(app);
+        let window = HtopWindow();
+
+        window.set_application(Some(app));
+
+        LayerShell::init_layer_shell(window);
+        LayerShell::set_layer(window, Layer::Overlay);
+        LayerShell::set_anchor(window, Edge::Top, true);
+        LayerShell::set_anchor(window, Edge::Right, true);
+        LayerShell::set_margin(window, Edge::Top, 50);
+        LayerShell::set_margin(window, Edge::Right, 600);
+        LayerShell::set_namespace(window, "Htop");
+        LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         let terminal = vte4::Terminal::builder().build();
         terminal.spawn_async(
@@ -47,5 +46,10 @@ impl Htop {
             .add("Escape", Self::toggle)
             .fallback(|_| {})
             .finish();
+    }
+
+    pub(crate) fn toggle() {
+        let window = HtopWindow();
+        window.set_visible(!window.get_visible())
     }
 }

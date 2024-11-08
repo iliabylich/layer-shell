@@ -1,6 +1,5 @@
 use crate::{
     layers::Networks,
-    utils::LayerWindow,
     widgets::{NetworkWidget, NetworkWidgetLabel},
 };
 use gtk4::prelude::ButtonExt;
