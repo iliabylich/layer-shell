@@ -1,4 +1,3 @@
-use crate::globals::load_widget;
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application, Window,
@@ -13,7 +12,7 @@ pub(crate) trait LayerWindow {
     const KEYBOARD_MODE: Option<KeyboardMode>;
 
     fn layer_window(app: &Application) -> &'static Window {
-        let w = load_widget::<Window>(Self::NAME);
+        let w = Self::window();
         w.set_application(Some(app));
 
         LayerShell::init_layer_shell(w);
@@ -32,8 +31,10 @@ pub(crate) trait LayerWindow {
         w
     }
 
+    fn window() -> &'static gtk4::Window;
+
     fn toggle() {
-        let window = load_widget::<Window>(Self::NAME);
+        let window = Self::window();
 
         if !window.get_visible() {
             Self::reset();

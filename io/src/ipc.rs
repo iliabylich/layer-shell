@@ -82,8 +82,13 @@ impl Config {
     }
 
     fn write_message(message: IPCMessage) {
-        let message = serde_json::to_string(&message).expect("failed to serialize IPCMessage");
-        std::fs::write(&CONFIG::get().pipe, message).unwrap();
+        match serde_json::to_string(&message) {
+            Ok(message) => std::fs::write(&CONFIG::get().pipe, message).unwrap(),
+            Err(err) => {
+                log::error!("failed to serialize IPCMessage: {}", err);
+                std::process::exit(1);
+            }
+        }
     }
 
     fn read_message() -> Option<IPCMessage> {

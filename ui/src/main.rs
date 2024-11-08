@@ -2,9 +2,9 @@
 #![allow(clippy::missing_transmute_annotations)]
 #![allow(clippy::type_complexity)]
 
-mod globals;
 mod layers;
 mod utils;
+mod widgets;
 
 use gtk4::{
     prelude::{ApplicationExt, ApplicationExtManual},
@@ -12,7 +12,6 @@ use gtk4::{
 };
 
 use crate::{
-    globals::GlobalWidgets,
     layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
     utils::load_css,
 };
@@ -30,7 +29,7 @@ fn main() {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
-        GlobalWidgets::init();
+        widgets::load();
 
         TopBar::activate(app);
         LogoutScreen::activate(app);

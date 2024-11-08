@@ -6,7 +6,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
 -->
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <object class="GtkWindow" id="TopBar">
+  <object class="GtkWindow" id="TopBarWindow">
     <child>
       <object class="GtkCenterBox">
         <style>
@@ -16,7 +16,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           <object class="GtkBox">
             <property name="spacing">8</property>
             <child>
-              <object class="GtkBox" id="WorkspacesWidget">
+              <object class="GtkBox">
                 <style>
                   <class name="widget"/>
                   <class name="workspaces"/>
@@ -147,7 +147,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
-              <object class="GtkCenterBox" id="LanguageWidget">
+              <object class="GtkCenterBox">
                 <style>
                   <class name="widget"/>
                   <class name="language"/>
@@ -159,7 +159,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
-              <object class="GtkBox" id="SoundWidget">
+              <object class="GtkBox">
                 <style>
                   <class name="widget"/>
                   <class name="sound"/>
@@ -188,7 +188,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
-              <object class="GtkBox" id="CPUWidget">
+              <object class="GtkBox">
                 <style>
                   <class name="widget"/>
                   <class name="cpu"/>
@@ -290,7 +290,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
-              <object class="GtkCenterBox" id="ClockWidget">
+              <object class="GtkCenterBox">
                 <style>
                   <class name="widget"/>
                   <class name="clock"/>
@@ -326,7 +326,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="LogoutScreen">
+  <object class="GtkWindow" id="LogoutScreenWindow">
     <style>
       <class name="widget-logout"/>
     </style>
@@ -390,7 +390,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="Networks">
+  <object class="GtkWindow" id="NetworksWindow">
     <style>
       <class name="widget-network"/>
     </style>
@@ -403,7 +403,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
         </style>
         <property name="orientation">1</property>
         <child>
-          <object class="GtkCenterBox" id="Network1Row">
+          <object class="GtkCenterBox" id="NetworkRow1">
             <style>
               <class name="widget-network-row"/>
             </style>
@@ -425,7 +425,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <child>
-          <object class="GtkCenterBox" id="Network2Row">
+          <object class="GtkCenterBox" id="NetworkRow2">
             <style>
               <class name="widget-network-row"/>
             </style>
@@ -447,7 +447,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <child>
-          <object class="GtkCenterBox" id="Network3Row">
+          <object class="GtkCenterBox" id="NetworkRow3">
             <style>
               <class name="widget-network-row"/>
             </style>
@@ -469,7 +469,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <child>
-          <object class="GtkCenterBox" id="Network4Row">
+          <object class="GtkCenterBox" id="NetworkRow4">
             <style>
               <class name="widget-network-row"/>
             </style>
@@ -491,7 +491,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <child>
-          <object class="GtkCenterBox" id="Network5Row">
+          <object class="GtkCenterBox" id="NetworkRow5">
             <style>
               <class name="widget-network-row"/>
             </style>
@@ -561,7 +561,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="Launcher">
+  <object class="GtkWindow" id="LauncherWindow">
     <property name="width-request">700</property>
     <child>
       <object class="GtkBox">
@@ -688,14 +688,14 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="Htop">
+  <object class="GtkWindow" id="HtopWindow">
     <style>
       <class name="widget-htop"/>
     </style>
     <property name="width-request">1000</property>
     <property name="height-request">700</property>
   </object>
-  <object class="GtkWindow" id="Weather">
+  <object class="GtkWindow" id="WeatherWindow">
     <style>
       <class name="widget-weather"/>
     </style>

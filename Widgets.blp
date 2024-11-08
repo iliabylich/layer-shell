@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Gdk 4.0;
 
-Window TopBar {
+Window TopBarWindow {
     CenterBox {
         styles ["main-wrapper"]
 
@@ -9,7 +9,7 @@ Window TopBar {
         Box {
             spacing: 8;
 
-            Box WorkspacesWidget {
+            Box {
                 styles ["widget", "workspaces"]
 
                 Button WorkspacesWidgetButton1  { Label { label: "1";  } }
@@ -42,14 +42,14 @@ Window TopBar {
                 Label WeatherWidgetLabel {}
             }
 
-            CenterBox LanguageWidget {
+            CenterBox {
                 styles ["widget", "language", "padded"]
 
                 [center]
                 Label LanguageWidgetLabel {}
             }
 
-            Box SoundWidget {
+            Box {
                 styles ["widget", "sound", "padded"]
                 spacing: 10;
                 orientation: horizontal;
@@ -67,7 +67,7 @@ Window TopBar {
                 }
             }
 
-            Box CPUWidget {
+            Box {
                 styles ["widget", "cpu", "padded"]
                 spacing: 3;
                 orientation: horizontal;
@@ -99,7 +99,7 @@ Window TopBar {
                 Label NetworkWidgetLabel {}
             }
 
-            CenterBox ClockWidget {
+            CenterBox {
                 styles ["widget", "clock", "padded"]
 
                 [center]
@@ -118,7 +118,7 @@ Window TopBar {
     }
 }
 
-Window LogoutScreen {
+Window LogoutScreenWindow {
     styles ["widget-logout"]
     visible: false;
 
@@ -150,7 +150,7 @@ Window LogoutScreen {
     }
 }
 
-Window Networks {
+Window NetworksWindow {
     styles ["widget-network"]
     visible: false;
     width-request: 700;
@@ -159,7 +159,7 @@ Window Networks {
         styles ["widget-network-row-list"]
         orientation: vertical;
 
-        CenterBox Network1Row {
+        CenterBox NetworkRow1 {
             styles ["widget-network-row"]
             orientation: horizontal;
             halign: fill;
@@ -178,7 +178,7 @@ Window Networks {
             }
         }
 
-        CenterBox Network2Row {
+        CenterBox NetworkRow2 {
             styles ["widget-network-row"]
             orientation: horizontal;
             halign: fill;
@@ -197,7 +197,7 @@ Window Networks {
             }
         }
 
-        CenterBox Network3Row {
+        CenterBox NetworkRow3 {
             styles ["widget-network-row"]
             orientation: horizontal;
             halign: fill;
@@ -216,7 +216,7 @@ Window Networks {
             }
         }
 
-        CenterBox Network4Row {
+        CenterBox NetworkRow4 {
             styles ["widget-network-row"]
             orientation: horizontal;
             halign: fill;
@@ -235,7 +235,7 @@ Window Networks {
             }
         }
 
-        CenterBox Network5Row {
+        CenterBox NetworkRow5 {
             styles ["widget-network-row"]
             orientation: horizontal;
             halign: fill;
@@ -296,7 +296,7 @@ Window Networks {
     }
 }
 
-Window Launcher {
+Window LauncherWindow {
     width-request: 700;
 
     Box {
@@ -389,14 +389,14 @@ Window Launcher {
     }
 }
 
-Window Htop {
+Window HtopWindow {
     styles ["widget-htop"]
 
     width-request: 1000;
     height-request: 700;
 }
 
-Window Weather {
+Window WeatherWindow {
     styles ["widget-weather"]
 
     Box {

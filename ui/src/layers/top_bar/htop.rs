@@ -1,10 +1,8 @@
-use crate::{globals::load_widget, layers::Htop, utils::LayerWindow};
-use gtk4::{prelude::ButtonExt, Button};
+use crate::{layers::Htop, utils::LayerWindow, widgets::HtopWidget};
+use gtk4::prelude::ButtonExt;
 
 pub(crate) fn init() {
-    let widget = load_widget::<Button>("HtopWidget");
-
-    widget.connect_clicked(|_| {
+    HtopWidget().connect_clicked(|_| {
         Htop::toggle();
     });
 }

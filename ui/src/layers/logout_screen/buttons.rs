@@ -1,28 +1,31 @@
-use crate::{globals::load_widget, layers::LogoutScreen, utils::LayerWindow};
-use gtk4::{
-    prelude::{ButtonExt, WidgetExt},
-    Button,
+use crate::{
+    layers::LogoutScreen,
+    utils::LayerWindow,
+    widgets::{
+        LogoutScreenLockButton, LogoutScreenLogoutButton, LogoutScreenRebootButton,
+        LogoutScreenShutdownButton,
+    },
 };
+use gtk4::prelude::{ButtonExt, WidgetExt};
 use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {
-    let [lock_button, reboot_button, shutdown_button, logout_button] = buttons();
-    lock_button.connect_clicked(|_| {
+    LogoutScreenLockButton().connect_clicked(|_| {
         LogoutScreen::toggle();
         publish(Command::Lock);
     });
 
-    reboot_button.connect_clicked(|_| {
+    LogoutScreenRebootButton().connect_clicked(|_| {
         LogoutScreen::toggle();
         publish(Command::Reboot);
     });
 
-    shutdown_button.connect_clicked(|_| {
+    LogoutScreenShutdownButton().connect_clicked(|_| {
         LogoutScreen::toggle();
         publish(Command::Shutdown);
     });
 
-    logout_button.connect_clicked(|_| {
+    LogoutScreenLockButton().connect_clicked(|_| {
         LogoutScreen::toggle();
         publish(Command::Logout);
     });
@@ -41,7 +44,14 @@ pub(crate) fn init() -> (Box<dyn Fn()>, Box<dyn Fn(&str)>) {
 
 fn on_event(event: &Event) {
     if let Event::SessionScreen(active_idx) = event {
-        for (idx, button) in buttons().iter().enumerate() {
+        let buttons = [
+            LogoutScreenLockButton(),
+            LogoutScreenRebootButton(),
+            LogoutScreenShutdownButton(),
+            LogoutScreenLogoutButton(),
+        ];
+
+        for (idx, button) in buttons.iter().enumerate() {
             if idx == *active_idx {
                 button.add_css_class("widget-logout-button-action");
             } else {
@@ -49,12 +59,4 @@ fn on_event(event: &Event) {
             }
         }
     }
-}
-
-fn buttons() -> [&'static Button; 4] {
-    let lock_button = load_widget::<Button>("LogoutScreenLockButton");
-    let reboot_button = load_widget::<Button>("LogoutScreenRebootButton");
-    let shutdown_button = load_widget::<Button>("LogoutScreenShutdownButton");
-    let logout_button = load_widget::<Button>("LogoutScreenLogoutButton");
-    [lock_button, reboot_button, shutdown_button, logout_button]
 }

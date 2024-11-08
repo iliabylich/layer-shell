@@ -1,10 +1,8 @@
-use crate::{globals::load_widget, layers::LogoutScreen, utils::LayerWindow};
-use gtk4::{prelude::ButtonExt, Button};
+use crate::{layers::LogoutScreen, utils::LayerWindow, widgets::PowerWidget};
+use gtk4::prelude::ButtonExt;
 
 pub(crate) fn init() {
-    let widget = load_widget::<Button>("PowerWidget");
-
-    widget.connect_clicked(|_| {
+    PowerWidget().connect_clicked(|_| {
         LogoutScreen::toggle();
     });
 }

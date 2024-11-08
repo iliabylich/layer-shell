@@ -1,4 +1,11 @@
-use crate::{globals::load_widget, layers::Networks, utils::LayerWindow};
+use crate::{
+    layers::Networks,
+    utils::LayerWindow,
+    widgets::{
+        NetworkExitRow, NetworkRow1, NetworkRow2, NetworkRow3, NetworkRow4, NetworkRow5,
+        NetworkSettingsRow,
+    },
+};
 use gtk4::{
     prelude::{Cast, DisplayExt, WidgetExt},
     CenterBox, Label,
@@ -6,15 +13,12 @@ use gtk4::{
 use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
-    let settings_row = load_widget::<CenterBox>("NetworkSettingsRow");
-    let exit_row = load_widget::<CenterBox>("NetworkExitRow");
-
-    set_on_click(settings_row, |_| {
+    set_on_click(NetworkSettingsRow(), |_| {
         Networks::toggle();
         publish(Command::SpawnNetworkEditor);
     });
 
-    set_on_click(exit_row, |_| {
+    set_on_click(NetworkExitRow(), |_| {
         Networks::toggle();
     });
 
@@ -52,11 +56,11 @@ fn on_event(event: &Event) {
 
 fn rows() -> [&'static CenterBox; 5] {
     [
-        load_widget::<CenterBox>("Network1Row"),
-        load_widget::<CenterBox>("Network2Row"),
-        load_widget::<CenterBox>("Network3Row"),
-        load_widget::<CenterBox>("Network4Row"),
-        load_widget::<CenterBox>("Network5Row"),
+        NetworkRow1(),
+        NetworkRow2(),
+        NetworkRow3(),
+        NetworkRow4(),
+        NetworkRow5(),
     ]
 }
 

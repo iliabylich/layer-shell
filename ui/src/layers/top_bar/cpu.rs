@@ -1,4 +1,8 @@
-use crate::globals::load_widget;
+use crate::widgets::{
+    CPUWidgetLabel1, CPUWidgetLabel10, CPUWidgetLabel11, CPUWidgetLabel12, CPUWidgetLabel2,
+    CPUWidgetLabel3, CPUWidgetLabel4, CPUWidgetLabel5, CPUWidgetLabel6, CPUWidgetLabel7,
+    CPUWidgetLabel8, CPUWidgetLabel9,
+};
 use gtk4::Label;
 use layer_shell_io::{subscribe, Event};
 
@@ -8,30 +12,28 @@ pub(crate) fn init() {
 
 fn on_event(event: &Event) {
     if let Event::Cpu { usage_per_core } = event {
-        let labels = labels();
-
-        assert_eq!(usage_per_core.len(), labels.len());
+        assert_eq!(usage_per_core.len(), labels().len());
 
         for (idx, load) in usage_per_core.iter().enumerate() {
-            labels[idx].set_label(indicator(*load));
+            labels()[idx].set_label(indicator(*load));
         }
     }
 }
 
 fn labels() -> [&'static Label; 12] {
     [
-        load_widget::<Label>("CPUWidgetLabel1"),
-        load_widget::<Label>("CPUWidgetLabel2"),
-        load_widget::<Label>("CPUWidgetLabel3"),
-        load_widget::<Label>("CPUWidgetLabel4"),
-        load_widget::<Label>("CPUWidgetLabel5"),
-        load_widget::<Label>("CPUWidgetLabel6"),
-        load_widget::<Label>("CPUWidgetLabel7"),
-        load_widget::<Label>("CPUWidgetLabel8"),
-        load_widget::<Label>("CPUWidgetLabel9"),
-        load_widget::<Label>("CPUWidgetLabel10"),
-        load_widget::<Label>("CPUWidgetLabel11"),
-        load_widget::<Label>("CPUWidgetLabel12"),
+        CPUWidgetLabel1(),
+        CPUWidgetLabel2(),
+        CPUWidgetLabel3(),
+        CPUWidgetLabel4(),
+        CPUWidgetLabel5(),
+        CPUWidgetLabel6(),
+        CPUWidgetLabel7(),
+        CPUWidgetLabel8(),
+        CPUWidgetLabel9(),
+        CPUWidgetLabel10(),
+        CPUWidgetLabel11(),
+        CPUWidgetLabel12(),
     ]
 }
 

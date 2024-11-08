@@ -1,5 +1,4 @@
-use crate::globals::load_widget;
-use gtk4::Label;
+use crate::widgets::LanguageWidgetLabel;
 use layer_shell_io::{subscribe, Event};
 
 pub(crate) fn init() {
@@ -8,8 +7,7 @@ pub(crate) fn init() {
 
 fn on_event(event: &Event) {
     if let Event::Language { lang } = event {
-        let label = load_widget::<Label>("LanguageWidgetLabel");
-        label.set_label(map_language(lang));
+        LanguageWidgetLabel().set_label(map_language(lang));
     }
 }
 

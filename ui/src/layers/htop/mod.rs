@@ -1,4 +1,7 @@
-use crate::utils::{keybindings, LayerWindow};
+use crate::{
+    utils::{keybindings, LayerWindow},
+    widgets::HtopWindow,
+};
 use gtk4::{gio::Cancellable, prelude::GtkWindowExt, Application};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 use vte4::TerminalExtManual;
@@ -13,6 +16,9 @@ impl LayerWindow for Htop {
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
     fn reset() {}
+    fn window() -> &'static gtk4::Window {
+        HtopWindow()
+    }
 }
 
 impl Htop {

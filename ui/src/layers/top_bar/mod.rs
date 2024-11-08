@@ -1,4 +1,4 @@
-use crate::utils::LayerWindow;
+use crate::{utils::LayerWindow, widgets::TopBarWindow};
 use gtk4::{prelude::GtkWindowExt, Application};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 
@@ -23,6 +23,10 @@ impl LayerWindow for TopBar {
     const KEYBOARD_MODE: Option<KeyboardMode> = None;
 
     fn reset() {}
+
+    fn window() -> &'static gtk4::Window {
+        TopBarWindow()
+    }
 }
 
 impl TopBar {

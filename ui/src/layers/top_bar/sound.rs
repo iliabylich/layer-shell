@@ -1,16 +1,12 @@
-use crate::globals::load_widget;
-use gtk4::{
-    prelude::{AdjustmentExt, RangeExt},
-    Image, Scale,
-};
+use crate::widgets::{SoundWidgetImage, SoundWidgetScale};
+use gtk4::prelude::{AdjustmentExt, RangeExt};
 use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
     subscribe(on_event);
 
-    let scale = load_widget::<Scale>("SoundWidgetScale");
-    scale.connect_change_value(|_, _, _| {
-        let mut volume = scale.adjustment().value();
+    SoundWidgetScale().connect_change_value(|_, _, _| {
+        let mut volume = SoundWidgetScale().adjustment().value();
         if volume > 1.0 {
             volume = 1.0
         }
@@ -21,11 +17,8 @@ pub(crate) fn init() {
 
 fn on_event(event: &Event) {
     if let Event::Volume(volume) = event {
-        let icon = load_widget::<Image>("SoundWidgetImage");
-        let scale = load_widget::<Scale>("SoundWidgetScale");
-
-        scale.set_value(*volume);
-        icon.set_icon_name(Some(volume_to_icon(*volume)));
+        SoundWidgetScale().set_value(*volume);
+        SoundWidgetImage().set_icon_name(Some(volume_to_icon(*volume)));
     }
 }
 

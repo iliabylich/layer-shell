@@ -1,4 +1,9 @@
-use crate::globals::load_widget;
+use crate::widgets::{
+    WorkspacesWidgetButton1, WorkspacesWidgetButton10, WorkspacesWidgetButton2,
+    WorkspacesWidgetButton3, WorkspacesWidgetButton4, WorkspacesWidgetButton5,
+    WorkspacesWidgetButton6, WorkspacesWidgetButton7, WorkspacesWidgetButton8,
+    WorkspacesWidgetButton9,
+};
 use gtk4::{
     prelude::{ButtonExt, WidgetExt},
     Button,
@@ -17,9 +22,8 @@ pub(crate) fn init() {
 
 fn on_event(event: &Event) {
     if let Event::Workspaces { ids, active_id } = event {
-        let buttons = buttons();
         for idx in 1..=10 {
-            let button = buttons[idx - 1];
+            let button = buttons()[idx - 1];
             button.set_visible(ids.contains(&idx) || idx <= 5);
             button.set_css_classes(if idx == *active_id {
                 &["active"]
@@ -32,15 +36,15 @@ fn on_event(event: &Event) {
 
 fn buttons() -> [&'static Button; 10] {
     [
-        load_widget::<Button>("WorkspacesWidgetButton1"),
-        load_widget::<Button>("WorkspacesWidgetButton2"),
-        load_widget::<Button>("WorkspacesWidgetButton3"),
-        load_widget::<Button>("WorkspacesWidgetButton4"),
-        load_widget::<Button>("WorkspacesWidgetButton5"),
-        load_widget::<Button>("WorkspacesWidgetButton6"),
-        load_widget::<Button>("WorkspacesWidgetButton7"),
-        load_widget::<Button>("WorkspacesWidgetButton8"),
-        load_widget::<Button>("WorkspacesWidgetButton9"),
-        load_widget::<Button>("WorkspacesWidgetButton10"),
+        WorkspacesWidgetButton1(),
+        WorkspacesWidgetButton2(),
+        WorkspacesWidgetButton3(),
+        WorkspacesWidgetButton4(),
+        WorkspacesWidgetButton5(),
+        WorkspacesWidgetButton6(),
+        WorkspacesWidgetButton7(),
+        WorkspacesWidgetButton8(),
+        WorkspacesWidgetButton9(),
+        WorkspacesWidgetButton10(),
     ]
 }

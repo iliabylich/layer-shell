@@ -1,4 +1,7 @@
-use crate::utils::{keybindings, LayerWindow};
+use crate::{
+    utils::{keybindings, LayerWindow},
+    widgets::LogoutScreenWindow,
+};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application,
@@ -21,6 +24,10 @@ impl LayerWindow for LogoutScreen {
 
     fn reset() {
         (RESET::get())()
+    }
+
+    fn window() -> &'static gtk4::Window {
+        LogoutScreenWindow()
     }
 }
 

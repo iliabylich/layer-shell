@@ -1,5 +1,5 @@
-use crate::globals::load_widget;
-use gtk4::{prelude::WidgetExt, Label};
+use crate::widgets::ClockWidgetLabel;
+use gtk4::prelude::WidgetExt;
 use layer_shell_io::{subscribe, Event};
 
 pub(crate) fn init() {
@@ -8,8 +8,7 @@ pub(crate) fn init() {
 
 fn on_event(event: &Event) {
     if let Event::Time { time, date } = event {
-        let label = load_widget::<Label>("ClockWidgetLabel");
-        label.set_label(time);
-        label.set_tooltip_text(Some(date));
+        ClockWidgetLabel().set_label(time);
+        ClockWidgetLabel().set_tooltip_text(Some(date));
     }
 }

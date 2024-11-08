@@ -1,4 +1,7 @@
-use crate::utils::{keybindings, LayerWindow};
+use crate::{
+    utils::{keybindings, LayerWindow},
+    widgets::NetworksWindow,
+};
 use gtk4::{prelude::WidgetExt, Application};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer};
 
@@ -14,6 +17,10 @@ impl LayerWindow for Networks {
     const KEYBOARD_MODE: Option<KeyboardMode> = Some(KeyboardMode::Exclusive);
 
     fn reset() {}
+
+    fn window() -> &'static gtk4::Window {
+        NetworksWindow()
+    }
 }
 
 impl Networks {

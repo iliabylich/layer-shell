@@ -928,6 +928,7 @@ dependencies = [
  "gtk4-layer-shell",
  "layer-shell-io",
  "layer-shell-utils",
+ "paste",
  "vte4",
 ]
 

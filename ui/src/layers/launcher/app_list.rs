@@ -1,14 +1,23 @@
-use crate::{globals::load_widget, layers::Launcher, utils::LayerWindow};
+use crate::{
+    layers::Launcher,
+    utils::LayerWindow,
+    widgets::{
+        LauncherEntry, LauncherRow1, LauncherRow1Image, LauncherRow1Label, LauncherRow2,
+        LauncherRow2Image, LauncherRow2Label, LauncherRow3, LauncherRow3Image, LauncherRow3Label,
+        LauncherRow4, LauncherRow4Image, LauncherRow4Label, LauncherRow5, LauncherRow5Image,
+        LauncherRow5Label,
+    },
+};
 use gtk4::{
     prelude::{EditableExt, WidgetExt},
-    Image, Label, SearchEntry,
+    Image, Label,
 };
 use layer_shell_io::{publish, subscribe, AppIcon, Command, Event};
 
 type Output = (Box<dyn Fn()>, Box<dyn Fn(&str)>);
 
 pub(crate) fn init() -> Output {
-    let entry = load_widget::<SearchEntry>("LauncherEntry");
+    let entry = LauncherEntry();
     entry.connect_activate(|_| {
         publish(Command::LauncherExecSelected);
         Launcher::toggle();
@@ -67,30 +76,30 @@ fn on_event(event: &Event) {
 
 fn rows() -> [&'static gtk4::Box; 5] {
     [
-        load_widget::<gtk4::Box>("LauncherRow1"),
-        load_widget::<gtk4::Box>("LauncherRow2"),
-        load_widget::<gtk4::Box>("LauncherRow3"),
-        load_widget::<gtk4::Box>("LauncherRow4"),
-        load_widget::<gtk4::Box>("LauncherRow5"),
+        LauncherRow1(),
+        LauncherRow2(),
+        LauncherRow3(),
+        LauncherRow4(),
+        LauncherRow5(),
     ]
 }
 
 fn images() -> [&'static Image; 5] {
     [
-        load_widget::<Image>("LauncherRow1Image"),
-        load_widget::<Image>("LauncherRow2Image"),
-        load_widget::<Image>("LauncherRow3Image"),
-        load_widget::<Image>("LauncherRow4Image"),
-        load_widget::<Image>("LauncherRow5Image"),
+        LauncherRow1Image(),
+        LauncherRow2Image(),
+        LauncherRow3Image(),
+        LauncherRow4Image(),
+        LauncherRow5Image(),
     ]
 }
 
 fn labels() -> [&'static Label; 5] {
     [
-        load_widget::<Label>("LauncherRow1Label"),
-        load_widget::<Label>("LauncherRow2Label"),
-        load_widget::<Label>("LauncherRow3Label"),
-        load_widget::<Label>("LauncherRow4Label"),
-        load_widget::<Label>("LauncherRow5Label"),
+        LauncherRow1Label(),
+        LauncherRow2Label(),
+        LauncherRow3Label(),
+        LauncherRow4Label(),
+        LauncherRow5Label(),
     ]
 }
