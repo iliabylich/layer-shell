@@ -5,6 +5,7 @@ resolver = "2"
 [profile.release]
 opt-level = "z"
 lto = true
+panic = "abort"
 
 [workspace.package]
 edition = "2021"
