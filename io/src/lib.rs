@@ -55,11 +55,17 @@ pub fn spawn_all() {
     EVENT_SENDER::set(etx.clone());
 
     std::thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_current_thread()
+        let rt = match tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .enable_io()
             .build()
-            .unwrap();
+        {
+            Ok(rt) => rt,
+            Err(err) => {
+                println!("failed to spawn tokio: {}", err);
+                std::process::exit(1);
+            }
+        };
 
         rt.block_on(async {
             tokio::join!(

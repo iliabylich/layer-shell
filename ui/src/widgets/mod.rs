@@ -11,7 +11,13 @@ macro_rules! widget {
 
             pub(crate) fn $name() -> &'static $t {
                 unsafe {
-                    [< $name _VALUE >].as_mut().unwrap()
+                    match [< $name _VALUE >].as_mut() {
+                        Some(value) => value,
+                        None => {
+                            eprintln!("widget {} is not initialised", stringify!($name));
+                            std::process::exit(1);
+                        }
+                    }
                 }
             }
         }

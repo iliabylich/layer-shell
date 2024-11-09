@@ -10,7 +10,15 @@ macro_rules! global {
 
             impl $name {
                 fn get() -> &'static mut $t {
-                    unsafe { [< $name Instance >].as_mut().unwrap() }
+                    unsafe {
+                        match [< $name Instance >].as_mut() {
+                            Some(value) => value,
+                            None => {
+                                eprintln!("global! {} is not set", stringify!($name));
+                                std::process::exit(1);
+                            }
+                        }
+                    }
                 }
 
                 fn set(v: $t) {

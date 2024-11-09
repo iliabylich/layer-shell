@@ -53,14 +53,16 @@ impl Command {
 }
 
 fn spawn_network_editor() {
-    std::process::Command::new("kitty")
+    if let Err(err) = std::process::Command::new("kitty")
         .args(["--name", "nmtui", "nmtui"])
         .spawn()
-        .unwrap();
+    {
+        log::error!("failed to spawn kitty: {}", err);
+    }
 }
 
 fn spawn_system_monitor() {
-    std::process::Command::new("gnome-system-monitor")
-        .spawn()
-        .unwrap();
+    if let Err(err) = std::process::Command::new("gnome-system-monitor").spawn() {
+        log::error!("failed to spawn gnome-system-monitor: {}", err);
+    }
 }

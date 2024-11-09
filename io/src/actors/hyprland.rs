@@ -186,14 +186,20 @@ async fn exec_hyprctl(command: &str) -> Result<String> {
 
 pub(crate) async fn on_command(command: &Command) {
     if let Command::GoToWorkspace(workspace_idx) = command {
-        tokio::process::Command::new("hyprctl")
+        match tokio::process::Command::new("hyprctl")
             .args(["dispatch", "workspace", &format!("{}", workspace_idx + 1)])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .spawn()
-            .unwrap()
-            .wait()
-            .await
-            .unwrap();
+        {
+            Ok(mut child) => {
+                if let Err(err) = child.wait().await {
+                    log::error!("Failed to spawn hyprctl: {}", err);
+                }
+            }
+            Err(err) => {
+                log::error!("Failed to spawn hyprctl: {}", err);
+            }
+        }
     }
 }

@@ -25,9 +25,13 @@ impl Htop {
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         let terminal = vte4::Terminal::builder().build();
+        let home = std::env::var("HOME").unwrap_or_else(|err| {
+            eprintln!("$HOME is not set: {}", err);
+            std::process::exit(1);
+        });
         terminal.spawn_async(
             vte4::PtyFlags::DEFAULT,
-            Some(&std::env::var("HOME").expect("$HOME is not defined")),
+            Some(&home),
             &["htop"],
             &[],
             gtk4::glib::SpawnFlags::DEFAULT,

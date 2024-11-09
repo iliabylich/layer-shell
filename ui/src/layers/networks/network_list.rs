@@ -23,9 +23,12 @@ pub(crate) fn init() {
             for (idx, row) in widgets::networks::rows().iter().enumerate() {
                 if let Some((name, ip)) = list.get(idx) {
                     row.set_visible(true);
-                    let label = row.start_widget().unwrap().dynamic_cast::<Label>().unwrap();
-                    label.set_label(&format!("{}: {}", name, ip));
-                    label.set_tooltip_text(Some(ip));
+                    if let Some(label) = row_label(row) {
+                        label.set_label(&format!("{}: {}", name, ip));
+                        label.set_tooltip_text(Some(ip));
+                    } else {
+                        eprintln!("failed to get network label");
+                    }
                 } else {
                     row.set_visible(false);
                 }
@@ -54,13 +57,24 @@ where
 {
     let ctrl = gtk4::GestureClick::new();
     ctrl.connect_pressed(move |_, _, _, _| {
-        let label = row.start_widget().unwrap().dynamic_cast::<Label>().unwrap();
-        f(label);
+        if let Some(label) = row_label(row) {
+            f(label);
+        } else {
+            eprintln!("failed to get network label");
+        }
     });
     row.add_controller(ctrl);
 }
 
 fn copy_to_clipboard(text: &str) {
-    let clipboard = gtk4::gdk::Display::default().unwrap().clipboard();
-    clipboard.set_text(text);
+    if let Some(display) = gtk4::gdk::Display::default() {
+        let clipboard = display.clipboard();
+        clipboard.set_text(text);
+    } else {
+        eprintln!("failed to get default Gdk display");
+    }
+}
+
+fn row_label(row: &CenterBox) -> Option<Label> {
+    row.start_widget()?.dynamic_cast::<Label>().ok()
 }

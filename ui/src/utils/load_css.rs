@@ -9,19 +9,27 @@ pub(crate) fn load_css() {
         );
     });
 
-    let theme = std::fs::read_to_string(format!("{}/.theme.css", std::env::var("HOME").unwrap()))
-        .unwrap_or_default();
+    let home = std::env::var("HOME").unwrap_or_else(|err| {
+        eprintln!("failed to get $HOME: {}", err);
+        std::process::exit(1);
+    });
+
+    let theme_filepath = format!("{}/.theme.css", home);
+    let theme = std::fs::read_to_string(theme_filepath).unwrap_or_default();
     let builtin = include_str!("../../../main.css");
     let css = format!("{}\n{}", theme, builtin);
 
     provider.load_from_string(&css);
 
-    let display = gtk4::gdk::Display::default().unwrap();
-
-    #[allow(deprecated)]
-    gtk4::StyleContext::add_provider_for_display(
-        &display,
-        &provider,
-        gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if let Some(display) = gtk4::gdk::Display::default() {
+        #[allow(deprecated)]
+        gtk4::StyleContext::add_provider_for_display(
+            &display,
+            &provider,
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+    } else {
+        eprintln!("failed to get default Gdk display");
+        std::process::exit(1);
+    }
 }
