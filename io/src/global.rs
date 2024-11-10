@@ -1,10 +1,9 @@
-#[macro_export]
 macro_rules! global {
     ($name:ident, $t:ty) => {
         #[allow(non_camel_case_types)]
         struct $name;
 
-        $crate::paste::paste! {
+        paste::paste! {
             #[allow(non_upper_case_globals)]
             static mut [< $name Instance >]: Option<$t> = None;
 
@@ -28,3 +27,5 @@ macro_rules! global {
         }
     };
 }
+
+pub(crate) use global;

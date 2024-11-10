@@ -1,6 +1,5 @@
-use crate::{App, AppIcon, Command, Event};
+use crate::{global, App, AppIcon, Command, Event};
 use anyhow::{Context, Result};
-use layer_shell_utils::global;
 use std::{collections::HashMap, path::PathBuf, sync::mpsc::Sender};
 use tokio::io::{AsyncBufReadExt, BufReader};
 

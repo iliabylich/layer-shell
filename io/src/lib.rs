@@ -1,16 +1,16 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::upper_case_acronyms)]
 
-use layer_shell_utils::global;
-
 mod actors;
 mod args;
 mod command;
 mod event;
+mod global;
 mod ipc;
 
 pub use command::Command;
 pub use event::{App, AppIcon, Event};
+pub(crate) use global::global;
 pub use ipc::on_sigusr1;
 
 use args::parse_args;

@@ -910,8 +910,8 @@ dependencies = [
  "clap_complete",
  "dbus",
  "dbus-tokio",
- "layer-shell-utils",
  "log",
+ "paste",
  "pretty_env_logger",
  "reqwest",
  "serde",
@@ -927,16 +927,8 @@ dependencies = [
  "gtk4",
  "gtk4-layer-shell",
  "layer-shell-io",
- "layer-shell-utils",
  "paste",
  "vte4",
-]
-
-[[package]]
-name = "layer-shell-utils"
-version = "0.1.0"
-dependencies = [
- "paste",
 ]
 
 [[package]]

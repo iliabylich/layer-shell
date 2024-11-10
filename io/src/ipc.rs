@@ -1,6 +1,5 @@
-use crate::{publish_event, Event};
+use crate::{global, publish_event, Event};
 use anyhow::{Context, Result};
-use layer_shell_utils::global;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum IPCMessage {

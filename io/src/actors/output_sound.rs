@@ -1,10 +1,9 @@
-use crate::{Command, Event};
+use crate::{global, Command, Event};
 use alsa::{
     mixer::{Selem, SelemChannelId},
     Ctl,
 };
 use anyhow::{Context, Result};
-use layer_shell_utils::global;
 use std::sync::mpsc::Sender;
 
 global!(MIXER, alsa::Mixer);
