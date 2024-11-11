@@ -1,4 +1,4 @@
-use crate::Event;
+use crate::{event::Network, Event};
 use anyhow::{Context, Result};
 use dbus::{
     arg::{RefArg, Variant},
@@ -19,7 +19,7 @@ pub(crate) async fn spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) {
 
 async fn try_spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) -> Result<()> {
     loop {
-        match get_state(Arc::clone(&conn)).await {
+        match get_networks(Arc::clone(&conn)).await {
             Ok(ifaces) => {
                 if tx.send(Event::NetworkList(ifaces)).is_err() {
                     log::error!("failed to send NetworkList event");
@@ -34,20 +34,20 @@ async fn try_spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) -> Result<()> {
     }
 }
 
-async fn get_state(conn: Arc<SyncConnection>) -> Result<Vec<(String, String)>> {
+async fn get_networks(conn: Arc<SyncConnection>) -> Result<Vec<Network>> {
     let mut ifaces = vec![];
 
     let device_ids = get_device_ids(Arc::clone(&conn)).await?;
 
     for device_id in device_ids {
-        if let Ok((name, mut ip)) = get_iface(Arc::clone(&conn), device_id).await {
+        if let Ok((iface, mut ip)) = get_iface(Arc::clone(&conn), device_id).await {
             if ip.is_none() {
                 ip = Some(get_ip4_config(Arc::clone(&conn), device_id).await?);
             }
 
             let ip = ip.unwrap_or_else(|| String::from("unknown"));
 
-            ifaces.push((name, ip));
+            ifaces.push(Network { iface, ip });
         } else {
             log::warn!("Failed to get data for Device {device_id} (not connected?)");
         }

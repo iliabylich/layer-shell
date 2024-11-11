@@ -1,13 +1,19 @@
-use crate::Event;
+use crate::{
+    event::{WeatherOnDay, WeatherOnHour},
+    Event,
+};
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveDateTime};
 use reqwest::Client;
 use std::sync::mpsc::Sender;
 
 mod api;
-use api::{get_weather, DailyResponse, HourlyResponse, Response};
+use api::{get_weather, CurrentResponse, DailyResponse, HourlyResponse, Response};
 mod code;
-use code::WeatherCode;
+pub use code::{
+    Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
+    ThunderstormWithHail, WeatherCode,
+};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
@@ -50,18 +56,20 @@ fn map_response_to_events(
         daily,
     }: Response,
 ) -> Result<(Event, Event)> {
-    let current = format!(
-        "{} {}",
-        current.temperature_2m,
-        WeatherCode::from(current.weather_code)
-    );
     let hourly = map_hourly(hourly)?;
     let daily = map_daily(daily)?;
 
     Ok((
-        Event::WeatherCurrent(current),
+        map_current(current),
         Event::WeatherForecast { hourly, daily },
     ))
+}
+
+fn map_current(current: CurrentResponse) -> Event {
+    Event::WeatherCurrent {
+        temperature: current.temperature_2m,
+        code: WeatherCode::from(current.weather_code),
+    }
 }
 
 fn map_hourly(
@@ -70,7 +78,7 @@ fn map_hourly(
         temperature_2m,
         weather_code,
     }: HourlyResponse,
-) -> Result<Vec<(String, String)>> {
+) -> Result<Vec<WeatherOnHour>> {
     let now = chrono::Local::now().naive_local();
 
     let mut hourly = vec![];
@@ -79,10 +87,11 @@ fn map_hourly(
         let time = NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M")
             .context("invalid date format")?;
         if time > now {
-            hourly.push((
-                format!("{}' {:>5.1} {}", time.format("%H"), temp, code.icon()),
-                code.to_string(),
-            ));
+            hourly.push(WeatherOnHour {
+                hour: time.format("%H").to_string(),
+                temperature: temp,
+                code,
+            });
         }
         if hourly.len() == 10 {
             break;
@@ -100,7 +109,7 @@ fn map_daily(
         temperature_2m_max,
         weather_code,
     }: DailyResponse,
-) -> Result<Vec<(String, String)>> {
+) -> Result<Vec<WeatherOnDay>> {
     let today = chrono::Local::now().date_naive();
 
     let mut daily = vec![];
@@ -113,16 +122,11 @@ fn map_daily(
         let code = WeatherCode::from(code);
         let date = NaiveDate::parse_from_str(&time, "%Y-%m-%d").context("invalid date format")?;
         if date > today {
-            daily.push((
-                format!(
-                    "{}: {:>5.1} - {:>5.1} {}",
-                    date.format("%m-%d"),
-                    min,
-                    max,
-                    code.icon()
-                ),
-                code.to_string(),
-            ));
+            daily.push(WeatherOnDay {
+                day: date.format("%m-%d").to_string(),
+                temperature: min..max,
+                code,
+            });
         }
         if daily.len() == 6 {
             break;

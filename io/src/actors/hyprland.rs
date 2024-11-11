@@ -24,7 +24,7 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     let lang = get_language()
         .await
         .context("failed to get initial language")?;
-    tx.send(Event::Language { lang })
+    tx.send(Event::Language(lang))
         .context("failed to send event")?;
 
     while let Ok(Some(line)) = lines.next_line().await {
@@ -38,7 +38,7 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
                         .context("failed to send event")?;
                 }
                 HyprlandEvent::LanguageChanged(lang) => {
-                    tx.send(Event::Language { lang })
+                    tx.send(Event::Language(lang))
                         .context("failed to send event")?;
                 }
                 HyprlandEvent::Other => {}

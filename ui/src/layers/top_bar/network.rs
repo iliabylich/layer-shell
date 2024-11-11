@@ -3,12 +3,12 @@ use crate::{
     widgets::{NetworkWidget, NetworkWidgetLabel},
 };
 use gtk4::prelude::ButtonExt;
-use layer_shell_io::{subscribe, Event};
+use layer_shell_io::{subscribe, Event, WiFiStatus};
 
 pub(crate) fn init() {
     subscribe(|event| {
-        if let Event::WiFi(state) = event {
-            if let Some((ssid, strength)) = state {
+        if let Event::WiFiStatus(status) = event {
+            if let Some(WiFiStatus { ssid, strength }) = status {
                 NetworkWidgetLabel().set_label(&format!("{} ({})% ", ssid, strength));
             } else {
                 NetworkWidgetLabel().set_label("Not connected");

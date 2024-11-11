@@ -1,7 +1,5 @@
-use std::fmt::{self, Display};
-
-#[derive(Debug)]
-pub(crate) enum WeatherCode {
+#[derive(Debug, Clone, Copy)]
+pub enum WeatherCode {
     ClearSky,
     MainlyClear,
     PartlyCloudy,
@@ -20,53 +18,53 @@ pub(crate) enum WeatherCode {
     Unknown,
 }
 
-#[derive(Debug)]
-pub(crate) enum Fog {
+#[derive(Debug, Clone, Copy)]
+pub enum Fog {
     Normal,
     DepositingRime,
 }
-#[derive(Debug)]
-pub(crate) enum Drizzle {
+#[derive(Debug, Clone, Copy)]
+pub enum Drizzle {
     Light,
     Moderate,
     Dense,
 }
-#[derive(Debug)]
-pub(crate) enum FreezingDrizzle {
+#[derive(Debug, Clone, Copy)]
+pub enum FreezingDrizzle {
     Light,
     Dense,
 }
-#[derive(Debug)]
-pub(crate) enum Rain {
+#[derive(Debug, Clone, Copy)]
+pub enum Rain {
     Slight,
     Moderate,
     Heavy,
 }
-#[derive(Debug)]
-pub(crate) enum FreezingRain {
+#[derive(Debug, Clone, Copy)]
+pub enum FreezingRain {
     Light,
     Heavy,
 }
-#[derive(Debug)]
-pub(crate) enum SnowFall {
+#[derive(Debug, Clone, Copy)]
+pub enum SnowFall {
     Slight,
     Moderate,
     Heavy,
 }
 
-#[derive(Debug)]
-pub(crate) enum RainShowers {
+#[derive(Debug, Clone, Copy)]
+pub enum RainShowers {
     Slight,
     Moderate,
     Violent,
 }
-#[derive(Debug)]
-pub(crate) enum SnowShowers {
+#[derive(Debug, Clone, Copy)]
+pub enum SnowShowers {
     Slight,
     Heavy,
 }
-#[derive(Debug)]
-pub(crate) enum ThunderstormWithHail {
+#[derive(Debug, Clone, Copy)]
+pub enum ThunderstormWithHail {
     Sight,
     Heavy,
 }
@@ -103,132 +101,6 @@ impl From<u32> for WeatherCode {
             96 => Self::ThunderstormWithHail(ThunderstormWithHail::Sight),
             99 => Self::ThunderstormWithHail(ThunderstormWithHail::Heavy),
             _ => Self::Unknown,
-        }
-    }
-}
-
-impl WeatherCode {
-    pub(crate) fn icon(&self) -> char {
-        match self {
-            WeatherCode::ClearSky | WeatherCode::MainlyClear => '',
-            WeatherCode::PartlyCloudy | WeatherCode::Overcast => '',
-            WeatherCode::Fog(_) => '',
-            WeatherCode::Drizzle(_) | WeatherCode::FreezingDrizzle(_) => '',
-            WeatherCode::Rain(_) | WeatherCode::FreezingRain(_) => '',
-            WeatherCode::SnowFall(_) | WeatherCode::SnowGrains => '',
-            WeatherCode::RainShowers(_) => '',
-            WeatherCode::SnowShowers(_) => '',
-            WeatherCode::Thunderstorm | WeatherCode::ThunderstormWithHail(_) => '',
-            WeatherCode::Unknown => '?',
-        }
-    }
-}
-
-impl Display for WeatherCode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use WeatherCode::*;
-        match self {
-            ClearSky => write!(f, "Clear Sky"),
-            MainlyClear => write!(f, "Mainly Clear"),
-            PartlyCloudy => write!(f, "Partly Cloudy"),
-            Overcast => write!(f, "Overcast"),
-            Fog(inner) => write!(f, "Fog ({})", inner),
-            Drizzle(inner) => write!(f, "Drizzle ({})", inner),
-            FreezingDrizzle(inner) => write!(f, "Freezing Drizzle ({})", inner),
-            Rain(inner) => write!(f, "Rain ({})", inner),
-            FreezingRain(inner) => write!(f, "Freezing Rain ({})", inner),
-            SnowFall(inner) => write!(f, "Snow Fall ({})", inner),
-            SnowGrains => write!(f, "Snow Grains"),
-            RainShowers(inner) => write!(f, "Rain Showers ({})", inner),
-            SnowShowers(inner) => write!(f, "Snow Showers ({})", inner),
-            Thunderstorm => write!(f, "Thunderstorm"),
-            ThunderstormWithHail(inner) => write!(f, "Thunderstorm With Hail({})", inner),
-            Unknown => write!(f, "Unknown"),
-        }
-    }
-}
-
-impl Display for Fog {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Fog::Normal => write!(f, "Normal"),
-            Fog::DepositingRime => write!(f, "Depositing Rime"),
-        }
-    }
-}
-
-impl Display for Drizzle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Drizzle::Light => write!(f, "Light"),
-            Drizzle::Moderate => write!(f, "Moderate"),
-            Drizzle::Dense => write!(f, "Dense"),
-        }
-    }
-}
-
-impl Display for FreezingDrizzle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FreezingDrizzle::Light => write!(f, "Light"),
-            FreezingDrizzle::Dense => write!(f, "Dense"),
-        }
-    }
-}
-
-impl Display for Rain {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Rain::Slight => write!(f, "Slight"),
-            Rain::Moderate => write!(f, "Moderate"),
-            Rain::Heavy => write!(f, "Heavy"),
-        }
-    }
-}
-
-impl Display for FreezingRain {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FreezingRain::Light => write!(f, "Light"),
-            FreezingRain::Heavy => write!(f, "Heavy"),
-        }
-    }
-}
-
-impl Display for SnowFall {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SnowFall::Slight => write!(f, "Slight"),
-            SnowFall::Moderate => write!(f, "Moderate"),
-            SnowFall::Heavy => write!(f, "Heavy"),
-        }
-    }
-}
-
-impl Display for RainShowers {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RainShowers::Slight => write!(f, "Slight"),
-            RainShowers::Moderate => write!(f, "Moderate"),
-            RainShowers::Violent => write!(f, "Violent"),
-        }
-    }
-}
-
-impl Display for SnowShowers {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SnowShowers::Slight => write!(f, "Slight"),
-            SnowShowers::Heavy => write!(f, "Heavy"),
-        }
-    }
-}
-
-impl Display for ThunderstormWithHail {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ThunderstormWithHail::Sight => write!(f, "Sight"),
-            ThunderstormWithHail::Heavy => write!(f, "Heavy"),
         }
     }
 }

@@ -8,8 +8,14 @@ mod event;
 mod global;
 mod ipc;
 
+pub mod weather {
+    pub use super::actors::weather::{
+        Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
+        ThunderstormWithHail, WeatherCode,
+    };
+}
 pub use command::Command;
-pub use event::{App, AppIcon, Event};
+pub use event::{App, AppIcon, Event, Network, WeatherOnDay, WeatherOnHour, WiFiStatus};
 pub(crate) use global::global;
 pub use ipc::on_sigusr1;
 

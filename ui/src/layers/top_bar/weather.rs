@@ -1,5 +1,5 @@
 use crate::{
-    layers::Weather,
+    layers::{weather::codes::weather_code_to_description, Weather},
     widgets::{WeatherWidget, WeatherWidgetLabel},
 };
 use gtk4::prelude::ButtonExt;
@@ -11,8 +11,9 @@ pub(crate) fn init() {
     });
 
     subscribe(|event| {
-        if let Event::WeatherCurrent(weather) = event {
-            WeatherWidgetLabel().set_label(weather);
+        if let Event::WeatherCurrent { temperature, code } = event {
+            let label = format!("{} {}", temperature, weather_code_to_description(*code));
+            WeatherWidgetLabel().set_label(&label);
         }
     });
 }

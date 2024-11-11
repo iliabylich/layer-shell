@@ -5,6 +5,7 @@ use gtk4::{
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
+pub(crate) mod codes;
 mod forecast;
 
 pub(crate) struct Weather;

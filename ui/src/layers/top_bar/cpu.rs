@@ -3,7 +3,7 @@ use layer_shell_io::{subscribe, Event};
 
 pub(crate) fn init() {
     subscribe(|event| {
-        if let Event::Cpu { usage_per_core } = event {
+        if let Event::Cpu(usage_per_core) = event {
             assert_eq!(usage_per_core.len(), widgets::cpu::labels().len());
 
             for (idx, load) in usage_per_core.iter().enumerate() {

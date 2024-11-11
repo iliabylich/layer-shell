@@ -6,7 +6,7 @@ use gtk4::{
     prelude::{Cast, DisplayExt, WidgetExt},
     CenterBox, Label,
 };
-use layer_shell_io::{publish, subscribe, Command, Event};
+use layer_shell_io::{publish, subscribe, Command, Event, Network};
 
 pub(crate) fn init() {
     set_on_click(NetworkSettingsRow(), |_| {
@@ -21,10 +21,10 @@ pub(crate) fn init() {
     subscribe(|event| {
         if let Event::NetworkList(list) = event {
             for (idx, row) in widgets::networks::rows().iter().enumerate() {
-                if let Some((name, ip)) = list.get(idx) {
+                if let Some(Network { iface, ip }) = list.get(idx) {
                     row.set_visible(true);
                     if let Some(label) = row_label(row) {
-                        label.set_label(&format!("{}: {}", name, ip));
+                        label.set_label(&format!("{}: {}", iface, ip));
                         label.set_tooltip_text(Some(ip));
                     } else {
                         eprintln!("failed to get network label");

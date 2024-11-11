@@ -1,4 +1,4 @@
-use crate::Event;
+use crate::{event::WiFiStatus, Event};
 use anyhow::{Context, Result};
 use dbus::{
     arg::{messageitem::MessageItem, RefArg, Variant},
@@ -19,12 +19,12 @@ pub(crate) async fn spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) {
 
 async fn try_spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) -> Result<()> {
     loop {
-        let state = get_state(Arc::clone(&conn), "wlo1")
+        let state = get_status(Arc::clone(&conn), "wlo1")
             .await
             .inspect_err(|err| log::error!("WiFiStatus error: {}\n{}", err, err.backtrace()))
             .ok();
 
-        if tx.send(Event::WiFi(state)).is_err() {
+        if tx.send(Event::WiFiStatus(state)).is_err() {
             log::error!("failed to send WiFi event");
         }
 
@@ -32,7 +32,7 @@ async fn try_spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) -> Result<()> {
     }
 }
 
-async fn get_state(conn: Arc<SyncConnection>, iface: &str) -> Result<(String, u8)> {
+async fn get_status(conn: Arc<SyncConnection>, iface: &str) -> Result<WiFiStatus> {
     let device_path = get_device_path_by_iface(Arc::clone(&conn), iface).await?;
     let access_point_path = get_access_point_path(Arc::clone(&conn), &device_path).await?;
     get_ssid_and_strength(Arc::clone(&conn), &access_point_path).await
@@ -80,7 +80,7 @@ async fn get_access_point_path(conn: Arc<SyncConnection>, device_path: &str) -> 
 async fn get_ssid_and_strength(
     conn: Arc<SyncConnection>,
     access_point_path: &str,
-) -> Result<(String, u8)> {
+) -> Result<WiFiStatus> {
     let (mut properties,): (HashMap<String, Variant<MessageItem>>,) = Proxy::new(
         "org.freedesktop.NetworkManager",
         access_point_path,
@@ -122,5 +122,5 @@ async fn get_ssid_and_strength(
         _ => anyhow::bail!("Strength property is not a number"),
     };
 
-    Ok((ssid, strength))
+    Ok(WiFiStatus { ssid, strength })
 }

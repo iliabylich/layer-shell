@@ -16,7 +16,7 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
         let usage_per_core = parse(&mut previous)
             .await
             .context("failed to get CPU data")?;
-        tx.send(Event::Cpu { usage_per_core })
+        tx.send(Event::Cpu(usage_per_core))
             .context("failed to send event")?;
 
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
