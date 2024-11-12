@@ -4,6 +4,7 @@
 mod actors;
 mod args;
 mod command;
+mod dbus;
 mod event;
 mod global;
 mod ipc;
