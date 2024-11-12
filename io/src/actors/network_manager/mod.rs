@@ -12,7 +12,7 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
 
     tokio::spawn(async {
         let err = res.await;
-        log::error!("Lost connection to D-Bus: {}", err);
+        log::error!("Lost connection to D-Bus: {:?}", err);
     });
 
     tokio::join!(

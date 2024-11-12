@@ -45,7 +45,10 @@ fn main() {
     });
 
     app.connect_startup(|_app| {
-        load_css();
+        if let Err(err) = load_css() {
+            eprintln!("Failed to load css: {:?}", err);
+            std::process::exit(1);
+        }
     });
 
     app.run_with_args(&[""]);

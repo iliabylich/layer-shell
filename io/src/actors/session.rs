@@ -20,12 +20,12 @@ async fn exec(cmd: &str, args: &[&str]) {
     {
         Ok(mut child) => {
             if let Err(err) = child.wait().await {
-                log::error!("spawned {cmd} has failed: {}", err);
+                log::error!("spawned {cmd} has failed: {:?}", err);
             }
         }
 
         Err(err) => {
-            log::error!("failed to spawn {cmd}: {}", err)
+            log::error!("failed to spawn {cmd}: {:?}", err)
         }
     }
 }

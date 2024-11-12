@@ -8,12 +8,12 @@ use tokio::{
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
-        log::error!("Hyprland model error: {}\n{}", err, err.backtrace());
+        log::error!("{:?}", err);
     }
 }
 
 async fn try_spawn(tx: Sender<Event>) -> Result<()> {
-    let mut lines = connect_to_hyprland().await?;
+    let mut reader = connect_to_hyprland().await?;
 
     let mut workspaces = Workspaces::new()
         .await
@@ -27,7 +27,7 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     tx.send(Event::Language(lang))
         .context("failed to send event")?;
 
-    while let Ok(Some(line)) = lines.next_line().await {
+    while let Ok(Some(line)) = reader.next_line().await {
         if let Ok(hyprland_event) = HyprlandEvent::try_from(line) {
             match hyprland_event {
                 HyprlandEvent::CreateWorkspace(_)
@@ -194,11 +194,11 @@ pub(crate) async fn on_command(command: &Command) {
         {
             Ok(mut child) => {
                 if let Err(err) = child.wait().await {
-                    log::error!("Failed to spawn hyprctl: {}", err);
+                    log::error!("Failed to spawn hyprctl: {:?}", err);
                 }
             }
             Err(err) => {
-                log::error!("Failed to spawn hyprctl: {}", err);
+                log::error!("Failed to spawn hyprctl: {:?}", err);
             }
         }
     }

@@ -5,7 +5,7 @@ use tokio::{fs::File, io::AsyncReadExt};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
-        log::error!("CPU model error: {}\n{}", err, err.backtrace());
+        log::error!("{:?}", err);
     }
 }
 

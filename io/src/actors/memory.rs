@@ -4,22 +4,21 @@ use std::sync::mpsc::Sender;
 use tokio::{fs::File, io::AsyncReadExt};
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
-    if let Err(err) = try_spawn(tx).await {
-        log::error!("Memory model error: {}\n{}", err, err.backtrace());
+    loop {
+        if let Err(err) = tick(&tx).await {
+            log::error!("{:?}", err);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
 
-async fn try_spawn(tx: Sender<Event>) -> Result<()> {
-    loop {
-        let data = parse().await.context("failed to get memory info")?;
-        tx.send(Event::Memory {
-            used: data.used,
-            total: data.total,
-        })
-        .context("failed to send event")?;
-
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    }
+async fn tick(tx: &Sender<Event>) -> Result<()> {
+    let data = parse().await.context("failed to get memory info")?;
+    tx.send(Event::Memory {
+        used: data.used,
+        total: data.total,
+    })?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]

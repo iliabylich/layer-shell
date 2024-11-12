@@ -1,4 +1,6 @@
-pub(crate) fn load_css() {
+use anyhow::{Context, Result};
+
+pub(crate) fn load_css() -> Result<()> {
     let provider = gtk4::CssProvider::new();
 
     provider.connect_parsing_error(|_, section, error| {
@@ -9,10 +11,7 @@ pub(crate) fn load_css() {
         );
     });
 
-    let home = std::env::var("HOME").unwrap_or_else(|err| {
-        eprintln!("failed to get $HOME: {}", err);
-        std::process::exit(1);
-    });
+    let home = std::env::var("HOME").context("failed to get HOME variable")?;
 
     let theme_filepath = format!("{}/.theme.css", home);
     let theme = std::fs::read_to_string(theme_filepath).unwrap_or_default();
@@ -21,14 +20,12 @@ pub(crate) fn load_css() {
 
     provider.load_from_string(&css);
 
-    if let Some(display) = gtk4::gdk::Display::default() {
-        gtk4::style_context_add_provider_for_display(
-            &display,
-            &provider,
-            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
-    } else {
-        eprintln!("failed to get default Gdk display");
-        std::process::exit(1);
-    }
+    let display = gtk4::gdk::Display::default().context("failed to get default Gdk display")?;
+    gtk4::style_context_add_provider_for_display(
+        &display,
+        &provider,
+        gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+
+    Ok(())
 }

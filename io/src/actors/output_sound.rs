@@ -11,7 +11,7 @@ global!(OUTPUT_SELEM, Selem<'static>);
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
-        log::error!("{}", err);
+        log::error!("{:?}", err);
     }
 }
 
@@ -83,7 +83,7 @@ fn set_volume(volume: f64) -> Result<()> {
 pub(crate) async fn on_command(command: &Command) {
     if let Command::SetVolume(volume) = command {
         if let Err(err) = set_volume(*volume) {
-            log::error!("failed to set volume: {}", err)
+            log::error!("failed to set volume: {:?}", err)
         }
     }
 }

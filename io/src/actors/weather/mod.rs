@@ -16,53 +16,30 @@ pub use code::{
 };
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
-    if let Err(err) = try_spawn(tx).await {
-        log::error!("Weather model error: {}\n{}", err, err.backtrace());
-    }
-}
-
-async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     let client = Client::new();
 
     loop {
-        match get_weather(&client).await {
-            Ok(response) => match map_response_to_events(response) {
-                Ok((current, forecast)) => {
-                    if let Err(err) = tx.send(current) {
-                        log::error!("Failed to send WeatherCurrent event: {}", err);
-                    }
-
-                    if let Err(err) = tx.send(forecast) {
-                        log::error!("Failed to send WeatherForecast event: {}", err);
-                    }
-                }
-                Err(err) => {
-                    log::error!("Failed to map weather: {}\n{}", err, err.backtrace());
-                }
-            },
-            Err(err) => {
-                log::error!("Failed to get weather: {}\n{}", err, err.backtrace());
-            }
+        if let Err(err) = tick(&tx, &client).await {
+            log::error!("{:?}", err);
         }
-
         tokio::time::sleep(std::time::Duration::from_secs(100)).await;
     }
 }
 
-fn map_response_to_events(
-    Response {
+async fn tick(tx: &Sender<Event>, client: &Client) -> Result<()> {
+    let Response {
         current,
         hourly,
         daily,
-    }: Response,
-) -> Result<(Event, Event)> {
-    let hourly = map_hourly(hourly)?;
-    let daily = map_daily(daily)?;
+    } = get_weather(client).await.context("failed to get weather")?;
 
-    Ok((
-        map_current(current),
-        Event::WeatherForecast { hourly, daily },
-    ))
+    let current = map_current(current);
+    tx.send(current)?;
+
+    let forecast = map_forecast(hourly, daily).context("failed to map forecast")?;
+    tx.send(forecast)?;
+
+    Ok(())
 }
 
 fn map_current(current: CurrentResponse) -> Event {
@@ -70,6 +47,13 @@ fn map_current(current: CurrentResponse) -> Event {
         temperature: current.temperature_2m,
         code: WeatherCode::from(current.weather_code),
     }
+}
+
+fn map_forecast(hourly: HourlyResponse, daily: DailyResponse) -> Result<Event> {
+    let hourly = map_hourly(hourly)?;
+    let daily = map_daily(daily)?;
+
+    Ok(Event::WeatherForecast { hourly, daily })
 }
 
 fn map_hourly(

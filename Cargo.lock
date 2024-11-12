@@ -1085,6 +1085,7 @@ dependencies = [
 name = "layer-shell-ui"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "gtk4",
  "gtk4-layer-shell",
  "layer-shell-io",

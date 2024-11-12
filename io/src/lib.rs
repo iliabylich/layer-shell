@@ -40,15 +40,15 @@ pub fn init() {
     pretty_env_logger::init();
     SUBSCRIPTIONS::set(vec![]);
     if let Err(err) = IPC::prepare() {
-        log::error!("Failed to start IPC: {}", err);
+        log::error!("Failed to start IPC: {:?}", err);
         std::process::exit(1);
     }
     if let Err(err) = parse_args() {
-        log::error!("Error while parsing args: {}", err);
+        log::error!("Error while parsing args: {:?}", err);
         std::process::exit(1);
     }
     if let Err(err) = IPC::set_current_process_as_main() {
-        log::error!("Failed to set current process as main in IPC: {}", err);
+        log::error!("Failed to set current process as main in IPC: {:?}", err);
         std::process::exit(1);
     }
 }
@@ -69,7 +69,7 @@ pub fn spawn_all() {
         {
             Ok(rt) => rt,
             Err(err) => {
-                println!("failed to spawn tokio: {}", err);
+                println!("failed to spawn tokio: {:?}", err);
                 std::process::exit(1);
             }
         };
@@ -104,12 +104,12 @@ pub fn poll_events() {
 
 pub fn publish(c: Command) {
     if let Err(err) = COMMAND_SENDER::get().send(c) {
-        log::error!("failed to publish event: {}", err);
+        log::error!("failed to publish event: {:?}", err);
     }
 }
 
 pub(crate) fn publish_event(e: Event) {
     if let Err(err) = EVENT_SENDER::get().send(e) {
-        log::error!("failed to publish event: {}", err);
+        log::error!("failed to publish event: {:?}", err);
     }
 }

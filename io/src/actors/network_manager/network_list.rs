@@ -18,62 +18,53 @@ use std::{
 };
 
 pub(crate) async fn spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) {
-    if let Err(err) = try_spawn(tx, conn).await {
-        log::error!("NM model error: {}\n{}", err, err.backtrace());
-    }
-}
-
-async fn try_spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) -> Result<()> {
     loop {
-        match get_networks(Arc::clone(&conn)).await {
-            Ok(ifaces) => {
-                if tx.send(Event::NetworkList(ifaces)).is_err() {
-                    log::error!("failed to send NetworkList event");
-                }
-            }
-            Err(err) => {
-                log::error!("NetworkList error: {}\n{}", err, err.backtrace());
-            }
+        if let Err(err) = tick(&tx, conn.as_ref()).await {
+            log::error!("{:?}", err);
         }
-
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 }
 
-async fn get_networks(conn: Arc<SyncConnection>) -> Result<Vec<Network>> {
+async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
+    let networks = get_networks(conn).await?;
+    tx.send(Event::NetworkList(networks))?;
+    Ok(())
+}
+
+async fn get_networks(conn: &SyncConnection) -> Result<Vec<Network>> {
     let mut ifaces = vec![];
 
-    let devices = get_devices(Arc::clone(&conn)).await?;
+    let devices = get_devices(conn).await?;
 
     for device in devices {
-        if let Ok(network) = get_device(Arc::clone(&conn), &device).await {
-            ifaces.push(network);
-        } else {
-            log::warn!("Failed to get data for Device {device} (not connected?)");
+        match get_device(conn, &device).await {
+            Ok(network) => ifaces.push(network),
+            Err(_) => log::warn!("Failed to get data for Device {device} (not connected?)"),
         }
     }
 
     Ok(ifaces)
 }
 
-async fn get_devices(conn: Arc<SyncConnection>) -> Result<Vec<Path<'static>>> {
+async fn get_devices(conn: &SyncConnection) -> Result<Vec<Path<'static>>> {
     Proxy::new(
         "org.freedesktop.NetworkManager",
         "/org/freedesktop/NetworkManager",
         Duration::from_millis(5000),
-        Arc::clone(&conn),
+        conn,
     )
     .get_devices()
     .await
     .context("failed to get devices")
 }
 
-async fn get_device(conn: Arc<SyncConnection>, device: &Path<'static>) -> Result<Network> {
+async fn get_device(conn: &SyncConnection, device: &Path<'static>) -> Result<Network> {
     let device_proxy = Proxy::new(
         "org.freedesktop.NetworkManager",
         device,
         Duration::from_millis(5000),
-        Arc::clone(&conn),
+        conn,
     );
 
     let iface = device_proxy
@@ -90,7 +81,7 @@ async fn get_device(conn: Arc<SyncConnection>, device: &Path<'static>) -> Result
         "org.freedesktop.NetworkManager",
         ip4_config,
         Duration::from_millis(5000),
-        Arc::clone(&conn),
+        conn,
     );
     let data = ip4_config_proxy
         .address_data()

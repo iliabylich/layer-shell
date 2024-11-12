@@ -51,7 +51,7 @@ impl AppList {
                 .spawn();
 
             if let Err(err) = child {
-                log::error!("Failed to spawn {}: {}", app.exec, err);
+                log::error!("Failed to spawn {}: {:?}", app.exec, err);
             }
         }
     }
@@ -60,7 +60,7 @@ impl AppList {
         self.selected_idx = 0;
         match get_all_apps().await {
             Ok(apps) => self.apps = apps,
-            Err(err) => log::error!("failed to refresh app list: {}\n{}", err, err.backtrace()),
+            Err(err) => log::error!("failed to refresh app list: {:?}", err),
         }
         self.emit();
     }
@@ -95,7 +95,7 @@ impl AppList {
 
 pub(crate) async fn spawn(tx: Sender<Event>) {
     if let Err(err) = try_spawn(tx).await {
-        log::error!("Memory model error: {}\n{}", err, err.backtrace());
+        log::error!("Memory model error: {:?}", err);
     }
 }
 
@@ -152,7 +152,7 @@ async fn collect_all_apps(filepaths: &[PathBuf]) -> Result<Vec<DesktopApp>> {
                 apps.insert(desktop_entry.name.clone(), desktop_entry);
             }
             Err(err) => {
-                log::warn!("Failed to parse {:?}: {}\n{}", path, err, err.backtrace());
+                log::warn!("Failed to parse {:?}: {:?}", path, err);
             }
         }
     }

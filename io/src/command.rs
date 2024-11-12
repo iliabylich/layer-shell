@@ -57,12 +57,12 @@ fn spawn_network_editor() {
         .args(["--name", "nmtui", "nmtui"])
         .spawn()
     {
-        log::error!("failed to spawn kitty: {}", err);
+        log::error!("failed to spawn kitty: {:?}", err);
     }
 }
 
 fn spawn_system_monitor() {
     if let Err(err) = std::process::Command::new("gnome-system-monitor").spawn() {
-        log::error!("failed to spawn gnome-system-monitor: {}", err);
+        log::error!("failed to spawn gnome-system-monitor: {:?}", err);
     }
 }

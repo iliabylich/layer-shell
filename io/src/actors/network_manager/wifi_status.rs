@@ -15,32 +15,31 @@ use std::{
 };
 
 pub(crate) async fn spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) {
-    if let Err(err) = try_spawn(tx, conn).await {
-        log::error!("NM model error: {}\n{}", err, err.backtrace());
-    }
-}
-
-async fn try_spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) -> Result<()> {
     loop {
-        let state = get_status(Arc::clone(&conn), "wlo1")
-            .await
-            .inspect_err(|err| log::error!("WiFiStatus error: {}\n{}", err, err.backtrace()))
-            .ok();
-
-        if tx.send(Event::WiFiStatus(state)).is_err() {
-            log::error!("failed to send WiFi event");
+        if let Err(err) = tick(&tx, conn.as_ref()).await {
+            log::error!("{:?}", err);
         }
-
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     }
 }
 
-async fn get_status(conn: Arc<SyncConnection>, iface: &str) -> Result<WiFiStatus> {
+async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
+    let state = get_status(conn, "wlo1")
+        .await
+        .inspect_err(|err| log::error!("WiFiStatus error: {:?}", err))
+        .ok();
+
+    tx.send(Event::WiFiStatus(state))?;
+
+    Ok(())
+}
+
+async fn get_status(conn: &SyncConnection, iface: &str) -> Result<WiFiStatus> {
     let device = Proxy::new(
         "org.freedesktop.NetworkManager",
         "/org/freedesktop/NetworkManager",
         Duration::from_millis(5000),
-        Arc::clone(&conn),
+        conn,
     )
     .get_device_by_ip_iface(iface)
     .await
@@ -50,7 +49,7 @@ async fn get_status(conn: Arc<SyncConnection>, iface: &str) -> Result<WiFiStatus
         "org.freedesktop.NetworkManager",
         device,
         Duration::from_millis(5000),
-        Arc::clone(&conn),
+        conn,
     )
     .active_access_point()
     .await
@@ -60,7 +59,7 @@ async fn get_status(conn: Arc<SyncConnection>, iface: &str) -> Result<WiFiStatus
         "org.freedesktop.NetworkManager",
         access_point,
         Duration::from_millis(5000),
-        Arc::clone(&conn),
+        conn,
     );
 
     let ssid = access_point_proxy
