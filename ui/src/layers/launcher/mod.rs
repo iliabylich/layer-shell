@@ -18,7 +18,7 @@ impl Launcher {
 
         LayerShell::init_layer_shell(window);
         LayerShell::set_layer(window, Layer::Overlay);
-        LayerShell::set_namespace(window, "Launcher");
+        LayerShell::set_namespace(window, "LayerShell/Launcher");
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         app_list::init();

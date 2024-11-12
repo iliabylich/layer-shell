@@ -21,7 +21,7 @@ impl Htop {
         LayerShell::set_anchor(window, Edge::Right, true);
         LayerShell::set_margin(window, Edge::Top, 50);
         LayerShell::set_margin(window, Edge::Right, 600);
-        LayerShell::set_namespace(window, "Htop");
+        LayerShell::set_namespace(window, "LayerShell/Htop");
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         let terminal = vte4::Terminal::builder().build();

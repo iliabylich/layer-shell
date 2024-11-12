@@ -22,7 +22,7 @@ impl LogoutScreen {
         LayerShell::set_anchor(window, Edge::Right, true);
         LayerShell::set_anchor(window, Edge::Bottom, true);
         LayerShell::set_anchor(window, Edge::Left, true);
-        LayerShell::set_namespace(window, "LogoutScreen");
+        LayerShell::set_namespace(window, "LayerShell/LogoutScreen");
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         buttons::init();

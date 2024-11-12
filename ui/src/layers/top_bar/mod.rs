@@ -27,7 +27,7 @@ impl TopBar {
         LayerShell::set_anchor(window, Edge::Left, true);
         LayerShell::set_anchor(window, Edge::Right, true);
         LayerShell::set_margin(window, Edge::Top, 0);
-        LayerShell::set_namespace(window, "TopBar");
+        LayerShell::set_namespace(window, "LayerShell/TopBar");
 
         workspaces::init();
         htop::init();

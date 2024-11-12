@@ -22,7 +22,7 @@ impl Weather {
         LayerShell::set_anchor(window, Edge::Right, true);
         LayerShell::set_margin(window, Edge::Top, 50);
         LayerShell::set_margin(window, Edge::Right, 800);
-        LayerShell::set_namespace(window, "Weather");
+        LayerShell::set_namespace(window, "LayerShell/Weather");
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         forecast::init();
