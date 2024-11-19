@@ -10,11 +10,8 @@ pub(crate) fn init() {
         }
     });
 
-    SoundWidgetScale().connect_change_value(|_, _, _| {
-        let mut volume = SoundWidgetScale().adjustment().value();
-        if volume > 1.0 {
-            volume = 1.0
-        }
+    SoundWidgetScale().connect_change_value(|scale, _, _| {
+        let volume = scale.adjustment().value().clamp(0.0, 1.0);
         publish(Command::SetVolume(volume));
         gtk4::glib::Propagation::Proceed
     });
