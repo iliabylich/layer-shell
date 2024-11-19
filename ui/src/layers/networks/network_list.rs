@@ -21,11 +21,11 @@ pub(crate) fn init() {
     subscribe(|event| {
         if let Event::NetworkList(list) = event {
             for (idx, row) in widgets::networks::rows().iter().enumerate() {
-                if let Some(Network { iface, ip }) = list.get(idx) {
+                if let Some(Network { iface, address }) = list.get(idx) {
                     row.set_visible(true);
                     if let Some(label) = row_label(row) {
-                        label.set_label(&format!("{}: {}", iface, ip));
-                        label.set_tooltip_text(Some(ip));
+                        label.set_label(&format!("{}: {}", iface, address));
+                        label.set_tooltip_text(Some(address));
                     } else {
                         eprintln!("failed to get network label");
                     }

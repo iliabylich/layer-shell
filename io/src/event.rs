@@ -68,5 +68,5 @@ pub struct WiFiStatus {
 #[derive(Debug)]
 pub struct Network {
     pub iface: String,
-    pub ip: String,
+    pub address: String,
 }

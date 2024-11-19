@@ -1,0 +1,8 @@
+[package]
+name = "layer-shell-dbus"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dbus = "0.9"
+anyhow = { workspace = true }

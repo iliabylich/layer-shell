@@ -1,18 +1,8 @@
-use crate::{
-    dbus::{
-        nm::OrgFreedesktopNetworkManager as _,
-        nm_access_point::OrgFreedesktopNetworkManagerAccessPoint as _,
-        nm_device_wireless::OrgFreedesktopNetworkManagerDeviceWireless as _,
-    },
-    event::WiFiStatus,
-    Event,
-};
-use anyhow::{Context, Result};
-use dbus::nonblock::{Proxy, SyncConnection};
-use std::{
-    sync::{mpsc::Sender, Arc},
-    time::Duration,
-};
+use crate::{event::WiFiStatus, Event};
+use anyhow::Result;
+use dbus::nonblock::SyncConnection;
+use layer_shell_dbus::nm::NetworkManager;
+use std::sync::{mpsc::Sender, Arc};
 
 pub(crate) async fn spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) {
     loop {
@@ -35,43 +25,10 @@ async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
 }
 
 async fn get_status(conn: &SyncConnection, iface: &str) -> Result<WiFiStatus> {
-    let device = Proxy::new(
-        "org.freedesktop.NetworkManager",
-        "/org/freedesktop/NetworkManager",
-        Duration::from_millis(5000),
-        conn,
-    )
-    .get_device_by_ip_iface(iface)
-    .await
-    .context("failed to call GetDeviceByIface on NetworkManager")?;
-
-    let access_point = Proxy::new(
-        "org.freedesktop.NetworkManager",
-        device,
-        Duration::from_millis(5000),
-        conn,
-    )
-    .active_access_point()
-    .await
-    .context("failed to get ActiveAccessPoint on Device")?;
-
-    let access_point_proxy = Proxy::new(
-        "org.freedesktop.NetworkManager",
-        access_point,
-        Duration::from_millis(5000),
-        conn,
-    );
-
-    let ssid = access_point_proxy
-        .ssid()
-        .await
-        .context("failed to get Ssid")?;
-    let ssid = String::from_utf8(ssid).context("non UTF-8 ssid")?;
-
-    let strength = access_point_proxy
-        .strength()
-        .await
-        .context("failed to get Strength property")?;
+    let device = NetworkManager::get_device_by_ip_iface(conn, iface).await?;
+    let access_point = device.active_access_point(conn).await?;
+    let ssid = access_point.ssid(conn).await?;
+    let strength = access_point.strength(conn).await?;
 
     Ok(WiFiStatus { ssid, strength })
 }

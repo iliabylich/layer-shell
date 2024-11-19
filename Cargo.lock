@@ -1062,6 +1062,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
+name = "layer-shell-dbus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dbus",
+]
+
+[[package]]
 name = "layer-shell-io"
 version = "0.1.0"
 dependencies = [
@@ -1072,6 +1080,7 @@ dependencies = [
  "clap_complete",
  "dbus",
  "dbus-tokio",
+ "layer-shell-dbus",
  "log",
  "paste",
  "pretty_env_logger",

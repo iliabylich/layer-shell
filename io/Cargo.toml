@@ -38,3 +38,4 @@ tokio = { version = "1", default-features = false, features = [
 dbus-tokio = "0.7"
 dbus = "0.9"
 paste = "1"
+layer-shell-dbus = { path = "../dbus" }
