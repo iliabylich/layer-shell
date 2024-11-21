@@ -13,7 +13,6 @@
 }
 
 * {
-    font-family: Roboto, "Font Awesome 5 Free";
     font-size: 12px;
     font-weight: normal;
     color: var(--theme-text-color);
@@ -86,10 +85,6 @@ tooltip {
     min-width: 1px;
     background-color: var(--theme-accent-color);
     border-radius: 5px;
-}
-
-.widget.weather label {
-    font-family: Roboto, "Weather Icons";
 }
 
 /* network */
@@ -190,7 +185,6 @@ tooltip {
 
 .widget-weather label {
     padding: 5px;
-    font-family: Roboto, "Weather Icons";
 }
 
 .weather-hourly-list {
