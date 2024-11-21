@@ -1,18 +1,24 @@
+use crate::icons::{
+    foggy_icon, partly_cloudy_icon, question_mark_icon, rainy_icon, sunny_icon, thunderstorm_icon,
+    weather_snowy_icon,
+};
 use layer_shell_io::weather::*;
 
-pub(crate) fn weather_code_to_icon(code: WeatherCode) -> char {
+pub(crate) fn weather_code_to_icon(code: WeatherCode) -> &'static gtk4::gdk::Texture {
     match code {
-        WeatherCode::ClearSky | WeatherCode::MainlyClear => '☀',
-        WeatherCode::PartlyCloudy | WeatherCode::Overcast => '🌤',
-        WeatherCode::Fog(_) => '🌫',
+        WeatherCode::ClearSky | WeatherCode::MainlyClear => sunny_icon(),
+        WeatherCode::PartlyCloudy | WeatherCode::Overcast => partly_cloudy_icon(),
+        WeatherCode::Fog(_) => foggy_icon(),
         WeatherCode::Drizzle(_)
         | WeatherCode::FreezingDrizzle(_)
         | WeatherCode::Rain(_)
         | WeatherCode::FreezingRain(_)
-        | WeatherCode::RainShowers(_) => '🌧',
-        WeatherCode::SnowFall(_) | WeatherCode::SnowGrains | WeatherCode::SnowShowers(_) => '❄',
-        WeatherCode::Thunderstorm | WeatherCode::ThunderstormWithHail(_) => '⛈',
-        WeatherCode::Unknown => '?',
+        | WeatherCode::RainShowers(_) => rainy_icon(),
+        WeatherCode::SnowFall(_) | WeatherCode::SnowGrains | WeatherCode::SnowShowers(_) => {
+            weather_snowy_icon()
+        }
+        WeatherCode::Thunderstorm | WeatherCode::ThunderstormWithHail(_) => thunderstorm_icon(),
+        WeatherCode::Unknown => question_mark_icon(),
     }
 }
 

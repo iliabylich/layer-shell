@@ -1,6 +1,7 @@
 use crate::{
+    icons::wifi_icon,
     layers::Networks,
-    widgets::{wifi_icon, NetworkWidget, NetworkWidgetImage, NetworkWidgetLabel},
+    widgets::{NetworkWidget, NetworkWidgetImage, NetworkWidgetLabel},
 };
 use gtk4::prelude::{ButtonExt, WidgetExt};
 use layer_shell_io::{subscribe, Event, WiFiStatus};

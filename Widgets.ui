@@ -722,34 +722,134 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly1"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel1"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage1">
+                    <property name="pixel-size">30</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly2"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel2"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage2">
+                    <property name="pixel-size">30</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly3"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel3"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage3">
+                    <property name="pixel-size">30</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly4"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel4"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage4">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly5"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel5"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage5">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly6"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel6"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage6">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly7"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel7"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage7">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly8"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel8"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage8">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly9"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel9"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage9">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Hourly10"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="HourlyForecastLabel10"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="HourlyForecastImage10">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
           </object>
         </child>
@@ -765,22 +865,82 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Daily1"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="DailyForecastLabel1"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="DailyForecastImage1">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Daily2"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="DailyForecastLabel2"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="DailyForecastImage2">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Daily3"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="DailyForecastLabel3"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="DailyForecastImage3">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Daily4"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="DailyForecastLabel4"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="DailyForecastImage4">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Daily5"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="DailyForecastLabel5"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="DailyForecastImage5">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
             <child>
-              <object class="GtkLabel" id="Daily6"></object>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <child>
+                  <object class="GtkLabel" id="DailyForecastLabel6"></object>
+                </child>
+                <child>
+                  <object class="GtkImage" id="DailyForecastImage6">
+                    <property name="pixel-size">24</property>
+                  </object>
+                </child>
+              </object>
             </child>
           </object>
         </child>

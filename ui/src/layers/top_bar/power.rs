@@ -1,6 +1,7 @@
 use crate::{
+    icons::power_icon,
     layers::LogoutScreen,
-    widgets::{power_icon, PowerWidget, PowerWidgetImage},
+    widgets::{PowerWidget, PowerWidgetImage},
 };
 use gtk4::prelude::ButtonExt;
 

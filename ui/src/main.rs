@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 
+mod icons;
 mod layers;
 mod utils;
 mod widgets;
@@ -28,6 +29,7 @@ fn main() {
 
     app.connect_activate(|app| {
         widgets::load();
+        icons::load();
 
         TopBar::activate(app);
         LogoutScreen::activate(app);

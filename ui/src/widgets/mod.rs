@@ -1,18 +1,12 @@
 #[allow(non_snake_case)]
-mod load;
-pub(crate) use load::*;
-
-mod icons;
-pub(crate) use icons::*;
+mod gen;
+pub(crate) use gen::*;
 
 pub(crate) fn load() {
     const UI: &str = include_str!("../../../Widgets.ui");
     let builder = gtk4::Builder::from_string(UI);
 
-    unsafe {
-        init_widgets(&builder);
-        init_icons();
-    }
+    unsafe { init_widgets(&builder) }
 }
 
 pub(crate) mod launcher {
@@ -62,27 +56,53 @@ pub(crate) mod networks {
 pub(crate) mod weather {
     pub(crate) fn hourly_labels() -> [&'static gtk4::Label; 10] {
         [
-            super::Hourly1(),
-            super::Hourly2(),
-            super::Hourly3(),
-            super::Hourly4(),
-            super::Hourly5(),
-            super::Hourly6(),
-            super::Hourly7(),
-            super::Hourly8(),
-            super::Hourly9(),
-            super::Hourly10(),
+            super::HourlyForecastLabel1(),
+            super::HourlyForecastLabel2(),
+            super::HourlyForecastLabel3(),
+            super::HourlyForecastLabel4(),
+            super::HourlyForecastLabel5(),
+            super::HourlyForecastLabel6(),
+            super::HourlyForecastLabel7(),
+            super::HourlyForecastLabel8(),
+            super::HourlyForecastLabel9(),
+            super::HourlyForecastLabel10(),
+        ]
+    }
+
+    pub(crate) fn hourly_images() -> [&'static gtk4::Image; 10] {
+        [
+            super::HourlyForecastImage1(),
+            super::HourlyForecastImage2(),
+            super::HourlyForecastImage3(),
+            super::HourlyForecastImage4(),
+            super::HourlyForecastImage5(),
+            super::HourlyForecastImage6(),
+            super::HourlyForecastImage7(),
+            super::HourlyForecastImage8(),
+            super::HourlyForecastImage9(),
+            super::HourlyForecastImage10(),
         ]
     }
 
     pub(crate) fn daily_labels() -> [&'static gtk4::Label; 6] {
         [
-            super::Daily1(),
-            super::Daily2(),
-            super::Daily3(),
-            super::Daily4(),
-            super::Daily5(),
-            super::Daily6(),
+            super::DailyForecastLabel1(),
+            super::DailyForecastLabel2(),
+            super::DailyForecastLabel3(),
+            super::DailyForecastLabel4(),
+            super::DailyForecastLabel5(),
+            super::DailyForecastLabel6(),
+        ]
+    }
+
+    pub(crate) fn daily_images() -> [&'static gtk4::Image; 6] {
+        [
+            super::DailyForecastImage1(),
+            super::DailyForecastImage2(),
+            super::DailyForecastImage3(),
+            super::DailyForecastImage4(),
+            super::DailyForecastImage5(),
+            super::DailyForecastImage6(),
         ]
     }
 }
