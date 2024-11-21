@@ -38,6 +38,10 @@
     color: var(--theme-bg-color);
 }
 
+.widget.clickable:hover image {
+    filter: invert(100%);
+}
+
 .widget.padded {
     padding: 0 10px;
 }
@@ -183,10 +187,12 @@ tooltip {
     background-color: var(--theme-solid-bg-color);
     padding: 10px;
 }
+
 .widget-weather label {
     padding: 5px;
     font-family: Roboto, "Weather Icons";
 }
+
 .weather-hourly-list {
     border-right: 3px solid var(--theme-accent-color);
 }

@@ -98,7 +98,12 @@ Window TopBarWindow {
                 styles ["widget", "network", "padded", "clickable"]
                 cursor: Gdk.Cursor { name: "pointer"; };
 
-                Label NetworkWidgetLabel {}
+                Box {
+                    orientation: horizontal;
+
+                    Label NetworkWidgetLabel {}
+                    Image NetworkWidgetImage {}
+                }
             }
 
             CenterBox {
@@ -112,9 +117,7 @@ Window TopBarWindow {
                 styles ["widget", "power", "padded", "clickable"]
                 cursor: Gdk.Cursor { name: "pointer"; };
 
-                Label {
-                    label: "      ";
-                }
+                Image PowerWidgetImage {}
             }
         }
     }

@@ -37,6 +37,9 @@ pub(crate) fn load() {
     load_widgets(&builder);
 }
 
+mod icons;
+pub(crate) use icons::*;
+
 pub(crate) mod launcher {
     pub(crate) fn rows() -> [&'static gtk4::Box; 5] {
         [

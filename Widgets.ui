@@ -287,7 +287,15 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </property>
                 <child>
-                  <object class="GtkLabel" id="NetworkWidgetLabel"></object>
+                  <object class="GtkBox">
+                    <property name="orientation">0</property>
+                    <child>
+                      <object class="GtkLabel" id="NetworkWidgetLabel"></object>
+                    </child>
+                    <child>
+                      <object class="GtkImage" id="NetworkWidgetImage"></object>
+                    </child>
+                  </object>
                 </child>
               </object>
             </child>
@@ -317,9 +325,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   </object>
                 </property>
                 <child>
-                  <object class="GtkLabel">
-                    <property name="label">      </property>
-                  </object>
+                  <object class="GtkImage" id="PowerWidgetImage"></object>
                 </child>
               </object>
             </child>

@@ -2,15 +2,16 @@ use layer_shell_io::weather::*;
 
 pub(crate) fn weather_code_to_icon(code: WeatherCode) -> char {
     match code {
-        WeatherCode::ClearSky | WeatherCode::MainlyClear => '',
-        WeatherCode::PartlyCloudy | WeatherCode::Overcast => '',
-        WeatherCode::Fog(_) => '',
-        WeatherCode::Drizzle(_) | WeatherCode::FreezingDrizzle(_) => '',
-        WeatherCode::Rain(_) | WeatherCode::FreezingRain(_) => '',
-        WeatherCode::SnowFall(_) | WeatherCode::SnowGrains => '',
-        WeatherCode::RainShowers(_) => '',
-        WeatherCode::SnowShowers(_) => '',
-        WeatherCode::Thunderstorm | WeatherCode::ThunderstormWithHail(_) => '',
+        WeatherCode::ClearSky | WeatherCode::MainlyClear => '☀',
+        WeatherCode::PartlyCloudy | WeatherCode::Overcast => '🌤',
+        WeatherCode::Fog(_) => '🌫',
+        WeatherCode::Drizzle(_)
+        | WeatherCode::FreezingDrizzle(_)
+        | WeatherCode::Rain(_)
+        | WeatherCode::FreezingRain(_)
+        | WeatherCode::RainShowers(_) => '🌧',
+        WeatherCode::SnowFall(_) | WeatherCode::SnowGrains | WeatherCode::SnowShowers(_) => '❄',
+        WeatherCode::Thunderstorm | WeatherCode::ThunderstormWithHail(_) => '⛈',
         WeatherCode::Unknown => '?',
     }
 }
