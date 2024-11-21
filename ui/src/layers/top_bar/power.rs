@@ -5,7 +5,7 @@ use crate::{
 use gtk4::prelude::ButtonExt;
 
 pub(crate) fn init() {
-    PowerWidgetImage().set_from_gicon(&power_icon());
+    PowerWidgetImage().set_from_gicon(power_icon());
 
     PowerWidget().connect_clicked(|_| {
         LogoutScreen::toggle();

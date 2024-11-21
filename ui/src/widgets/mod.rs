@@ -1,44 +1,19 @@
-macro_rules! widget {
-    ($name:ident, $t:ty) => {
-        paste::paste! {
-            static mut [< $name _VALUE >]: Option<$t> = None;
-
-            fn [< load_ $name >](builder: &gtk4::Builder) {
-                unsafe {
-                    [< $name _VALUE >] = builder.object(stringify!($name));
-                }
-            }
-
-            pub(crate) fn $name() -> &'static $t {
-                unsafe {
-                    match [< $name _VALUE >].as_mut() {
-                        Some(value) => value,
-                        None => {
-                            eprintln!("widget {} is not initialised", stringify!($name));
-                            std::process::exit(1);
-                        }
-                    }
-                }
-            }
-        }
-    };
-}
-
-pub(crate) use widget;
-
-#[allow(non_snake_case, non_upper_case_globals)]
+#[allow(non_snake_case)]
 mod load;
 pub(crate) use load::*;
+
+mod icons;
+pub(crate) use icons::*;
 
 pub(crate) fn load() {
     const UI: &str = include_str!("../../../Widgets.ui");
     let builder = gtk4::Builder::from_string(UI);
 
-    load_widgets(&builder);
+    unsafe {
+        init_widgets(&builder);
+        init_icons();
+    }
 }
-
-mod icons;
-pub(crate) use icons::*;
 
 pub(crate) mod launcher {
     pub(crate) fn rows() -> [&'static gtk4::Box; 5] {
