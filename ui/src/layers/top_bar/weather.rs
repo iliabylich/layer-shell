@@ -12,7 +12,7 @@ pub(crate) fn init() {
 
     subscribe(|event| {
         if let Event::WeatherCurrent { temperature, code } = event {
-            let label = format!("{} {}", temperature, weather_code_to_description(*code));
+            let label = format!("{}℃ {}", temperature, weather_code_to_description(*code));
             WeatherWidgetLabel().set_label(&label);
         }
     });
