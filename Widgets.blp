@@ -49,7 +49,7 @@ Window TopBarWindow {
                 Label LanguageWidgetLabel {}
             }
 
-            Box {
+            Box SoundWidget {
                 styles ["widget", "sound", "padded"]
                 spacing: 10;
                 orientation: horizontal;
@@ -63,8 +63,6 @@ Window TopBarWindow {
                     adjustment: Adjustment {
                         lower: 0;
                         upper: 1;
-                        step-increment: 0.1;
-                        page-increment: 0.1;
                     };
                 }
             }

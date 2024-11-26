@@ -87,6 +87,14 @@ tooltip {
     border-radius: 5px;
 }
 
+.sound-slider slider {
+    background-color: var(--theme-text-color);
+    padding: 3px;
+    min-height: 3px;
+    min-width: 10px;
+    border-radius: 4px;
+}
+
 /* network */
 .widget-network-row-list {
     border: 5px solid var(--theme-accent-color);

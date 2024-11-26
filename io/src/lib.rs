@@ -83,9 +83,10 @@ pub fn spawn_all() {
                 actors::time::spawn(etx.clone()),
                 actors::hyprland::spawn(etx.clone()),
                 actors::app_list::spawn(etx.clone()),
-                actors::output_sound::spawn(etx.clone()),
+                // actors::output_sound::spawn(etx.clone()),
                 actors::weather::spawn(etx.clone()),
                 actors::network_manager::spawn(etx.clone()),
+                actors::pipewire::spawn(etx.clone()),
             );
         });
     });

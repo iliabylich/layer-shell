@@ -180,6 +180,18 @@ pub(crate) fn LanguageWidgetLabel() -> &'static gtk4::Label {
         }
     }
 }
+static mut SOUNDWIDGET: Option<gtk4::Box> = None;
+pub(crate) fn SoundWidget() -> &'static gtk4::Box {
+    unsafe {
+        match SOUNDWIDGET.as_ref() {
+            Some(v) => v,
+            None => {
+                eprintln!("widget SoundWidget is not initialised");
+                std::process::exit(1);
+            }
+        }
+    }
+}
 static mut SOUNDWIDGETIMAGE: Option<gtk4::Image> = None;
 pub(crate) fn SoundWidgetImage() -> &'static gtk4::Image {
     unsafe {
@@ -1228,6 +1240,7 @@ pub(crate) unsafe fn init_widgets(builder: &gtk4::Builder) {
     WEATHERWIDGET = builder.object("WeatherWidget");
     WEATHERWIDGETLABEL = builder.object("WeatherWidgetLabel");
     LANGUAGEWIDGETLABEL = builder.object("LanguageWidgetLabel");
+    SOUNDWIDGET = builder.object("SoundWidget");
     SOUNDWIDGETIMAGE = builder.object("SoundWidgetImage");
     SOUNDWIDGETSCALE = builder.object("SoundWidgetScale");
     CPUWIDGETLABEL1 = builder.object("CPUWidgetLabel1");

@@ -18,7 +18,8 @@ pub enum Event {
     },
     Language(String),
     AppList(Vec<App>),
-    Volume(f64),
+    Volume(f32),
+    Muted(bool),
     WeatherCurrent {
         temperature: f32,
         code: WeatherCode,
@@ -69,4 +70,13 @@ pub struct WiFiStatus {
 pub struct Network {
     pub iface: String,
     pub address: String,
+}
+
+impl From<layer_shell_pipewire::Event> for Event {
+    fn from(e: layer_shell_pipewire::Event) -> Self {
+        match e {
+            layer_shell_pipewire::Event::MuteChanged(muted) => Self::Muted(muted),
+            layer_shell_pipewire::Event::VolumeChanged(volume) => Self::Volume(volume),
+        }
+    }
 }
