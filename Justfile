@@ -1,6 +1,6 @@
 ui-generate:
-    ./ui-generate.sh
-    ./icons-generate.sh
+    ./ui/generate.sh
+    ./icons/generate.sh
 
 dbus-generate:
-    ./dbus-generate.sh
+    ./dbus/generate.sh

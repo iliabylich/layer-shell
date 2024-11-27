@@ -3,7 +3,7 @@ mod gen;
 pub(crate) use gen::*;
 
 pub(crate) fn load() {
-    const UI: &str = include_str!("../../../Widgets.ui");
+    const UI: &str = include_str!("../../Widgets.ui");
     let builder = gtk4::Builder::from_string(UI);
 
     unsafe { init_widgets(&builder) }

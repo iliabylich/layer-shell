@@ -15,7 +15,7 @@ pub(crate) fn load_css() -> Result<()> {
 
     let theme_filepath = format!("{}/.theme.css", home);
     let theme = std::fs::read_to_string(theme_filepath).unwrap_or_default();
-    let builtin = include_str!("../../../main.css");
+    let builtin = include_str!("../../main.css");
     let css = format!("{}\n{}", theme, builtin);
 
     provider.load_from_string(&css);

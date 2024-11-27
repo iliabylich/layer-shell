@@ -5,7 +5,7 @@ set -eu
 OUTFILE=ui/src/widgets/gen.rs
 truncate -s 0 $OUTFILE
 
-blueprint-compiler compile Widgets.blp > Widgets.ui
+blueprint-compiler compile ui/Widgets.blp > ui/Widgets.ui
 
 NL="
 "
@@ -42,7 +42,7 @@ parse_line() {
 }
 
 lines=()
-parse_xml "Widgets.ui" lines
+parse_xml "ui/Widgets.ui" lines
 
 write() {
     echo "$1" >> $OUTFILE
