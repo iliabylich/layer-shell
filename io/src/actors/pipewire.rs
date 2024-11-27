@@ -1,4 +1,4 @@
-use crate::{global, Command, Event};
+use crate::{global, Event};
 use anyhow::Result;
 use std::sync::mpsc::Sender;
 
@@ -26,10 +26,8 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     }
 }
 
-pub(crate) async fn on_command(command: &Command) {
-    if let Ok(pw_command) = layer_shell_pipewire::Command::try_from(command) {
-        if let Err(err) = PW_RX::get().send(pw_command) {
-            log::error!("Failed to send command to PW: {:?}", err);
-        }
+pub(crate) async fn on_command(cmd: layer_shell_pipewire::Command) {
+    if let Err(err) = PW_RX::get().send(cmd) {
+        log::error!("Failed to send command to PW: {:?}", err);
     }
 }

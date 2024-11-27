@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = { workspace = true }
+
 gtk4 = { version = "0.9", features = ["v4_14"] }
 gtk4-layer-shell = "0.4"
 vte4 = { version = "0.8", features = ["v0_78"] }
 layer-shell-io = { path = "../io" }
 paste = "1"
-anyhow = { workspace = true }

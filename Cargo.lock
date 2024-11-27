@@ -1174,6 +1174,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "layer-shell-hyprland"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "layer-shell-io"
 version = "0.1.0"
 dependencies = [
@@ -1183,7 +1195,9 @@ dependencies = [
  "clap_complete",
  "dbus",
  "dbus-tokio",
+ "futures",
  "layer-shell-dbus",
+ "layer-shell-hyprland",
  "layer-shell-pipewire",
  "log",
  "paste",

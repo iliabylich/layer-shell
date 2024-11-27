@@ -37,9 +37,15 @@ impl Command {
         log::info!("Running command {:?}", self);
         use Command::*;
 
-        match self {
-            GoToWorkspace(_) => hyprland::on_command(self).await,
+        if let Ok(cmd) = layer_shell_hyprland::Command::try_from(self) {
+            hyprland::on_command(cmd).await;
+        }
 
+        if let Ok(cmd) = layer_shell_pipewire::Command::try_from(self) {
+            pipewire::on_command(cmd).await;
+        }
+
+        match self {
             LauncherReset | LauncherGoUp | LauncherGoDown | LauncherSetSearch(_)
             | LauncherExecSelected => app_list::on_command(self).await,
 
@@ -48,7 +54,7 @@ impl Command {
             SpawnNetworkEditor => spawn_network_editor(),
             SpawnSystemMonitor => spawn_system_monitor(),
 
-            SetVolume(_) | SetMuted(_) => pipewire::on_command(self).await,
+            _ => {}
         }
     }
 }
@@ -75,6 +81,17 @@ impl TryFrom<&Command> for layer_shell_pipewire::Command {
         match cmd {
             Command::SetVolume(volume) => Ok(Self::SetVolume(*volume)),
             Command::SetMuted(muted) => Ok(Self::SetMuted(*muted)),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&Command> for layer_shell_hyprland::Command {
+    type Error = ();
+
+    fn try_from(cmd: &Command) -> Result<Self, Self::Error> {
+        match cmd {
+            Command::GoToWorkspace(idx) => Ok(Self::GoToWorkspace(*idx)),
             _ => Err(()),
         }
     }

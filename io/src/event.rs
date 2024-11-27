@@ -80,3 +80,14 @@ impl From<layer_shell_pipewire::Event> for Event {
         }
     }
 }
+
+impl From<layer_shell_hyprland::Event> for Event {
+    fn from(e: layer_shell_hyprland::Event) -> Self {
+        match e {
+            layer_shell_hyprland::Event::WorkspacesChanged { ids, active_id } => {
+                Self::Workspaces { ids, active_id }
+            }
+            layer_shell_hyprland::Event::LanguageChanged(lang) => Self::Language(lang),
+        }
+    }
+}
