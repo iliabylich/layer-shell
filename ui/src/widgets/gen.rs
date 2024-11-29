@@ -816,18 +816,6 @@ pub(crate) fn LauncherRow5Label() -> &'static gtk4::Label {
         }
     }
 }
-static mut HTOPWINDOW: Option<gtk4::Window> = None;
-pub(crate) fn HtopWindow() -> &'static gtk4::Window {
-    unsafe {
-        match HTOPWINDOW.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget HtopWindow is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
 pub(crate) unsafe fn init_widgets(builder: &gtk4::Builder) {
     TOPBARWINDOW = builder.object("TopBarWindow");
     WORKSPACESWIDGETBUTTON1 = builder.object("WorkspacesWidgetButton1");
@@ -897,5 +885,4 @@ pub(crate) unsafe fn init_widgets(builder: &gtk4::Builder) {
     LAUNCHERROW5 = builder.object("LauncherRow5");
     LAUNCHERROW5IMAGE = builder.object("LauncherRow5Image");
     LAUNCHERROW5LABEL = builder.object("LauncherRow5Label");
-    HTOPWINDOW = builder.object("HtopWindow");
 }

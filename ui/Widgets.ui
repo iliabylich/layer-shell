@@ -694,11 +694,4 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="HtopWindow">
-    <style>
-      <class name="widget-htop"/>
-    </style>
-    <property name="width-request">1000</property>
-    <property name="height-request">700</property>
-  </object>
 </interface>

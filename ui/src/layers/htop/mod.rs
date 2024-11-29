@@ -1,4 +1,4 @@
-use crate::{utils::keybindings, widgets::HtopWindow};
+use crate::{utils::keybindings, widgets::htop::Window};
 use gtk4::{
     gio::Cancellable,
     prelude::{GtkWindowExt, WidgetExt},
@@ -11,7 +11,7 @@ pub(crate) struct Htop;
 
 impl Htop {
     pub(crate) fn activate(app: &Application) {
-        let window = HtopWindow();
+        let window = Window();
 
         window.set_application(Some(app));
 
@@ -52,7 +52,6 @@ impl Htop {
     }
 
     pub(crate) fn toggle() {
-        let window = HtopWindow();
-        window.set_visible(!window.get_visible())
+        Window().set_visible(!Window().get_visible())
     }
 }

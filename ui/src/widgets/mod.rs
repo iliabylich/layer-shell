@@ -2,6 +2,7 @@
 mod gen;
 pub(crate) use gen::*;
 
+pub(crate) mod htop;
 pub(crate) mod weather;
 
 pub(crate) fn load() {
@@ -11,6 +12,7 @@ pub(crate) fn load() {
     unsafe { init_widgets(&builder) }
 
     weather::setup();
+    htop::setup();
 }
 
 pub(crate) mod launcher {
