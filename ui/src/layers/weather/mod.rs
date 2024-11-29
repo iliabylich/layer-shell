@@ -1,4 +1,4 @@
-use crate::{utils::keybindings, widgets::WeatherWindow};
+use crate::{utils::keybindings, widgets::weather::Window};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application,
@@ -12,7 +12,7 @@ pub(crate) struct Weather;
 
 impl Weather {
     pub(crate) fn activate(app: &Application) {
-        let window = WeatherWindow();
+        let window = Window();
 
         window.set_application(Some(app));
 
@@ -33,7 +33,6 @@ impl Weather {
     }
 
     pub(crate) fn toggle() {
-        let window = WeatherWindow();
-        window.set_visible(!window.get_visible())
+        Window().set_visible(!Window().get_visible())
     }
 }

@@ -2,11 +2,15 @@
 mod gen;
 pub(crate) use gen::*;
 
+pub(crate) mod weather;
+
 pub(crate) fn load() {
     const UI: &str = include_str!("../../Widgets.ui");
     let builder = gtk4::Builder::from_string(UI);
 
     unsafe { init_widgets(&builder) }
+
+    weather::setup();
 }
 
 pub(crate) mod launcher {
@@ -53,60 +57,6 @@ pub(crate) mod networks {
     }
 }
 
-pub(crate) mod weather {
-    pub(crate) fn hourly_labels() -> [&'static gtk4::Label; 10] {
-        [
-            super::HourlyForecastLabel1(),
-            super::HourlyForecastLabel2(),
-            super::HourlyForecastLabel3(),
-            super::HourlyForecastLabel4(),
-            super::HourlyForecastLabel5(),
-            super::HourlyForecastLabel6(),
-            super::HourlyForecastLabel7(),
-            super::HourlyForecastLabel8(),
-            super::HourlyForecastLabel9(),
-            super::HourlyForecastLabel10(),
-        ]
-    }
-
-    pub(crate) fn hourly_images() -> [&'static gtk4::Image; 10] {
-        [
-            super::HourlyForecastImage1(),
-            super::HourlyForecastImage2(),
-            super::HourlyForecastImage3(),
-            super::HourlyForecastImage4(),
-            super::HourlyForecastImage5(),
-            super::HourlyForecastImage6(),
-            super::HourlyForecastImage7(),
-            super::HourlyForecastImage8(),
-            super::HourlyForecastImage9(),
-            super::HourlyForecastImage10(),
-        ]
-    }
-
-    pub(crate) fn daily_labels() -> [&'static gtk4::Label; 6] {
-        [
-            super::DailyForecastLabel1(),
-            super::DailyForecastLabel2(),
-            super::DailyForecastLabel3(),
-            super::DailyForecastLabel4(),
-            super::DailyForecastLabel5(),
-            super::DailyForecastLabel6(),
-        ]
-    }
-
-    pub(crate) fn daily_images() -> [&'static gtk4::Image; 6] {
-        [
-            super::DailyForecastImage1(),
-            super::DailyForecastImage2(),
-            super::DailyForecastImage3(),
-            super::DailyForecastImage4(),
-            super::DailyForecastImage5(),
-            super::DailyForecastImage6(),
-        ]
-    }
-}
-
 pub(crate) mod cpu {
     pub(crate) fn labels() -> [&'static gtk4::Label; 12] {
         [
@@ -142,3 +92,31 @@ pub(crate) mod workspaces {
         ]
     }
 }
+
+macro_rules! widget {
+    ($name:ident, $t:ty) => {
+        paste::paste! {
+            #[allow(non_upper_case_globals)]
+            static mut [< $name Instance >]: Option<$t> = None;
+
+            #[allow(non_snake_case)]
+            pub(crate) fn $name() -> &'static mut $t {
+                unsafe {
+                    match [< $name Instance >].as_mut() {
+                        Some(value) => value,
+                        None => {
+                            eprintln!("widget {} is not defined", stringify!($name));
+                            std::process::exit(1);
+                        }
+                    }
+                }
+            }
+
+            #[allow(non_snake_case)]
+            fn [< set_ $name >](v: $t) {
+                unsafe { [< $name Instance >] = Some(v) }
+            }
+        }
+    };
+}
+pub(crate) use widget;

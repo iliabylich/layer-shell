@@ -195,11 +195,11 @@ tooltip {
     padding: 5px;
 }
 
-.weather-hourly-list {
+.weather-left-side {
     border-right: 3px solid var(--theme-accent-color);
 }
 
-.weather-hourly-list,
-.weather-daily-list {
+.weather-left-side,
+.weather-right-side {
     padding: 0 10px;
 }
