@@ -1,5 +1,4 @@
 use crate::{
-    icons::wifi_icon,
     layers::Networks,
     widgets::top_bar::network::{Image, Label, Widget},
 };
@@ -7,8 +6,6 @@ use gtk4::prelude::{ButtonExt, WidgetExt};
 use layer_shell_io::{subscribe, Event, WiFiStatus};
 
 pub(crate) fn init() {
-    Image().set_from_gicon(wifi_icon());
-
     subscribe(|event| {
         if let Event::WiFiStatus(status) = event {
             if let Some(WiFiStatus { ssid, strength }) = status {

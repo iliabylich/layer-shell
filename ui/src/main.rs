@@ -28,8 +28,8 @@ fn main() {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
-        widgets::load();
         icons::load();
+        widgets::load();
 
         TopBar::activate(app);
         SessionScreen::activate(app);
