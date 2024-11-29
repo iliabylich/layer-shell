@@ -1,6 +1,6 @@
 use crate::icons::{
-    foggy_icon, partly_cloudy_icon, question_mark_icon, rainy_icon, sunny_icon, thunderstorm_icon,
-    weather_snowy_icon,
+    foggy_icon, partly_cloudy_icon, question_mark_icon, rainy_icon, snowy_icon, sunny_icon,
+    thunderstorm_icon,
 };
 use layer_shell_io::weather::*;
 
@@ -15,7 +15,7 @@ pub(crate) fn weather_code_to_icon(code: WeatherCode) -> &'static gtk4::gdk::Tex
         | WeatherCode::FreezingRain(_)
         | WeatherCode::RainShowers(_) => rainy_icon(),
         WeatherCode::SnowFall(_) | WeatherCode::SnowGrains | WeatherCode::SnowShowers(_) => {
-            weather_snowy_icon()
+            snowy_icon()
         }
         WeatherCode::Thunderstorm | WeatherCode::ThunderstormWithHail(_) => thunderstorm_icon(),
         WeatherCode::Unknown => question_mark_icon(),
