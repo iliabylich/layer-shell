@@ -14,7 +14,7 @@ enum Args {
 #[derive(Debug, PartialEq, Clone, clap::ValueEnum)]
 enum WindowName {
     Launcher,
-    LogoutScreen,
+    SessionScreen,
 }
 
 pub(crate) fn parse_args() -> Result<()> {
@@ -38,9 +38,9 @@ pub(crate) fn parse_args() -> Result<()> {
             IPC::send_to_running_instance(IPCMessage::ToggleLauncher)?;
         }
         Args::Toggle {
-            window_name: WindowName::LogoutScreen,
+            window_name: WindowName::SessionScreen,
         } => {
-            IPC::send_to_running_instance(IPCMessage::ToggleLogoutScreen)?;
+            IPC::send_to_running_instance(IPCMessage::ToggleSessionScreen)?;
         }
     }
     std::process::exit(0);

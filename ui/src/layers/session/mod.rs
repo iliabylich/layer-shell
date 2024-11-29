@@ -22,7 +22,7 @@ impl SessionScreen {
         LayerShell::set_anchor(window, Edge::Right, true);
         LayerShell::set_anchor(window, Edge::Bottom, true);
         LayerShell::set_anchor(window, Edge::Left, true);
-        LayerShell::set_namespace(window, "LayerShell/LogoutScreen");
+        LayerShell::set_namespace(window, "LayerShell/SessionScreen");
         LayerShell::set_keyboard_mode(window, KeyboardMode::Exclusive);
 
         buttons::init();
@@ -35,7 +35,7 @@ impl SessionScreen {
         window.set_visible(false);
 
         subscribe(|event| {
-            if let Event::ToggleLogoutScreen = event {
+            if let Event::ToggleSessionScreen = event {
                 Self::toggle();
             }
         });

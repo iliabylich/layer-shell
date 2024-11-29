@@ -158,7 +158,7 @@ tooltip {
     margin-right: 10px;
 }
 
-/* logout */
+/* session */
 .session-window {
     background-color: var(--theme-solid-bg-color);
 }

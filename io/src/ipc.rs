@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 pub(crate) enum IPCMessage {
     Exit,
     ToggleLauncher,
-    ToggleLogoutScreen,
+    ToggleSessionScreen,
 }
 
 impl IPCMessage {
@@ -13,7 +13,7 @@ impl IPCMessage {
         match self {
             IPCMessage::Exit => std::process::exit(0),
             IPCMessage::ToggleLauncher => publish_event(Event::ToggleLauncher),
-            IPCMessage::ToggleLogoutScreen => publish_event(Event::ToggleLogoutScreen),
+            IPCMessage::ToggleSessionScreen => publish_event(Event::ToggleSessionScreen),
         }
     }
 }

@@ -31,7 +31,7 @@ pub enum Event {
     WiFiStatus(Option<WiFiStatus>),
     NetworkList(Vec<Network>),
     ToggleLauncher,
-    ToggleLogoutScreen,
+    ToggleSessionScreen,
 }
 
 #[derive(Debug)]
