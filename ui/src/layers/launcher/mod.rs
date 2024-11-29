@@ -1,4 +1,4 @@
-use crate::{utils::keybindings, widgets::LauncherWindow};
+use crate::{utils::keybindings, widgets::launcher::Window};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application,
@@ -12,7 +12,7 @@ pub(crate) struct Launcher;
 
 impl Launcher {
     pub(crate) fn activate(app: &Application) {
-        let window = LauncherWindow();
+        let window = Window();
 
         window.set_application(Some(app));
 
@@ -40,7 +40,7 @@ impl Launcher {
     }
 
     pub(crate) fn toggle() {
-        let window = LauncherWindow();
+        let window = Window();
 
         if !window.get_visible() {
             publish(Command::LauncherReset);

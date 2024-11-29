@@ -3,6 +3,7 @@ mod gen;
 pub(crate) use gen::*;
 
 pub(crate) mod htop;
+pub(crate) mod launcher;
 pub(crate) mod weather;
 
 pub(crate) fn load() {
@@ -11,40 +12,9 @@ pub(crate) fn load() {
 
     unsafe { init_widgets(&builder) }
 
-    weather::setup();
     htop::setup();
-}
-
-pub(crate) mod launcher {
-    pub(crate) fn rows() -> [&'static gtk4::Box; 5] {
-        [
-            super::LauncherRow1(),
-            super::LauncherRow2(),
-            super::LauncherRow3(),
-            super::LauncherRow4(),
-            super::LauncherRow5(),
-        ]
-    }
-
-    pub(crate) fn images() -> [&'static gtk4::Image; 5] {
-        [
-            super::LauncherRow1Image(),
-            super::LauncherRow2Image(),
-            super::LauncherRow3Image(),
-            super::LauncherRow4Image(),
-            super::LauncherRow5Image(),
-        ]
-    }
-
-    pub(crate) fn labels() -> [&'static gtk4::Label; 5] {
-        [
-            super::LauncherRow1Label(),
-            super::LauncherRow2Label(),
-            super::LauncherRow3Label(),
-            super::LauncherRow4Label(),
-            super::LauncherRow5Label(),
-        ]
-    }
+    launcher::setup();
+    weather::setup();
 }
 
 pub(crate) mod networks {

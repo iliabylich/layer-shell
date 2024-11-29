@@ -1,29 +1,23 @@
 use crate::{
     layers::Launcher,
-    widgets::{
-        launcher::{images, labels, rows},
-        LauncherEntry,
-    },
+    widgets::launcher::{Input, Rows},
 };
 use gtk4::prelude::{EditableExt, WidgetExt};
 use layer_shell_io::{publish, subscribe, AppIcon, Command, Event};
 
 pub(crate) fn init() {
-    LauncherEntry().connect_activate(|_| {
+    Input().connect_activate(|_| {
         publish(Command::LauncherExecSelected);
         Launcher::toggle();
     });
-    LauncherEntry().connect_changed(|entry| {
+    Input().connect_changed(|entry| {
         let text = entry.text().to_string();
         publish(Command::LauncherSetSearch(text));
     });
 
     subscribe(|event| {
         if let Event::AppList(apps) = event {
-            for idx in 0..5 {
-                let row = rows()[idx];
-                let image = images()[idx];
-                let label = labels()[idx];
+            for (idx, (row, image, label)) in Rows().iter().enumerate() {
                 if let Some(app) = apps.get(idx) {
                     row.set_visible(true);
                     if app.selected {
@@ -46,5 +40,5 @@ pub(crate) fn init() {
 }
 
 pub(crate) fn reset() {
-    LauncherEntry().set_text("");
+    Input().set_text("");
 }
