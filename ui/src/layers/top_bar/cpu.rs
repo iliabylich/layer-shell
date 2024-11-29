@@ -1,13 +1,13 @@
-use crate::widgets::cpu::labels;
+use crate::widgets::top_bar::cpu::Labels;
 use layer_shell_io::{subscribe, Event};
 
 pub(crate) fn init() {
     subscribe(|event| {
         if let Event::Cpu(usage_per_core) = event {
-            assert_eq!(usage_per_core.len(), labels().len());
+            assert_eq!(usage_per_core.len(), Labels().len());
 
             for (idx, load) in usage_per_core.iter().enumerate() {
-                labels()[idx].set_label(indicator(*load));
+                Labels()[idx].set_label(indicator(*load));
             }
         }
     });

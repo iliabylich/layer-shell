@@ -1,4 +1,4 @@
-use crate::widgets::{SoundWidget, SoundWidgetImage, SoundWidgetScale};
+use crate::widgets::top_bar::sound::{Image, Scale, Widget};
 use gtk4::{
     prelude::{AdjustmentExt, RangeExt},
     PropagationPhase,
@@ -9,18 +9,18 @@ use vte4::{EventControllerExt, WidgetExt};
 pub(crate) fn init() {
     subscribe(|event| {
         if let Event::Volume(volume) = event {
-            SoundWidgetScale().set_value(*volume as f64);
-            SoundWidgetImage().set_icon_name(Some(volume_to_icon(*volume)));
+            Scale().set_value(*volume as f64);
+            Image().set_icon_name(Some(volume_to_icon(*volume)));
         }
     });
 
     let ctrl = gtk4::GestureClick::new();
     ctrl.set_propagation_phase(PropagationPhase::Capture);
     ctrl.connect_released(|_, _, _, _| {
-        let volume = SoundWidgetScale().adjustment().value().clamp(0.0, 1.0);
+        let volume = Scale().adjustment().value().clamp(0.0, 1.0);
         publish(Command::SetVolume(volume as f32));
     });
-    SoundWidget().add_controller(ctrl);
+    Widget().add_controller(ctrl);
 }
 
 fn volume_to_icon(volume: f32) -> &'static str {

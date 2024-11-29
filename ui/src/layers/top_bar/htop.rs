@@ -1,8 +1,8 @@
-use crate::{layers::Htop, widgets::HtopWidget};
+use crate::{layers::Htop, widgets::top_bar::htop::Widget};
 use gtk4::prelude::ButtonExt;
 
 pub(crate) fn init() {
-    HtopWidget().connect_clicked(|_| {
+    Widget().connect_clicked(|_| {
         Htop::toggle();
     });
 }

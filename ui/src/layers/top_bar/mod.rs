@@ -1,4 +1,4 @@
-use crate::widgets::TopBarWindow;
+use crate::widgets::top_bar::TopBarWindow;
 use gtk4::{prelude::GtkWindowExt, Application};
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
 

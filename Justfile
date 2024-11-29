@@ -1,5 +1,4 @@
-ui-generate:
-    ./ui/generate.sh
+icons-generate:
     ./icons/generate.sh
 
 dbus-generate:

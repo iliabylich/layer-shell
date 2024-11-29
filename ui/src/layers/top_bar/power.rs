@@ -1,14 +1,14 @@
 use crate::{
     icons::power_icon,
     layers::SessionScreen,
-    widgets::{PowerWidget, PowerWidgetImage},
+    widgets::top_bar::session::{Image, Widget},
 };
 use gtk4::prelude::ButtonExt;
 
 pub(crate) fn init() {
-    PowerWidgetImage().set_from_gicon(power_icon());
+    Image().set_from_gicon(power_icon());
 
-    PowerWidget().connect_clicked(|_| {
+    Widget().connect_clicked(|_| {
         SessionScreen::toggle();
     });
 }
