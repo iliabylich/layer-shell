@@ -11,7 +11,7 @@ use gtk4::{
 };
 
 use crate::{
-    layers::{Htop, Launcher, LogoutScreen, Networks, TopBar, Weather},
+    layers::{Htop, Launcher, Networks, SessionScreen, TopBar, Weather},
     utils::load_css,
 };
 
@@ -32,7 +32,7 @@ fn main() {
         icons::load();
 
         TopBar::activate(app);
-        LogoutScreen::activate(app);
+        SessionScreen::activate(app);
         Launcher::activate(app);
         Networks::activate(app);
         Htop::activate(app);

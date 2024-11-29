@@ -456,66 +456,6 @@ pub(crate) fn PowerWidgetImage() -> &'static gtk4::Image {
         }
     }
 }
-static mut LOGOUTSCREENWINDOW: Option<gtk4::Window> = None;
-pub(crate) fn LogoutScreenWindow() -> &'static gtk4::Window {
-    unsafe {
-        match LOGOUTSCREENWINDOW.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget LogoutScreenWindow is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut LOGOUTSCREENLOCKBUTTON: Option<gtk4::Button> = None;
-pub(crate) fn LogoutScreenLockButton() -> &'static gtk4::Button {
-    unsafe {
-        match LOGOUTSCREENLOCKBUTTON.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget LogoutScreenLockButton is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut LOGOUTSCREENREBOOTBUTTON: Option<gtk4::Button> = None;
-pub(crate) fn LogoutScreenRebootButton() -> &'static gtk4::Button {
-    unsafe {
-        match LOGOUTSCREENREBOOTBUTTON.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget LogoutScreenRebootButton is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut LOGOUTSCREENSHUTDOWNBUTTON: Option<gtk4::Button> = None;
-pub(crate) fn LogoutScreenShutdownButton() -> &'static gtk4::Button {
-    unsafe {
-        match LOGOUTSCREENSHUTDOWNBUTTON.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget LogoutScreenShutdownButton is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut LOGOUTSCREENLOGOUTBUTTON: Option<gtk4::Button> = None;
-pub(crate) fn LogoutScreenLogoutButton() -> &'static gtk4::Button {
-    unsafe {
-        match LOGOUTSCREENLOGOUTBUTTON.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget LogoutScreenLogoutButton is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
 pub(crate) unsafe fn init_widgets(builder: &gtk4::Builder) {
     TOPBARWINDOW = builder.object("TopBarWindow");
     WORKSPACESWIDGETBUTTON1 = builder.object("WorkspacesWidgetButton1");
@@ -555,9 +495,4 @@ pub(crate) unsafe fn init_widgets(builder: &gtk4::Builder) {
     CLOCKWIDGETLABEL = builder.object("ClockWidgetLabel");
     POWERWIDGET = builder.object("PowerWidget");
     POWERWIDGETIMAGE = builder.object("PowerWidgetImage");
-    LOGOUTSCREENWINDOW = builder.object("LogoutScreenWindow");
-    LOGOUTSCREENLOCKBUTTON = builder.object("LogoutScreenLockButton");
-    LOGOUTSCREENREBOOTBUTTON = builder.object("LogoutScreenRebootButton");
-    LOGOUTSCREENSHUTDOWNBUTTON = builder.object("LogoutScreenShutdownButton");
-    LOGOUTSCREENLOGOUTBUTTON = builder.object("LogoutScreenLogoutButton");
 }

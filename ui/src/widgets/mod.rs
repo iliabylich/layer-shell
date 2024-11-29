@@ -5,6 +5,7 @@ pub(crate) use gen::*;
 pub(crate) mod htop;
 pub(crate) mod launcher;
 pub(crate) mod networks;
+pub(crate) mod session;
 pub(crate) mod weather;
 
 pub(crate) fn load() {
@@ -16,6 +17,7 @@ pub(crate) fn load() {
     htop::setup();
     launcher::setup();
     networks::setup();
+    session::setup();
     weather::setup();
 }
 

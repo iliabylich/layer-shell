@@ -159,21 +159,20 @@ tooltip {
 }
 
 /* logout */
-.widget-logout {
+.session-window {
     background-color: var(--theme-solid-bg-color);
 }
 
-.widget-logout-wrapper {
+.session-window-wrapper {
     padding: 300px 100px;
 }
 
-.widget-logout-button {
+.session-window-button {
     border: 5px solid var(--theme-accent-color);
     border-radius: 20px;
 }
 
-.widget-logout-button-action,
-.widget-logout-button:hover {
+.session-window-button:hover {
     background-color: var(--theme-solid-bg-color-hover);
 }
 

@@ -120,35 +120,3 @@ Window TopBarWindow {
         }
     }
 }
-
-Window LogoutScreenWindow {
-    styles ["widget-logout"]
-    visible: false;
-
-    Box {
-        styles ["widget-logout-wrapper"]
-        orientation: horizontal;
-        homogeneous: true;
-        spacing: 200;
-
-        Button LogoutScreenLockButton {
-            styles ["widget-logout-button"]
-            Label { label: "Lock"; }
-        }
-
-        Button LogoutScreenRebootButton {
-            styles ["widget-logout-button"]
-            Label { label: "Reboot"; }
-        }
-
-        Button LogoutScreenShutdownButton {
-            styles ["widget-logout-button"]
-            Label { label: "Shutdown"; }
-        }
-
-        Button LogoutScreenLogoutButton {
-            styles ["widget-logout-button"]
-            Label { label: "Logout"; }
-        }
-    }
-}

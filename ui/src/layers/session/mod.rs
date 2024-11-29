@@ -1,4 +1,4 @@
-use crate::{utils::keybindings, widgets::LogoutScreenWindow};
+use crate::{utils::keybindings, widgets::session::Window};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application,
@@ -8,11 +8,11 @@ use layer_shell_io::{subscribe, Event};
 
 mod buttons;
 
-pub(crate) struct LogoutScreen;
+pub(crate) struct SessionScreen;
 
-impl LogoutScreen {
+impl SessionScreen {
     pub(crate) fn activate(app: &Application) {
-        let window = LogoutScreenWindow();
+        let window = Window();
 
         window.set_application(Some(app));
 
@@ -42,7 +42,6 @@ impl LogoutScreen {
     }
 
     pub(crate) fn toggle() {
-        let window = LogoutScreenWindow();
-        window.set_visible(!window.get_visible())
+        Window().set_visible(!Window().get_visible())
     }
 }

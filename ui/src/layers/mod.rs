@@ -7,8 +7,8 @@ pub(crate) use launcher::Launcher;
 mod networks;
 pub(crate) use networks::Networks;
 
-mod logout_screen;
-pub(crate) use logout_screen::LogoutScreen;
+mod session;
+pub(crate) use session::SessionScreen;
 
 mod htop;
 pub(crate) use htop::Htop;
