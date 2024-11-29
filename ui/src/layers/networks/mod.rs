@@ -1,4 +1,4 @@
-use crate::{utils::keybindings, widgets::NetworksWindow};
+use crate::{utils::keybindings, widgets::networks::Window};
 use gtk4::{
     prelude::{GtkWindowExt, WidgetExt},
     Application,
@@ -11,7 +11,7 @@ pub(crate) struct Networks;
 
 impl Networks {
     pub(crate) fn activate(app: &Application) {
-        let window = NetworksWindow();
+        let window = Window();
 
         window.set_application(Some(app));
 
@@ -31,7 +31,6 @@ impl Networks {
     }
 
     pub(crate) fn toggle() {
-        let window = NetworksWindow();
-        window.set_visible(!window.get_visible())
+        Window().set_visible(!Window().get_visible())
     }
 }

@@ -1,34 +1,30 @@
 use crate::{
     layers::Networks,
-    widgets::{self, NetworkExitRow, NetworkSettingsRow},
+    widgets::networks::{ExitRow, Rows, SettingsRow},
 };
 use gtk4::{
-    prelude::{Cast, DisplayExt, WidgetExt},
-    CenterBox, Label,
+    prelude::{DisplayExt, WidgetExt},
+    CenterBox,
 };
 use layer_shell_io::{publish, subscribe, Command, Event, Network};
 
 pub(crate) fn init() {
-    set_on_click(NetworkSettingsRow(), |_| {
+    set_on_click(SettingsRow(), || {
         Networks::toggle();
         publish(Command::SpawnNetworkEditor);
     });
 
-    set_on_click(NetworkExitRow(), |_| {
+    set_on_click(ExitRow(), || {
         Networks::toggle();
     });
 
     subscribe(|event| {
         if let Event::NetworkList(list) = event {
-            for (idx, row) in widgets::networks::rows().iter().enumerate() {
+            for (idx, (row, label)) in Rows().iter().enumerate() {
                 if let Some(Network { iface, address }) = list.get(idx) {
                     row.set_visible(true);
-                    if let Some(label) = row_label(row) {
-                        label.set_label(&format!("{}: {}", iface, address));
-                        label.set_tooltip_text(Some(address));
-                    } else {
-                        eprintln!("failed to get network label");
-                    }
+                    label.set_label(&format!("{}: {}", iface, address));
+                    label.set_tooltip_text(Some(address));
                 } else {
                     row.set_visible(false);
                 }
@@ -36,8 +32,8 @@ pub(crate) fn init() {
         }
     });
 
-    for row in widgets::networks::rows() {
-        set_on_click(row, move |label| {
+    for (row, label) in Rows() {
+        set_on_click(row, move || {
             if let Some(ip) = label.tooltip_text().map(|s| s.to_string()) {
                 let original_label = label.label().as_str().to_string();
                 copy_to_clipboard(&ip);
@@ -53,15 +49,11 @@ pub(crate) fn init() {
 
 fn set_on_click<F>(row: &'static CenterBox, f: F)
 where
-    F: Fn(Label) + 'static,
+    F: Fn() + 'static,
 {
     let ctrl = gtk4::GestureClick::new();
     ctrl.connect_pressed(move |_, _, _, _| {
-        if let Some(label) = row_label(row) {
-            f(label);
-        } else {
-            eprintln!("failed to get network label");
-        }
+        f();
     });
     row.add_controller(ctrl);
 }
@@ -73,8 +65,4 @@ fn copy_to_clipboard(text: &str) {
     } else {
         eprintln!("failed to get default Gdk display");
     }
-}
-
-fn row_label(row: &CenterBox) -> Option<Label> {
-    row.start_widget()?.dynamic_cast::<Label>().ok()
 }

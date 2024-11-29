@@ -4,6 +4,7 @@ pub(crate) use gen::*;
 
 pub(crate) mod htop;
 pub(crate) mod launcher;
+pub(crate) mod networks;
 pub(crate) mod weather;
 
 pub(crate) fn load() {
@@ -14,19 +15,8 @@ pub(crate) fn load() {
 
     htop::setup();
     launcher::setup();
+    networks::setup();
     weather::setup();
-}
-
-pub(crate) mod networks {
-    pub(crate) fn rows() -> [&'static gtk4::CenterBox; 5] {
-        [
-            super::NetworkRow1(),
-            super::NetworkRow2(),
-            super::NetworkRow3(),
-            super::NetworkRow4(),
-            super::NetworkRow5(),
-        ]
-    }
 }
 
 pub(crate) mod cpu {
@@ -72,9 +62,9 @@ macro_rules! widget {
             static mut [< $name Instance >]: Option<$t> = None;
 
             #[allow(non_snake_case)]
-            pub(crate) fn $name() -> &'static mut $t {
+            pub(crate) fn $name() -> &'static $t {
                 unsafe {
-                    match [< $name Instance >].as_mut() {
+                    match [< $name Instance >].as_ref() {
                         Some(value) => value,
                         None => {
                             eprintln!("widget {} is not defined", stringify!($name));

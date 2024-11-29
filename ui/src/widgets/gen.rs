@@ -516,102 +516,6 @@ pub(crate) fn LogoutScreenLogoutButton() -> &'static gtk4::Button {
         }
     }
 }
-static mut NETWORKSWINDOW: Option<gtk4::Window> = None;
-pub(crate) fn NetworksWindow() -> &'static gtk4::Window {
-    unsafe {
-        match NETWORKSWINDOW.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworksWindow is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut NETWORKROW1: Option<gtk4::CenterBox> = None;
-pub(crate) fn NetworkRow1() -> &'static gtk4::CenterBox {
-    unsafe {
-        match NETWORKROW1.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworkRow1 is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut NETWORKROW2: Option<gtk4::CenterBox> = None;
-pub(crate) fn NetworkRow2() -> &'static gtk4::CenterBox {
-    unsafe {
-        match NETWORKROW2.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworkRow2 is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut NETWORKROW3: Option<gtk4::CenterBox> = None;
-pub(crate) fn NetworkRow3() -> &'static gtk4::CenterBox {
-    unsafe {
-        match NETWORKROW3.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworkRow3 is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut NETWORKROW4: Option<gtk4::CenterBox> = None;
-pub(crate) fn NetworkRow4() -> &'static gtk4::CenterBox {
-    unsafe {
-        match NETWORKROW4.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworkRow4 is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut NETWORKROW5: Option<gtk4::CenterBox> = None;
-pub(crate) fn NetworkRow5() -> &'static gtk4::CenterBox {
-    unsafe {
-        match NETWORKROW5.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworkRow5 is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut NETWORKSETTINGSROW: Option<gtk4::CenterBox> = None;
-pub(crate) fn NetworkSettingsRow() -> &'static gtk4::CenterBox {
-    unsafe {
-        match NETWORKSETTINGSROW.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworkSettingsRow is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
-static mut NETWORKEXITROW: Option<gtk4::CenterBox> = None;
-pub(crate) fn NetworkExitRow() -> &'static gtk4::CenterBox {
-    unsafe {
-        match NETWORKEXITROW.as_ref() {
-            Some(v) => v,
-            None => {
-                eprintln!("widget NetworkExitRow is not initialised");
-                std::process::exit(1);
-            }
-        }
-    }
-}
 pub(crate) unsafe fn init_widgets(builder: &gtk4::Builder) {
     TOPBARWINDOW = builder.object("TopBarWindow");
     WORKSPACESWIDGETBUTTON1 = builder.object("WorkspacesWidgetButton1");
@@ -656,12 +560,4 @@ pub(crate) unsafe fn init_widgets(builder: &gtk4::Builder) {
     LOGOUTSCREENREBOOTBUTTON = builder.object("LogoutScreenRebootButton");
     LOGOUTSCREENSHUTDOWNBUTTON = builder.object("LogoutScreenShutdownButton");
     LOGOUTSCREENLOGOUTBUTTON = builder.object("LogoutScreenLogoutButton");
-    NETWORKSWINDOW = builder.object("NetworksWindow");
-    NETWORKROW1 = builder.object("NetworkRow1");
-    NETWORKROW2 = builder.object("NetworkRow2");
-    NETWORKROW3 = builder.object("NetworkRow3");
-    NETWORKROW4 = builder.object("NetworkRow4");
-    NETWORKROW5 = builder.object("NetworkRow5");
-    NETWORKSETTINGSROW = builder.object("NetworkSettingsRow");
-    NETWORKEXITROW = builder.object("NetworkExitRow");
 }

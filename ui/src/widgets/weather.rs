@@ -10,7 +10,7 @@ widget!(DailyRows, [(gtk4::Label, gtk4::Image); DAYS]);
 pub(crate) fn setup() {
     let window = gtk4::Window::new();
     window.set_widget_name("WeatherWindow");
-    window.set_css_classes(&["widget-weather"]);
+    window.add_css_class("widget-weather");
 
     let layout = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     window.set_child(Some(&layout));
