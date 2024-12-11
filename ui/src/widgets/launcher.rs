@@ -1,6 +1,5 @@
 use crate::widgets::widget;
-use gtk4::prelude::{BoxExt, WidgetExt};
-use vte4::GtkWindowExt;
+use gtk4::prelude::{BoxExt, GtkWindowExt, WidgetExt};
 
 widget!(Window, gtk4::Window);
 widget!(Input, gtk4::SearchEntry);

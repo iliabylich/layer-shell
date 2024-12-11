@@ -1,6 +1,5 @@
 use crate::widgets::widget;
-use gtk4::prelude::{BoxExt, GtkWindowExt, WidgetExt};
-use vte4::ButtonExt;
+use gtk4::prelude::{BoxExt, ButtonExt, GtkWindowExt, WidgetExt};
 
 widget!(Window, gtk4::Window);
 widget!(LockButton, gtk4::Button);

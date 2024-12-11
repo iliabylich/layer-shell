@@ -1,6 +1,5 @@
 use crate::widgets::widget;
-use gtk4::prelude::{BoxExt, GtkWindowExt, WidgetExt};
-use vte4::OrientableExt;
+use gtk4::prelude::{BoxExt, GtkWindowExt, OrientableExt, WidgetExt};
 
 widget!(Window, gtk4::Window);
 const ROWS: usize = 5;

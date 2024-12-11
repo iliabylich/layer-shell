@@ -1,10 +1,9 @@
 use crate::widgets::top_bar::sound::{Image, Scale, Widget};
 use gtk4::{
-    prelude::{AdjustmentExt, RangeExt},
+    prelude::{AdjustmentExt, EventControllerExt, RangeExt, WidgetExt},
     PropagationPhase,
 };
 use layer_shell_io::{publish, subscribe, Command, Event};
-use vte4::{EventControllerExt, WidgetExt};
 
 pub(crate) fn init() {
     subscribe(|event| {
