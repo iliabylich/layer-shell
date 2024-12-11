@@ -2,7 +2,7 @@ pub(crate) mod app_list;
 pub(crate) mod cpu;
 pub(crate) mod hyprland;
 pub(crate) mod memory;
-pub(crate) mod network_manager;
+pub(crate) mod network;
 pub(crate) mod pipewire;
 pub(crate) mod session;
 pub(crate) mod time;

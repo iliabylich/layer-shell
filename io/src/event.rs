@@ -1,4 +1,5 @@
 use layer_shell_hyprland::{Language, Workspaces};
+use layer_shell_network::{NetworkList, WiFiStatus};
 use layer_shell_pipewire::Volume;
 use layer_shell_weather::{CurrentWeather, ForecastWeather};
 
@@ -14,7 +15,7 @@ pub enum Event {
     CurrentWeather(CurrentWeather),
     ForecastWeather(ForecastWeather),
     WiFiStatus(Option<WiFiStatus>),
-    NetworkList(Vec<Network>),
+    NetworkList(NetworkList),
     ToggleLauncher,
     ToggleSessionScreen,
 }
@@ -29,16 +30,4 @@ pub struct App {
 pub enum AppIcon {
     IconPath(String),
     IconName(String),
-}
-
-#[derive(Debug)]
-pub struct WiFiStatus {
-    pub ssid: String,
-    pub strength: u8,
-}
-
-#[derive(Debug)]
-pub struct Network {
-    pub iface: String,
-    pub address: String,
 }

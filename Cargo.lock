@@ -1215,11 +1215,9 @@ dependencies = [
  "chrono",
  "clap",
  "clap_complete",
- "dbus",
- "dbus-tokio",
  "futures",
- "layer-shell-dbus",
  "layer-shell-hyprland",
+ "layer-shell-network",
  "layer-shell-pipewire",
  "layer-shell-weather",
  "log",
@@ -1227,6 +1225,20 @@ dependencies = [
  "pretty_env_logger",
  "serde",
  "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "layer-shell-network"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "dbus",
+ "dbus-tokio",
+ "futures",
+ "layer-shell-dbus",
+ "log",
  "tokio",
 ]
 

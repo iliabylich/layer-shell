@@ -6,7 +6,7 @@ use gtk4::{
     prelude::{DisplayExt, WidgetExt},
     CenterBox,
 };
-use layer_shell_io::{publish, subscribe, Command, Event, Network};
+use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
     set_on_click(SettingsRow(), || {
@@ -19,12 +19,12 @@ pub(crate) fn init() {
     });
 
     subscribe(|event| {
-        if let Event::NetworkList(list) = event {
+        if let Event::NetworkList(event) = event {
             for (idx, (row, label)) in Rows().iter().enumerate() {
-                if let Some(Network { iface, address }) = list.get(idx) {
+                if let Some(network) = event.list.get(idx) {
                     row.set_visible(true);
-                    label.set_label(&format!("{}: {}", iface, address));
-                    label.set_tooltip_text(Some(address));
+                    label.set_label(&format!("{}: {}", network.iface, network.address));
+                    label.set_tooltip_text(Some(&network.address));
                 } else {
                     row.set_visible(false);
                 }

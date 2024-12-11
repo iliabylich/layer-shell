@@ -2,17 +2,17 @@ use crate::{event::WiFiStatus, Event};
 use anyhow::Result;
 use dbus::nonblock::SyncConnection;
 use layer_shell_dbus::nm::NetworkManager;
-use std::sync::mpsc::Sender;
 
-pub(crate) async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
-    let state = get_status(conn, "wlo1")
-        .await
-        .inspect_err(|err| log::error!("WiFiStatus error: {:?}", err))
-        .ok();
+pub(crate) async fn get(conn: &SyncConnection) -> Event {
+    let state = match get_status(conn, "wlo1").await {
+        Ok(state) => Some(state),
+        Err(err) => {
+            log::error!("WiFiStatus error: {:?}", err);
+            None
+        }
+    };
 
-    tx.send(Event::WiFiStatus(state))?;
-
-    Ok(())
+    Event::WiFiStatus(state)
 }
 
 async fn get_status(conn: &SyncConnection, iface: &str) -> Result<WiFiStatus> {

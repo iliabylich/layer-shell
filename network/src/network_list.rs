@@ -2,12 +2,11 @@ use crate::{event::Network, Event};
 use anyhow::Result;
 use dbus::nonblock::SyncConnection;
 use layer_shell_dbus::nm;
-use std::sync::mpsc::Sender;
 
-pub(crate) async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
-    let networks = get_networks(conn).await?;
-    tx.send(Event::NetworkList(networks))?;
-    Ok(())
+pub(crate) async fn get(conn: &SyncConnection) -> Result<Event> {
+    Ok(Event::NetworkList(crate::NetworkList {
+        list: get_networks(conn).await?,
+    }))
 }
 
 async fn get_networks(conn: &SyncConnection) -> Result<Vec<Network>> {

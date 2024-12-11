@@ -21,9 +21,7 @@ clap = { version = "4.5", default-features = false, features = [
 ] }
 clap_complete = "4.5"
 pretty_env_logger = "0.5"
-dbus-tokio = "0.7"
-dbus = "0.9"
-layer-shell-dbus = { path = "../dbus" }
 layer-shell-pipewire = { path = "../pipewire" }
 layer-shell-hyprland = { path = "../hyprland" }
 layer-shell-weather = { path = "../weather" }
+layer-shell-network = { path = "../network" }
