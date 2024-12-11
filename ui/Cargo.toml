@@ -11,3 +11,4 @@ gtk4 = { version = "0.9", features = ["v4_14"] }
 gtk4-layer-shell = "0.4"
 vte4 = { version = "0.8", features = ["v0_78"] }
 layer-shell-io = { path = "../io" }
+layer-shell-weather = { path = "../weather" }

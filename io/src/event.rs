@@ -1,4 +1,4 @@
-use crate::weather::WeatherCode;
+use layer_shell_weather::{CurrentWeather, ForecastWeather};
 use std::collections::HashSet;
 
 #[derive(Debug)]
@@ -20,14 +20,8 @@ pub enum Event {
     AppList(Vec<App>),
     Volume(f32),
     Muted(bool),
-    WeatherCurrent {
-        temperature: f32,
-        code: WeatherCode,
-    },
-    WeatherForecast {
-        hourly: Vec<WeatherOnHour>,
-        daily: Vec<WeatherOnDay>,
-    },
+    CurrentWeather(CurrentWeather),
+    ForecastWeather(ForecastWeather),
     WiFiStatus(Option<WiFiStatus>),
     NetworkList(Vec<Network>),
     ToggleLauncher,
@@ -44,20 +38,6 @@ pub struct App {
 pub enum AppIcon {
     IconPath(String),
     IconName(String),
-}
-
-#[derive(Debug)]
-pub struct WeatherOnHour {
-    pub hour: String,
-    pub temperature: f32,
-    pub code: WeatherCode,
-}
-
-#[derive(Debug)]
-pub struct WeatherOnDay {
-    pub day: String,
-    pub temperature: std::ops::Range<f32>,
-    pub code: WeatherCode,
 }
 
 #[derive(Debug)]

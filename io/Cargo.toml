@@ -11,6 +11,7 @@ serde_json = { workspace = true }
 tokio = { workspace = true }
 futures = { workspace = true }
 paste = { workspace = true }
+chrono = { workspace = true }
 
 clap = { version = "4.5", default-features = false, features = [
     "std",
@@ -19,17 +20,10 @@ clap = { version = "4.5", default-features = false, features = [
     "suggestions",
 ] }
 clap_complete = "4.5"
-chrono = { version = "0.4", default-features = false, features = [
-    "serde",
-    "clock",
-] }
 pretty_env_logger = "0.5"
-reqwest = { version = "0.12", default-features = false, features = [
-    "native-tls",
-    "json",
-] }
 dbus-tokio = "0.7"
 dbus = "0.9"
 layer-shell-dbus = { path = "../dbus" }
 layer-shell-pipewire = { path = "../pipewire" }
 layer-shell-hyprland = { path = "../hyprland" }
+layer-shell-weather = { path = "../weather" }

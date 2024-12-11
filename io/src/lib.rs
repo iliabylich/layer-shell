@@ -8,14 +8,8 @@ mod event;
 mod global;
 mod ipc;
 
-pub mod weather {
-    pub use super::actors::weather::{
-        Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
-        ThunderstormWithHail, WeatherCode,
-    };
-}
 pub use command::Command;
-pub use event::{App, AppIcon, Event, Network, WeatherOnDay, WeatherOnHour, WiFiStatus};
+pub use event::{App, AppIcon, Event, Network, WiFiStatus};
 pub(crate) use global::global;
 pub use ipc::on_sigusr1;
 
@@ -83,7 +77,6 @@ pub fn spawn_all() {
                 actors::time::spawn(etx.clone()),
                 actors::hyprland::spawn(etx.clone()),
                 actors::app_list::spawn(etx.clone()),
-                // actors::output_sound::spawn(etx.clone()),
                 actors::weather::spawn(etx.clone()),
                 actors::network_manager::spawn(etx.clone()),
                 actors::pipewire::spawn(etx.clone()),

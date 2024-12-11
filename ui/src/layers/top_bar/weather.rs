@@ -11,8 +11,12 @@ pub(crate) fn init() {
     });
 
     subscribe(|event| {
-        if let Event::WeatherCurrent { temperature, code } = event {
-            let label = format!("{}℃ {}", temperature, weather_code_to_description(*code));
+        if let Event::CurrentWeather(event) = event {
+            let label = format!(
+                "{}℃ {}",
+                event.temperature,
+                weather_code_to_description(event.code)
+            );
             Label().set_label(&label);
         }
     });
