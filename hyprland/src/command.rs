@@ -1,20 +1,14 @@
 use anyhow::{Context, Result};
 
-#[derive(Debug, Clone, Copy)]
-pub enum Command {
-    GoToWorkspace(usize),
+#[derive(Debug)]
+pub struct HyprlandGoToWorkspace {
+    pub idx: usize,
 }
 
-impl Command {
-    pub async fn dispatch(self) {
-        if let Err(err) = self.try_dispatch().await {
+impl HyprlandGoToWorkspace {
+    pub async fn exec(self) {
+        if let Err(err) = go_to_workspace(self.idx).await {
             log::error!("failed to dispatch {self:?}: {:?}", err);
-        }
-    }
-
-    async fn try_dispatch(self) -> Result<()> {
-        match self {
-            Command::GoToWorkspace(idx) => go_to_workspace(idx).await,
         }
     }
 }

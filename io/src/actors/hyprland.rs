@@ -21,10 +21,6 @@ async fn try_spawn(tx: Sender<Event>) -> Result<()> {
     Ok(())
 }
 
-pub(crate) async fn on_command(cmd: layer_shell_hyprland::Command) {
-    cmd.dispatch().await
-}
-
 impl From<layer_shell_hyprland::Event> for Event {
     fn from(e: layer_shell_hyprland::Event) -> Self {
         match e {

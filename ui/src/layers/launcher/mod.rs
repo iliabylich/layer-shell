@@ -4,6 +4,7 @@ use gtk4::{
     Application,
 };
 use gtk4_layer_shell::{KeyboardMode, Layer, LayerShell};
+use layer_shell_app_list::{AppListGoDown, AppListGoUp, AppListReset};
 use layer_shell_io::{publish, subscribe, Command, Event};
 
 mod app_list;
@@ -25,8 +26,8 @@ impl Launcher {
 
         keybindings(window)
             .add("Escape", || window.set_visible(false))
-            .add("Up", || publish(Command::LauncherGoUp))
-            .add("Down", || publish(Command::LauncherGoDown))
+            .add("Up", || publish(Command::AppListGoUp(AppListGoUp)))
+            .add("Down", || publish(Command::AppListGoDown(AppListGoDown)))
             .finish();
 
         window.present();
@@ -43,7 +44,7 @@ impl Launcher {
         let window = Window();
 
         if !window.get_visible() {
-            publish(Command::LauncherReset);
+            publish(Command::AppListReset(AppListReset));
             app_list::reset();
         }
         window.set_visible(!window.get_visible())

@@ -3,17 +3,17 @@ use crate::{
     widgets::launcher::{Input, Rows},
 };
 use gtk4::prelude::{EditableExt, WidgetExt};
-use layer_shell_app_list::AppIcon;
+use layer_shell_app_list::{AppIcon, AppListExecSelected, AppListSetSearch};
 use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
     Input().connect_activate(|_| {
-        publish(Command::LauncherExecSelected);
+        publish(Command::AppListExecSelected(AppListExecSelected));
         Launcher::toggle();
     });
     Input().connect_changed(|entry| {
-        let text = entry.text().to_string();
-        publish(Command::LauncherSetSearch(text));
+        let search = entry.text().to_string();
+        publish(Command::AppListSetSearch(AppListSetSearch { search }));
     });
 
     subscribe(|event| {

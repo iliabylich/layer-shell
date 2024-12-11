@@ -1,11 +1,14 @@
 use crate::widgets::top_bar::workspaces::Buttons;
 use gtk4::prelude::{ButtonExt, WidgetExt};
+use layer_shell_hyprland::HyprlandGoToWorkspace;
 use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
     for (idx, button) in Buttons().iter().enumerate() {
         button.connect_clicked(move |_| {
-            publish(Command::GoToWorkspace(idx));
+            publish(Command::HyprlandGoToWorkspace(HyprlandGoToWorkspace {
+                idx,
+            }));
         });
     }
 

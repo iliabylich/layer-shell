@@ -1273,6 +1273,7 @@ dependencies = [
  "gtk4",
  "gtk4-layer-shell",
  "layer-shell-app-list",
+ "layer-shell-hyprland",
  "layer-shell-io",
  "layer-shell-weather",
  "paste",

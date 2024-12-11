@@ -8,7 +8,7 @@ mod raw_stream;
 mod state;
 mod stateful_stream;
 
-pub use command::Command;
+pub use command::HyprlandGoToWorkspace;
 pub use event::{Event, Language, Workspaces};
 
 pub async fn connect() -> Result<impl Stream<Item = Event>> {

@@ -1,15 +1,19 @@
-use crate::actors::{app_list, hyprland, pipewire, session};
+use crate::actors::{pipewire, session};
+use layer_shell_app_list::{
+    AppListExecSelected, AppListGoDown, AppListGoUp, AppListReset, AppListSetSearch,
+};
+use layer_shell_hyprland::HyprlandGoToWorkspace;
 use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 pub enum Command {
-    GoToWorkspace(usize),
+    HyprlandGoToWorkspace(HyprlandGoToWorkspace),
 
-    LauncherReset,
-    LauncherGoUp,
-    LauncherGoDown,
-    LauncherSetSearch(String),
-    LauncherExecSelected,
+    AppListReset(AppListReset),
+    AppListGoUp(AppListGoUp),
+    AppListGoDown(AppListGoDown),
+    AppListSetSearch(AppListSetSearch),
+    AppListExecSelected(AppListExecSelected),
 
     SetVolume(f32),
     SetMuted(bool),
@@ -33,28 +37,30 @@ pub(crate) async fn start_processing(rx: Receiver<Command>) {
 }
 
 impl Command {
-    async fn execute(&self) {
+    async fn execute(self) {
         log::info!("Running command {:?}", self);
         use Command::*;
 
-        if let Ok(cmd) = layer_shell_hyprland::Command::try_from(self) {
-            hyprland::on_command(cmd).await;
-        }
-
-        if let Ok(cmd) = layer_shell_pipewire::Command::try_from(self) {
-            pipewire::on_command(cmd).await;
-        }
-
         match self {
-            LauncherReset | LauncherGoUp | LauncherGoDown | LauncherSetSearch(_)
-            | LauncherExecSelected => app_list::on_command(self).await,
+            SetVolume(volume) => {
+                pipewire::on_command(layer_shell_pipewire::Command::SetVolume(volume)).await;
+            }
+            SetMuted(muted) => {
+                pipewire::on_command(layer_shell_pipewire::Command::SetMuted(muted)).await
+            }
+
+            HyprlandGoToWorkspace(cmd) => cmd.exec().await,
+
+            AppListGoUp(cmd) => cmd.exec().await,
+            AppListGoDown(cmd) => cmd.exec().await,
+            AppListReset(cmd) => cmd.exec().await,
+            AppListExecSelected(cmd) => cmd.exec().await,
+            AppListSetSearch(cmd) => cmd.exec().await,
 
             Lock | Reboot | Shutdown | Logout => session::on_command(self).await,
 
             SpawnNetworkEditor => spawn_network_editor(),
             SpawnSystemMonitor => spawn_system_monitor(),
-
-            _ => {}
         }
     }
 }
@@ -71,28 +77,5 @@ fn spawn_network_editor() {
 fn spawn_system_monitor() {
     if let Err(err) = std::process::Command::new("gnome-system-monitor").spawn() {
         log::error!("failed to spawn gnome-system-monitor: {:?}", err);
-    }
-}
-
-impl TryFrom<&Command> for layer_shell_pipewire::Command {
-    type Error = ();
-
-    fn try_from(cmd: &Command) -> Result<Self, Self::Error> {
-        match cmd {
-            Command::SetVolume(volume) => Ok(Self::SetVolume(*volume)),
-            Command::SetMuted(muted) => Ok(Self::SetMuted(*muted)),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<&Command> for layer_shell_hyprland::Command {
-    type Error = ();
-
-    fn try_from(cmd: &Command) -> Result<Self, Self::Error> {
-        match cmd {
-            Command::GoToWorkspace(idx) => Ok(Self::GoToWorkspace(*idx)),
-            _ => Err(()),
-        }
     }
 }

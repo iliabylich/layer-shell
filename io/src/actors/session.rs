@@ -1,6 +1,6 @@
 use crate::Command;
 
-pub(crate) async fn on_command(command: &Command) {
+pub(crate) async fn on_command(command: Command) {
     match command {
         Command::Lock => exec("hyprlock", &[]).await,
         Command::Reboot => exec("systemctl", &["reboot"]).await,

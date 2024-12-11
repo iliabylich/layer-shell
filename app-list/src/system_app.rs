@@ -1,7 +1,10 @@
 use crate::AppIcon;
 use anyhow::{Context as _, Result};
-use std::{collections::HashMap, path::PathBuf};
-use tokio::io::{AsyncBufReadExt as _, BufReader};
+use std::{collections::HashMap, path::PathBuf, process::Stdio};
+use tokio::{
+    io::{AsyncBufReadExt as _, BufReader},
+    process::Command,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct SystemApp {
@@ -12,16 +15,23 @@ pub(crate) struct SystemApp {
 
 impl SystemApp {
     pub(crate) async fn parse_all() -> Result<Vec<SystemApp>> {
-        let dirs = vec![
-            String::from("/usr/share/applications"),
-            format!(
-                "{}/.local/share/applications",
-                std::env::var("HOME").context("no $HOME")?
-            ),
-        ];
+        let filepaths = desktop_files().await?;
 
-        let filepaths = collect_all_filepaths(&dirs).await?;
-        let apps = collect_all_apps(&filepaths).await?;
+        let mut apps = HashMap::new();
+
+        for path in filepaths {
+            match SystemApp::parse(&path).await {
+                Ok(desktop_entry) => {
+                    apps.insert(desktop_entry.name.clone(), desktop_entry);
+                }
+                Err(err) => {
+                    log::warn!("Failed to parse {:?}: {:?}", path, err);
+                }
+            }
+        }
+
+        let mut apps = apps.into_values().collect::<Vec<_>>();
+        apps.sort_unstable_by(|app1, app2| app1.name.cmp(&app2.name));
 
         Ok(apps)
     }
@@ -64,13 +74,26 @@ impl SystemApp {
             icon: AppIcon::from(icon.context("failed to get Icon")?),
         })
     }
+
+    pub(crate) fn exec(&self) {
+        let parts = self.exec.split(" ").map(|s| s.trim()).collect::<Vec<_>>();
+        let child = Command::new(parts[0])
+            .args(&parts[1..])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn();
+
+        if let Err(err) = child {
+            log::error!("Failed to spawn {}: {:?}", self.exec, err);
+        }
+    }
 }
 
-async fn collect_all_filepaths(dirs: &[String]) -> Result<Vec<PathBuf>> {
+async fn desktop_files() -> Result<Vec<PathBuf>> {
     let mut out = vec![];
 
-    for dir in dirs.iter() {
-        if let Ok(mut readdir) = tokio::fs::read_dir(dir).await {
+    for dir in [global_dir(), user_dir()?] {
+        if let Ok(mut readdir) = tokio::fs::read_dir(&dir).await {
             while let Some(file) = readdir
                 .next_entry()
                 .await
@@ -87,22 +110,13 @@ async fn collect_all_filepaths(dirs: &[String]) -> Result<Vec<PathBuf>> {
     Ok(out)
 }
 
-async fn collect_all_apps(filepaths: &[PathBuf]) -> Result<Vec<SystemApp>> {
-    let mut apps = HashMap::new();
+fn global_dir() -> String {
+    String::from("/usr/share/applications")
+}
 
-    for path in filepaths.iter() {
-        match SystemApp::parse(path).await {
-            Ok(desktop_entry) => {
-                apps.insert(desktop_entry.name.clone(), desktop_entry);
-            }
-            Err(err) => {
-                log::warn!("Failed to parse {:?}: {:?}", path, err);
-            }
-        }
-    }
-
-    let mut apps = apps.into_values().collect::<Vec<_>>();
-    apps.sort_unstable_by(|app1, app2| app1.name.cmp(&app2.name));
-
-    Ok(apps)
+fn user_dir() -> Result<String> {
+    Ok(format!(
+        "{}/.local/share/applications",
+        std::env::var("HOME").context("no $HOME")?
+    ))
 }

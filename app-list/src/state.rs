@@ -66,23 +66,14 @@ impl State {
         self.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, self.selected_idx + 1);
         self.emit().await;
     }
-    pub(crate) async fn set_search(&mut self, pattern: &str) {
+    pub(crate) async fn set_search(&mut self, pattern: String) {
         self.selected_idx = 0;
-        self.pattern = pattern.to_string();
+        self.pattern = pattern;
         self.emit().await;
     }
     pub(crate) async fn exec_selected(&mut self) {
         if let Some(app) = self.visible_apps().get(self.selected_idx) {
-            let parts = app.exec.split(" ").map(|s| s.trim()).collect::<Vec<_>>();
-            let child = tokio::process::Command::new(parts[0])
-                .args(&parts[1..])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn();
-
-            if let Err(err) = child {
-                log::error!("Failed to spawn {}: {:?}", app.exec, err);
-            }
+            app.exec();
         }
     }
     pub(crate) async fn reset(&mut self) {
