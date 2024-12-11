@@ -8,9 +8,9 @@ use vte4::{EventControllerExt, WidgetExt};
 
 pub(crate) fn init() {
     subscribe(|event| {
-        if let Event::Volume(volume) = event {
-            Scale().set_value(*volume as f64);
-            Image().set_icon_name(Some(volume_to_icon(*volume)));
+        if let Event::Volume(event) = event {
+            Scale().set_value(event.volume as f64);
+            Image().set_icon_name(Some(volume_to_icon(event.volume)));
         }
     });
 

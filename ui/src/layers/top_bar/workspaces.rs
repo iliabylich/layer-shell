@@ -10,13 +10,17 @@ pub(crate) fn init() {
     }
 
     subscribe(|event| {
-        if let Event::Workspaces { ids, active_id } = event {
+        if let Event::Workspaces(event) = event {
             for idx in 1..=10 {
                 let button = &Buttons()[idx - 1];
-                button.set_visible(ids.contains(&idx) || idx <= 5);
+                button.set_visible(event.ids.contains(&idx) || idx <= 5);
                 const ACTIVE: &[&str] = &["active"];
                 const INACTIVE: &[&str] = &["inactive"];
-                button.set_css_classes(if idx == *active_id { ACTIVE } else { INACTIVE })
+                button.set_css_classes(if idx == event.active_id {
+                    ACTIVE
+                } else {
+                    INACTIVE
+                })
             }
         }
     });

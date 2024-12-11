@@ -1,25 +1,16 @@
+use layer_shell_hyprland::{Language, Workspaces};
+use layer_shell_pipewire::Volume;
 use layer_shell_weather::{CurrentWeather, ForecastWeather};
-use std::collections::HashSet;
 
 #[derive(Debug)]
 pub enum Event {
-    Memory {
-        used: f64,
-        total: f64,
-    },
+    Memory { used: f64, total: f64 },
     Cpu(Vec<usize>),
-    Time {
-        time: String,
-        date: String,
-    },
-    Workspaces {
-        ids: HashSet<usize>,
-        active_id: usize,
-    },
-    Language(String),
+    Time { time: String, date: String },
+    Workspaces(Workspaces),
+    Language(Language),
     AppList(Vec<App>),
-    Volume(f32),
-    Muted(bool),
+    Volume(Volume),
     CurrentWeather(CurrentWeather),
     ForecastWeather(ForecastWeather),
     WiFiStatus(Option<WiFiStatus>),
@@ -50,24 +41,4 @@ pub struct WiFiStatus {
 pub struct Network {
     pub iface: String,
     pub address: String,
-}
-
-impl From<layer_shell_pipewire::Event> for Event {
-    fn from(e: layer_shell_pipewire::Event) -> Self {
-        match e {
-            layer_shell_pipewire::Event::MuteChanged(muted) => Self::Muted(muted),
-            layer_shell_pipewire::Event::VolumeChanged(volume) => Self::Volume(volume),
-        }
-    }
-}
-
-impl From<layer_shell_hyprland::Event> for Event {
-    fn from(e: layer_shell_hyprland::Event) -> Self {
-        match e {
-            layer_shell_hyprland::Event::WorkspacesChanged { ids, active_id } => {
-                Self::Workspaces { ids, active_id }
-            }
-            layer_shell_hyprland::Event::LanguageChanged(lang) => Self::Language(lang),
-        }
-    }
 }

@@ -2,10 +2,17 @@ use std::collections::HashSet;
 
 #[derive(Debug)]
 pub enum Event {
-    WorkspacesChanged {
-        ids: HashSet<usize>,
-        active_id: usize,
-    },
+    Workspaces(Workspaces),
+    Language(Language),
+}
 
-    LanguageChanged(String),
+#[derive(Debug)]
+pub struct Workspaces {
+    pub ids: HashSet<usize>,
+    pub active_id: usize,
+}
+
+#[derive(Debug)]
+pub struct Language {
+    pub lang: String,
 }

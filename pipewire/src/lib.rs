@@ -22,7 +22,7 @@ mod nodes;
 mod store;
 
 pub use command::Command;
-pub use event::Event;
+pub use event::{Event, Volume};
 use store::Store;
 
 pub fn start() -> (Sender<Command>, Receiver<Event>) {
@@ -119,7 +119,9 @@ fn start_pw_listener(registry: Rc<Registry>, store: Store, tx: Sender<Event>) ->
                     .add_listener_local()
                     .param(move |_, _, _, _, param| {
                         if let Some(channels) = nodes::sink::parse_volume_changed_event(param) {
-                            if let Err(err) = tx.send(Event::VolumeChanged(channels[0])) {
+                            if let Err(err) = tx.send(Event::Volume(Volume {
+                                volume: channels[0],
+                            })) {
                                 log::error!("failed to send event: {:?}", err);
                             }
                         }

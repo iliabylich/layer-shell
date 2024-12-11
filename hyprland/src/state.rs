@@ -1,4 +1,4 @@
-use crate::{raw_event::RawEvent, Event};
+use crate::{raw_event::RawEvent, Event, Language, Workspaces};
 use anyhow::{Context as _, Result};
 use std::collections::HashSet;
 
@@ -42,14 +42,16 @@ impl State {
     }
 
     pub(crate) fn as_workspaces_changed_event(&self) -> Event {
-        Event::WorkspacesChanged {
+        Event::Workspaces(Workspaces {
             ids: self.workspace_ids.clone(),
             active_id: self.active_workspace_id,
-        }
+        })
     }
 
     pub(crate) fn as_language_changed_event(&self) -> Event {
-        Event::LanguageChanged(self.language.clone())
+        Event::Language(Language {
+            lang: self.language.clone(),
+        })
     }
 }
 

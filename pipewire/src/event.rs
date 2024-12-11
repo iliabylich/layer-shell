@@ -1,5 +1,9 @@
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub enum Event {
-    MuteChanged(bool),
-    VolumeChanged(f32),
+    Volume(Volume),
+}
+
+#[derive(Debug)]
+pub struct Volume {
+    pub volume: f32,
 }

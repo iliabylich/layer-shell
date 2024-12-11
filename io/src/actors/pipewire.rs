@@ -31,3 +31,11 @@ pub(crate) async fn on_command(cmd: layer_shell_pipewire::Command) {
         log::error!("Failed to send command to PW: {:?}", err);
     }
 }
+
+impl From<layer_shell_pipewire::Event> for Event {
+    fn from(e: layer_shell_pipewire::Event) -> Self {
+        match e {
+            layer_shell_pipewire::Event::Volume(e) => Self::Volume(e),
+        }
+    }
+}
