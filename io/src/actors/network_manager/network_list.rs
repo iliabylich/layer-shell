@@ -2,18 +2,9 @@ use crate::{event::Network, Event};
 use anyhow::Result;
 use dbus::nonblock::SyncConnection;
 use layer_shell_dbus::nm;
-use std::sync::{mpsc::Sender, Arc};
+use std::sync::mpsc::Sender;
 
-pub(crate) async fn spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) {
-    loop {
-        if let Err(err) = tick(&tx, conn.as_ref()).await {
-            log::error!("{:?}", err);
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    }
-}
-
-async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
+pub(crate) async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
     let networks = get_networks(conn).await?;
     tx.send(Event::NetworkList(networks))?;
     Ok(())

@@ -2,18 +2,9 @@ use crate::{event::WiFiStatus, Event};
 use anyhow::Result;
 use dbus::nonblock::SyncConnection;
 use layer_shell_dbus::nm::NetworkManager;
-use std::sync::{mpsc::Sender, Arc};
+use std::sync::mpsc::Sender;
 
-pub(crate) async fn spawn(tx: Sender<Event>, conn: Arc<SyncConnection>) {
-    loop {
-        if let Err(err) = tick(&tx, conn.as_ref()).await {
-            log::error!("{:?}", err);
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    }
-}
-
-async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
+pub(crate) async fn tick(tx: &Sender<Event>, conn: &SyncConnection) -> Result<()> {
     let state = get_status(conn, "wlo1")
         .await
         .inspect_err(|err| log::error!("WiFiStatus error: {:?}", err))

@@ -1,5 +1,5 @@
 use crate::Event;
-use std::sync::{mpsc::Sender, Arc};
+use std::sync::mpsc::Sender;
 
 pub(crate) mod network_list;
 pub(crate) mod wifi_status;
@@ -15,8 +15,13 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
         log::error!("Lost connection to D-Bus: {:?}", err);
     });
 
-    tokio::join!(
-        network_list::spawn(tx.clone(), Arc::clone(&conn)),
-        wifi_status::spawn(tx.clone(), Arc::clone(&conn)),
-    );
+    loop {
+        if let Err(err) = network_list::tick(&tx, conn.as_ref()).await {
+            log::error!("{:?}", err);
+        }
+        if let Err(err) = wifi_status::tick(&tx, conn.as_ref()).await {
+            log::error!("{:?}", err);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
 }
