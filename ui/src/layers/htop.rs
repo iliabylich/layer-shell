@@ -26,7 +26,7 @@ impl Htop {
 
         let terminal = vte4::Terminal::builder().build();
         let home = std::env::var("HOME").unwrap_or_else(|err| {
-            eprintln!("$HOME is not set: {:?}", err);
+            log::error!("$HOME is not set: {:?}", err);
             std::process::exit(1);
         });
         terminal.spawn_async(

@@ -20,7 +20,6 @@ clap = { version = "4.5", default-features = false, features = [
     "suggestions",
 ] }
 clap_complete = "4.5"
-pretty_env_logger = "0.5"
 layer-shell-pipewire = { path = "../pipewire" }
 layer-shell-hyprland = { path = "../hyprland" }
 layer-shell-weather = { path = "../weather" }

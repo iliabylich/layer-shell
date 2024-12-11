@@ -63,6 +63,6 @@ fn copy_to_clipboard(text: &str) {
         let clipboard = display.clipboard();
         clipboard.set_text(text);
     } else {
-        eprintln!("failed to get default Gdk display");
+        log::error!("failed to get default Gdk display");
     }
 }

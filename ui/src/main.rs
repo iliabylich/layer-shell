@@ -18,6 +18,8 @@ use crate::{
 const APP_ID: &str = "com.me.LayerShell";
 
 fn main() {
+    pretty_env_logger::init();
+
     gtk4::glib::unix_signal_add(10 /* USR1 */, move || {
         layer_shell_io::on_sigusr1();
         gtk4::glib::ControlFlow::Continue
@@ -48,7 +50,7 @@ fn main() {
 
     app.connect_startup(|_app| {
         if let Err(err) = load_css() {
-            eprintln!("Failed to load css: {:?}", err);
+            log::error!("Failed to load css: {:?}", err);
             std::process::exit(1);
         }
     });

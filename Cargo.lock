@@ -1234,7 +1234,6 @@ dependencies = [
  "layer-shell-weather",
  "log",
  "paste",
- "pretty_env_logger",
  "serde",
  "serde_json",
  "tokio",
@@ -1276,7 +1275,9 @@ dependencies = [
  "layer-shell-hyprland",
  "layer-shell-io",
  "layer-shell-weather",
+ "log",
  "paste",
+ "pretty_env_logger",
  "vte4",
 ]
 

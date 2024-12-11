@@ -12,7 +12,7 @@ macro_rules! icon {
                     match [< $name Instance >].as_ref() {
                         Some(v) => v,
                         None => {
-                            eprintln!("icon {} is not initialised", stringify!($name));
+                            log::error!("icon {} is not initialised", stringify!($name));
                             std::process::exit(1);
                         }
                     }

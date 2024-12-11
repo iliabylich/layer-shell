@@ -26,7 +26,7 @@ macro_rules! widget {
                     match [< $name Instance >].as_ref() {
                         Some(value) => value,
                         None => {
-                            eprintln!("widget {} is not defined", stringify!($name));
+                            log::error!("widget {} is not defined", stringify!($name));
                             std::process::exit(1);
                         }
                     }

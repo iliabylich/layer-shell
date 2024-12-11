@@ -30,7 +30,6 @@ where
 }
 
 pub fn init() {
-    pretty_env_logger::init();
     SUBSCRIPTIONS::set(vec![]);
     if let Err(err) = IPC::prepare() {
         log::error!("Failed to start IPC: {:?}", err);
@@ -62,7 +61,7 @@ pub fn spawn_all() {
         {
             Ok(rt) => rt,
             Err(err) => {
-                println!("failed to spawn tokio: {:?}", err);
+                log::error!("failed to spawn tokio: {:?}", err);
                 std::process::exit(1);
             }
         };
