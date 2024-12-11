@@ -1,5 +1,14 @@
 [workspace]
-members = ["io", "ui", "dbus", "pipewire", "hyprland", "weather", "network"]
+members = [
+    "io",
+    "ui",
+    "dbus",
+    "pipewire",
+    "hyprland",
+    "weather",
+    "network",
+    "app-list",
+]
 resolver = "2"
 
 [profile.release]

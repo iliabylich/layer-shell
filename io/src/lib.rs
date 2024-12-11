@@ -9,7 +9,7 @@ mod global;
 mod ipc;
 
 pub use command::Command;
-pub use event::{App, AppIcon, Event};
+pub use event::Event;
 pub(crate) use global::global;
 pub use ipc::on_sigusr1;
 

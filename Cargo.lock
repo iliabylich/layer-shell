@@ -1188,6 +1188,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
+name = "layer-shell-app-list"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "futures",
+ "log",
+ "tokio",
+]
+
+[[package]]
 name = "layer-shell-dbus"
 version = "0.1.0"
 dependencies = [
@@ -1216,6 +1227,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "futures",
+ "layer-shell-app-list",
  "layer-shell-hyprland",
  "layer-shell-network",
  "layer-shell-pipewire",
@@ -1260,6 +1272,7 @@ dependencies = [
  "anyhow",
  "gtk4",
  "gtk4-layer-shell",
+ "layer-shell-app-list",
  "layer-shell-io",
  "layer-shell-weather",
  "paste",

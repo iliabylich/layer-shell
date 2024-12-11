@@ -3,7 +3,8 @@ use crate::{
     widgets::launcher::{Input, Rows},
 };
 use gtk4::prelude::{EditableExt, WidgetExt};
-use layer_shell_io::{publish, subscribe, AppIcon, Command, Event};
+use layer_shell_app_list::AppIcon;
+use layer_shell_io::{publish, subscribe, Command, Event};
 
 pub(crate) fn init() {
     Input().connect_activate(|_| {
@@ -16,9 +17,9 @@ pub(crate) fn init() {
     });
 
     subscribe(|event| {
-        if let Event::AppList(apps) = event {
+        if let Event::AppList(event) = event {
             for (idx, (row, image, label)) in Rows().iter().enumerate() {
-                if let Some(app) = apps.get(idx) {
+                if let Some(app) = event.apps.get(idx) {
                     row.set_visible(true);
                     if app.selected {
                         row.add_css_class("active");

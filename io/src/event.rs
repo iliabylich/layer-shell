@@ -1,3 +1,4 @@
+use layer_shell_app_list::AppList;
 use layer_shell_hyprland::{Language, Workspaces};
 use layer_shell_network::{NetworkList, WiFiStatus};
 use layer_shell_pipewire::Volume;
@@ -10,7 +11,7 @@ pub enum Event {
     Time { time: String, date: String },
     Workspaces(Workspaces),
     Language(Language),
-    AppList(Vec<App>),
+    AppList(AppList),
     Volume(Volume),
     CurrentWeather(CurrentWeather),
     ForecastWeather(ForecastWeather),
@@ -18,16 +19,4 @@ pub enum Event {
     NetworkList(NetworkList),
     ToggleLauncher,
     ToggleSessionScreen,
-}
-
-#[derive(Debug)]
-pub struct App {
-    pub name: String,
-    pub selected: bool,
-    pub icon: AppIcon,
-}
-#[derive(Debug, Clone)]
-pub enum AppIcon {
-    IconPath(String),
-    IconName(String),
 }
