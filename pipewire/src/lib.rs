@@ -1,11 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use std::{
-    rc::Rc,
-    sync::mpsc::{Receiver, Sender},
-};
-
 use anyhow::{Context as _, Result};
+use async_stream::stream;
+use futures::Stream;
 use pipewire::{
     context::Context,
     loop_::TimerSource,
@@ -15,17 +12,54 @@ use pipewire::{
     registry::{Listener, Registry},
     spa::param::ParamType,
 };
+use std::{
+    rc::Rc,
+    sync::mpsc::{Receiver, Sender},
+};
 
 mod command;
 mod event;
 mod nodes;
 mod store;
 
-pub use command::Command;
+use command::Command;
+pub use command::{SetMuted, SetVolume};
 pub use event::{Event, Volume};
 use store::Store;
 
-pub fn start() -> (Sender<Command>, Receiver<Event>) {
+static mut COMMAND_SENDER: Option<Sender<Command>> = None;
+
+pub(crate) fn command_sender() -> &'static Sender<Command> {
+    unsafe {
+        #[allow(static_mut_refs)]
+        match COMMAND_SENDER.as_mut() {
+            Some(sender) => sender,
+            None => {
+                log::error!("STATE is not set");
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
+pub fn connect() -> impl Stream<Item = Event> {
+    let (ctx, erc) = start_thread();
+    unsafe {
+        COMMAND_SENDER = Some(ctx);
+    }
+
+    stream! {
+        loop {
+            while let Ok(event) = erc.try_recv() {
+                yield event;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    }
+}
+
+fn start_thread() -> (Sender<Command>, Receiver<Event>) {
     let (etx, erx) = std::sync::mpsc::channel::<Event>();
     let (ctx, crx) = std::sync::mpsc::channel::<Command>();
 
@@ -62,7 +96,7 @@ fn start_polling_commands(
 ) -> TimerSource<'_> {
     let timer = mainloop.loop_().add_timer(move |_| {
         if let Ok(command) = rx.try_recv() {
-            command.dispatch(&store)
+            command.dispatch_in_current_thread(&store)
         }
     });
     timer.update_timer(

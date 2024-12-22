@@ -1258,10 +1258,13 @@ name = "layer-shell-pipewire"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
+ "futures",
  "log",
  "pipewire",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -1274,6 +1277,7 @@ dependencies = [
  "layer-shell-app-list",
  "layer-shell-hyprland",
  "layer-shell-io",
+ "layer-shell-pipewire",
  "layer-shell-weather",
  "log",
  "paste",

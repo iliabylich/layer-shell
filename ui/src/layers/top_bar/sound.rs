@@ -4,6 +4,7 @@ use gtk4::{
     PropagationPhase,
 };
 use layer_shell_io::{publish, subscribe, Command, Event};
+use layer_shell_pipewire::SetVolume;
 
 pub(crate) fn init() {
     subscribe(|event| {
@@ -17,7 +18,7 @@ pub(crate) fn init() {
     ctrl.set_propagation_phase(PropagationPhase::Capture);
     ctrl.connect_released(|_, _, _, _| {
         let volume = Scale().adjustment().value().clamp(0.0, 1.0);
-        publish(Command::SetVolume(volume as f32));
+        publish(Command::SetVolume(SetVolume(volume)));
     });
     Widget().add_controller(ctrl);
 }

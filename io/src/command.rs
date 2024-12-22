@@ -1,8 +1,9 @@
-use crate::actors::{pipewire, session};
+use crate::actors::session;
 use layer_shell_app_list::{
     AppListExecSelected, AppListGoDown, AppListGoUp, AppListReset, AppListSetSearch,
 };
 use layer_shell_hyprland::HyprlandGoToWorkspace;
+use layer_shell_pipewire::{SetMuted, SetVolume};
 use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
@@ -15,8 +16,8 @@ pub enum Command {
     AppListSetSearch(AppListSetSearch),
     AppListExecSelected(AppListExecSelected),
 
-    SetVolume(f32),
-    SetMuted(bool),
+    SetVolume(SetVolume),
+    SetMuted(SetMuted),
 
     Lock,
     Reboot,
@@ -42,12 +43,8 @@ impl Command {
         use Command::*;
 
         match self {
-            SetVolume(volume) => {
-                pipewire::on_command(layer_shell_pipewire::Command::SetVolume(volume)).await;
-            }
-            SetMuted(muted) => {
-                pipewire::on_command(layer_shell_pipewire::Command::SetMuted(muted)).await
-            }
+            SetVolume(cmd) => cmd.exec().await,
+            SetMuted(cmd) => cmd.exec().await,
 
             HyprlandGoToWorkspace(cmd) => cmd.exec().await,
 
