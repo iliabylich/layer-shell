@@ -1,52 +1,38 @@
 use crate::raw_event::RawEvent;
 use anyhow::{Context as _, Result};
+use async_stream::stream;
 use futures::Stream;
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
 use tokio::{
-    io::{AsyncBufReadExt as _, BufReader, Lines},
+    io::{AsyncBufReadExt as _, BufReader},
     net::UnixStream,
 };
 
-pub(crate) struct RawStream {
-    inner: Lines<BufReader<UnixStream>>,
-}
+pub(crate) async fn raw_events_stream() -> impl Stream<Item = RawEvent> {
+    stream! {
+        match connect_to_socket().await {
+            Ok(socket) => {
+                let buffered = BufReader::new(socket);
+                let mut lines = buffered.lines();
 
-impl RawStream {
-    pub(crate) async fn new() -> Result<Self> {
-        let socket_path = hyprland_socket_path()?;
-        let socket = UnixStream::connect(&socket_path)
-            .await
-            .context("failed to open unix socket")?;
-        let buffered = BufReader::new(socket);
-        let lines = buffered.lines();
-
-        Ok(Self { inner: lines })
-    }
-}
-
-impl Stream for RawStream {
-    type Item = RawEvent;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match Pin::new(&mut self.inner).poll_next_line(cx) {
-            Poll::Ready(Err(err)) => {
-                log::error!("{:?}", err);
-                Poll::Ready(None)
-            }
-            Poll::Ready(Ok(None)) => {
-                log::error!("empty line from Hyprland socket");
-                Poll::Ready(None)
-            }
-            Poll::Ready(Ok(Some(line))) => match RawEvent::parse(line) {
-                Some(event) => Poll::Ready(Some(event)),
-                None => Poll::Pending,
+                while let Ok(Some(line)) = lines.next_line().await {
+                    if let Some(event) = RawEvent::parse(line) {
+                        yield event;
+                    }
+                }
             },
-            Poll::Pending => Poll::Pending,
+            Err(err) => {
+                log::error!("Failed to connect to Hyprland socket: {:?}", err);
+            }
         }
     }
+}
+
+async fn connect_to_socket() -> Result<UnixStream> {
+    let socket_path = hyprland_socket_path()?;
+    let socket = UnixStream::connect(&socket_path)
+        .await
+        .context("failed to open unix socket")?;
+    Ok(socket)
 }
 
 fn hyprland_socket_path() -> Result<String> {
