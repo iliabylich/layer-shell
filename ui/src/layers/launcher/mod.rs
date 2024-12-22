@@ -4,8 +4,10 @@ use gtk4::{
     Application,
 };
 use gtk4_layer_shell::{KeyboardMode, Layer, LayerShell};
-use layer_shell_app_list::{AppListGoDown, AppListGoUp, AppListReset};
-use layer_shell_io::{publish, subscribe, Command, Event};
+use layer_shell_io::{
+    app_list::{AppListGoDown, AppListGoUp, AppListReset},
+    publish, subscribe, Command, Event,
+};
 
 mod app_list;
 

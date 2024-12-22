@@ -1,6 +1,5 @@
 use crate::widgets::top_bar::cpu::Labels;
-use layer_shell_cpu::CpuUsage;
-use layer_shell_io::{subscribe, Event};
+use layer_shell_io::{cpu::CpuUsage, subscribe, Event};
 
 pub(crate) fn init() {
     subscribe(|event| {

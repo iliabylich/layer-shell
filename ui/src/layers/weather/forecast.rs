@@ -3,12 +3,12 @@ use crate::{
     widgets::weather::{DailyRows, HourlyRows},
 };
 use gtk4::prelude::WidgetExt;
-use layer_shell_io::{subscribe, Event};
+use layer_shell_io::{subscribe, weather::ForecastWeather, Event};
 
 pub(crate) fn init() {
     subscribe(|event| {
-        if let Event::ForecastWeather(event) = event {
-            for ((label, image), weather) in HourlyRows().iter().zip(event.hourly.iter()) {
+        if let Event::ForecastWeather(ForecastWeather { hourly, daily }) = event {
+            for ((label, image), weather) in HourlyRows().iter().zip(hourly.iter()) {
                 let text = format!("{}' {:>5.1}℃", weather.hour, weather.temperature,);
                 label.set_label(&text);
                 label.set_tooltip_text(Some(&weather_code_to_description(weather.code)));
@@ -16,7 +16,7 @@ pub(crate) fn init() {
                 image.set_from_gicon(weather_code_to_icon(weather.code));
             }
 
-            for ((label, image), weather) in DailyRows().iter().zip(event.daily.iter()) {
+            for ((label, image), weather) in DailyRows().iter().zip(daily.iter()) {
                 let text = format!(
                     "{}: {:>5.1}℃ - {:>5.1}℃",
                     weather.day, weather.temperature.start, weather.temperature.end,

@@ -1,7 +1,6 @@
 use crate::widgets::top_bar::clock::Label;
 use gtk4::prelude::WidgetExt;
-use layer_shell_io::{subscribe, Event};
-use layer_shell_time::Time;
+use layer_shell_io::{subscribe, time::Time, Event};
 
 pub(crate) fn init() {
     subscribe(|event| {

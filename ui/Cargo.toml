@@ -9,12 +9,6 @@ paste = { workspace = true }
 log = { workspace = true }
 
 layer-shell-io = { path = "../io" }
-layer-shell-weather = { path = "../weather" }
-layer-shell-app-list = { path = "../app-list" }
-layer-shell-hyprland = { path = "../hyprland" }
-layer-shell-pipewire = { path = "../pipewire" }
-layer-shell-cpu = { path = "../cpu" }
-layer-shell-time = { path = "../time" }
 
 gtk4 = { version = "0.9", features = ["v4_14"] }
 gtk4-layer-shell = "0.4"

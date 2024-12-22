@@ -3,8 +3,10 @@ use crate::{
     widgets::launcher::{Input, Rows},
 };
 use gtk4::prelude::{EditableExt, WidgetExt};
-use layer_shell_app_list::{AppIcon, AppListExecSelected, AppListSetSearch};
-use layer_shell_io::{publish, subscribe, Command, Event};
+use layer_shell_io::{
+    app_list::{AppIcon, AppListExecSelected, AppListSetSearch},
+    publish, subscribe, Command, Event,
+};
 
 pub(crate) fn init() {
     Input().connect_activate(|_| {

@@ -3,14 +3,16 @@ use gtk4::{
     prelude::{AdjustmentExt, EventControllerExt, RangeExt, WidgetExt},
     PropagationPhase,
 };
-use layer_shell_io::{publish, subscribe, Command, Event};
-use layer_shell_pipewire::SetVolume;
+use layer_shell_io::{
+    pipewire::{SetVolume, Volume},
+    publish, subscribe, Command, Event,
+};
 
 pub(crate) fn init() {
     subscribe(|event| {
-        if let Event::Volume(event) = event {
-            Scale().set_value(event.volume as f64);
-            Image().set_icon_name(Some(volume_to_icon(event.volume)));
+        if let Event::Volume(Volume { volume }) = event {
+            Scale().set_value(*volume as f64);
+            Image().set_icon_name(Some(volume_to_icon(*volume)));
         }
     });
 

@@ -2,7 +2,7 @@ use crate::icons::{
     foggy_icon, partly_cloudy_icon, question_mark_icon, rainy_icon, snowy_icon, sunny_icon,
     thunderstorm_icon,
 };
-use layer_shell_weather::{
+use layer_shell_io::weather::{
     Code, Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
     ThunderstormWithHail,
 };

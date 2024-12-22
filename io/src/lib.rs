@@ -98,3 +98,29 @@ pub(crate) fn publish_event(e: Event) {
         log::error!("failed to publish event: {:?}", err);
     }
 }
+
+// re-exports
+
+pub mod app_list {
+    pub use layer_shell_app_list::{
+        AppIcon, AppListExecSelected, AppListGoDown, AppListGoUp, AppListReset, AppListSetSearch,
+    };
+}
+pub mod time {
+    pub use layer_shell_time::Time;
+}
+pub mod cpu {
+    pub use layer_shell_cpu::CpuUsage;
+}
+pub mod pipewire {
+    pub use layer_shell_pipewire::{SetVolume, Volume};
+}
+pub mod hyptland {
+    pub use layer_shell_hyprland::{HyprlandGoToWorkspace, Workspaces};
+}
+pub mod weather {
+    pub use layer_shell_weather::{
+        Code, CurrentWeather, Drizzle, Fog, ForecastWeather, FreezingDrizzle, FreezingRain, Rain,
+        RainShowers, SnowFall, SnowShowers, ThunderstormWithHail,
+    };
+}
