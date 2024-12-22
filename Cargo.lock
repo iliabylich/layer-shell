@@ -1235,7 +1235,6 @@ name = "layer-shell-io"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "clap",
  "clap_complete",
  "futures",
@@ -1245,6 +1244,7 @@ dependencies = [
  "layer-shell-memory",
  "layer-shell-network",
  "layer-shell-pipewire",
+ "layer-shell-time",
  "layer-shell-weather",
  "log",
  "paste",
@@ -1293,6 +1293,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "layer-shell-time"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "chrono",
+ "futures",
+ "log",
+ "tokio",
+]
+
+[[package]]
 name = "layer-shell-ui"
 version = "0.1.0"
 dependencies = [
@@ -1300,9 +1312,11 @@ dependencies = [
  "gtk4",
  "gtk4-layer-shell",
  "layer-shell-app-list",
+ "layer-shell-cpu",
  "layer-shell-hyprland",
  "layer-shell-io",
  "layer-shell-pipewire",
+ "layer-shell-time",
  "layer-shell-weather",
  "log",
  "paste",

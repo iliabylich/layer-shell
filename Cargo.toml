@@ -10,6 +10,7 @@ members = [
     "app-list",
     "cpu",
     "memory",
+    "time",
 ]
 resolver = "2"
 
