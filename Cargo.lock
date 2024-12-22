@@ -1199,6 +1199,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "layer-shell-cpu"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "futures",
+ "log",
+ "tokio",
+]
+
+[[package]]
 name = "layer-shell-dbus"
 version = "0.1.0"
 dependencies = [
@@ -1228,6 +1239,7 @@ dependencies = [
  "clap_complete",
  "futures",
  "layer-shell-app-list",
+ "layer-shell-cpu",
  "layer-shell-hyprland",
  "layer-shell-network",
  "layer-shell-pipewire",

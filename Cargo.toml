@@ -8,6 +8,7 @@ members = [
     "weather",
     "network",
     "app-list",
+    "cpu",
 ]
 resolver = "2"
 

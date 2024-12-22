@@ -25,3 +25,4 @@ layer-shell-hyprland = { path = "../hyprland" }
 layer-shell-weather = { path = "../weather" }
 layer-shell-network = { path = "../network" }
 layer-shell-app-list = { path = "../app-list" }
+layer-shell-cpu = { path = "../cpu" }
