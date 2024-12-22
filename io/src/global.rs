@@ -10,6 +10,7 @@ macro_rules! global {
             impl $name {
                 fn get() -> &'static mut $t {
                     unsafe {
+                        #[allow(static_mut_refs)]
                         match [< $name Instance >].as_mut() {
                             Some(value) => value,
                             None => {

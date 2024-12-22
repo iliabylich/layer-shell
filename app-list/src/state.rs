@@ -14,6 +14,7 @@ impl State {
 
     pub(crate) fn instance() -> &'static mut State {
         unsafe {
+            #[allow(static_mut_refs)]
             match STATE.as_mut() {
                 Some(state) => state,
                 None => {
@@ -26,6 +27,7 @@ impl State {
 
     fn bus() -> &'static Sender<Event> {
         unsafe {
+            #[allow(static_mut_refs)]
             match BUS.as_ref() {
                 Some(bus) => bus,
                 None => {

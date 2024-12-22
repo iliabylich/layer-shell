@@ -23,6 +23,7 @@ macro_rules! widget {
             #[allow(non_snake_case)]
             pub(crate) fn $name() -> &'static $t {
                 unsafe {
+                    #[allow(static_mut_refs)]
                     match [< $name Instance >].as_ref() {
                         Some(value) => value,
                         None => {

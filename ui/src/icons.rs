@@ -1,7 +1,3 @@
-// #[allow(non_snake_case)]
-// mod gen;
-// pub(crate) use gen::*;
-
 macro_rules! icon {
     ($name:ident, $path:literal) => {
         paste::paste! {
@@ -9,6 +5,7 @@ macro_rules! icon {
             static mut [< $name Instance >]: Option<gtk4::gdk::Texture> = None;
             pub(crate) fn [< $name _icon >]() -> &'static gtk4::gdk::Texture {
                 unsafe {
+                    #[allow(static_mut_refs)]
                     match [< $name Instance >].as_ref() {
                         Some(v) => v,
                         None => {
