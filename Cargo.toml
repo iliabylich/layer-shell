@@ -9,6 +9,7 @@ members = [
     "network",
     "app-list",
     "cpu",
+    "memory",
 ]
 resolver = "2"
 

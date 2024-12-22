@@ -15,19 +15,18 @@ use crate::{
     utils::load_css,
 };
 
-const APP_ID: &str = "com.me.LayerShell";
-
 fn main() {
     pretty_env_logger::init();
+    layer_shell_io::init();
 
-    gtk4::glib::unix_signal_add(10 /* USR1 */, move || {
+    gtk4::glib::unix_signal_add(10 /* USR1 */, || {
         layer_shell_io::on_sigusr1();
         gtk4::glib::ControlFlow::Continue
     });
 
-    layer_shell_io::init();
-
-    let app = Application::builder().application_id(APP_ID).build();
+    let app = Application::builder()
+        .application_id("com.me.LayerShell")
+        .build();
 
     app.connect_activate(|app| {
         icons::load();
@@ -40,7 +39,7 @@ fn main() {
         Htop::activate(app);
         Weather::activate(app);
 
-        layer_shell_io::spawn_all();
+        layer_shell_io::spawn_thread();
 
         gtk4::glib::timeout_add(std::time::Duration::from_millis(50), || {
             layer_shell_io::poll_events();

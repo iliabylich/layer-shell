@@ -1242,6 +1242,7 @@ dependencies = [
  "layer-shell-app-list",
  "layer-shell-cpu",
  "layer-shell-hyprland",
+ "layer-shell-memory",
  "layer-shell-network",
  "layer-shell-pipewire",
  "layer-shell-weather",
@@ -1249,6 +1250,17 @@ dependencies = [
  "paste",
  "serde",
  "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "layer-shell-memory"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "futures",
+ "log",
  "tokio",
 ]
 

@@ -1,0 +1,11 @@
+[package]
+name = "layer-shell-memory"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }
+futures = { workspace = true }
+async-stream = { workspace = true }

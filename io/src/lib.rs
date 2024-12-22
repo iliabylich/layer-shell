@@ -45,7 +45,7 @@ pub fn init() {
     }
 }
 
-pub fn spawn_all() {
+pub fn spawn_thread() {
     let (etx, erx) = channel::<Event>();
     let (ctx, crx) = channel::<Command>();
 
