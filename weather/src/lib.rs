@@ -11,9 +11,9 @@ pub use code::{
     Code, Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
     ThunderstormWithHail,
 };
-pub use event::{CurrentWeather, Event, ForecastWeather, WeatherOnDay, WeatherOnHour};
+pub use event::{CurrentWeather, WeatherEvent, ForecastWeather, WeatherOnDay, WeatherOnHour};
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub fn connect() -> impl Stream<Item = WeatherEvent> {
     stream! {
         let client = Client::new();
 

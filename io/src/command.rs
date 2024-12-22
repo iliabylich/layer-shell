@@ -1,9 +1,8 @@
-use crate::actors::session;
 use layer_shell_app_list::{
     AppListExecSelected, AppListGoDown, AppListGoUp, AppListReset, AppListSetSearch,
 };
 use layer_shell_hyprland::HyprlandGoToWorkspace;
-use layer_shell_pipewire::{SetMuted, SetVolume};
+use layer_shell_pipewire::SetVolume;
 use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
@@ -17,7 +16,6 @@ pub enum Command {
     AppListExecSelected(AppListExecSelected),
 
     SetVolume(SetVolume),
-    SetMuted(SetMuted),
 
     Lock,
     Reboot,
@@ -44,7 +42,6 @@ impl Command {
 
         match self {
             SetVolume(cmd) => cmd.exec().await,
-            SetMuted(cmd) => cmd.exec().await,
 
             HyprlandGoToWorkspace(cmd) => cmd.exec().await,
 
@@ -54,7 +51,10 @@ impl Command {
             AppListExecSelected(cmd) => cmd.exec().await,
             AppListSetSearch(cmd) => cmd.exec().await,
 
-            Lock | Reboot | Shutdown | Logout => session::on_command(self).await,
+            Lock => lock(),
+            Reboot => reboot(),
+            Shutdown => shutdown(),
+            Logout => logout(),
 
             SpawnNetworkEditor => spawn_network_editor(),
             SpawnSystemMonitor => spawn_system_monitor(),
@@ -63,16 +63,26 @@ impl Command {
 }
 
 fn spawn_network_editor() {
-    if let Err(err) = std::process::Command::new("kitty")
-        .args(["--name", "nmtui", "nmtui"])
-        .spawn()
-    {
-        log::error!("failed to spawn kitty: {:?}", err);
-    }
+    spawn("kitty", ["--name", "nmtui", "nmtui"]);
+}
+fn spawn_system_monitor() {
+    spawn("gnome-system-monitor", []);
+}
+fn lock() {
+    spawn("hyprlock", []);
+}
+fn reboot() {
+    spawn("systemctl", ["reboot"]);
+}
+fn shutdown() {
+    spawn("systemctl", ["poweroff"]);
+}
+fn logout() {
+    spawn("hyprctl", ["dispatch", "exit"]);
 }
 
-fn spawn_system_monitor() {
-    if let Err(err) = std::process::Command::new("gnome-system-monitor").spawn() {
-        log::error!("failed to spawn gnome-system-monitor: {:?}", err);
+fn spawn(cmd: &str, args: impl IntoIterator<Item = &'static str>) {
+    if let Err(err) = std::process::Command::new(cmd).args(args).spawn() {
+        log::error!("failed to spawn {:?}: {:?}", cmd, err);
     }
 }

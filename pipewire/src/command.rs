@@ -15,30 +15,13 @@ pub struct SetVolume(pub f64);
 
 impl SetVolume {
     pub async fn exec(self) {
-        if let Err(err) = crate::command_sender().send(Command::SetVolume(self)) {
+        if let Err(err) = crate::command_sender().send(self) {
             log::error!("Faied to send PW command to PW thread: {:?}", err);
         }
     }
 }
 
-#[derive(Debug)]
-pub struct SetMuted(pub bool);
-
-impl SetMuted {
-    pub async fn exec(self) {
-        if let Err(err) = crate::command_sender().send(Command::SetMuted(self)) {
-            log::error!("Faied to send PW command to PW thread: {:?}", err);
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) enum Command {
-    SetMuted(SetMuted),
-    SetVolume(SetVolume),
-}
-
-impl Command {
+impl SetVolume {
     pub(crate) fn dispatch_in_current_thread(self, store: &Store) {
         if let Err(err) = self.try_dispatch_in_current_thread(store) {
             log::error!("failed to change sink node: {:?}", err);
@@ -47,13 +30,11 @@ impl Command {
 
     fn try_dispatch_in_current_thread(self, store: &Store) -> Result<()> {
         let sink = store.default_sink().context("no default sink")?;
-        match self {
-            Command::SetMuted(SetMuted(muted)) => set_muted(sink, muted),
-            Command::SetVolume(SetVolume(volume)) => set_volume(sink, volume),
-        }
+        set_volume(sink, self.0)
     }
 }
 
+#[allow(dead_code)]
 fn set_muted(sink: Rc<Node>, muted: bool) -> Result<()> {
     let values: Vec<u8> = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),

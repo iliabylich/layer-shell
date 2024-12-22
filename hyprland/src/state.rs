@@ -1,4 +1,4 @@
-use crate::{raw_event::RawEvent, Event, Language, Workspaces};
+use crate::{raw_event::RawEvent, HyprlandEvent, Language, Workspaces};
 use anyhow::{Context as _, Result};
 use std::collections::HashSet;
 
@@ -20,7 +20,7 @@ impl State {
         })
     }
 
-    pub(crate) fn apply(&mut self, event: RawEvent) -> Event {
+    pub(crate) fn apply(&mut self, event: RawEvent) -> HyprlandEvent {
         match event {
             RawEvent::CreateWorkspace(idx) => {
                 self.workspace_ids.insert(idx);
@@ -41,15 +41,15 @@ impl State {
         }
     }
 
-    pub(crate) fn as_workspaces_changed_event(&self) -> Event {
-        Event::Workspaces(Workspaces {
+    pub(crate) fn as_workspaces_changed_event(&self) -> HyprlandEvent {
+        HyprlandEvent::Workspaces(Workspaces {
             ids: self.workspace_ids.clone(),
             active_id: self.active_workspace_id,
         })
     }
 
-    pub(crate) fn as_language_changed_event(&self) -> Event {
-        Event::Language(Language {
+    pub(crate) fn as_language_changed_event(&self) -> HyprlandEvent {
+        HyprlandEvent::Language(Language {
             lang: self.language.clone(),
         })
     }

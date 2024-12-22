@@ -1,23 +1,23 @@
 use crate::{
     client::{CurrentResponse, DailyResponse, HourlyResponse},
     event::{WeatherOnDay, WeatherOnHour},
-    Code, CurrentWeather, Event, ForecastWeather,
+    Code, CurrentWeather, WeatherEvent, ForecastWeather,
 };
 use anyhow::{Context as _, Result};
 use chrono::{NaiveDate, NaiveDateTime};
 
-pub(crate) fn map_current(current: CurrentResponse) -> Event {
-    Event::CurrentWeather(CurrentWeather {
+pub(crate) fn map_current(current: CurrentResponse) -> WeatherEvent {
+    WeatherEvent::CurrentWeather(CurrentWeather {
         temperature: current.temperature_2m,
         code: map_code(current.weather_code),
     })
 }
 
-pub(crate) fn map_forecast(hourly: HourlyResponse, daily: DailyResponse) -> Result<Event> {
+pub(crate) fn map_forecast(hourly: HourlyResponse, daily: DailyResponse) -> Result<WeatherEvent> {
     let hourly = map_hourly(hourly)?;
     let daily = map_daily(daily)?;
 
-    Ok(Event::ForecastWeather(ForecastWeather { hourly, daily }))
+    Ok(WeatherEvent::ForecastWeather(ForecastWeather { hourly, daily }))
 }
 
 fn map_hourly(

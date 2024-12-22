@@ -71,14 +71,7 @@ pub fn spawn_thread() {
                 // command processing actor
                 command::start_processing(crx),
                 // and all models
-                actors::memory::spawn(etx.clone()),
-                actors::cpu::spawn(etx.clone()),
-                actors::time::spawn(etx.clone()),
-                actors::hyprland::spawn(etx.clone()),
-                actors::app_list::spawn(etx.clone()),
-                actors::weather::spawn(etx.clone()),
-                actors::network::spawn(etx.clone()),
-                actors::pipewire::spawn(etx.clone()),
+                actors::spawn_all(etx),
             );
         });
     });

@@ -18,18 +18,20 @@ use std::{
 };
 
 mod command;
-mod event;
 mod nodes;
 mod store;
 
-use command::Command;
-pub use command::{SetMuted, SetVolume};
-pub use event::{Event, Volume};
+pub use command::SetVolume;
 use store::Store;
 
-static mut COMMAND_SENDER: Option<Sender<Command>> = None;
+#[derive(Debug)]
+pub struct Volume {
+    pub volume: f32,
+}
 
-pub(crate) fn command_sender() -> &'static Sender<Command> {
+static mut COMMAND_SENDER: Option<Sender<SetVolume>> = None;
+
+pub(crate) fn command_sender() -> &'static Sender<SetVolume> {
     unsafe {
         #[allow(static_mut_refs)]
         match COMMAND_SENDER.as_mut() {
@@ -42,7 +44,7 @@ pub(crate) fn command_sender() -> &'static Sender<Command> {
     }
 }
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub fn connect() -> impl Stream<Item = Volume> {
     let (ctx, erc) = start_thread();
     unsafe {
         COMMAND_SENDER = Some(ctx);
@@ -59,9 +61,9 @@ pub fn connect() -> impl Stream<Item = Event> {
     }
 }
 
-fn start_thread() -> (Sender<Command>, Receiver<Event>) {
-    let (etx, erx) = std::sync::mpsc::channel::<Event>();
-    let (ctx, crx) = std::sync::mpsc::channel::<Command>();
+fn start_thread() -> (Sender<SetVolume>, Receiver<Volume>) {
+    let (etx, erx) = std::sync::mpsc::channel::<Volume>();
+    let (ctx, crx) = std::sync::mpsc::channel::<SetVolume>();
 
     std::thread::spawn(move || {
         if let Err(err) = start_pw_communication(etx, crx) {
@@ -72,7 +74,7 @@ fn start_thread() -> (Sender<Command>, Receiver<Event>) {
     (ctx, erx)
 }
 
-fn start_pw_communication(tx: Sender<Event>, rx: Receiver<Command>) -> Result<()> {
+fn start_pw_communication(tx: Sender<Volume>, rx: Receiver<SetVolume>) -> Result<()> {
     let mainloop = MainLoop::new(None).context("failed to instantiate PW loop")?;
     let context = Context::new(&mainloop)?;
     let core = context.connect(None)?;
@@ -92,7 +94,7 @@ fn start_pw_communication(tx: Sender<Event>, rx: Receiver<Command>) -> Result<()
 fn start_polling_commands(
     mainloop: &MainLoop,
     store: Store,
-    rx: Receiver<Command>,
+    rx: Receiver<SetVolume>,
 ) -> TimerSource<'_> {
     let timer = mainloop.loop_().add_timer(move |_| {
         if let Ok(command) = rx.try_recv() {
@@ -106,7 +108,7 @@ fn start_polling_commands(
     timer
 }
 
-fn start_pw_listener(registry: Rc<Registry>, store: Store, tx: Sender<Event>) -> Listener {
+fn start_pw_listener(registry: Rc<Registry>, store: Store, tx: Sender<Volume>) -> Listener {
     let registry_weak = Rc::downgrade(&registry);
 
     registry
@@ -153,9 +155,9 @@ fn start_pw_listener(registry: Rc<Registry>, store: Store, tx: Sender<Event>) ->
                     .add_listener_local()
                     .param(move |_, _, _, _, param| {
                         if let Some(channels) = nodes::sink::parse_volume_changed_event(param) {
-                            if let Err(err) = tx.send(Event::Volume(Volume {
+                            if let Err(err) = tx.send(Volume {
                                 volume: channels[0],
-                            })) {
+                            }) {
                                 log::error!("failed to send event: {:?}", err);
                             }
                         }

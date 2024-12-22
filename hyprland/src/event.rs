@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 #[derive(Debug)]
-pub enum Event {
+pub enum HyprlandEvent {
     Workspaces(Workspaces),
     Language(Language),
 }

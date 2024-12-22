@@ -16,6 +16,8 @@ pub fn connect() -> impl Stream<Item = Memory> {
                 Ok(mem) => yield mem,
                 Err(err) => log::error!("failed to get memory info: {:?}", err),
             }
+
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
     }
 }

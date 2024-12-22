@@ -1,4 +1,4 @@
-use crate::{system_app::SystemApp, App, AppList, Event};
+use crate::{system_app::SystemApp, App, AppList};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 pub(crate) struct State {
@@ -6,7 +6,7 @@ pub(crate) struct State {
     apps: Vec<SystemApp>,
     pattern: String,
 }
-static mut BUS: Option<Sender<Event>> = None;
+static mut BUS: Option<Sender<AppList>> = None;
 static mut STATE: Option<State> = None;
 
 impl State {
@@ -25,7 +25,7 @@ impl State {
         }
     }
 
-    fn bus() -> &'static Sender<Event> {
+    fn bus() -> &'static Sender<AppList> {
         unsafe {
             #[allow(static_mut_refs)]
             match BUS.as_ref() {
@@ -38,7 +38,7 @@ impl State {
         }
     }
 
-    pub(crate) fn setup() -> Receiver<Event> {
+    pub(crate) fn setup() -> Receiver<AppList> {
         let tx;
         let rx;
         unsafe {
@@ -100,11 +100,7 @@ impl State {
             })
             .collect::<Vec<_>>();
 
-        if Self::bus()
-            .send(Event::AppList(AppList { apps }))
-            .await
-            .is_err()
-        {
+        if Self::bus().send(AppList { apps }).await.is_err() {
             log::error!("failed to send State event");
         }
     }

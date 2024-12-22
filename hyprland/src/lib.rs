@@ -8,10 +8,10 @@ mod raw_stream;
 mod state;
 
 pub use command::HyprlandGoToWorkspace;
-pub use event::{Event, Language, Workspaces};
+pub use event::{HyprlandEvent, Language, Workspaces};
 use state::State;
 
-pub async fn connect() -> impl Stream<Item = Event> {
+pub async fn connect() -> impl Stream<Item = HyprlandEvent> {
     stream! {
         match State::new().await {
             Ok(mut state) => {

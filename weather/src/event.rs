@@ -1,6 +1,6 @@
 use crate::Code;
 
-pub enum Event {
+pub enum WeatherEvent {
     CurrentWeather(CurrentWeather),
     ForecastWeather(ForecastWeather),
 }
