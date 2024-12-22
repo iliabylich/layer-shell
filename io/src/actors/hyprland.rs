@@ -10,22 +10,18 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
 }
 
 async fn try_spawn(tx: Sender<Event>) -> Result<()> {
-    let mut hyprland_stream = layer_shell_hyprland::connect().await?;
+    let mut hyprland_stream = layer_shell_hyprland::connect()
+        .await?
+        .map(|event| match event {
+            layer_shell_hyprland::Event::Workspaces(workspaces) => Event::Workspaces(workspaces),
+            layer_shell_hyprland::Event::Language(lang) => Event::Language(lang),
+        });
 
     while let Some(event) = hyprland_stream.next().await {
-        if let Err(err) = tx.send(Event::from(event)) {
+        if let Err(err) = tx.send(event) {
             log::error!("Failed to send event: {:?}", err);
         }
     }
 
     Ok(())
-}
-
-impl From<layer_shell_hyprland::Event> for Event {
-    fn from(e: layer_shell_hyprland::Event) -> Self {
-        match e {
-            layer_shell_hyprland::Event::Workspaces(e) => Self::Workspaces(e),
-            layer_shell_hyprland::Event::Language(e) => Self::Language(e),
-        }
-    }
 }

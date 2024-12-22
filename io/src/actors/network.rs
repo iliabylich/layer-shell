@@ -10,23 +10,17 @@ pub(crate) async fn spawn(tx: Sender<Event>) {
 }
 
 async fn try_spawn(tx: Sender<Event>) -> Result<()> {
-    let network_stream = layer_shell_network::connect();
+    let network_stream = layer_shell_network::connect().map(|event| match event {
+        layer_shell_network::Event::WiFiStatus(wifi_status) => Event::WiFiStatus(wifi_status),
+        layer_shell_network::Event::NetworkList(network_list) => Event::NetworkList(network_list),
+    });
     pin_mut!(network_stream);
 
     while let Some(event) = network_stream.next().await {
-        if let Err(err) = tx.send(Event::from(event)) {
+        if let Err(err) = tx.send(event) {
             log::error!("Failed to send event: {:?}", err);
         }
     }
 
     Ok(())
-}
-
-impl From<layer_shell_network::Event> for Event {
-    fn from(e: layer_shell_network::Event) -> Self {
-        match e {
-            layer_shell_network::Event::WiFiStatus(e) => Self::WiFiStatus(e),
-            layer_shell_network::Event::NetworkList(e) => Self::NetworkList(e),
-        }
-    }
 }
