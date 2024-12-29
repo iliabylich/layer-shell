@@ -1,95 +1,99 @@
+#ifndef BINDINGS_H
+#define BINDINGS_H
+
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef enum Drizzle {
-  Light,
-  Moderate,
-  Dense,
-} Drizzle;
+typedef enum {
+  DrizzleLight,
+  DrizzleModerate,
+  DrizzleDense,
+} LAYER_SHELL_IO_Drizzle;
 
-typedef enum Fog {
-  Normal,
-  DepositingRime,
-} Fog;
+typedef enum {
+  FogNormal,
+  FogDepositingRime,
+} LAYER_SHELL_IO_Fog;
 
-typedef enum FreezingDrizzle {
-  Light,
-  Dense,
-} FreezingDrizzle;
+typedef enum {
+  FreezingDrizzleLight,
+  FreezingDrizzleDense,
+} LAYER_SHELL_IO_FreezingDrizzle;
 
-typedef enum FreezingRain {
-  Light,
-  Heavy,
-} FreezingRain;
+typedef enum {
+  FreezingRainLight,
+  FreezingRainHeavy,
+} LAYER_SHELL_IO_FreezingRain;
 
-typedef enum Rain {
-  Slight,
-  Moderate,
-  Heavy,
-} Rain;
+typedef enum {
+  RainSlight,
+  RainModerate,
+  RainHeavy,
+} LAYER_SHELL_IO_Rain;
 
-typedef enum RainShowers {
-  Slight,
-  Moderate,
-  Violent,
-} RainShowers;
+typedef enum {
+  RainShowersSlight,
+  RainShowersModerate,
+  RainShowersViolent,
+} LAYER_SHELL_IO_RainShowers;
 
-typedef enum SnowFall {
-  Slight,
-  Moderate,
-  Heavy,
-} SnowFall;
+typedef enum {
+  SnowFallSlight,
+  SnowFallModerate,
+  SnowFallHeavy,
+} LAYER_SHELL_IO_SnowFall;
 
-typedef enum SnowShowers {
-  Slight,
-  Heavy,
-} SnowShowers;
+typedef enum {
+  SnowShowersSlight,
+  SnowShowersHeavy,
+} LAYER_SHELL_IO_SnowShowers;
 
-typedef enum ThunderstormWithHail {
-  Sight,
-  Heavy,
-} ThunderstormWithHail;
+typedef enum {
+  ThunderstormWithHailSight,
+  ThunderstormWithHailHeavy,
+} LAYER_SHELL_IO_ThunderstormWithHail;
 
-typedef struct CArray_usize {
-  uintptr_t *ptr;
-  uintptr_t len;
-} CArray_usize;
+typedef struct {
+  size_t *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_usize;
 
-typedef struct CString {
+typedef struct {
   char *ptr;
-} CString;
+} LAYER_SHELL_IO_CString;
 
-typedef enum AppIcon_Tag {
+typedef enum {
   IconPath,
   IconName,
-} AppIcon_Tag;
+} LAYER_SHELL_IO_AppIcon_Tag;
 
-typedef struct AppIcon {
-  AppIcon_Tag tag;
+typedef struct {
+  LAYER_SHELL_IO_AppIcon_Tag tag;
   union {
     struct {
-      struct CString icon_path;
+      LAYER_SHELL_IO_CString icon_path;
     };
     struct {
-      struct CString icon_name;
+      LAYER_SHELL_IO_CString icon_name;
     };
   };
-} AppIcon;
+} LAYER_SHELL_IO_AppIcon;
 
-typedef struct App {
-  struct CString name;
+typedef struct {
+  LAYER_SHELL_IO_CString name;
   bool selected;
-  struct AppIcon icon;
-} App;
+  LAYER_SHELL_IO_AppIcon icon;
+} LAYER_SHELL_IO_App;
 
-typedef struct CArray_App {
-  struct App *ptr;
-  uintptr_t len;
-} CArray_App;
+typedef struct {
+  LAYER_SHELL_IO_App *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_App;
 
-typedef enum WeatherCode_Tag {
+typedef enum {
   ClearSky,
   MainlyClear,
   PartlyCloudy,
@@ -106,75 +110,75 @@ typedef enum WeatherCode_Tag {
   Thunderstorm,
   ThunderstormWithHail,
   Unknown,
-} WeatherCode_Tag;
+} LAYER_SHELL_IO_WeatherCode_Tag;
 
-typedef struct WeatherCode {
-  WeatherCode_Tag tag;
+typedef struct {
+  LAYER_SHELL_IO_WeatherCode_Tag tag;
   union {
     struct {
-      enum Fog fog;
+      LAYER_SHELL_IO_Fog fog;
     };
     struct {
-      enum Drizzle drizzle;
+      LAYER_SHELL_IO_Drizzle drizzle;
     };
     struct {
-      enum FreezingDrizzle freezing_drizzle;
+      LAYER_SHELL_IO_FreezingDrizzle freezing_drizzle;
     };
     struct {
-      enum Rain rain;
+      LAYER_SHELL_IO_Rain rain;
     };
     struct {
-      enum FreezingRain freezing_rain;
+      LAYER_SHELL_IO_FreezingRain freezing_rain;
     };
     struct {
-      enum SnowFall snow_fall;
+      LAYER_SHELL_IO_SnowFall snow_fall;
     };
     struct {
-      enum RainShowers rain_showers;
+      LAYER_SHELL_IO_RainShowers rain_showers;
     };
     struct {
-      enum SnowShowers snow_showers;
+      LAYER_SHELL_IO_SnowShowers snow_showers;
     };
     struct {
-      enum ThunderstormWithHail thunderstorm_with_hail;
+      LAYER_SHELL_IO_ThunderstormWithHail thunderstorm_with_hail;
     };
   };
-} WeatherCode;
+} LAYER_SHELL_IO_WeatherCode;
 
-typedef struct WeatherOnHour {
-  struct CString hour;
+typedef struct {
+  LAYER_SHELL_IO_CString hour;
   float temperature;
-  struct WeatherCode code;
-} WeatherOnHour;
+  LAYER_SHELL_IO_WeatherCode code;
+} LAYER_SHELL_IO_WeatherOnHour;
 
-typedef struct CArray_WeatherOnHour {
-  struct WeatherOnHour *ptr;
-  uintptr_t len;
-} CArray_WeatherOnHour;
+typedef struct {
+  LAYER_SHELL_IO_WeatherOnHour *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_WeatherOnHour;
 
-typedef struct WeatherOnDay {
-  struct CString day;
+typedef struct {
+  LAYER_SHELL_IO_CString day;
   float temperature_min;
   float temperature_max;
-  struct WeatherCode code;
-} WeatherOnDay;
+  LAYER_SHELL_IO_WeatherCode code;
+} LAYER_SHELL_IO_WeatherOnDay;
 
-typedef struct CArray_WeatherOnDay {
-  struct WeatherOnDay *ptr;
-  uintptr_t len;
-} CArray_WeatherOnDay;
+typedef struct {
+  LAYER_SHELL_IO_WeatherOnDay *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_WeatherOnDay;
 
-typedef struct Network {
-  struct CString iface;
-  struct CString address;
-} Network;
+typedef struct {
+  LAYER_SHELL_IO_CString iface;
+  LAYER_SHELL_IO_CString address;
+} LAYER_SHELL_IO_Network;
 
-typedef struct CArray_Network {
-  struct Network *ptr;
-  uintptr_t len;
-} CArray_Network;
+typedef struct {
+  LAYER_SHELL_IO_Network *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_Network;
 
-typedef enum Event_Tag {
+typedef enum {
   Memory,
   CpuUsage,
   Time,
@@ -188,76 +192,76 @@ typedef enum Event_Tag {
   NetworkList,
   ToggleLauncher,
   ToggleSessionScreen,
-} Event_Tag;
+} LAYER_SHELL_IO_Event_Tag;
 
-typedef struct Memory_Body {
+typedef struct {
   double used;
   double total;
-} Memory_Body;
+} LAYER_SHELL_IO_Memory_Body;
 
-typedef struct CpuUsage_Body {
-  struct CArray_usize usage_per_core;
-} CpuUsage_Body;
+typedef struct {
+  LAYER_SHELL_IO_CArray_usize usage_per_core;
+} LAYER_SHELL_IO_CpuUsage_Body;
 
-typedef struct Time_Body {
-  struct CString date;
-  struct CString time;
-} Time_Body;
+typedef struct {
+  LAYER_SHELL_IO_CString date;
+  LAYER_SHELL_IO_CString time;
+} LAYER_SHELL_IO_Time_Body;
 
-typedef struct Workspaces_Body {
-  struct CArray_usize ids;
-  uintptr_t active_id;
-} Workspaces_Body;
+typedef struct {
+  LAYER_SHELL_IO_CArray_usize ids;
+  size_t active_id;
+} LAYER_SHELL_IO_Workspaces_Body;
 
-typedef struct Language_Body {
-  struct CString lang;
-} Language_Body;
+typedef struct {
+  LAYER_SHELL_IO_CString lang;
+} LAYER_SHELL_IO_Language_Body;
 
-typedef struct AppList_Body {
-  struct CArray_App apps;
-} AppList_Body;
+typedef struct {
+  LAYER_SHELL_IO_CArray_App apps;
+} LAYER_SHELL_IO_AppList_Body;
 
-typedef struct Volume_Body {
+typedef struct {
   float volume;
-} Volume_Body;
+} LAYER_SHELL_IO_Volume_Body;
 
-typedef struct CurrentWeather_Body {
+typedef struct {
   float temperature;
-  struct WeatherCode code;
-} CurrentWeather_Body;
+  LAYER_SHELL_IO_WeatherCode code;
+} LAYER_SHELL_IO_CurrentWeather_Body;
 
-typedef struct ForecastWeather_Body {
-  struct CArray_WeatherOnHour hourly;
-  struct CArray_WeatherOnDay daily;
-} ForecastWeather_Body;
+typedef struct {
+  LAYER_SHELL_IO_CArray_WeatherOnHour hourly;
+  LAYER_SHELL_IO_CArray_WeatherOnDay daily;
+} LAYER_SHELL_IO_ForecastWeather_Body;
 
-typedef struct WiFiStatus_Body {
-  struct CString ssid;
+typedef struct {
+  LAYER_SHELL_IO_CString ssid;
   uint8_t strength;
-} WiFiStatus_Body;
+} LAYER_SHELL_IO_WiFiStatus_Body;
 
-typedef struct NetworkList_Body {
-  struct CArray_Network list;
-} NetworkList_Body;
+typedef struct {
+  LAYER_SHELL_IO_CArray_Network list;
+} LAYER_SHELL_IO_NetworkList_Body;
 
-typedef struct Event {
-  Event_Tag tag;
+typedef struct {
+  LAYER_SHELL_IO_Event_Tag tag;
   union {
-    Memory_Body memory;
-    CpuUsage_Body cpu_usage;
-    Time_Body time;
-    Workspaces_Body workspaces;
-    Language_Body language;
-    AppList_Body app_list;
-    Volume_Body volume;
-    CurrentWeather_Body current_weather;
-    ForecastWeather_Body forecast_weather;
-    WiFiStatus_Body wi_fi_status;
-    NetworkList_Body network_list;
+    LAYER_SHELL_IO_Memory_Body memory;
+    LAYER_SHELL_IO_CpuUsage_Body cpu_usage;
+    LAYER_SHELL_IO_Time_Body time;
+    LAYER_SHELL_IO_Workspaces_Body workspaces;
+    LAYER_SHELL_IO_Language_Body language;
+    LAYER_SHELL_IO_AppList_Body app_list;
+    LAYER_SHELL_IO_Volume_Body volume;
+    LAYER_SHELL_IO_CurrentWeather_Body current_weather;
+    LAYER_SHELL_IO_ForecastWeather_Body forecast_weather;
+    LAYER_SHELL_IO_WiFiStatus_Body wi_fi_status;
+    LAYER_SHELL_IO_NetworkList_Body network_list;
   };
-} Event;
+} LAYER_SHELL_IO_Event;
 
-typedef enum Command_Tag {
+typedef enum {
   HyprlandGoToWorkspace,
   AppListReset,
   AppListGoUp,
@@ -271,55 +275,55 @@ typedef enum Command_Tag {
   Logout,
   SpawnNetworkEditor,
   SpawnSystemMonitor,
-} Command_Tag;
+} LAYER_SHELL_IO_Command_Tag;
 
-typedef struct HyprlandGoToWorkspace_Body {
-  uintptr_t idx;
-} HyprlandGoToWorkspace_Body;
+typedef struct {
+  size_t idx;
+} LAYER_SHELL_IO_HyprlandGoToWorkspace_Body;
 
-typedef struct AppListSetSearch_Body {
+typedef struct {
   const uint8_t *search;
-} AppListSetSearch_Body;
+} LAYER_SHELL_IO_AppListSetSearch_Body;
 
-typedef struct SetVolume_Body {
+typedef struct {
   double volume;
-} SetVolume_Body;
+} LAYER_SHELL_IO_SetVolume_Body;
 
-typedef struct Command {
-  Command_Tag tag;
+typedef struct {
+  LAYER_SHELL_IO_Command_Tag tag;
   union {
-    HyprlandGoToWorkspace_Body hyprland_go_to_workspace;
-    AppListSetSearch_Body app_list_set_search;
-    SetVolume_Body set_volume;
+    LAYER_SHELL_IO_HyprlandGoToWorkspace_Body hyprland_go_to_workspace;
+    LAYER_SHELL_IO_AppListSetSearch_Body app_list_set_search;
+    LAYER_SHELL_IO_SetVolume_Body set_volume;
   };
-} Command;
+} LAYER_SHELL_IO_Command;
 
-typedef struct CBytes {
+typedef struct {
   const uint8_t *content;
-  uintptr_t len;
-} CBytes;
+  size_t len;
+} LAYER_SHELL_IO_CBytes;
 
 extern const uint8_t *MAIN_CSS;
 
-extern struct CBytes FOGGY;
+extern LAYER_SHELL_IO_CBytes FOGGY;
 
-extern struct CBytes QUESTION_MARK;
+extern LAYER_SHELL_IO_CBytes QUESTION_MARK;
 
-extern struct CBytes SUNNY;
+extern LAYER_SHELL_IO_CBytes SUNNY;
 
-extern struct CBytes PARTLY_CLOUDY;
+extern LAYER_SHELL_IO_CBytes PARTLY_CLOUDY;
 
-extern struct CBytes RAINY;
+extern LAYER_SHELL_IO_CBytes RAINY;
 
-extern struct CBytes THUNDERSTORM;
+extern LAYER_SHELL_IO_CBytes THUNDERSTORM;
 
-extern struct CBytes POWER;
+extern LAYER_SHELL_IO_CBytes POWER;
 
-extern struct CBytes SNOWY;
+extern LAYER_SHELL_IO_CBytes SNOWY;
 
-extern struct CBytes WIFI;
+extern LAYER_SHELL_IO_CBytes WIFI;
 
-void subscribe(void (*f)(const struct Event*));
+void subscribe(void (*f)(const LAYER_SHELL_IO_Event*));
 
 void init(void);
 
@@ -327,6 +331,10 @@ void spawn_thread(void);
 
 void poll_events(void);
 
-void publish(struct Command c);
+void publish(LAYER_SHELL_IO_Command c);
 
 void init_logger(void);
+
+void on_sigusr1(void);
+
+#endif  /* BINDINGS_H */

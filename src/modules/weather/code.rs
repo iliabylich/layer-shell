@@ -22,59 +22,59 @@ pub enum WeatherCode {
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum Fog {
-    Normal,
-    DepositingRime,
+    FogNormal,
+    FogDepositingRime,
 }
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum Drizzle {
-    Light,
-    Moderate,
-    Dense,
+    DrizzleLight,
+    DrizzleModerate,
+    DrizzleDense,
 }
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum FreezingDrizzle {
-    Light,
-    Dense,
+    FreezingDrizzleLight,
+    FreezingDrizzleDense,
 }
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum Rain {
-    Slight,
-    Moderate,
-    Heavy,
+    RainSlight,
+    RainModerate,
+    RainHeavy,
 }
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum FreezingRain {
-    Light,
-    Heavy,
+    FreezingRainLight,
+    FreezingRainHeavy,
 }
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum SnowFall {
-    Slight,
-    Moderate,
-    Heavy,
+    SnowFallSlight,
+    SnowFallModerate,
+    SnowFallHeavy,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum RainShowers {
-    Slight,
-    Moderate,
-    Violent,
+    RainShowersSlight,
+    RainShowersModerate,
+    RainShowersViolent,
 }
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum SnowShowers {
-    Slight,
-    Heavy,
+    SnowShowersSlight,
+    SnowShowersHeavy,
 }
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub enum ThunderstormWithHail {
-    Sight,
-    Heavy,
+    ThunderstormWithHailSight,
+    ThunderstormWithHailHeavy,
 }

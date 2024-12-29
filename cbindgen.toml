@@ -1,0 +1,7 @@
+language = "C"
+include_guard = "BINDINGS_H"
+usize_is_size_t = true
+style = "type"
+
+[export]
+prefix = "LAYER_SHELL_IO_"
