@@ -41,7 +41,8 @@ impl IPC {
     }
 }
 
-pub fn on_sigusr1() {
+#[no_mangle]
+pub extern "C" fn on_sigusr1() {
     if let Some(message) = Config::read_message() {
         message.execute();
     }

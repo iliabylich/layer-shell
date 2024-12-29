@@ -6,7 +6,7 @@ use crate::Event;
 mod network_list;
 mod wifi_status;
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub(crate) fn connect() -> impl Stream<Item = Event> {
     stream! {
         let Ok((res, conn)) = dbus_tokio::connection::new_system_sync() else {
             log::error!("failed to connect to D-Bus");

@@ -5,7 +5,7 @@ mod cpu_core_info;
 use crate::Event;
 use cpu_core_info::CpuCoreInfo;
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub(crate) fn connect() -> impl Stream<Item = Event> {
     let mut previous: Option<Vec<CpuCoreInfo>> = None;
 
     stream! {

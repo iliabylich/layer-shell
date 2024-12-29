@@ -4,7 +4,7 @@ use async_stream::stream;
 use futures::Stream;
 use tokio::{fs::File, io::AsyncReadExt as _};
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub(crate) fn connect() -> impl Stream<Item = Event> {
     stream! {
         loop {
             match parse().await {

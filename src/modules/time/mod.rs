@@ -3,7 +3,7 @@ use futures::Stream;
 
 use crate::Event;
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub(crate) fn connect() -> impl Stream<Item = Event> {
     stream! {
         loop {
             yield now();

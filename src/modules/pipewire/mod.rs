@@ -41,7 +41,7 @@ fn command_sender() -> &'static Sender<SetVolume> {
     }
 }
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub(crate) fn connect() -> impl Stream<Item = Event> {
     let (ctx, erc) = start_thread();
     unsafe {
         COMMAND_SENDER = Some(ctx);

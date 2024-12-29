@@ -7,13 +7,13 @@ mod code;
 mod mapper;
 
 pub use code::{
-    WeatherCode, Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
-    ThunderstormWithHail,
+    Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
+    ThunderstormWithHail, WeatherCode,
 };
 
 use crate::Event;
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub(crate) fn connect() -> impl Stream<Item = Event> {
     stream! {
         let client = Client::new();
 
