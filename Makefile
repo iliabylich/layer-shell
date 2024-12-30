@@ -19,8 +19,23 @@ CFLAGS += -Wl,-rpath='$$ORIGIN/$(RUST_TARGET_DIR)'
 run: main
 	./main start
 
-main: main.c css.h icons.h widgets.h $(SO) bindings.h
-	$(CC) main.c $(CFLAGS) $(LDFLAGS) -o main
+SRC=$(wildcard *.c)
+HDRS=$(wildcard *.h)
+OBJS = css.o \
+		icons.o \
+		weather-helper.o \
+		weather-window.o \
+		session-window.o \
+		network-window.o \
+		launcher-window.o \
+		htop-window.o \
+		top-bar-window.o
+
+%.o: %.c %.h bindings.h
+	$(CC) -c $(CFLAGS) $< -o $@
+
+main: main.c $(OBJS) $(SO) bindings.h
+	$(CC) main.c $(OBJS) $(CFLAGS) $(LDFLAGS) -o main
 
 target/debug/liblayer_shell_io.so:
 	cargo build
@@ -32,7 +47,7 @@ bindings.h:
 	cbindgen --output bindings.h
 
 clean:
-	rm -f bindings.h $(SO) main
+	rm -f bindings.h $(SO) main *.o
 
 compile_commands.json:
 	# pipx install compiledb

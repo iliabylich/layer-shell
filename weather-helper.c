@@ -1,6 +1,3 @@
-#ifndef WEATHER_H
-#define WEATHER_H
-
 #include "bindings.h"
 #include "gio/gio.h"
 #include "icons.h"
@@ -108,28 +105,26 @@ GIcon *weather_code_to_icon(LAYER_SHELL_IO_WeatherCode code) {
   switch (code.tag) {
   case ClearSky:
   case MainlyClear:
-    return SUNNY_ICON;
+    return get_icon(SUNNY_ICON);
   case PartlyCloudy:
   case Overcast:
-    return PARTLY_CLOUDY_ICON;
+    return get_icon(PARTLY_CLOUDY_ICON);
   case Fog:
-    return FOGGY_ICON;
+    return get_icon(FOGGY_ICON);
   case Drizzle:
   case FreezingDrizzle:
   case Rain:
   case FreezingRain:
   case RainShowers:
-    return RAINY_ICON;
+    return get_icon(RAINY_ICON);
   case SnowFall:
   case SnowGrains:
   case SnowShowers:
-    return SNOWY_ICON;
+    return get_icon(SNOWY_ICON);
   case Thunderstorm:
   case ThunderstormWithHail:
-    return THUNDERSTORM_ICON;
+    return get_icon(THUNDERSTORM_ICON);
   case Unknown:
-    return QUESTION_MARK_ICON;
+    return get_icon(QUESTION_MARK_ICON);
   }
 }
-
-#endif // WEATHER_H
