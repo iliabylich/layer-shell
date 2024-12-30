@@ -303,38 +303,38 @@ typedef struct {
   size_t len;
 } LAYER_SHELL_IO_CBytes;
 
-extern const uint8_t *MAIN_CSS;
+extern LAYER_SHELL_IO_CBytes FOGGY_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes FOGGY;
+extern LAYER_SHELL_IO_CBytes QUESTION_MARK_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes QUESTION_MARK;
+extern LAYER_SHELL_IO_CBytes SUNNY_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes SUNNY;
+extern LAYER_SHELL_IO_CBytes PARTLY_CLOUDY_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes PARTLY_CLOUDY;
+extern LAYER_SHELL_IO_CBytes RAINY_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes RAINY;
+extern LAYER_SHELL_IO_CBytes THUNDERSTORM_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes THUNDERSTORM;
+extern LAYER_SHELL_IO_CBytes POWER_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes POWER;
+extern LAYER_SHELL_IO_CBytes SNOWY_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes SNOWY;
+extern LAYER_SHELL_IO_CBytes WIFI_ICON_BYTES;
 
-extern LAYER_SHELL_IO_CBytes WIFI;
+void layer_shell_io_subscribe(void (*f)(const LAYER_SHELL_IO_Event*));
 
-void subscribe(void (*f)(const LAYER_SHELL_IO_Event*));
+void layer_shell_io_init(void);
 
-void init(void);
+void layer_shell_io_spawn_thread(void);
 
-void spawn_thread(void);
+void layer_shell_io_poll_events(void);
 
-void poll_events(void);
+void layer_shell_io_publish(LAYER_SHELL_IO_Command c);
 
-void publish(LAYER_SHELL_IO_Command c);
+void layer_shell_io_init_logger(void);
 
-void init_logger(void);
+LAYER_SHELL_IO_CString layer_shell_io_main_css(void);
 
-void on_sigusr1(void);
+void layer_shell_io_on_sigusr1(void);
 
 #endif  /* BINDINGS_H */

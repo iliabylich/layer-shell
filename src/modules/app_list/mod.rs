@@ -8,7 +8,7 @@ mod system_app;
 use crate::Event;
 use state::State;
 
-pub async fn connect() -> impl Stream<Item = Event> {
+pub fn connect() -> impl Stream<Item = Event> {
     stream! {
         let mut rx = State::setup();
 

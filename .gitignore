@@ -1,3 +1,6 @@
 /target
 /dbus/interfaces
 main
+compile_commands.json
+.cache
+.vscode

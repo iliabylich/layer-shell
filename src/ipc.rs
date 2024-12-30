@@ -42,7 +42,7 @@ impl IPC {
 }
 
 #[no_mangle]
-pub extern "C" fn on_sigusr1() {
+pub extern "C" fn layer_shell_io_on_sigusr1() {
     if let Some(message) = Config::read_message() {
         message.execute();
     }

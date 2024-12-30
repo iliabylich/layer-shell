@@ -9,7 +9,7 @@ mod state;
 use crate::Event;
 use state::State;
 
-pub async fn connect() -> impl Stream<Item = Event> {
+pub fn connect() -> impl Stream<Item = Event> {
     stream! {
         match State::new().await {
             Ok(mut state) => {

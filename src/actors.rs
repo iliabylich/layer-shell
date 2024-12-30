@@ -17,9 +17,9 @@ pub(crate) async fn spawn_all(tx: Sender<Event>) {
 
 async fn merged_stream() -> impl Stream<Item = Event> {
     futures::stream::empty()
-        .merge(app_list::connect().await)
+        .merge(app_list::connect())
         .merge(cpu::connect())
-        .merge(hyprland::connect().await)
+        .merge(hyprland::connect())
         .merge(memory::connect())
         .merge(pipewire::connect())
         .merge(time::connect())

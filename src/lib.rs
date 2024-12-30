@@ -13,8 +13,8 @@ mod modules;
 
 pub use command::Command;
 pub use event::Event;
+use ffi::CString;
 pub(crate) use global::global;
-pub use ipc::on_sigusr1;
 
 use args::parse_args;
 use ipc::IPC;
@@ -26,12 +26,12 @@ global!(EVENT_SENDER, Sender<Event>);
 global!(SUBSCRIPTIONS, Vec<extern "C" fn(*const Event)>);
 
 #[no_mangle]
-pub extern "C" fn subscribe(f: extern "C" fn(*const Event)) {
+pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
     SUBSCRIPTIONS::get().push(f);
 }
 
 #[no_mangle]
-pub extern "C" fn init() {
+pub extern "C" fn layer_shell_io_init() {
     SUBSCRIPTIONS::set(vec![]);
     if let Err(err) = IPC::prepare() {
         log::error!("Failed to start IPC: {:?}", err);
@@ -48,7 +48,7 @@ pub extern "C" fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn spawn_thread() {
+pub extern "C" fn layer_shell_io_spawn_thread() {
     let (etx, erx) = channel::<Event>();
     let (ctx, crx) = channel::<Command>();
 
@@ -81,7 +81,7 @@ pub extern "C" fn spawn_thread() {
 }
 
 #[no_mangle]
-pub extern "C" fn poll_events() {
+pub extern "C" fn layer_shell_io_poll_events() {
     while let Ok(event) = EVENT_RECEIVER::get().try_recv() {
         log::info!("Received event {:?}", event);
 
@@ -92,7 +92,7 @@ pub extern "C" fn poll_events() {
 }
 
 #[no_mangle]
-pub extern "C" fn publish(c: Command) {
+pub extern "C" fn layer_shell_io_publish(c: Command) {
     if let Err(err) = COMMAND_SENDER::get().send(c) {
         log::error!("failed to publish event: {:?}", err);
     }
@@ -105,12 +105,21 @@ pub(crate) fn publish_event(e: Event) {
 }
 
 #[no_mangle]
-pub extern "C" fn init_logger() {
+pub extern "C" fn layer_shell_io_init_logger() {
     pretty_env_logger::init();
 }
 
 #[no_mangle]
-pub static mut MAIN_CSS: *const u8 = concat!(include_str!("../ui/main.css"), "\0").as_ptr();
+pub extern "C" fn layer_shell_io_main_css() -> CString {
+    let home = std::env::var("HOME").unwrap();
+
+    let theme_filepath = format!("{}/.theme.css", home);
+    let theme = std::fs::read_to_string(theme_filepath).unwrap_or_default();
+    let builtin = include_str!("../main.css");
+    let css = format!("{}\n{}", theme, builtin);
+
+    css.into()
+}
 
 pub mod icons {
     use crate::ffi::CBytes;
@@ -122,21 +131,21 @@ pub mod icons {
     }
 
     #[no_mangle]
-    pub static mut FOGGY: CBytes = icon!("../icons/foggy.png");
+    pub static mut FOGGY_ICON_BYTES: CBytes = icon!("../icons/foggy.png");
     #[no_mangle]
-    pub static mut QUESTION_MARK: CBytes = icon!("../icons/question_mark.png");
+    pub static mut QUESTION_MARK_ICON_BYTES: CBytes = icon!("../icons/question_mark.png");
     #[no_mangle]
-    pub static mut SUNNY: CBytes = icon!("../icons/sunny.png");
+    pub static mut SUNNY_ICON_BYTES: CBytes = icon!("../icons/sunny.png");
     #[no_mangle]
-    pub static mut PARTLY_CLOUDY: CBytes = icon!("../icons/partly_cloudy.png");
+    pub static mut PARTLY_CLOUDY_ICON_BYTES: CBytes = icon!("../icons/partly_cloudy.png");
     #[no_mangle]
-    pub static mut RAINY: CBytes = icon!("../icons/rainy.png");
+    pub static mut RAINY_ICON_BYTES: CBytes = icon!("../icons/rainy.png");
     #[no_mangle]
-    pub static mut THUNDERSTORM: CBytes = icon!("../icons/thunderstorm.png");
+    pub static mut THUNDERSTORM_ICON_BYTES: CBytes = icon!("../icons/thunderstorm.png");
     #[no_mangle]
-    pub static mut POWER: CBytes = icon!("../icons/power.png");
+    pub static mut POWER_ICON_BYTES: CBytes = icon!("../icons/power.png");
     #[no_mangle]
-    pub static mut SNOWY: CBytes = icon!("../icons/snowy.png");
+    pub static mut SNOWY_ICON_BYTES: CBytes = icon!("../icons/snowy.png");
     #[no_mangle]
-    pub static mut WIFI: CBytes = icon!("../icons/wifi.png");
+    pub static mut WIFI_ICON_BYTES: CBytes = icon!("../icons/wifi.png");
 }
