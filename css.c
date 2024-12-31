@@ -5,13 +5,14 @@
 #include "gtk/gtkcssprovider.h"
 #include <stdio.h>
 
-static void on_css_parse_error(GtkCssProvider *self, GtkCssSection *section,
-                               GError *error, gpointer user_data) {
+static void on_css_parse_error(__attribute__((unused)) GtkCssProvider *self,
+                               GtkCssSection *section, GError *error,
+                               __attribute__((unused)) gpointer user_data) {
   fprintf(stderr, "Failed to parse CSS: %s %s\n",
           gtk_css_section_to_string(section), error->message);
 }
 
-void load_css() {
+void load_css(void) {
   GtkCssProvider *provider = gtk_css_provider_new();
   g_signal_connect(provider, "parsing-error", G_CALLBACK(on_css_parse_error),
                    NULL);

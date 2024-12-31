@@ -82,10 +82,11 @@ static void launcher_input_changed(GtkEditable *editable) {
       .tag = AppListSetSearch, .app_list_set_search = {.search = search}});
 }
 
-static gboolean on_launcher_window_key_press(GtkEventControllerKey *self,
-                                             guint keyval, guint keycode,
-                                             GdkModifierType state,
-                                             gpointer user_data) {
+static gboolean on_launcher_window_key_press(
+    __attribute__((unused)) GtkEventControllerKey *self, guint keyval,
+    __attribute__((unused)) guint keycode,
+    __attribute__((unused)) GdkModifierType state,
+    __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     toggle_launcher_window();
   } else if (strcmp(gdk_keyval_name(keyval), "Up") == 0) {

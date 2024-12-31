@@ -3,7 +3,7 @@ BUILD_TYPE ?= debug
 RUST_TARGET_DIR = target/$(BUILD_TYPE)
 SO = $(RUST_TARGET_DIR)/liblayer_shell_io.so
 
-CFLAGS = -O3 -g
+CFLAGS = -O3 -g -Wall -Wextra -Werror
 
 CFLAGS += `pkg-config --cflags gtk4`
 CFLAGS += `pkg-config --cflags gtk4-layer-shell-0`

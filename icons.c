@@ -2,7 +2,6 @@
 #include "bindings.h"
 #include "glib.h"
 #include <stdio.h>
-#include <time.h>
 
 GIcon *foggy_icon;
 GIcon *question_mark_icon;
@@ -16,7 +15,6 @@ GIcon *wifi_icon;
 
 GIcon *load_texture(LAYER_SHELL_IO_CBytes from) {
   GBytes *bytes = g_bytes_new_static(from.content, from.len);
-  GError *err = NULL;
   return g_bytes_icon_new(bytes);
 }
 
@@ -55,4 +53,6 @@ GIcon *get_icon(icon_t icon_name) {
   case WIFI_ICON:
     return wifi_icon;
   }
+
+  return NULL;
 }

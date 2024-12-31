@@ -28,9 +28,12 @@ void toggle_htop_window(void) {
                          !gtk_widget_get_visible(GTK_WIDGET(htop_window)));
 }
 
-void on_htop_window_key_press(GtkEventControllerKey *self, guint keyval,
-                              guint keycode, GdkModifierType state,
-                              gpointer user_data) {
+void on_htop_window_key_press(__attribute__((unused))
+                              GtkEventControllerKey *self,
+                              guint keyval,
+                              __attribute__((unused)) guint keycode,
+                              __attribute__((unused)) GdkModifierType state,
+                              __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     toggle_htop_window();
   }

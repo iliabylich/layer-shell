@@ -60,10 +60,11 @@ void init_network_window(void) {
   gtk_box_append(layout, GTK_WIDGET(network_exit_row.wrapper));
 }
 
-static void on_network_window_key_press(GtkEventControllerKey *self,
-                                        guint keyval, guint keycode,
-                                        GdkModifierType state,
-                                        gpointer user_data) {
+static void
+on_network_window_key_press(__attribute__((unused)) GtkEventControllerKey *self,
+                            guint keyval, __attribute__((unused)) guint keycode,
+                            __attribute__((unused)) GdkModifierType state,
+                            __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     toggle_network_window();
   }
@@ -113,8 +114,11 @@ static void network_row_restore_label(gpointer user_data) {
   network_row_safe_point_free(safepoint);
 }
 
-static void on_network_row_click(GtkGestureClick *self, gint n_press, gdouble x,
-                                 gdouble y, gpointer user_data) {
+static void on_network_row_click(__attribute__((unused)) GtkGestureClick *self,
+                                 __attribute__((unused)) gint n_press,
+                                 __attribute__((unused)) gdouble x,
+                                 __attribute__((unused)) gdouble y,
+                                 gpointer user_data) {
   size_t row_idx = (size_t)(user_data);
   network_row_t row = networks_rows[row_idx];
   const char *ip = gtk_widget_get_tooltip_text(GTK_WIDGET(row.label));
@@ -188,7 +192,7 @@ void activate_network_window(GApplication *app) {
   layer_shell_io_subscribe(on_network_window_event);
 }
 
-void toggle_network_window() {
+void toggle_network_window(void) {
   gtk_widget_set_visible(GTK_WIDGET(network_window),
                          !gtk_widget_get_visible(GTK_WIDGET(network_window)));
 }

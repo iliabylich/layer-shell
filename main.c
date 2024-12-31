@@ -48,7 +48,7 @@ void on_app_activate(GApplication *app) {
   layer_shell_io_spawn_thread();
 }
 
-int main() {
+int main(void) {
   layer_shell_io_init_logger();
   layer_shell_io_init();
 

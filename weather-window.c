@@ -15,7 +15,7 @@ weather_row_t weather_hourly_rows[WEATHER_HOURLY_ROWS_COUNT];
 #define WEATHER_DAILY_ROWS_COUNT 6
 weather_row_t weather_daily_rows[WEATHER_DAILY_ROWS_COUNT];
 
-static weather_row_t weather_row_new() {
+static weather_row_t weather_row_new(void) {
   GtkBox *row = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
   GtkLabel *label = GTK_LABEL(gtk_label_new("..."));
   GtkImage *image = GTK_IMAGE(gtk_image_new());
@@ -56,15 +56,16 @@ void init_weather_window(void) {
   }
 }
 
-void toggle_weather_window() {
+void toggle_weather_window(void) {
   gtk_widget_set_visible(GTK_WIDGET(weather_window),
                          !gtk_widget_get_visible(GTK_WIDGET(weather_window)));
 }
 
-static void on_weather_window_key_press(GtkEventControllerKey *self,
-                                        guint keyval, guint keycode,
-                                        GdkModifierType state,
-                                        gpointer user_data) {
+static void
+on_weather_window_key_press(__attribute__((unused)) GtkEventControllerKey *self,
+                            guint keyval, __attribute__((unused)) guint keycode,
+                            __attribute__((unused)) GdkModifierType state,
+                            __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     toggle_weather_window();
   }

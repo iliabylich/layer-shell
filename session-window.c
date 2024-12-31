@@ -41,7 +41,7 @@ void init_session_window(void) {
   gtk_box_append(layout, GTK_WIDGET(logout_button));
 }
 
-void toggle_session_window() {
+void toggle_session_window(void) {
   gtk_widget_set_visible(GTK_WIDGET(session_window),
                          !gtk_widget_get_visible(GTK_WIDGET(session_window)));
 }
@@ -63,10 +63,11 @@ static void session_logout(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = Logout});
 }
 
-static void on_session_window_key_press(GtkEventControllerKey *self,
-                                        guint keyval, guint keycode,
-                                        GdkModifierType state,
-                                        gpointer user_data) {
+static void
+on_session_window_key_press(__attribute__((unused)) GtkEventControllerKey *self,
+                            guint keyval, __attribute__((unused)) guint keycode,
+                            __attribute__((unused)) GdkModifierType state,
+                            __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     toggle_session_window();
   }

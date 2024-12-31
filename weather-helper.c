@@ -19,6 +19,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case FogNormal:
       return "Fog (Normal)";
     }
+    break;
   }
   case Drizzle: {
     switch (code.drizzle) {
@@ -29,6 +30,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case DrizzleDense:
       return "Drizzle (Dense)";
     }
+    break;
   }
   case FreezingDrizzle: {
     switch (code.freezing_drizzle) {
@@ -37,6 +39,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case FreezingDrizzleDense:
       return "Freezing Drizzle (Dense)";
     }
+    break;
   }
   case Rain: {
     switch (code.rain) {
@@ -47,6 +50,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case RainHeavy:
       return "Rain (Heavy)";
     }
+    break;
   }
   case FreezingRain: {
     switch (code.freezing_rain) {
@@ -55,6 +59,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case FreezingRainHeavy:
       return "Freezing Rain (Heavy)";
     }
+    break;
   }
   case SnowFall: {
     switch (code.snow_fall) {
@@ -65,6 +70,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case SnowFallHeavy:
       return "Snow Fall (Heavy)";
     }
+    break;
   }
   case SnowGrains:
     return "Snow Grains";
@@ -77,6 +83,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case RainShowersViolent:
       return "Rain Showers (Violent)";
     }
+    break;
   }
   case SnowShowers: {
     switch (code.snow_showers) {
@@ -85,6 +92,7 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case SnowShowersHeavy:
       return "Snow Showers (Heavy)";
     }
+    break;
   }
   case Thunderstorm:
     return "Thunderstorm";
@@ -95,10 +103,13 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     case ThunderstormWithHailHeavy:
       return "Thunderstorm With Hail (Heavy)";
     }
+    break;
   }
   case Unknown:
     return "Unknown";
   }
+
+  return NULL;
 }
 
 GIcon *weather_code_to_icon(LAYER_SHELL_IO_WeatherCode code) {
@@ -127,4 +138,6 @@ GIcon *weather_code_to_icon(LAYER_SHELL_IO_WeatherCode code) {
   case Unknown:
     return get_icon(QUESTION_MARK_ICON);
   }
+
+  return NULL;
 }

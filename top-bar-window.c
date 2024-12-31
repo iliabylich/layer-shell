@@ -184,20 +184,21 @@ void init_top_bar_window(void) {
   gtk_box_append(right, GTK_WIDGET(session_widget));
 }
 
-static void on_workspace_button_click(GtkButton *self, gpointer data) {
+static void on_workspace_button_click(__attribute__((unused)) GtkButton *self,
+                                      gpointer data) {
   size_t idx = (size_t)data;
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = HyprlandGoToWorkspace, .hyprland_go_to_workspace = {idx}});
 }
 
-static void on_sound_scale_changed() {
+static void on_sound_scale_changed(void) {
   GtkAdjustment *adj = gtk_range_get_adjustment(GTK_RANGE(sound_scale));
   double value = CLAMP(gtk_adjustment_get_value(adj), 0.0, 1.0);
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = SetVolume, .set_volume = {.volume = value}});
 }
 
-static void spawn_system_monitor() {
+static void spawn_system_monitor(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnSystemMonitor});
 }
 
