@@ -18,7 +18,7 @@ pub(crate) use global::global;
 
 use args::parse_args;
 use ipc::IPC;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 global!(COMMAND_SENDER, Sender<Command>);
 global!(EVENT_RECEIVER, Receiver<Event>);
@@ -49,8 +49,8 @@ pub extern "C" fn layer_shell_io_init() {
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_spawn_thread() {
-    let (etx, erx) = channel::<Event>();
-    let (ctx, crx) = channel::<Command>();
+    let (etx, erx) = channel::<Event>(100);
+    let (ctx, crx) = channel::<Command>(100);
 
     COMMAND_SENDER::set(ctx);
     EVENT_RECEIVER::set(erx);
@@ -93,13 +93,13 @@ pub extern "C" fn layer_shell_io_poll_events() {
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_publish(c: Command) {
-    if let Err(err) = COMMAND_SENDER::get().send(c) {
+    if let Err(err) = COMMAND_SENDER::get().blocking_send(c) {
         log::error!("failed to publish event: {:?}", err);
     }
 }
 
 pub(crate) fn publish_event(e: Event) {
-    if let Err(err) = EVENT_SENDER::get().send(e) {
+    if let Err(err) = EVENT_SENDER::get().blocking_send(e) {
         log::error!("failed to publish event: {:?}", err);
     }
 }

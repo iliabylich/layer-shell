@@ -3,7 +3,7 @@ use crate::modules::{
     hyprland::command::go_to_workspace,
     pipewire::command::set_volume,
 };
-use std::sync::mpsc::Receiver;
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -27,12 +27,9 @@ pub enum Command {
 
 unsafe impl Send for Command {}
 
-pub(crate) async fn start_processing(rx: Receiver<Command>) {
-    loop {
-        while let Ok(command) = rx.try_recv() {
-            command.execute().await;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+pub(crate) async fn start_processing(mut rx: Receiver<Command>) {
+    while let Some(command) = rx.recv().await {
+        command.execute().await;
     }
 }
 
