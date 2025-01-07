@@ -28,7 +28,7 @@ impl CpuCoreInfo {
             .iter()
             .map(|n| n.parse::<usize>())
             .collect::<Result<Vec<_>, _>>()?;
-        let idle = times[3];
+        let idle = times[3] + times[4];
         let total = times.iter().sum();
         Ok(Self { id, idle, total })
     }
