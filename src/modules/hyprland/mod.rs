@@ -1,33 +1,41 @@
-use async_stream::stream;
-use futures::{pin_mut, Stream, StreamExt};
+use std::io::{BufRead as _, BufReader};
 
-pub(crate) mod command;
+mod command;
+mod connection;
 mod raw_event;
-mod raw_stream;
 mod state;
 
-use crate::Event;
-use state::State;
+pub(crate) use command::go_to_workspace;
 
-pub fn connect() -> impl Stream<Item = Event> {
-    stream! {
-        match State::new().await {
-            Ok(mut state) => {
-                let raw_stream = raw_stream::raw_events_stream().await;
-                pin_mut!(raw_stream);
-
-                yield state.as_workspaces_changed_event();
-                yield state.as_language_changed_event();
-
-                while let Some(raw_event) = raw_stream.next().await {
-                    let event = state.apply(raw_event);
-                    yield event;
-                }
+pub(crate) fn setup() {
+    std::thread::spawn(move || {
+        let socket = match connection::connect_to_socket() {
+            Ok(socket) => socket,
+            Err(err) => {
+                log::error!("failed to connect to Hyprland socket: {:?}", err);
+                std::process::exit(1)
             }
+        };
+
+        let mut state = match state::State::new() {
+            Ok(state) => state,
             Err(err) => {
                 log::error!("failed to get initial Hyprland state: {:?}", err);
+                std::process::exit(1)
+            }
+        };
+
+        state.as_language_changed_event().emit();
+        state.as_workspaces_changed_event().emit();
+
+        let buffered = BufReader::new(socket);
+        let mut lines = buffered.lines();
+
+        while let Some(Ok(line)) = lines.next() {
+            if let Some(event) = raw_event::RawEvent::parse(line) {
+                let event = state.apply(event);
+                event.emit();
             }
         }
-
-    }
+    });
 }

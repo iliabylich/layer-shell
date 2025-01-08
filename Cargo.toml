@@ -11,27 +11,11 @@ anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"
-tokio = { version = "1", default-features = false, features = [
-    "rt",
-    "macros",
-    "time",
-    "fs",
-    "io-util",
-    "sync",
-    "net",
-    "process",
-] }
-futures = "0.3"
 paste = "1"
-reqwest = { version = "0.12", default-features = false, features = [
-    "native-tls",
-    "json",
-] }
 chrono = { version = "0.4", default-features = false, features = [
     "serde",
     "clock",
 ] }
-async-stream = "0.3"
 clap = { version = "4.5", default-features = false, features = [
     "std",
     "help",
@@ -39,11 +23,11 @@ clap = { version = "4.5", default-features = false, features = [
     "suggestions",
 ] }
 clap_complete = "4.5"
-tokio-stream = "0.1"
-dbus-tokio = "0.7"
 dbus = "0.9"
 pipewire = "0.8"
 pretty_env_logger = "0.5"
+threadpool = "1.8.1"
+ureq = { version = "2.12", features = ["json"] }
 
 [profile.release]
 opt-level = "z"

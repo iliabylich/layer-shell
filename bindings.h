@@ -8,53 +8,36 @@
 #include <stdlib.h>
 
 typedef enum {
+  ClearSky,
+  MainlyClear,
+  PartlyCloudy,
+  Overcast,
+  FogNormal,
+  FogDepositingRime,
   DrizzleLight,
   DrizzleModerate,
   DrizzleDense,
-} LAYER_SHELL_IO_Drizzle;
-
-typedef enum {
-  FogNormal,
-  FogDepositingRime,
-} LAYER_SHELL_IO_Fog;
-
-typedef enum {
   FreezingDrizzleLight,
   FreezingDrizzleDense,
-} LAYER_SHELL_IO_FreezingDrizzle;
-
-typedef enum {
-  FreezingRainLight,
-  FreezingRainHeavy,
-} LAYER_SHELL_IO_FreezingRain;
-
-typedef enum {
   RainSlight,
   RainModerate,
   RainHeavy,
-} LAYER_SHELL_IO_Rain;
-
-typedef enum {
-  RainShowersSlight,
-  RainShowersModerate,
-  RainShowersViolent,
-} LAYER_SHELL_IO_RainShowers;
-
-typedef enum {
+  FreezingRainLight,
+  FreezingRainHeavy,
   SnowFallSlight,
   SnowFallModerate,
   SnowFallHeavy,
-} LAYER_SHELL_IO_SnowFall;
-
-typedef enum {
+  SnowGrains,
+  RainShowersSlight,
+  RainShowersModerate,
+  RainShowersViolent,
   SnowShowersSlight,
   SnowShowersHeavy,
-} LAYER_SHELL_IO_SnowShowers;
-
-typedef enum {
+  Thunderstorm,
   ThunderstormWithHailSight,
   ThunderstormWithHailHeavy,
-} LAYER_SHELL_IO_ThunderstormWithHail;
+  Unknown,
+} LAYER_SHELL_IO_WeatherCode;
 
 typedef struct {
   size_t *ptr;
@@ -92,58 +75,6 @@ typedef struct {
   LAYER_SHELL_IO_App *ptr;
   size_t len;
 } LAYER_SHELL_IO_CArray_App;
-
-typedef enum {
-  ClearSky,
-  MainlyClear,
-  PartlyCloudy,
-  Overcast,
-  Fog,
-  Drizzle,
-  FreezingDrizzle,
-  Rain,
-  FreezingRain,
-  SnowFall,
-  SnowGrains,
-  RainShowers,
-  SnowShowers,
-  Thunderstorm,
-  ThunderstormWithHail,
-  Unknown,
-} LAYER_SHELL_IO_WeatherCode_Tag;
-
-typedef struct {
-  LAYER_SHELL_IO_WeatherCode_Tag tag;
-  union {
-    struct {
-      LAYER_SHELL_IO_Fog fog;
-    };
-    struct {
-      LAYER_SHELL_IO_Drizzle drizzle;
-    };
-    struct {
-      LAYER_SHELL_IO_FreezingDrizzle freezing_drizzle;
-    };
-    struct {
-      LAYER_SHELL_IO_Rain rain;
-    };
-    struct {
-      LAYER_SHELL_IO_FreezingRain freezing_rain;
-    };
-    struct {
-      LAYER_SHELL_IO_SnowFall snow_fall;
-    };
-    struct {
-      LAYER_SHELL_IO_RainShowers rain_showers;
-    };
-    struct {
-      LAYER_SHELL_IO_SnowShowers snow_showers;
-    };
-    struct {
-      LAYER_SHELL_IO_ThunderstormWithHail thunderstorm_with_hail;
-    };
-  };
-} LAYER_SHELL_IO_WeatherCode;
 
 typedef struct {
   LAYER_SHELL_IO_CString hour;
@@ -329,7 +260,7 @@ void layer_shell_io_spawn_thread(void);
 
 void layer_shell_io_poll_events(void);
 
-void layer_shell_io_publish(LAYER_SHELL_IO_Command c);
+void layer_shell_io_publish(LAYER_SHELL_IO_Command command);
 
 void layer_shell_io_init_logger(void);
 

@@ -4,13 +4,13 @@ macro_rules! global {
         struct $name;
 
         paste::paste! {
-            #[allow(non_upper_case_globals)]
+            #[expect(non_upper_case_globals)]
             static mut [< $name Instance >]: Option<$t> = None;
 
             impl $name {
                 fn get() -> &'static mut $t {
                     unsafe {
-                        #[allow(static_mut_refs)]
+                        #[expect(static_mut_refs)]
                         match [< $name Instance >].as_mut() {
                             Some(value) => value,
                             None => {

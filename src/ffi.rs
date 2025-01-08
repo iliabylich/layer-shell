@@ -7,7 +7,7 @@ impl From<String> for CString {
     fn from(s: String) -> Self {
         let cstring = std::ffi::CString::new(s).unwrap();
         Self {
-            ptr: cstring.into_raw().cast(),
+            ptr: cstring.into_raw(),
         }
     }
 }

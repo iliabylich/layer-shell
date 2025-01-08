@@ -1,4 +1,4 @@
-use crate::{global, publish_event, Event};
+use crate::{global, Event};
 use anyhow::{Context, Result};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -12,8 +12,8 @@ impl IPCMessage {
     fn execute(self) {
         match self {
             IPCMessage::Exit => std::process::exit(0),
-            IPCMessage::ToggleLauncher => publish_event(Event::ToggleLauncher),
-            IPCMessage::ToggleSessionScreen => publish_event(Event::ToggleSessionScreen),
+            IPCMessage::ToggleLauncher => Event::ToggleLauncher.emit(),
+            IPCMessage::ToggleSessionScreen => Event::ToggleSessionScreen.emit(),
         }
     }
 }

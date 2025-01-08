@@ -1,21 +1,9 @@
-use async_stream::stream;
-use futures::Stream;
-
-pub(crate) mod command;
+mod command;
 mod state;
 mod system_app;
 
-use crate::Event;
-use state::State;
+pub(crate) use command::{exec_selected, go_down, go_up, reset, set_search};
 
-pub fn connect() -> impl Stream<Item = Event> {
-    stream! {
-        let mut rx = State::setup();
-
-        loop {
-            while let Some(event) = rx.recv().await {
-                yield event;
-            }
-        }
-    }
+pub(crate) fn setup() {
+    state::State::setup();
 }

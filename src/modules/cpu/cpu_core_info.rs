@@ -1,5 +1,4 @@
 use anyhow::{Context as _, Result};
-use tokio::{fs::File, io::AsyncReadExt as _};
 
 pub(crate) struct CpuCoreInfo {
     id: usize,
@@ -33,14 +32,9 @@ impl CpuCoreInfo {
         Ok(Self { id, idle, total })
     }
 
-    async fn parse_current() -> Result<Vec<Self>> {
-        let mut f = File::open("/proc/stat")
-            .await
-            .context("failed to open /proc/stat")?;
-        let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .await
-            .context("failed to read /proc/stat")?;
+    fn parse_current() -> Result<Vec<Self>> {
+        let contents =
+            std::fs::read_to_string("/proc/stat").context("failed to read /proc/stat")?;
 
         contents
             .split("\n")
@@ -52,10 +46,10 @@ impl CpuCoreInfo {
             .collect::<Result<Vec<_>, _>>()
     }
 
-    pub(crate) async fn parse_current_comparing_to(
+    pub(crate) fn parse_current_comparing_to(
         previous: &mut Option<Vec<CpuCoreInfo>>,
     ) -> Result<Vec<usize>> {
-        let current = Self::parse_current().await?;
+        let current = Self::parse_current()?;
         let count = current.len();
 
         if let Some(previous_owned) = previous.take() {

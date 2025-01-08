@@ -1,36 +1,20 @@
-use async_stream::stream;
-use futures::Stream;
-use reqwest::Client;
-
 mod client;
 mod code;
 mod mapper;
 
-pub use code::{
-    Drizzle, Fog, FreezingDrizzle, FreezingRain, Rain, RainShowers, SnowFall, SnowShowers,
-    ThunderstormWithHail, WeatherCode,
-};
+pub use code::WeatherCode;
 
-use crate::Event;
+pub(crate) fn tick() {
+    match client::get_weather() {
+        Ok(res) => {
+            let event = mapper::map_current(res.current);
+            event.emit();
 
-pub(crate) fn connect() -> impl Stream<Item = Event> {
-    stream! {
-        let client = Client::new();
-
-        loop {
-            match client::get_weather(&client).await {
-                Ok(res) => {
-                    let current = mapper::map_current(res.current);
-                    yield current;
-                    match mapper::map_forecast(res.hourly, res.daily) {
-                        Ok(forecast) => yield forecast,
-                        Err(err) => log::error!("{:?}", err),
-                    }
-                }
+            match mapper::map_forecast(res.hourly, res.daily) {
+                Ok(event) => event.emit(),
                 Err(err) => log::error!("{:?}", err),
             }
-
-            tokio::time::sleep(std::time::Duration::from_secs(100)).await;
         }
+        Err(err) => log::error!("{:?}", err),
     }
 }

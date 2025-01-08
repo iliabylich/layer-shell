@@ -1,12 +1,12 @@
 use crate::dbus::{gen::nm::OrgFreedesktopNetworkManager, nm::Device};
 use anyhow::{Context, Result};
-use dbus::nonblock::{Proxy, SyncConnection};
+use dbus::blocking::{Proxy, SyncConnection};
 use std::time::Duration;
 
 pub struct NetworkManager;
 
 impl NetworkManager {
-    pub async fn get_devices(conn: &SyncConnection) -> Result<Vec<Device>> {
+    pub fn get_devices(conn: &SyncConnection) -> Result<Vec<Device>> {
         let paths = Proxy::new(
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
@@ -14,7 +14,6 @@ impl NetworkManager {
             conn,
         )
         .get_devices()
-        .await
         .context("failed to get devices")?;
 
         Ok(paths
@@ -23,7 +22,7 @@ impl NetworkManager {
             .collect::<Vec<_>>())
     }
 
-    pub async fn get_device_by_ip_iface(conn: &SyncConnection, iface: &str) -> Result<Device> {
+    pub fn get_device_by_ip_iface(conn: &SyncConnection, iface: &str) -> Result<Device> {
         let path = Proxy::new(
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
@@ -31,7 +30,6 @@ impl NetworkManager {
             conn,
         )
         .get_device_by_ip_iface(iface)
-        .await
         .context("failed to call GetDeviceByIface on NetworkManager")?;
 
         Ok(Device { path })

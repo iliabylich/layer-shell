@@ -2,7 +2,7 @@ use crate::dbus::gen::nm_ip4_config::OrgFreedesktopNetworkManagerIP4Config;
 use anyhow::{Context, Result};
 use dbus::{
     arg::{RefArg, Variant},
-    nonblock::{Proxy, SyncConnection},
+    blocking::{Proxy, SyncConnection},
     Path,
 };
 use std::{collections::HashMap, time::Duration};
@@ -12,7 +12,7 @@ pub struct Ip4Config {
 }
 
 impl Ip4Config {
-    async fn address_data(
+    fn address_data(
         &self,
         conn: &SyncConnection,
     ) -> Result<Vec<HashMap<String, Variant<Box<dyn RefArg>>>>> {
@@ -23,12 +23,11 @@ impl Ip4Config {
             conn,
         )
         .address_data()
-        .await
         .context("failed to get AddressData property on Ip4Config")
     }
 
-    pub async fn address(&self, conn: &SyncConnection) -> Result<String> {
-        let address_data = self.address_data(conn).await?;
+    pub fn address(&self, conn: &SyncConnection) -> Result<String> {
+        let address_data = self.address_data(conn)?;
         let address_data = address_data.first().context("expected at least 1 item")?;
         let address = address_data.get("address").context("no address key")?;
         let address = address.as_str().context("address is not a string")?;

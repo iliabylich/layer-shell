@@ -1,4 +1,4 @@
-use crate::modules::pipewire::{command_sender, store::Store};
+use crate::modules::pipewire::{store::Store, COMMAND_SENDER};
 use anyhow::{Context, Result};
 use pipewire::{
     node::Node,
@@ -11,7 +11,7 @@ use pipewire::{
 use std::rc::Rc;
 
 pub(crate) fn set_volume(volume: f64) {
-    if let Err(err) = command_sender().send(SetVolume(volume)) {
+    if let Err(err) = COMMAND_SENDER::get().send(SetVolume(volume)) {
         log::error!("Faied to send PW command to PW thread: {:?}", err);
     }
 }

@@ -1,9 +1,10 @@
 use crate::event::AppIcon;
 use anyhow::{Context as _, Result};
-use std::{collections::HashMap, path::PathBuf, process::Stdio};
-use tokio::{
-    io::{AsyncBufReadExt as _, BufReader},
-    process::Command,
+use std::{
+    collections::HashMap,
+    io::{BufRead as _, BufReader},
+    path::PathBuf,
+    process::Stdio,
 };
 
 #[derive(Debug, Clone)]
@@ -14,13 +15,13 @@ pub(crate) struct SystemApp {
 }
 
 impl SystemApp {
-    pub(crate) async fn parse_all() -> Result<Vec<SystemApp>> {
-        let filepaths = desktop_files().await?;
+    pub(crate) fn parse_all() -> Result<Vec<SystemApp>> {
+        let filepaths = desktop_files()?;
 
         let mut apps = HashMap::new();
 
         for path in filepaths {
-            match SystemApp::parse(&path).await {
+            match SystemApp::parse(&path) {
                 Ok(desktop_entry) => {
                     apps.insert(desktop_entry.name.clone(), desktop_entry);
                 }
@@ -36,17 +37,15 @@ impl SystemApp {
         Ok(apps)
     }
 
-    async fn parse(path: &PathBuf) -> Result<SystemApp> {
-        let f = tokio::fs::File::open(path)
-            .await
-            .with_context(|| format!("failed to open {path:?}"))?;
+    fn parse(path: &PathBuf) -> Result<SystemApp> {
+        let f = std::fs::File::open(path).with_context(|| format!("failed to open {path:?}"))?;
 
         let mut lines = BufReader::new(f).lines();
         let mut in_desktop_entry_section = false;
         let mut name = None;
         let mut exec = None;
         let mut icon = None;
-        while let Ok(Some(line)) = lines.next_line().await {
+        while let Some(Ok(line)) = lines.next() {
             if line == "[Desktop Entry]" {
                 in_desktop_entry_section = true
             } else if in_desktop_entry_section {
@@ -77,7 +76,7 @@ impl SystemApp {
 
     pub(crate) fn exec(&self) {
         let parts = self.exec.split(" ").map(|s| s.trim()).collect::<Vec<_>>();
-        let child = Command::new(parts[0])
+        let child = std::process::Command::new(parts[0])
             .args(&parts[1..])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -88,17 +87,13 @@ impl SystemApp {
         }
     }
 }
-
-async fn desktop_files() -> Result<Vec<PathBuf>> {
+fn desktop_files() -> Result<Vec<PathBuf>> {
     let mut out = vec![];
 
     for dir in [global_dir(), user_dir()?] {
-        if let Ok(mut readdir) = tokio::fs::read_dir(&dir).await {
-            while let Some(file) = readdir
-                .next_entry()
-                .await
-                .with_context(|| format!("failed to get file list of {dir}"))?
-            {
+        if let Ok(readdir) = std::fs::read_dir(&dir) {
+            for entry in readdir {
+                let file = entry.with_context(|| format!("failed to get file list of {dir}"))?;
                 let path = file.path();
                 if path.extension().is_some_and(|ext| ext == "desktop") {
                     out.push(path);

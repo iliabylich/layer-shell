@@ -1,32 +1,28 @@
-use async_stream::stream;
-use futures::Stream;
-
-use crate::Event;
+use crate::global::global;
 
 mod network_list;
 mod wifi_status;
 
-pub(crate) fn connect() -> impl Stream<Item = Event> {
-    stream! {
-        let Ok((res, conn)) = dbus_tokio::connection::new_system_sync() else {
-            log::error!("failed to connect to D-Bus");
-            return;
-        };
+global!(CONNECTION, dbus::blocking::SyncConnection);
 
-        tokio::spawn(async {
-            let err = res.await;
-            log::error!("Lost connection to D-Bus: {:?}", err);
-        });
-
-        loop {
-            match network_list::get(conn.as_ref()).await {
-                Ok(event) => yield event,
-                Err(err) => log::error!("{:?}", err),
-            }
-
-            yield wifi_status::get(conn.as_ref()).await;
-
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+pub(crate) fn setup() {
+    let conn = match dbus::blocking::SyncConnection::new_system() {
+        Ok(conn) => conn,
+        Err(err) => {
+            log::error!("Failed to connect to D-Bus: {:?}", err);
+            std::process::exit(1);
         }
+    };
+
+    CONNECTION::set(conn);
+}
+
+pub(crate) fn tick() {
+    match network_list::get(CONNECTION::get()) {
+        Ok(event) => event.emit(),
+        Err(err) => log::error!("{:?}", err),
     }
+
+    let event = wifi_status::get(CONNECTION::get());
+    event.emit();
 }

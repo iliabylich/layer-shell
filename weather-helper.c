@@ -3,7 +3,7 @@
 #include "icons.h"
 
 const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
-  switch (code.tag) {
+  switch (code) {
   case ClearSky:
     return "Clear Sky";
   case MainlyClear:
@@ -12,99 +12,54 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
     return "Partly Cloudy";
   case Overcast:
     return "Overcast";
-  case Fog: {
-    switch (code.fog) {
-    case FogDepositingRime:
-      return "Fog (Depositing Rime)";
-    case FogNormal:
-      return "Fog (Normal)";
-    }
-    break;
-  }
-  case Drizzle: {
-    switch (code.drizzle) {
-    case DrizzleLight:
-      return "Drizzle (Light)";
-    case DrizzleModerate:
-      return "Drizzle (Moderate)";
-    case DrizzleDense:
-      return "Drizzle (Dense)";
-    }
-    break;
-  }
-  case FreezingDrizzle: {
-    switch (code.freezing_drizzle) {
-    case FreezingDrizzleLight:
-      return "Freezing Drizzle (Light)";
-    case FreezingDrizzleDense:
-      return "Freezing Drizzle (Dense)";
-    }
-    break;
-  }
-  case Rain: {
-    switch (code.rain) {
-    case RainSlight:
-      return "Rain (Slight)";
-    case RainModerate:
-      return "Rain (Moderate)";
-    case RainHeavy:
-      return "Rain (Heavy)";
-    }
-    break;
-  }
-  case FreezingRain: {
-    switch (code.freezing_rain) {
-    case FreezingRainLight:
-      return "Freezing Rain (Light)";
-    case FreezingRainHeavy:
-      return "Freezing Rain (Heavy)";
-    }
-    break;
-  }
-  case SnowFall: {
-    switch (code.snow_fall) {
-    case SnowFallSlight:
-      return "Snow Fall (Slight)";
-    case SnowFallModerate:
-      return "Snow Fall (Moderate)";
-    case SnowFallHeavy:
-      return "Snow Fall (Heavy)";
-    }
-    break;
-  }
+  case FogDepositingRime:
+    return "Fog (Depositing Rime)";
+  case FogNormal:
+    return "Fog (Normal)";
+  case DrizzleLight:
+    return "Drizzle (Light)";
+  case DrizzleModerate:
+    return "Drizzle (Moderate)";
+  case DrizzleDense:
+    return "Drizzle (Dense)";
+  case FreezingDrizzleLight:
+    return "Freezing Drizzle (Light)";
+  case FreezingDrizzleDense:
+    return "Freezing Drizzle (Dense)";
+  case RainSlight:
+    return "Rain (Slight)";
+  case RainModerate:
+    return "Rain (Moderate)";
+  case RainHeavy:
+    return "Rain (Heavy)";
+  case FreezingRainLight:
+    return "Freezing Rain (Light)";
+  case FreezingRainHeavy:
+    return "Freezing Rain (Heavy)";
+  case SnowFallSlight:
+    return "Snow Fall (Slight)";
+  case SnowFallModerate:
+    return "Snow Fall (Moderate)";
+  case SnowFallHeavy:
+    return "Snow Fall (Heavy)";
   case SnowGrains:
     return "Snow Grains";
-  case RainShowers: {
-    switch (code.rain_showers) {
-    case RainShowersSlight:
-      return "Rain Showers (Slight)";
-    case RainShowersModerate:
-      return "Rain Showers (Moderate)";
-    case RainShowersViolent:
-      return "Rain Showers (Violent)";
-    }
-    break;
-  }
-  case SnowShowers: {
-    switch (code.snow_showers) {
-    case SnowShowersSlight:
-      return "Snow Showers (Slight)";
-    case SnowShowersHeavy:
-      return "Snow Showers (Heavy)";
-    }
-    break;
-  }
+  case RainShowersSlight:
+    return "Rain Showers (Slight)";
+  case RainShowersModerate:
+    return "Rain Showers (Moderate)";
+  case RainShowersViolent:
+    return "Rain Showers (Violent)";
+  case SnowShowersSlight:
+    return "Snow Showers (Slight)";
+  case SnowShowersHeavy:
+    return "Snow Showers (Heavy)";
   case Thunderstorm:
     return "Thunderstorm";
-  case ThunderstormWithHail: {
-    switch (code.thunderstorm_with_hail) {
-    case ThunderstormWithHailSight:
-      return "Thunderstorm With Hail (Sight)";
-    case ThunderstormWithHailHeavy:
-      return "Thunderstorm With Hail (Heavy)";
-    }
-    break;
-  }
+  case ThunderstormWithHailSight:
+    return "Thunderstorm With Hail (Sight)";
+  case ThunderstormWithHailHeavy:
+    return "Thunderstorm With Hail (Heavy)";
   case Unknown:
     return "Unknown";
   }
@@ -113,27 +68,40 @@ const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
 }
 
 GIcon *weather_code_to_icon(LAYER_SHELL_IO_WeatherCode code) {
-  switch (code.tag) {
+  switch (code) {
   case ClearSky:
   case MainlyClear:
     return get_icon(SUNNY_ICON);
   case PartlyCloudy:
   case Overcast:
     return get_icon(PARTLY_CLOUDY_ICON);
-  case Fog:
+  case FogDepositingRime:
+  case FogNormal:
     return get_icon(FOGGY_ICON);
-  case Drizzle:
-  case FreezingDrizzle:
-  case Rain:
-  case FreezingRain:
-  case RainShowers:
+  case DrizzleDense:
+  case DrizzleLight:
+  case DrizzleModerate:
+  case FreezingDrizzleLight:
+  case FreezingDrizzleDense:
+  case RainSlight:
+  case RainModerate:
+  case RainHeavy:
+  case FreezingRainLight:
+  case FreezingRainHeavy:
+  case RainShowersSlight:
+  case RainShowersModerate:
+  case RainShowersViolent:
     return get_icon(RAINY_ICON);
-  case SnowFall:
+  case SnowFallSlight:
+  case SnowFallModerate:
+  case SnowFallHeavy:
   case SnowGrains:
-  case SnowShowers:
+  case SnowShowersSlight:
+  case SnowShowersHeavy:
     return get_icon(SNOWY_ICON);
   case Thunderstorm:
-  case ThunderstormWithHail:
+  case ThunderstormWithHailSight:
+  case ThunderstormWithHailHeavy:
     return get_icon(THUNDERSTORM_ICON);
   case Unknown:
     return get_icon(QUESTION_MARK_ICON);

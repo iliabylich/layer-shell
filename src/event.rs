@@ -1,4 +1,7 @@
+use std::sync::mpsc::{Receiver, Sender};
+
 use crate::ffi::{CArray, CString};
+use crate::global;
 use crate::modules::weather::WeatherCode;
 
 #[derive(Debug)]
@@ -45,6 +48,28 @@ pub enum Event {
     },
     ToggleLauncher,
     ToggleSessionScreen,
+}
+
+global!(SENDER, Sender<Event>);
+global!(RECEIVER, Receiver<Event>);
+
+impl Event {
+    pub(crate) fn set_sender(sender: Sender<Event>) {
+        SENDER::set(sender);
+    }
+    pub(crate) fn set_receiver(sender: Receiver<Event>) {
+        RECEIVER::set(sender);
+    }
+
+    pub(crate) fn emit(self) {
+        if let Err(err) = SENDER::get().send(self) {
+            log::error!("failed to publish event: {:?}", err);
+        }
+    }
+
+    pub(crate) fn try_recv() -> Option<Self> {
+        RECEIVER::get().try_recv().ok()
+    }
 }
 
 #[derive(Debug)]

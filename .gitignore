@@ -1,5 +1,5 @@
 /target
-/dbus/interfaces
+src/dbus/interfaces
 main
 compile_commands.json
 .cache

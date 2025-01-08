@@ -1,7 +1,6 @@
-#![allow(clippy::type_complexity)]
-#![allow(clippy::upper_case_acronyms)]
+#![expect(clippy::type_complexity)]
+#![expect(clippy::upper_case_acronyms)]
 
-mod actors;
 mod args;
 mod command;
 mod dbus;
@@ -10,29 +9,26 @@ mod ffi;
 mod global;
 mod ipc;
 mod modules;
+mod scheduler;
+mod subscriptions;
 
 pub use command::Command;
 pub use event::Event;
 use ffi::CString;
-pub(crate) use global::global;
+use global::global;
 
 use args::parse_args;
 use ipc::IPC;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-
-global!(COMMAND_SENDER, Sender<Command>);
-global!(EVENT_RECEIVER, Receiver<Event>);
-global!(EVENT_SENDER, Sender<Event>);
-global!(SUBSCRIPTIONS, Vec<extern "C" fn(*const Event)>);
+use subscriptions::Subscriptions;
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
-    SUBSCRIPTIONS::get().push(f);
+    Subscriptions::add(f);
 }
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_init() {
-    SUBSCRIPTIONS::set(vec![]);
+    Subscriptions::setup();
     if let Err(err) = IPC::prepare() {
         log::error!("Failed to start IPC: {:?}", err);
         std::process::exit(1);
@@ -49,59 +45,49 @@ pub extern "C" fn layer_shell_io_init() {
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_spawn_thread() {
-    let (etx, erx) = channel::<Event>(100);
-    let (ctx, crx) = channel::<Command>(100);
+    let (etx, erx) = std::sync::mpsc::channel::<Event>();
+    let (ctx, crx) = std::sync::mpsc::channel::<Command>();
 
-    COMMAND_SENDER::set(ctx);
-    EVENT_RECEIVER::set(erx);
-    EVENT_SENDER::set(etx.clone());
+    Command::set_sender(ctx);
+    Event::set_sender(etx.clone());
+    Event::set_receiver(erx);
 
     std::thread::spawn(move || {
-        let rt = match tokio::runtime::Builder::new_current_thread()
-            .enable_time()
-            .enable_io()
-            .build()
-        {
-            Ok(rt) => rt,
-            Err(err) => {
-                log::error!("failed to spawn tokio: {:?}", err);
-                std::process::exit(1);
-            }
-        };
+        crate::modules::cpu::setup();
+        crate::modules::pipewire::setup();
+        crate::modules::hyprland::setup();
+        crate::modules::app_list::setup();
+        crate::modules::network::setup();
 
-        rt.block_on(async {
-            tokio::join!(
-                // command processing actor
-                command::start_processing(crx),
-                // and all models
-                actors::spawn_all(etx),
-            );
-        });
+        use scheduler::Scheduler;
+        let mut scheduler = Scheduler::new(40, crx);
+        scheduler.add(1_000, crate::modules::time::tick);
+        scheduler.add(1_000, crate::modules::memory::tick);
+        scheduler.add(1_000, crate::modules::cpu::tick);
+        scheduler.add(50, crate::modules::pipewire::tick);
+        scheduler.add(3_000, crate::modules::network::tick);
+        scheduler.add(120_000, crate::modules::weather::tick);
+
+        loop {
+            scheduler.tick();
+        }
     });
 }
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_poll_events() {
-    while let Ok(event) = EVENT_RECEIVER::get().try_recv() {
+    while let Some(event) = Event::try_recv() {
         log::info!("Received event {:?}", event);
 
-        for f in SUBSCRIPTIONS::get().iter() {
+        for f in Subscriptions::iter() {
             (f)(&event);
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_publish(c: Command) {
-    if let Err(err) = COMMAND_SENDER::get().blocking_send(c) {
-        log::error!("failed to publish event: {:?}", err);
-    }
-}
-
-pub(crate) fn publish_event(e: Event) {
-    if let Err(err) = EVENT_SENDER::get().blocking_send(e) {
-        log::error!("failed to publish event: {:?}", err);
-    }
+pub extern "C" fn layer_shell_io_publish(command: Command) {
+    command.send();
 }
 
 #[no_mangle]

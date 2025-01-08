@@ -1,23 +1,17 @@
 use anyhow::{Context, Result};
-use reqwest::Client;
 use serde::Deserialize;
 
-pub(crate) async fn get_weather(client: &Client) -> Result<Response> {
-    client
-        .get("https://api.open-meteo.com/v1/forecast")
-        .query(&[
-            ("latitude", "52.2298"),
-            ("longitude", "21.0118"),
-            ("current", CURRENT_FIELDS),
-            ("hourly", HOURLY_FIELDS),
-            ("daily", DAILY_FIELDS),
-            ("timezone", "Europe/Warsaw"),
-        ])
-        .send()
-        .await
-        .context("failed to build a request")?
-        .json::<Response>()
-        .await
+pub(crate) fn get_weather() -> Result<Response> {
+    ureq::get("https://api.open-meteo.com/v1/forecast")
+        .query("latitude", "52.2298")
+        .query("longitude", "21.0118")
+        .query("current", CURRENT_FIELDS)
+        .query("hourly", HOURLY_FIELDS)
+        .query("daily", DAILY_FIELDS)
+        .query("timezone", "Europe/Warsaw")
+        .call()
+        .context("failed to send a request")?
+        .into_json::<Response>()
         .context("failed to parse JSON response")
 }
 

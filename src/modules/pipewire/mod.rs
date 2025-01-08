@@ -1,8 +1,6 @@
-#![allow(clippy::type_complexity)]
+#![expect(clippy::type_complexity)]
 
 use anyhow::{Context as _, Result};
-use async_stream::stream;
-use futures::Stream;
 use pipewire::{
     context::Context,
     loop_::TimerSource,
@@ -17,44 +15,29 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-pub(crate) mod command;
+mod command;
 mod nodes;
 mod store;
 
 pub use command::SetVolume;
 use store::Store;
 
-use crate::Event;
+use crate::{global, Event};
 
-static mut COMMAND_SENDER: Option<Sender<SetVolume>> = None;
+global!(COMMAND_SENDER, Sender<SetVolume>);
+global!(EVENT_RECEIVER, Receiver<Event>);
 
-fn command_sender() -> &'static Sender<SetVolume> {
-    unsafe {
-        #[allow(static_mut_refs)]
-        match COMMAND_SENDER.as_mut() {
-            Some(sender) => sender,
-            None => {
-                log::error!("STATE is not set");
-                std::process::exit(1);
-            }
-        }
-    }
+pub(crate) use command::set_volume;
+
+pub(crate) fn setup() {
+    let (ctx, erc) = start_thread();
+    COMMAND_SENDER::set(ctx);
+    EVENT_RECEIVER::set(erc);
 }
 
-pub(crate) fn connect() -> impl Stream<Item = Event> {
-    let (ctx, erc) = start_thread();
-    unsafe {
-        COMMAND_SENDER = Some(ctx);
-    }
-
-    stream! {
-        loop {
-            while let Ok(event) = erc.try_recv() {
-                yield event;
-            }
-
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        }
+pub(crate) fn tick() {
+    while let Ok(event) = EVENT_RECEIVER::get().try_recv() {
+        event.emit();
     }
 }
 

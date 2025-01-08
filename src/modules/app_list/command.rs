@@ -1,23 +1,23 @@
-use crate::modules::app_list::State;
+use crate::modules::app_list::state::State;
 
-pub(crate) async fn reset() {
-    State::instance().reset().await;
+pub(crate) fn reset() {
+    State::instance().reset();
 }
 
-pub(crate) async fn go_up() {
-    State::instance().go_up().await;
+pub(crate) fn go_up() {
+    State::instance().go_up();
 }
 
-pub(crate) async fn go_down() {
-    State::instance().go_down().await;
+pub(crate) fn go_down() {
+    State::instance().go_down();
 }
 
-pub(crate) async fn set_search(s: *const u8) {
+pub(crate) fn set_search(s: *const u8) {
     let string = unsafe { std::ffi::CStr::from_ptr(s.cast()) };
     let string = string.to_str().unwrap().to_string();
-    State::instance().set_search(string).await;
+    State::instance().set_search(string);
 }
 
-pub(crate) async fn exec_selected() {
-    State::instance().exec_selected().await;
+pub(crate) fn exec_selected() {
+    State::instance().exec_selected();
 }

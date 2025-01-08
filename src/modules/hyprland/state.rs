@@ -8,10 +8,10 @@ pub(crate) struct State {
     language: String,
 }
 impl State {
-    pub(crate) async fn new() -> Result<Self> {
-        let workspaces = get_workspaces().await?;
-        let active_workspace = get_active_workspace().await?;
-        let language = get_language().await?;
+    pub(crate) fn new() -> Result<Self> {
+        let workspaces = get_workspaces()?;
+        let active_workspace = get_active_workspace()?;
+        let language = get_language()?;
 
         Ok(Self {
             workspace_ids: HashSet::from_iter(workspaces.into_iter().map(|w| w.id)),
@@ -74,18 +74,18 @@ struct Workspace {
     id: usize,
 }
 
-async fn get_workspaces() -> Result<Vec<Workspace>> {
-    let stdout = exec_hyprctl("workspaces").await?;
+fn get_workspaces() -> Result<Vec<Workspace>> {
+    let stdout = exec_hyprctl("workspaces")?;
     serde_json::from_str(&stdout).context("invalid response from hyprctl workspaces -j")
 }
 
-async fn get_active_workspace() -> Result<Workspace> {
-    let stdout = exec_hyprctl("activeworkspace").await?;
+fn get_active_workspace() -> Result<Workspace> {
+    let stdout = exec_hyprctl("activeworkspace")?;
     serde_json::from_str(&stdout).context("invalid response from hyprctl activeworkspace -j")
 }
 
-async fn get_language() -> Result<String> {
-    let stdout = exec_hyprctl("devices").await?;
+fn get_language() -> Result<String> {
+    let stdout = exec_hyprctl("devices")?;
     let devices: Devices =
         serde_json::from_str(&stdout).context("invalid response from hyprctl devices -j")?;
 
@@ -98,11 +98,10 @@ async fn get_language() -> Result<String> {
     Ok(main_keyboard.active_keymap)
 }
 
-async fn exec_hyprctl(command: &str) -> Result<String> {
-    let stdout = tokio::process::Command::new("hyprctl")
+fn exec_hyprctl(command: &str) -> Result<String> {
+    let stdout = std::process::Command::new("hyprctl")
         .args([command, "-j"])
         .output()
-        .await
         .with_context(|| format!("failed to spawn hyprctl {command} -j"))?
         .stdout;
     String::from_utf8(stdout)

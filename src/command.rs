@@ -1,9 +1,8 @@
-use crate::modules::{
-    app_list::command::{exec_selected, go_down, go_up, reset, set_search},
-    hyprland::command::go_to_workspace,
-    pipewire::command::set_volume,
+use crate::{
+    global::global,
+    modules::{app_list, hyprland, pipewire},
 };
-use tokio::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -25,28 +24,33 @@ pub enum Command {
     SpawnSystemMonitor,
 }
 
+global!(SENDER, Sender<Command>);
+
 unsafe impl Send for Command {}
 
-pub(crate) async fn start_processing(mut rx: Receiver<Command>) {
-    while let Some(command) = rx.recv().await {
-        command.execute().await;
-    }
-}
-
 impl Command {
-    async fn execute(self) {
+    pub(crate) fn set_sender(sender: Sender<Command>) {
+        SENDER::set(sender);
+    }
+
+    pub(crate) fn send(self) {
+        if let Err(err) = SENDER::get().send(self) {
+            log::error!("failed to publish event: {:?}", err);
+        }
+    }
+
+    pub(crate) fn execute(self) {
         log::info!("Running command {:?}", self);
         use Command::*;
 
         match self {
-            SetVolume { volume } => set_volume(volume),
-            HyprlandGoToWorkspace { idx } => go_to_workspace(idx).await,
-            AppListGoUp => go_up().await,
-            AppListGoDown => go_down().await,
-            AppListReset => reset().await,
-            AppListExecSelected => exec_selected().await,
-            AppListSetSearch { search } => set_search(search).await,
-
+            SetVolume { volume } => pipewire::set_volume(volume),
+            HyprlandGoToWorkspace { idx } => hyprland::go_to_workspace(idx),
+            AppListGoUp => app_list::go_up(),
+            AppListGoDown => app_list::go_down(),
+            AppListReset => app_list::reset(),
+            AppListExecSelected => app_list::exec_selected(),
+            AppListSetSearch { search } => app_list::set_search(search),
             Lock => lock(),
             Reboot => reboot(),
             Shutdown => shutdown(),
