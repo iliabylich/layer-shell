@@ -1,153 +1,126 @@
-#![expect(clippy::type_complexity)]
-
 use anyhow::{Context as _, Result};
 use pipewire::{
     context::Context,
-    loop_::TimerSource,
     main_loop::MainLoop,
     metadata::Metadata,
     node::Node,
-    registry::{Listener, Registry},
-    spa::param::ParamType,
-};
-use std::{
-    rc::Rc,
-    sync::mpsc::{Receiver, Sender},
+    registry::{GlobalObject, Listener, Registry},
+    spa::{param::ParamType, pod::Pod, utils::dict::DictRef},
 };
 
 mod command;
-mod nodes;
+mod sink;
 mod store;
 
-pub use command::SetVolume;
 use store::Store;
 
 use crate::{global, Event};
 
-global!(COMMAND_SENDER, Sender<SetVolume>);
-global!(EVENT_RECEIVER, Receiver<Event>);
-
 pub(crate) use command::set_volume;
 
 pub(crate) fn setup() {
-    let (ctx, erc) = start_thread();
-    COMMAND_SENDER::set(ctx);
-    EVENT_RECEIVER::set(erc);
-}
-
-pub(crate) fn tick() {
-    while let Ok(event) = EVENT_RECEIVER::get().try_recv() {
-        event.emit();
-    }
-}
-
-fn start_thread() -> (Sender<SetVolume>, Receiver<Event>) {
-    let (etx, erx) = std::sync::mpsc::channel::<Event>();
-    let (ctx, crx) = std::sync::mpsc::channel::<SetVolume>();
-
     std::thread::spawn(move || {
-        if let Err(err) = start_pw_communication(etx, crx) {
+        if let Err(err) = start_pw_mainloop() {
             log::error!("{}", err);
         }
     });
-
-    (ctx, erx)
 }
 
-fn start_pw_communication(tx: Sender<Event>, rx: Receiver<SetVolume>) -> Result<()> {
+global!(STORE, Store);
+global!(REGISTRY, Registry);
+
+fn start_pw_mainloop() -> Result<()> {
     let mainloop = MainLoop::new(None).context("failed to instantiate PW loop")?;
     let context = Context::new(&mainloop)?;
     let core = context.connect(None)?;
 
-    let registry = Rc::new(core.get_registry()?);
+    REGISTRY::set(core.get_registry()?);
+    STORE::set(Store::new());
 
-    let store = Store::new();
-
-    let _timer = start_polling_commands(&mainloop, Store::shallow_clone(&store), rx);
-    let _listener = start_pw_listener(Rc::clone(&registry), Store::shallow_clone(&store), tx);
+    let _listener = start_pw_listener();
 
     mainloop.run();
 
     Ok(())
 }
 
-fn start_polling_commands(
-    mainloop: &MainLoop,
-    store: Store,
-    rx: Receiver<SetVolume>,
-) -> TimerSource<'_> {
-    let timer = mainloop.loop_().add_timer(move |_| {
-        if let Ok(command) = rx.try_recv() {
-            command.dispatch_in_current_thread(&store)
-        }
-    });
-    timer.update_timer(
-        Some(std::time::Duration::from_millis(1)),
-        Some(std::time::Duration::from_millis(50)),
-    );
-    timer
+fn start_pw_listener() -> Listener {
+    REGISTRY::get()
+        .add_listener_local()
+        .global(on_global_object_added)
+        .register()
 }
 
-fn start_pw_listener(registry: Rc<Registry>, store: Store, tx: Sender<Event>) -> Listener {
-    let registry_weak = Rc::downgrade(&registry);
+fn on_global_object_added(obj: &GlobalObject<&DictRef>) {
+    let Some(props) = obj.props else {
+        return;
+    };
 
-    registry
+    if props.get("metadata.name") == Some("default") {
+        on_default_node_added(obj);
+    }
+
+    if props.get("media.class") == Some("Audio/Sink") {
+        if let Some(name) = props.get("node.name") {
+            on_sink_node_added(obj, name);
+        }
+    }
+}
+
+fn on_default_node_added(obj: &GlobalObject<&DictRef>) {
+    let Ok(meta) = REGISTRY::get().bind::<Metadata, _>(obj) else {
+        log::error!("failed to bind to Metadata object");
+        return;
+    };
+
+    let listener = meta
         .add_listener_local()
-        .global(move |obj| {
-            let id = obj.id;
-            let tx = tx.clone();
+        .property(on_default_node_attribute_changed)
+        .register();
 
-            let Some(registry) = registry_weak.upgrade() else {
-                log::error!("Registry reference is no longer alive");
-                return;
-            };
+    STORE::get().add_meta(obj.id, meta);
+    STORE::get().add_listener(obj.id, Box::new(listener));
+}
 
-            if nodes::metadata::is_default(obj) {
-                let Ok(meta) = registry.bind::<Metadata, _>(obj) else {
-                    log::error!("failed to bind to Metadata object");
-                    return;
-                };
+fn on_default_node_attribute_changed(
+    _: u32,
+    key: Option<&str>,
+    _: Option<&str>,
+    value: Option<&str>,
+) -> i32 {
+    if let (Some("default.audio.sink"), Some(value)) = (key, value) {
+        #[derive(serde::Deserialize)]
+        struct Value {
+            name: String,
+        }
+        if let Ok(Value { name }) = serde_json::from_str(value) {
+            STORE::get().set_default_sink_name(name);
+        }
+    }
+    0
+}
 
-                let listener = {
-                    let store = Store::shallow_clone(&store);
-                    meta.add_listener_local()
-                        .property(move |_, key, _, value| {
-                            if let Some(name) =
-                                nodes::metadata::parse_audio_sink_changed(key, value)
-                            {
-                                store.set_default_sink_name(name);
-                            }
-                            0
-                        })
-                        .register()
-                };
+fn on_sink_node_added(obj: &GlobalObject<&DictRef>, name: &str) {
+    let Ok(node) = REGISTRY::get().bind::<Node, _>(obj) else {
+        log::error!("failed to bind to Metadata object");
+        return;
+    };
 
-                store.add_meta(id, meta);
-                store.add_listener(id, Box::new(listener));
-            } else if let Some(name) = nodes::sink::parse_name(obj) {
-                let Ok(node) = registry.bind::<Node, _>(obj) else {
-                    log::error!("failed to bind to Metadata object");
-                    return;
-                };
+    node.subscribe_params(&[ParamType::Props]);
+    let listener = node
+        .add_listener_local()
+        .param(on_sink_node_prop_changed)
+        .register();
 
-                node.subscribe_params(&[ParamType::Props]);
-                let listener = node
-                    .add_listener_local()
-                    .param(move |_, _, _, _, param| {
-                        if let Some(channels) = nodes::sink::parse_volume_changed_event(param) {
-                            if let Err(err) = tx.send(Event::Volume {
-                                volume: channels[0],
-                            }) {
-                                log::error!("failed to send event: {:?}", err);
-                            }
-                        }
-                    })
-                    .register();
+    STORE::get().add_node(obj.id, node);
+    STORE::get().add_listener(obj.id, Box::new(listener));
+    STORE::get().add_sink_name(name, obj.id);
+}
 
-                store.add_node(id, node);
-                store.add_listener(id, Box::new(listener));
-                store.add_sink_name(name, id);
-            }
-        })
-        .register()
+fn on_sink_node_prop_changed(_: i32, _: ParamType, _: u32, _: u32, param: Option<&Pod>) {
+    if let Some(channels) = sink::try_parse_volume_changed_event(param) {
+        let volume = channels[0];
+        let event = Event::Volume { volume };
+        event.emit();
+    }
 }

@@ -64,7 +64,6 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
         scheduler.add(1_000, crate::modules::time::tick);
         scheduler.add(1_000, crate::modules::memory::tick);
         scheduler.add(1_000, crate::modules::cpu::tick);
-        scheduler.add(50, crate::modules::pipewire::tick);
         scheduler.add(3_000, crate::modules::network::tick);
         scheduler.add(120_000, crate::modules::weather::tick);
 

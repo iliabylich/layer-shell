@@ -217,7 +217,7 @@ typedef struct {
 } LAYER_SHELL_IO_AppListSetSearch_Body;
 
 typedef struct {
-  double volume;
+  float volume;
 } LAYER_SHELL_IO_SetVolume_Body;
 
 typedef struct {

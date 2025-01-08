@@ -14,7 +14,7 @@ pub enum Command {
     AppListSetSearch { search: *const u8 },
     AppListExecSelected,
 
-    SetVolume { volume: f64 },
+    SetVolume { volume: f32 },
     Lock,
     Reboot,
     Shutdown,

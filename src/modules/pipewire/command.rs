@@ -1,4 +1,3 @@
-use crate::modules::pipewire::{store::Store, COMMAND_SENDER};
 use anyhow::{Context, Result};
 use pipewire::{
     node::Node,
@@ -10,56 +9,49 @@ use pipewire::{
 };
 use std::rc::Rc;
 
-pub(crate) fn set_volume(volume: f64) {
-    if let Err(err) = COMMAND_SENDER::get().send(SetVolume(volume)) {
-        log::error!("Faied to send PW command to PW thread: {:?}", err);
+pub(crate) fn set_volume(volume: f32) {
+    if let Err(err) = try_set_volume(volume) {
+        log::error!("failed to call PW: {:?}", err);
     }
 }
 
-#[derive(Debug)]
-pub struct SetVolume(pub f64);
+fn try_set_volume(volume: f32) -> Result<()> {
+    let store = crate::modules::pipewire::STORE::get();
+    let sink = store.default_sink().context("no default sink")?;
 
-impl SetVolume {
-    pub(crate) fn dispatch_in_current_thread(self, store: &Store) {
-        if let Err(err) = self.try_dispatch_in_current_thread(store) {
-            log::error!("failed to change sink node: {:?}", err);
-        }
-    }
+    set_volume_attribute_on_node(sink, volume)
+}
 
-    fn try_dispatch_in_current_thread(self, store: &Store) -> Result<()> {
-        let sink = store.default_sink().context("no default sink")?;
-        let volume = self.0 as f32;
-
-        let values: Vec<u8> = PodSerializer::serialize(
-            std::io::Cursor::new(Vec::new()),
-            &Value::Object(Object {
-                type_: pipewire::spa::utils::SpaTypes::ObjectParamProps.as_raw(),
-                id: SPA_PARAM_Props,
-                properties: vec![
-                    Property {
-                        key: SPA_PROP_volume,
-                        flags: PropertyFlags::empty(),
-                        value: Value::Float(volume),
-                    },
-                    Property {
-                        key: SPA_PROP_channelVolumes,
-                        flags: PropertyFlags::empty(),
-                        value: Value::ValueArray(ValueArray::Float(vec![volume, volume])),
-                    },
-                ],
-            }),
-        )
-        .context("invalid pod value")?
-        .0
-        .into_inner();
-        let param = Pod::from_bytes(&values).context("invalid pod value")?;
-        sink.set_param(ParamType::Props, 0, param);
-        Ok(())
-    }
+fn set_volume_attribute_on_node(sink: &Node, volume: f32) -> Result<()> {
+    let values: Vec<u8> = PodSerializer::serialize(
+        std::io::Cursor::new(Vec::new()),
+        &Value::Object(Object {
+            type_: pipewire::spa::utils::SpaTypes::ObjectParamProps.as_raw(),
+            id: SPA_PARAM_Props,
+            properties: vec![
+                Property {
+                    key: SPA_PROP_volume,
+                    flags: PropertyFlags::empty(),
+                    value: Value::Float(volume),
+                },
+                Property {
+                    key: SPA_PROP_channelVolumes,
+                    flags: PropertyFlags::empty(),
+                    value: Value::ValueArray(ValueArray::Float(vec![volume, volume])),
+                },
+            ],
+        }),
+    )
+    .context("invalid pod value")?
+    .0
+    .into_inner();
+    let param = Pod::from_bytes(&values).context("invalid pod value")?;
+    sink.set_param(ParamType::Props, 0, param);
+    Ok(())
 }
 
 #[allow(dead_code)]
-fn set_muted(sink: Rc<Node>, muted: bool) -> Result<()> {
+fn set_muted_attribute_on_node(sink: Rc<Node>, muted: bool) -> Result<()> {
     let values: Vec<u8> = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
         &Value::Object(Object {
