@@ -29,6 +29,8 @@ fn try_call_pw(volume: Option<f32>, muted: Option<bool>) -> Result<()> {
     let mut props = vec![];
 
     if let Some(volume) = volume {
+        // convert to cubic
+        let volume = volume.powf(3.0);
         props.push(Property {
             key: SPA_PROP_channelVolumes,
             flags: PropertyFlags::empty(),

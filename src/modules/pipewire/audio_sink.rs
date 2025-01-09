@@ -56,6 +56,8 @@ impl AudioSink {
                 if let Value::ValueArray(ValueArray::Float(floats)) = prop.value {
                     if floats.len() == 2 {
                         let volume = (floats[0] + floats[1]) / 2.0;
+                        // convert to linear
+                        let volume = volume.powf(1.0 / 3.0);
                         let event = Event::Volume { volume };
                         event.emit();
                     } else {
