@@ -4,89 +4,88 @@
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
-GtkWindow *launcher_window;
-GtkSearchEntry *launcher_input;
+#define ns(name) launcher_ns_##name
+
+GtkWindow *ns(window);
+
+GtkWidget *ns(input);
+
 typedef struct {
-  GtkBox *wrapper;
-  GtkImage *icon;
-  GtkLabel *label;
+  GtkWidget *wrapper;
+  GtkWidget *image;
+  GtkWidget *label;
 } launcher_row_t;
-launcher_row_t launcher_rows[5];
+launcher_row_t ns(rows)[5];
 
-static void launcher_window_init(void) {
-  launcher_window = GTK_WINDOW(gtk_window_new());
-  gtk_widget_set_name(GTK_WIDGET(launcher_window), "LauncherWindow");
-  GValue width_request = G_VALUE_INIT;
-  g_value_init(&width_request, G_TYPE_INT);
-  g_value_set_int(&width_request, 700);
-  g_object_set_property(G_OBJECT(launcher_window), "width-request",
-                        &width_request);
+static void ns(init)(void) {
+  ns(window) = GTK_WINDOW(gtk_window_new());
+  gtk_widget_set_name(GTK_WIDGET(ns(window)), "LauncherWindow");
 
-  GtkBox *layout = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-  gtk_widget_add_css_class(GTK_WIDGET(layout), "widget-launcher-wrapper");
-  gtk_window_set_child(launcher_window, GTK_WIDGET(layout));
+  window_set_width_request(ns(window), 700);
 
-  launcher_input = GTK_SEARCH_ENTRY(gtk_search_entry_new());
-  gtk_widget_add_css_class(GTK_WIDGET(launcher_input),
-                           "widget-launcher-search-box");
-  gtk_widget_set_hexpand(GTK_WIDGET(launcher_input), true);
-  gtk_box_append(layout, GTK_WIDGET(launcher_input));
+  GtkWidget *layout = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(layout, "widget-launcher-wrapper");
+  gtk_window_set_child(ns(window), layout);
 
-  GtkScrolledWindow *scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
-  gtk_widget_add_css_class(GTK_WIDGET(scroll), "widget-launcher-scroll-list");
-  gtk_widget_set_can_focus(GTK_WIDGET(scroll), false);
-  gtk_box_append(layout, GTK_WIDGET(scroll));
+  ns(input) = gtk_search_entry_new();
+  gtk_widget_add_css_class(ns(input), "widget-launcher-search-box");
+  gtk_widget_set_hexpand(ns(input), true);
+  gtk_box_append(GTK_BOX(layout), ns(input));
 
-  GtkBox *content = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-  gtk_scrolled_window_set_child(scroll, GTK_WIDGET(content));
+  GtkWidget *scroll = gtk_scrolled_window_new();
+  gtk_widget_add_css_class(scroll, "widget-launcher-scroll-list");
+  gtk_widget_set_can_focus(scroll, false);
+  gtk_box_append(GTK_BOX(layout), scroll);
+
+  GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), content);
 
   for (size_t i = 0; i < 5; i++) {
-    GtkBox *row = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_add_css_class(GTK_WIDGET(row), "widget-launcher-row");
+    GtkWidget *row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class(row, "widget-launcher-row");
 
-    GtkImage *image = GTK_IMAGE(gtk_image_new());
-    gtk_image_set_icon_size(image, GTK_ICON_SIZE_LARGE);
+    GtkWidget *image = gtk_image_new();
+    gtk_image_set_icon_size(GTK_IMAGE(image), GTK_ICON_SIZE_LARGE);
 
-    GtkLabel *label = GTK_LABEL(gtk_label_new("..."));
-    gtk_label_set_xalign(label, 0.0);
-    gtk_widget_set_valign(GTK_WIDGET(label), GTK_ALIGN_CENTER);
-    gtk_label_set_ellipsize(label, PANGO_ELLIPSIZE_END);
+    GtkWidget *label = gtk_label_new("...");
+    gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+    gtk_widget_set_valign(label, GTK_ALIGN_CENTER);
+    gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
 
-    gtk_box_append(row, GTK_WIDGET(image));
-    gtk_box_append(row, GTK_WIDGET(label));
+    gtk_box_append(GTK_BOX(row), image);
+    gtk_box_append(GTK_BOX(row), label);
 
-    gtk_box_append(content, GTK_WIDGET(row));
+    gtk_box_append(GTK_BOX(content), row);
 
-    launcher_rows[i] =
-        (launcher_row_t){.wrapper = row, .icon = image, .label = label};
+    ns(rows)[i] =
+        (launcher_row_t){.wrapper = row, .image = image, .label = label};
   }
 }
 
-static void launcher_window_toggle(void) {
-  if (gtk_widget_get_visible(GTK_WIDGET(launcher_window)) == false) {
+static void ns(toggle)(void) {
+  if (gtk_widget_get_visible(GTK_WIDGET(ns(window))) == false) {
     layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListReset});
-    gtk_editable_set_text(GTK_EDITABLE(launcher_input), "");
+    gtk_editable_set_text(GTK_EDITABLE(ns(input)), "");
   }
-  flip_window_visibility(launcher_window);
+  flip_window_visibility(ns(window));
 }
 
-static void launcher_exec_selected(void) {
+static void ns(exec_selected)(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListExecSelected});
-  launcher_window_toggle();
+  ns(toggle)();
 }
 
-static void launcher_input_changed(GtkEditable *editable) {
+static void ns(on_input_change)(GtkEditable *editable) {
   const unsigned char *search =
       (const unsigned char *)gtk_editable_get_text(editable);
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = AppListSetSearch, .app_list_set_search = {.search = search}});
 }
 
-static gboolean launcher_window_on_key_press(GtkEventControllerKey *,
-                                             guint keyval, guint,
-                                             GdkModifierType, gpointer) {
+static gboolean ns(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
+                                 GdkModifierType, gpointer) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    launcher_window_toggle();
+    ns(toggle)();
   } else if (strcmp(gdk_keyval_name(keyval), "Up") == 0) {
     layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListGoUp});
   } else if (strcmp(gdk_keyval_name(keyval), "Down") == 0) {
@@ -96,32 +95,33 @@ static gboolean launcher_window_on_key_press(GtkEventControllerKey *,
   return false;
 }
 
-static void launcher_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
+static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case ToggleLauncher:
-    launcher_window_toggle();
+    ns(toggle)();
     break;
   case AppList: {
     LAYER_SHELL_IO_CArray_App apps = event->app_list.apps;
     for (size_t i = 0; i < 5; i++) {
-      launcher_row_t row = launcher_rows[i];
+      launcher_row_t row = ns(rows)[i];
       if (i < apps.len) {
         LAYER_SHELL_IO_App app = apps.ptr[i];
-        gtk_widget_set_visible(GTK_WIDGET(row.wrapper), true);
+        gtk_widget_set_visible(row.wrapper, true);
         if (app.selected) {
-          gtk_widget_add_css_class(GTK_WIDGET(row.wrapper), "active");
+          gtk_widget_add_css_class(row.wrapper, "active");
         } else {
-          gtk_widget_remove_css_class(GTK_WIDGET(row.wrapper), "active");
+          gtk_widget_remove_css_class(row.wrapper, "active");
         }
 
         if (app.icon.tag == IconName) {
-          gtk_image_set_from_icon_name(row.icon, app.icon.icon_name.ptr);
+          gtk_image_set_from_icon_name(GTK_IMAGE(row.image),
+                                       app.icon.icon_name.ptr);
         } else {
-          gtk_image_set_from_file(row.icon, app.icon.icon_path.ptr);
+          gtk_image_set_from_file(GTK_IMAGE(row.image), app.icon.icon_path.ptr);
         }
-        gtk_label_set_label(row.label, app.name.ptr);
+        gtk_label_set_label(GTK_LABEL(row.label), app.name.ptr);
       } else {
-        gtk_widget_set_visible(GTK_WIDGET(row.wrapper), false);
+        gtk_widget_set_visible(row.wrapper, false);
       }
     }
     break;
@@ -131,34 +131,28 @@ static void launcher_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-static void launcher_window_activate(GApplication *app) {
-  gtk_window_set_application(launcher_window, GTK_APPLICATION(app));
+static void ns(activate)(GApplication *app) {
+  gtk_window_set_application(ns(window), GTK_APPLICATION(app));
 
-  gtk_layer_init_for_window(launcher_window);
-  gtk_layer_set_layer(launcher_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(launcher_window, "LayerShell/Launcher");
-  gtk_layer_set_keyboard_mode(launcher_window,
+  gtk_layer_init_for_window(ns(window));
+  gtk_layer_set_layer(ns(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_namespace(ns(window), "LayerShell/Launcher");
+  gtk_layer_set_keyboard_mode(ns(window),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  g_signal_connect(launcher_input, "activate", launcher_exec_selected, NULL);
-  g_signal_connect(launcher_input, "changed",
-                   G_CALLBACK(launcher_input_changed), NULL);
+  g_signal_connect(ns(input), "activate", ns(exec_selected), NULL);
+  g_signal_connect(ns(input), "changed", G_CALLBACK(ns(on_input_change)), NULL);
 
-  GtkEventControllerKey *ctrl =
-      GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
-  g_signal_connect(ctrl, "key-pressed",
-                   G_CALLBACK(launcher_window_on_key_press), NULL);
-  gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
-                                             GTK_PHASE_CAPTURE);
-  gtk_widget_add_controller(GTK_WIDGET(launcher_window),
-                            GTK_EVENT_CONTROLLER(ctrl));
+  GtkEventController *ctrl = gtk_event_controller_key_new();
+  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(ns(on_key_press)), NULL);
+  gtk_event_controller_set_propagation_phase(ctrl, GTK_PHASE_CAPTURE);
+  gtk_widget_add_controller(GTK_WIDGET(ns(window)), ctrl);
 
-  gtk_window_present(launcher_window);
-  gtk_widget_set_visible(GTK_WIDGET(launcher_window), false);
+  gtk_window_present(ns(window));
+  gtk_widget_set_visible(GTK_WIDGET(ns(window)), false);
 
-  layer_shell_io_subscribe(launcher_window_on_io_event);
+  layer_shell_io_subscribe(ns(on_io_event));
 }
 
-window_t LAUNCHER = {.init = launcher_window_init,
-                     .activate = launcher_window_activate,
-                     .toggle = launcher_window_toggle};
+window_t LAUNCHER = {
+    .init = ns(init), .activate = ns(activate), .toggle = ns(toggle)};

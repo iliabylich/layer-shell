@@ -43,20 +43,18 @@ static void ns(activate)(GApplication *app) {
   gtk_layer_set_keyboard_mode(ns(window),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  VteTerminal *terminal = VTE_TERMINAL(vte_terminal_new());
+  GtkWidget *terminal = vte_terminal_new();
   const char *home = getenv("HOME");
   char *argv[] = {"htop", NULL};
-  vte_terminal_spawn_async(terminal, VTE_PTY_DEFAULT, home, argv, NULL,
-                           G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, NULL,
-                           NULL);
-  gtk_window_set_child(ns(window), GTK_WIDGET(terminal));
+  vte_terminal_spawn_async(VTE_TERMINAL(terminal), VTE_PTY_DEFAULT, home, argv,
+                           NULL, G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL,
+                           NULL, NULL);
+  gtk_window_set_child(ns(window), terminal);
 
-  GtkEventControllerKey *ctrl =
-      GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
+  GtkEventController *ctrl = gtk_event_controller_key_new();
   g_signal_connect(ctrl, "key-pressed", G_CALLBACK(ns(on_key_press)), NULL);
-  gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
-                                             GTK_PHASE_CAPTURE);
-  gtk_widget_add_controller(GTK_WIDGET(ns(window)), GTK_EVENT_CONTROLLER(ctrl));
+  gtk_event_controller_set_propagation_phase(ctrl, GTK_PHASE_CAPTURE);
+  gtk_widget_add_controller(GTK_WIDGET(ns(window)), ctrl);
 
   gtk_window_present(ns(window));
   gtk_widget_set_visible(GTK_WIDGET(ns(window)), false);
