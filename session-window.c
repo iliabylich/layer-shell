@@ -63,11 +63,8 @@ static void session_logout(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = Logout});
 }
 
-static void
-session_window_on_key_press(__attribute__((unused)) GtkEventControllerKey *self,
-                            guint keyval, __attribute__((unused)) guint keycode,
-                            __attribute__((unused)) GdkModifierType state,
-                            __attribute__((unused)) gpointer user_data) {
+static void session_window_on_key_press(GtkEventControllerKey *, guint keyval,
+                                        guint, GdkModifierType, gpointer) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     session_window_toggle();
   }

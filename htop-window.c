@@ -4,49 +4,43 @@
 #include <gtk4-layer-shell.h>
 #include <vte/vte.h>
 
-GtkWindow *htop_window;
+#define ns(name) htop_ns_##name
 
-const uint32_t HTOP_WINDOW_WIDTH = 1000;
+static GtkWindow *ns(window);
 
-static void htop_window_init(void) {
-  htop_window = GTK_WINDOW(gtk_window_new());
+static const uint32_t ns(WIDTH) = 1000;
 
-  gtk_widget_set_name(GTK_WIDGET(htop_window), "HtopWindow");
-  gtk_widget_add_css_class(GTK_WIDGET(htop_window), "widget-htop");
+static void ns(init)(void) {
+  ns(window) = GTK_WINDOW(gtk_window_new());
 
-  GValue width_request = G_VALUE_INIT;
-  g_value_init(&width_request, G_TYPE_INT);
-  g_value_set_int(&width_request, HTOP_WINDOW_WIDTH);
-  g_object_set_property(G_OBJECT(htop_window), "width-request", &width_request);
-
-  GValue height_request = G_VALUE_INIT;
-  g_value_init(&height_request, G_TYPE_INT);
-  g_value_set_int(&height_request, 700);
-  g_object_set_property(G_OBJECT(htop_window), "height-request",
-                        &height_request);
+  gtk_widget_set_name(GTK_WIDGET(ns(window)), "HtopWindow");
+  gtk_widget_add_css_class(GTK_WIDGET(ns(window)), "widget-htop");
+  window_set_width_request(GTK_WINDOW(ns(window)), ns(WIDTH));
+  window_set_height_request(GTK_WINDOW(ns(window)), 700);
 }
 
-static void htop_window_toggle(void) { flip_window_visibility(htop_window); }
+static void ns(toggle)(void) { flip_window_visibility(ns(window)); }
 
-static void
-htop_window_on_key_press(__attribute__((unused)) GtkEventControllerKey *self,
-                         guint keyval, __attribute__((unused)) guint keycode,
-                         __attribute__((unused)) GdkModifierType state,
-                         __attribute__((unused)) gpointer user_data) {
+static void ns(move)(uint32_t margin_left, uint32_t margin_top) {
+  move_layer_window(ns(window), margin_left, margin_top);
+}
+
+static void ns(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
+                             GdkModifierType, gpointer) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    htop_window_toggle();
+    ns(toggle)();
   }
 }
 
-static void htop_window_activate(GApplication *app) {
-  gtk_window_set_application(htop_window, GTK_APPLICATION(app));
+static void ns(activate)(GApplication *app) {
+  gtk_window_set_application(ns(window), GTK_APPLICATION(app));
 
-  gtk_layer_init_for_window(htop_window);
-  gtk_layer_set_layer(htop_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_anchor(htop_window, GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(htop_window, GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_namespace(htop_window, "LayerShell/Htop");
-  gtk_layer_set_keyboard_mode(htop_window,
+  gtk_layer_init_for_window(ns(window));
+  gtk_layer_set_layer(ns(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_anchor(ns(window), GTK_LAYER_SHELL_EDGE_LEFT, true);
+  gtk_layer_set_anchor(ns(window), GTK_LAYER_SHELL_EDGE_TOP, true);
+  gtk_layer_set_namespace(ns(window), "LayerShell/Htop");
+  gtk_layer_set_keyboard_mode(ns(window),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
   VteTerminal *terminal = VTE_TERMINAL(vte_terminal_new());
@@ -55,30 +49,23 @@ static void htop_window_activate(GApplication *app) {
   vte_terminal_spawn_async(terminal, VTE_PTY_DEFAULT, home, argv, NULL,
                            G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, NULL,
                            NULL);
-  gtk_window_set_child(htop_window, GTK_WIDGET(terminal));
+  gtk_window_set_child(ns(window), GTK_WIDGET(terminal));
 
   GtkEventControllerKey *ctrl =
       GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
-  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(htop_window_on_key_press),
-                   NULL);
+  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(ns(on_key_press)), NULL);
   gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
                                              GTK_PHASE_CAPTURE);
-  gtk_widget_add_controller(GTK_WIDGET(htop_window),
-                            GTK_EVENT_CONTROLLER(ctrl));
+  gtk_widget_add_controller(GTK_WIDGET(ns(window)), GTK_EVENT_CONTROLLER(ctrl));
 
-  gtk_window_present(htop_window);
-  gtk_widget_set_visible(GTK_WIDGET(htop_window), false);
+  gtk_window_present(ns(window));
+  gtk_widget_set_visible(GTK_WIDGET(ns(window)), false);
 }
 
-static void htop_window_move(uint32_t margin_left, uint32_t margin_top) {
-  gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_LEFT, margin_left);
-  gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_TOP, margin_top);
-}
+uint32_t ns(width)(void) { return ns(WIDTH); }
 
-uint32_t htop_window_width(void) { return HTOP_WINDOW_WIDTH; }
-
-window_t HTOP = {.init = htop_window_init,
-                 .activate = htop_window_activate,
-                 .toggle = htop_window_toggle,
-                 .move = htop_window_move,
-                 .width = htop_window_width};
+window_t HTOP = {.init = ns(init),
+                 .activate = ns(activate),
+                 .toggle = ns(toggle),
+                 .move = ns(move),
+                 .width = ns(width)};

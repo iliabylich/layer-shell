@@ -21,5 +21,7 @@ typedef struct {
 void flip_window_visibility(GtkWindow *window);
 void move_layer_window(GtkWindow *window, uint32_t margin_left,
                        uint32_t margin_top);
+void window_set_width_request(GtkWindow *window, uint32_t width);
+void window_set_height_request(GtkWindow *window, uint32_t height);
 
 #endif // UTILS_H

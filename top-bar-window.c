@@ -185,9 +185,7 @@ static void top_bar_window_init(void) {
   gtk_box_append(right, GTK_WIDGET(session_widget));
 }
 
-static void top_bar_workspace_btn_on_click(__attribute__((unused))
-                                           GtkButton *self,
-                                           gpointer data) {
+static void top_bar_workspace_btn_on_click(GtkButton *, gpointer data) {
   size_t idx = (size_t)data;
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = HyprlandGoToWorkspace, .hyprland_go_to_workspace = {idx}});

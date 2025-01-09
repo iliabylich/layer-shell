@@ -71,11 +71,8 @@ static void network_window_move(uint32_t margin_left, uint32_t margin_top) {
   move_layer_window(network_window, margin_left, margin_top);
 }
 
-static void
-network_window_on_key_press(__attribute__((unused)) GtkEventControllerKey *self,
-                            guint keyval, __attribute__((unused)) guint keycode,
-                            __attribute__((unused)) GdkModifierType state,
-                            __attribute__((unused)) gpointer user_data) {
+static void network_window_on_key_press(GtkEventControllerKey *, guint keyval,
+                                        guint, GdkModifierType, gpointer) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     network_window_toggle();
   }
@@ -125,10 +122,7 @@ static void network_row_restore_label(gpointer user_data) {
   network_row_safe_point_free(safepoint);
 }
 
-static void network_row_on_click(__attribute__((unused)) GtkGestureClick *self,
-                                 __attribute__((unused)) gint n_press,
-                                 __attribute__((unused)) gdouble x,
-                                 __attribute__((unused)) gdouble y,
+static void network_row_on_click(GtkGestureClick *, gint, gdouble, gdouble,
                                  gpointer user_data) {
   size_t row_idx = (size_t)(user_data);
   network_row_t row = networks_rows[row_idx];

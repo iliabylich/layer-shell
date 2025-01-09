@@ -3,9 +3,8 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 
-static void on_css_parse_error(__attribute__((unused)) GtkCssProvider *self,
-                               GtkCssSection *section, GError *error,
-                               __attribute__((unused)) gpointer user_data) {
+static void on_css_parse_error(GtkCssProvider *, GtkCssSection *section,
+                               GError *error, gpointer) {
   fprintf(stderr, "Failed to parse CSS: %s %s\n",
           gtk_css_section_to_string(section), error->message);
 }

@@ -75,11 +75,8 @@ static void weather_window_toggle(void) {
   flip_window_visibility(weather_window);
 }
 
-static void
-weather_window_on_key_press(__attribute__((unused)) GtkEventControllerKey *self,
-                            guint keyval, __attribute__((unused)) guint keycode,
-                            __attribute__((unused)) GdkModifierType state,
-                            __attribute__((unused)) gpointer user_data) {
+static void weather_window_on_key_press(GtkEventControllerKey *, guint keyval,
+                                        guint, GdkModifierType, gpointer) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     weather_window_toggle();
   }
@@ -151,8 +148,7 @@ static void weather_window_activate(GApplication *app) {
 }
 
 void weather_window_move(uint32_t margin_left, uint32_t margin_top) {
-  gtk_layer_set_margin(weather_window, GTK_LAYER_SHELL_EDGE_LEFT, margin_left);
-  gtk_layer_set_margin(weather_window, GTK_LAYER_SHELL_EDGE_TOP, margin_top);
+  move_layer_window(weather_window, margin_left, margin_top);
 }
 
 uint32_t weather_window_width(void) { return WEATHER_WINDOW_WIDTH; }
