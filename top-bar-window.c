@@ -9,27 +9,27 @@
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
-#define ns(name) top_bar_ns_##name
+#define _(name) top_bar_ns_##name
 
-static GtkWindow *ns(window);
+static GtkWindow *_(window);
 
-static GtkWidget *ns(worspaces);
-static GtkWidget *ns(workspace_buttons)[10];
+static GtkWidget *_(worspaces);
+static GtkWidget *_(workspace_buttons)[10];
 
-static GtkWidget *ns(htop);
+static GtkWidget *_(htop);
 
-static GtkWidget *ns(weather);
-static GtkWidget *ns(weather_label);
+static GtkWidget *_(weather);
+static GtkWidget *_(weather_label);
 
-static GtkWidget *ns(language);
-static GtkWidget *ns(language_label);
+static GtkWidget *_(language);
+static GtkWidget *_(language_label);
 
-static GtkWidget *ns(sound);
-static GtkWidget *ns(sound_image);
-static GtkWidget *ns(sound_scale);
+static GtkWidget *_(sound);
+static GtkWidget *_(sound_image);
+static GtkWidget *_(sound_scale);
 
-static GtkWidget *ns(cpu);
-static GtkWidget *ns(cpu_labels)[12];
+static GtkWidget *_(cpu);
+static GtkWidget *_(cpu_labels)[12];
 #define CPU_INDICATORS_COUNT 8
 static const char *CPU_INDICATORS[CPU_INDICATORS_COUNT] = {
     "<span color='#FFFFFF'>▁</span>", "<span color='#FFD5D5'>▂</span>",
@@ -38,25 +38,25 @@ static const char *CPU_INDICATORS[CPU_INDICATORS_COUNT] = {
     "<span color='#FF0000'>▇</span>", "<span color='#E60000'>█</span>",
 };
 
-static GtkWidget *ns(ram);
-static GtkWidget *ns(ram_label);
+static GtkWidget *_(ram);
+static GtkWidget *_(ram_label);
 
-static GtkWidget *ns(network);
-static GtkWidget *ns(network_label);
-static GtkWidget *ns(network_image);
+static GtkWidget *_(network);
+static GtkWidget *_(network_label);
+static GtkWidget *_(network_image);
 
-static GtkWidget *ns(time);
-static GtkWidget *ns(time_label);
+static GtkWidget *_(time);
+static GtkWidget *_(time_label);
 
-static GtkWidget *ns(session);
+static GtkWidget *_(session);
 
-static void ns(init)(void) {
-  ns(window) = GTK_WINDOW(gtk_window_new());
-  gtk_widget_set_name(GTK_WIDGET(ns(window)), "TopBarWindow");
+static void _(init)(void) {
+  _(window) = GTK_WINDOW(gtk_window_new());
+  gtk_widget_set_name(GTK_WIDGET(_(window)), "TopBarWindow");
 
   GtkWidget *layout = gtk_center_box_new();
   gtk_widget_add_css_class(layout, "main-wrapper");
-  gtk_window_set_child(ns(window), layout);
+  gtk_window_set_child(_(window), layout);
 
   GtkWidget *left = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_center_box_set_start_widget(GTK_CENTER_BOX(layout), left);
@@ -65,148 +65,148 @@ static void ns(init)(void) {
   gtk_center_box_set_end_widget(GTK_CENTER_BOX(layout), right);
 
   // workspaces
-  ns(worspaces) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_widget_add_css_class(ns(worspaces), "widget");
-  gtk_widget_add_css_class(ns(worspaces), "workspaces");
+  _(worspaces) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_add_css_class(_(worspaces), "widget");
+  gtk_widget_add_css_class(_(worspaces), "workspaces");
   for (size_t i = 0; i < 10; i++) {
     GtkWidget *button = gtk_button_new();
     char buffer[3];
     sprintf(buffer, "%lu", i + 1);
     GtkWidget *label = gtk_label_new(buffer);
     gtk_button_set_child(GTK_BUTTON(button), label);
-    gtk_box_append(GTK_BOX(ns(worspaces)), button);
-    ns(workspace_buttons)[i] = button;
+    gtk_box_append(GTK_BOX(_(worspaces)), button);
+    _(workspace_buttons)[i] = button;
   }
-  gtk_box_append(GTK_BOX(left), ns(worspaces));
+  gtk_box_append(GTK_BOX(left), _(worspaces));
 
   // htop
-  ns(htop) = gtk_button_new();
-  gtk_widget_add_css_class(ns(htop), "widget");
-  gtk_widget_add_css_class(ns(htop), "terminal");
-  gtk_widget_add_css_class(ns(htop), "padded");
-  gtk_widget_add_css_class(ns(htop), "clickable");
+  _(htop) = gtk_button_new();
+  gtk_widget_add_css_class(_(htop), "widget");
+  gtk_widget_add_css_class(_(htop), "terminal");
+  gtk_widget_add_css_class(_(htop), "padded");
+  gtk_widget_add_css_class(_(htop), "clickable");
   GtkWidget *htop_label = gtk_label_new("Htop");
-  gtk_button_set_child(GTK_BUTTON(ns(htop)), htop_label);
-  gtk_box_append(GTK_BOX(right), ns(htop));
+  gtk_button_set_child(GTK_BUTTON(_(htop)), htop_label);
+  gtk_box_append(GTK_BOX(right), _(htop));
 
   // weather
-  ns(weather_label) = gtk_label_new("--");
-  ns(weather) = gtk_button_new();
-  gtk_widget_add_css_class(ns(weather), "widget");
-  gtk_widget_add_css_class(ns(weather), "weather");
-  gtk_widget_add_css_class(ns(weather), "padded");
-  gtk_widget_add_css_class(ns(weather), "clickable");
-  gtk_button_set_child(GTK_BUTTON(ns(weather)), ns(weather_label));
-  gtk_box_append(GTK_BOX(right), ns(weather));
+  _(weather_label) = gtk_label_new("--");
+  _(weather) = gtk_button_new();
+  gtk_widget_add_css_class(_(weather), "widget");
+  gtk_widget_add_css_class(_(weather), "weather");
+  gtk_widget_add_css_class(_(weather), "padded");
+  gtk_widget_add_css_class(_(weather), "clickable");
+  gtk_button_set_child(GTK_BUTTON(_(weather)), _(weather_label));
+  gtk_box_append(GTK_BOX(right), _(weather));
 
   // language
-  ns(language_label) = gtk_label_new("--");
-  ns(language) = gtk_center_box_new();
-  gtk_widget_add_css_class(ns(language), "widget");
-  gtk_widget_add_css_class(ns(language), "language");
-  gtk_widget_add_css_class(ns(language), "padded");
-  gtk_center_box_set_center_widget(GTK_CENTER_BOX(ns(language)),
-                                   ns(language_label));
-  gtk_box_append(GTK_BOX(right), ns(language));
+  _(language_label) = gtk_label_new("--");
+  _(language) = gtk_center_box_new();
+  gtk_widget_add_css_class(_(language), "widget");
+  gtk_widget_add_css_class(_(language), "language");
+  gtk_widget_add_css_class(_(language), "padded");
+  gtk_center_box_set_center_widget(GTK_CENTER_BOX(_(language)),
+                                   _(language_label));
+  gtk_box_append(GTK_BOX(right), _(language));
 
   // sound
-  ns(sound) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_widget_add_css_class(ns(sound), "widget");
-  gtk_widget_add_css_class(ns(sound), "sound");
-  gtk_widget_add_css_class(ns(sound), "padded");
-  ns(sound_image) = gtk_image_new();
-  gtk_image_set_from_icon_name(GTK_IMAGE(ns(sound_image)), "dialog-question");
-  gtk_box_append(GTK_BOX(ns(sound)), ns(sound_image));
-  ns(sound_scale) =
+  _(sound) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_widget_add_css_class(_(sound), "widget");
+  gtk_widget_add_css_class(_(sound), "sound");
+  gtk_widget_add_css_class(_(sound), "padded");
+  _(sound_image) = gtk_image_new();
+  gtk_image_set_from_icon_name(GTK_IMAGE(_(sound_image)), "dialog-question");
+  gtk_box_append(GTK_BOX(_(sound)), _(sound_image));
+  _(sound_scale) =
       gtk_scale_new(GTK_ORIENTATION_HORIZONTAL,
                     gtk_adjustment_new(0.0, 0.0, 1.0, 0.0, 0.0, 0.0));
-  gtk_widget_add_css_class(ns(sound_scale), "sound-slider");
-  gtk_box_append(GTK_BOX(ns(sound)), ns(sound_scale));
-  gtk_box_append(GTK_BOX(right), ns(sound));
+  gtk_widget_add_css_class(_(sound_scale), "sound-slider");
+  gtk_box_append(GTK_BOX(_(sound)), _(sound_scale));
+  gtk_box_append(GTK_BOX(right), _(sound));
 
   // cpu
-  ns(cpu) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
-  gtk_widget_add_css_class(ns(cpu), "widget");
-  gtk_widget_add_css_class(ns(cpu), "cpu");
-  gtk_widget_add_css_class(ns(cpu), "padded");
+  _(cpu) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  gtk_widget_add_css_class(_(cpu), "widget");
+  gtk_widget_add_css_class(_(cpu), "cpu");
+  gtk_widget_add_css_class(_(cpu), "padded");
   for (size_t i = 0; i < 12; i++) {
     GtkWidget *label = gtk_label_new(NULL);
     gtk_label_set_use_markup(GTK_LABEL(label), true);
-    gtk_box_append(GTK_BOX(ns(cpu)), label);
-    ns(cpu_labels)[i] = label;
+    gtk_box_append(GTK_BOX(_(cpu)), label);
+    _(cpu_labels)[i] = label;
   }
-  gtk_box_append(GTK_BOX(right), ns(cpu));
+  gtk_box_append(GTK_BOX(right), _(cpu));
 
   // ram
-  ns(ram_label) = gtk_label_new(NULL);
-  ns(ram) = gtk_button_new();
-  gtk_widget_add_css_class(ns(ram), "widget");
-  gtk_widget_add_css_class(ns(ram), "memory");
-  gtk_widget_add_css_class(ns(ram), "padded");
-  gtk_widget_add_css_class(ns(ram), "clickable");
-  gtk_button_set_child(GTK_BUTTON(ns(ram)), ns(ram_label));
-  gtk_box_append(GTK_BOX(right), ns(ram));
+  _(ram_label) = gtk_label_new(NULL);
+  _(ram) = gtk_button_new();
+  gtk_widget_add_css_class(_(ram), "widget");
+  gtk_widget_add_css_class(_(ram), "memory");
+  gtk_widget_add_css_class(_(ram), "padded");
+  gtk_widget_add_css_class(_(ram), "clickable");
+  gtk_button_set_child(GTK_BUTTON(_(ram)), _(ram_label));
+  gtk_box_append(GTK_BOX(right), _(ram));
 
   // network
-  ns(network_label) = gtk_label_new("--");
-  ns(network_image) = gtk_image_new();
-  gtk_image_set_from_gicon(GTK_IMAGE(ns(network_image)), get_icon(WIFI_ICON));
+  _(network_label) = gtk_label_new("--");
+  _(network_image) = gtk_image_new();
+  gtk_image_set_from_gicon(GTK_IMAGE(_(network_image)), get_icon(WIFI_ICON));
   GtkWidget *network_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_append(GTK_BOX(network_wrapper), ns(network_label));
-  gtk_box_append(GTK_BOX(network_wrapper), ns(network_image));
-  ns(network) = gtk_button_new();
-  gtk_widget_add_css_class(ns(network), "widget");
-  gtk_widget_add_css_class(ns(network), "network");
-  gtk_widget_add_css_class(ns(network), "padded");
-  gtk_widget_add_css_class(ns(network), "clickable");
-  gtk_widget_set_cursor(ns(network), gdk_cursor_new_from_name("pointer", NULL));
-  gtk_button_set_child(GTK_BUTTON(ns(network)), network_wrapper);
-  gtk_box_append(GTK_BOX(right), ns(network));
+  gtk_box_append(GTK_BOX(network_wrapper), _(network_label));
+  gtk_box_append(GTK_BOX(network_wrapper), _(network_image));
+  _(network) = gtk_button_new();
+  gtk_widget_add_css_class(_(network), "widget");
+  gtk_widget_add_css_class(_(network), "network");
+  gtk_widget_add_css_class(_(network), "padded");
+  gtk_widget_add_css_class(_(network), "clickable");
+  gtk_widget_set_cursor(_(network), gdk_cursor_new_from_name("pointer", NULL));
+  gtk_button_set_child(GTK_BUTTON(_(network)), network_wrapper);
+  gtk_box_append(GTK_BOX(right), _(network));
 
   // clock
-  ns(time_label) = gtk_label_new("--");
-  ns(time) = gtk_center_box_new();
-  gtk_widget_add_css_class(ns(time), "widget");
-  gtk_widget_add_css_class(ns(time), "clock");
-  gtk_widget_add_css_class(ns(time), "padded");
-  gtk_center_box_set_center_widget(GTK_CENTER_BOX(ns(time)), ns(time_label));
-  gtk_box_append(GTK_BOX(right), ns(time));
+  _(time_label) = gtk_label_new("--");
+  _(time) = gtk_center_box_new();
+  gtk_widget_add_css_class(_(time), "widget");
+  gtk_widget_add_css_class(_(time), "clock");
+  gtk_widget_add_css_class(_(time), "padded");
+  gtk_center_box_set_center_widget(GTK_CENTER_BOX(_(time)), _(time_label));
+  gtk_box_append(GTK_BOX(right), _(time));
 
   // session
-  ns(session) = gtk_button_new();
-  gtk_widget_add_css_class(ns(session), "widget");
-  gtk_widget_add_css_class(ns(session), "power");
-  gtk_widget_add_css_class(ns(session), "padded");
-  gtk_widget_add_css_class(ns(session), "clickable");
-  gtk_widget_set_cursor(ns(network), gdk_cursor_new_from_name("pointer", NULL));
+  _(session) = gtk_button_new();
+  gtk_widget_add_css_class(_(session), "widget");
+  gtk_widget_add_css_class(_(session), "power");
+  gtk_widget_add_css_class(_(session), "padded");
+  gtk_widget_add_css_class(_(session), "clickable");
+  gtk_widget_set_cursor(_(network), gdk_cursor_new_from_name("pointer", NULL));
   GtkWidget *session_image = gtk_image_new();
   gtk_image_set_from_gicon(GTK_IMAGE(session_image), get_icon(POWER_ICON));
-  gtk_button_set_child(GTK_BUTTON(ns(session)), session_image);
-  gtk_box_append(GTK_BOX(right), ns(session));
+  gtk_button_set_child(GTK_BUTTON(_(session)), session_image);
+  gtk_box_append(GTK_BOX(right), _(session));
 }
 
-static void ns(workspace_button_on_click)(GtkButton *, gpointer data) {
+static void _(workspace_button_on_click)(GtkButton *, gpointer data) {
   size_t idx = (size_t)data;
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = HyprlandGoToWorkspace, .hyprland_go_to_workspace = {idx}});
 }
 
-static void ns(sound_scale_on_change)(void) {
-  GtkAdjustment *adj = gtk_range_get_adjustment(GTK_RANGE(ns(sound_scale)));
+static void _(sound_scale_on_change)(void) {
+  GtkAdjustment *adj = gtk_range_get_adjustment(GTK_RANGE(_(sound_scale)));
   double value = CLAMP(gtk_adjustment_get_value(adj), 0.0, 1.0);
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = SetVolume, .set_volume = {.volume = value}});
 }
 
-static void ns(spawn_system_monitor)(void) {
+static void _(spawn_system_monitor)(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnSystemMonitor});
 }
 
-static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case Workspaces: {
     for (size_t idx = 1; idx <= 10; idx++) {
-      GtkWidget *button = ns(workspace_buttons)[idx - 1];
+      GtkWidget *button = _(workspace_buttons)[idx - 1];
       bool visible = false;
       for (size_t i = 0; i < event->workspaces.ids.len; i++) {
         if (event->workspaces.ids.ptr[i] == idx) {
@@ -226,17 +226,17 @@ static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   }
   case Language: {
     if (strcmp(event->language.lang.ptr, "English (US)") == 0) {
-      gtk_label_set_label(GTK_LABEL(ns(language_label)), "EN");
+      gtk_label_set_label(GTK_LABEL(_(language_label)), "EN");
     } else if (strcmp(event->language.lang.ptr, "Polish") == 0) {
-      gtk_label_set_label(GTK_LABEL(ns(language_label)), "PL");
+      gtk_label_set_label(GTK_LABEL(_(language_label)), "PL");
     } else {
-      gtk_label_set_label(GTK_LABEL(ns(language_label)), "??");
+      gtk_label_set_label(GTK_LABEL(_(language_label)), "??");
     }
     break;
   }
   case Volume: {
     float volume = event->volume.volume;
-    gtk_range_set_value(GTK_RANGE(ns(sound_scale)), volume);
+    gtk_range_set_value(GTK_RANGE(_(sound_scale)), volume);
     char *icon = NULL;
     if (volume == 0.0) {
       icon = "audio-volume-muted-symbolic";
@@ -249,12 +249,12 @@ static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     } else {
       icon = "audio-volume-overamplified-symbolic";
     }
-    gtk_image_set_from_icon_name(GTK_IMAGE(ns(sound_image)), icon);
+    gtk_image_set_from_icon_name(GTK_IMAGE(_(sound_image)), icon);
     break;
   }
   case CpuUsage: {
     for (size_t idx = 0; idx < 12; idx++) {
-      GtkWidget *label = ns(cpu_labels)[idx];
+      GtkWidget *label = _(cpu_labels)[idx];
       size_t load = event->cpu_usage.usage_per_core.ptr[idx];
       size_t indicator_idx =
           (size_t)((double)load / 100.0 * (double)CPU_INDICATORS_COUNT);
@@ -271,32 +271,32 @@ static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   case Memory: {
     char buffer[100];
     sprintf(buffer, "RAM %.1fG/%.1fG", event->memory.used, event->memory.total);
-    gtk_label_set_label(GTK_LABEL(ns(ram_label)), buffer);
+    gtk_label_set_label(GTK_LABEL(_(ram_label)), buffer);
     break;
   }
   case WiFiStatus: {
     if (event->wi_fi_status.ssid.ptr == NULL) {
-      gtk_widget_set_visible(ns(network_image), false);
-      gtk_label_set_label(GTK_LABEL(ns(network_label)), "Not connected");
+      gtk_widget_set_visible(_(network_image), false);
+      gtk_label_set_label(GTK_LABEL(_(network_label)), "Not connected");
     } else {
-      gtk_widget_set_visible(ns(network_image), true);
+      gtk_widget_set_visible(_(network_image), true);
       char buffer[100];
       sprintf(buffer, "%s (%d)%% ", event->wi_fi_status.ssid.ptr,
               event->wi_fi_status.strength);
-      gtk_label_set_label(GTK_LABEL(ns(network_label)), buffer);
+      gtk_label_set_label(GTK_LABEL(_(network_label)), buffer);
     }
     break;
   }
   case Time: {
-    gtk_label_set_label(GTK_LABEL(ns(time_label)), event->time.time.ptr);
-    gtk_widget_set_tooltip_text(ns(time_label), event->time.date.ptr);
+    gtk_label_set_label(GTK_LABEL(_(time_label)), event->time.time.ptr);
+    gtk_widget_set_tooltip_text(_(time_label), event->time.date.ptr);
     break;
   }
   case CurrentWeather: {
     char buffer[100];
     sprintf(buffer, "%.1f℃ %s", event->current_weather.temperature,
             weather_code_to_description(event->current_weather.code));
-    gtk_label_set_label(GTK_LABEL(ns(weather_label)), buffer);
+    gtk_label_set_label(GTK_LABEL(_(weather_label)), buffer);
     break;
   }
 
@@ -305,10 +305,9 @@ static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-static bool ns(bottom_right_point_of)(GtkWidget *widget,
-                                      graphene_point_t *out) {
+static bool _(bottom_right_point_of)(GtkWidget *widget, graphene_point_t *out) {
   graphene_rect_t bounds;
-  if (!gtk_widget_compute_bounds(widget, GTK_WIDGET(ns(window)), &bounds)) {
+  if (!gtk_widget_compute_bounds(widget, GTK_WIDGET(_(window)), &bounds)) {
     return false;
   }
 
@@ -318,9 +317,9 @@ static bool ns(bottom_right_point_of)(GtkWidget *widget,
   return true;
 }
 
-static void ns(htop_btn_on_click)() {
+static void _(htop_btn_on_click)() {
   graphene_point_t bottom_right;
-  if (!ns(bottom_right_point_of)(ns(htop), &bottom_right)) {
+  if (!_(bottom_right_point_of)(_(htop), &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the htop widget");
     return;
   }
@@ -331,9 +330,9 @@ static void ns(htop_btn_on_click)() {
   HTOP.toggle();
 }
 
-static void ns(weather_btn_on_click)() {
+static void _(weather_btn_on_click)() {
   graphene_point_t bottom_right;
-  if (!ns(bottom_right_point_of)(ns(weather), &bottom_right)) {
+  if (!_(bottom_right_point_of)(_(weather), &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the weather widget");
     return;
   }
@@ -344,9 +343,9 @@ static void ns(weather_btn_on_click)() {
   WEATHER.toggle();
 }
 
-static void ns(network_btn_on_click)() {
+static void _(network_btn_on_click)() {
   graphene_point_t bottom_right;
-  if (!ns(bottom_right_point_of)(ns(network), &bottom_right)) {
+  if (!_(bottom_right_point_of)(_(network), &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the network widget");
     return;
   }
@@ -357,42 +356,42 @@ static void ns(network_btn_on_click)() {
   NETWORK.toggle();
 }
 
-static void ns(activate)(GApplication *app) {
-  gtk_window_set_application(ns(window), GTK_APPLICATION(app));
+static void _(activate)(GApplication *app) {
+  gtk_window_set_application(_(window), GTK_APPLICATION(app));
 
-  gtk_layer_init_for_window(ns(window));
-  gtk_layer_set_layer(ns(window), GTK_LAYER_SHELL_LAYER_TOP);
-  gtk_layer_set_anchor(ns(window), GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(ns(window), GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(ns(window), GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_margin(ns(window), GTK_LAYER_SHELL_EDGE_TOP, 0);
-  gtk_layer_set_namespace(ns(window), "LayerShell/TopBar");
+  gtk_layer_init_for_window(_(window));
+  gtk_layer_set_layer(_(window), GTK_LAYER_SHELL_LAYER_TOP);
+  gtk_layer_set_anchor(_(window), GTK_LAYER_SHELL_EDGE_TOP, true);
+  gtk_layer_set_anchor(_(window), GTK_LAYER_SHELL_EDGE_LEFT, true);
+  gtk_layer_set_anchor(_(window), GTK_LAYER_SHELL_EDGE_RIGHT, true);
+  gtk_layer_set_margin(_(window), GTK_LAYER_SHELL_EDGE_TOP, 0);
+  gtk_layer_set_namespace(_(window), "LayerShell/TopBar");
 
   for (size_t idx = 0; idx < 10; idx++) {
-    GtkWidget *button = ns(workspace_buttons)[idx];
+    GtkWidget *button = _(workspace_buttons)[idx];
     g_signal_connect(button, "clicked",
-                     G_CALLBACK(ns(workspace_button_on_click)), (void *)idx);
+                     G_CALLBACK(_(workspace_button_on_click)), (void *)idx);
   }
 
-  g_signal_connect(ns(htop), "clicked", ns(htop_btn_on_click), NULL);
+  g_signal_connect(_(htop), "clicked", _(htop_btn_on_click), NULL);
 
-  g_signal_connect(ns(weather), "clicked", ns(weather_btn_on_click), NULL);
+  g_signal_connect(_(weather), "clicked", _(weather_btn_on_click), NULL);
 
-  GtkGestureClick *sound_ctrl = GTK_GESTURE_CLICK(gtk_gesture_click_new());
-  gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(sound_ctrl),
-                                             GTK_PHASE_CAPTURE);
-  g_signal_connect(sound_ctrl, "released", ns(sound_scale_on_change), NULL);
-  gtk_widget_add_controller(ns(sound), GTK_EVENT_CONTROLLER(sound_ctrl));
+  GtkEventController *sound_ctrl =
+      GTK_EVENT_CONTROLLER(gtk_gesture_click_new());
+  gtk_event_controller_set_propagation_phase(sound_ctrl, GTK_PHASE_CAPTURE);
+  g_signal_connect(sound_ctrl, "released", _(sound_scale_on_change), NULL);
+  gtk_widget_add_controller(_(sound), sound_ctrl);
 
-  g_signal_connect(ns(ram), "clicked", ns(spawn_system_monitor), NULL);
+  g_signal_connect(_(ram), "clicked", _(spawn_system_monitor), NULL);
 
-  g_signal_connect(ns(network), "clicked", ns(network_btn_on_click), NULL);
+  g_signal_connect(_(network), "clicked", _(network_btn_on_click), NULL);
 
-  g_signal_connect(ns(session), "clicked", SESSION.toggle, NULL);
+  g_signal_connect(_(session), "clicked", SESSION.toggle, NULL);
 
-  layer_shell_io_subscribe(ns(on_io_event));
+  layer_shell_io_subscribe(_(on_io_event));
 
-  gtk_window_present(ns(window));
+  gtk_window_present(_(window));
 }
 
-window_t TOP_BAR = {.init = ns(init), .activate = ns(activate)};
+window_t TOP_BAR = {.init = _(init), .activate = _(activate)};

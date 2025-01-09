@@ -4,33 +4,33 @@
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
-#define ns(name) launcher_ns_##name
+#define _(name) launcher_ns_##name
 
-GtkWindow *ns(window);
+static GtkWindow *_(window);
 
-GtkWidget *ns(input);
+static GtkWidget *_(input);
 
 typedef struct {
   GtkWidget *wrapper;
   GtkWidget *image;
   GtkWidget *label;
-} launcher_row_t;
-launcher_row_t ns(rows)[5];
+} row_t;
+static row_t _(rows)[5];
 
-static void ns(init)(void) {
-  ns(window) = GTK_WINDOW(gtk_window_new());
-  gtk_widget_set_name(GTK_WIDGET(ns(window)), "LauncherWindow");
+static void _(init)(void) {
+  _(window) = GTK_WINDOW(gtk_window_new());
+  gtk_widget_set_name(GTK_WIDGET(_(window)), "LauncherWindow");
 
-  window_set_width_request(ns(window), 700);
+  window_set_width_request(_(window), 700);
 
   GtkWidget *layout = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class(layout, "widget-launcher-wrapper");
-  gtk_window_set_child(ns(window), layout);
+  gtk_window_set_child(_(window), layout);
 
-  ns(input) = gtk_search_entry_new();
-  gtk_widget_add_css_class(ns(input), "widget-launcher-search-box");
-  gtk_widget_set_hexpand(ns(input), true);
-  gtk_box_append(GTK_BOX(layout), ns(input));
+  _(input) = gtk_search_entry_new();
+  gtk_widget_add_css_class(_(input), "widget-launcher-search-box");
+  gtk_widget_set_hexpand(_(input), true);
+  gtk_box_append(GTK_BOX(layout), _(input));
 
   GtkWidget *scroll = gtk_scrolled_window_new();
   gtk_widget_add_css_class(scroll, "widget-launcher-scroll-list");
@@ -57,35 +57,35 @@ static void ns(init)(void) {
 
     gtk_box_append(GTK_BOX(content), row);
 
-    ns(rows)[i] =
-        (launcher_row_t){.wrapper = row, .image = image, .label = label};
+    _(rows)
+    [i] = (row_t){.wrapper = row, .image = image, .label = label};
   }
 }
 
-static void ns(toggle)(void) {
-  if (gtk_widget_get_visible(GTK_WIDGET(ns(window))) == false) {
+static void _(toggle)(void) {
+  if (gtk_widget_get_visible(GTK_WIDGET(_(window))) == false) {
     layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListReset});
-    gtk_editable_set_text(GTK_EDITABLE(ns(input)), "");
+    gtk_editable_set_text(GTK_EDITABLE(_(input)), "");
   }
-  flip_window_visibility(ns(window));
+  flip_window_visibility(_(window));
 }
 
-static void ns(exec_selected)(void) {
+static void _(exec_selected)(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListExecSelected});
-  ns(toggle)();
+  _(toggle)();
 }
 
-static void ns(on_input_change)(GtkEditable *editable) {
+static void _(on_input_change)(GtkEditable *editable) {
   const unsigned char *search =
       (const unsigned char *)gtk_editable_get_text(editable);
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = AppListSetSearch, .app_list_set_search = {.search = search}});
 }
 
-static gboolean ns(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
-                                 GdkModifierType, gpointer) {
+static gboolean _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
+                                GdkModifierType, gpointer) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    ns(toggle)();
+    _(toggle)();
   } else if (strcmp(gdk_keyval_name(keyval), "Up") == 0) {
     layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListGoUp});
   } else if (strcmp(gdk_keyval_name(keyval), "Down") == 0) {
@@ -95,15 +95,15 @@ static gboolean ns(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
   return false;
 }
 
-static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case ToggleLauncher:
-    ns(toggle)();
+    _(toggle)();
     break;
   case AppList: {
     LAYER_SHELL_IO_CArray_App apps = event->app_list.apps;
     for (size_t i = 0; i < 5; i++) {
-      launcher_row_t row = ns(rows)[i];
+      row_t row = _(rows)[i];
       if (i < apps.len) {
         LAYER_SHELL_IO_App app = apps.ptr[i];
         gtk_widget_set_visible(row.wrapper, true);
@@ -131,28 +131,28 @@ static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-static void ns(activate)(GApplication *app) {
-  gtk_window_set_application(ns(window), GTK_APPLICATION(app));
+static void _(activate)(GApplication *app) {
+  gtk_window_set_application(_(window), GTK_APPLICATION(app));
 
-  gtk_layer_init_for_window(ns(window));
-  gtk_layer_set_layer(ns(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(ns(window), "LayerShell/Launcher");
-  gtk_layer_set_keyboard_mode(ns(window),
+  gtk_layer_init_for_window(_(window));
+  gtk_layer_set_layer(_(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_namespace(_(window), "LayerShell/Launcher");
+  gtk_layer_set_keyboard_mode(_(window),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  g_signal_connect(ns(input), "activate", ns(exec_selected), NULL);
-  g_signal_connect(ns(input), "changed", G_CALLBACK(ns(on_input_change)), NULL);
+  g_signal_connect(_(input), "activate", _(exec_selected), NULL);
+  g_signal_connect(_(input), "changed", G_CALLBACK(_(on_input_change)), NULL);
 
   GtkEventController *ctrl = gtk_event_controller_key_new();
-  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(ns(on_key_press)), NULL);
+  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(_(on_key_press)), NULL);
   gtk_event_controller_set_propagation_phase(ctrl, GTK_PHASE_CAPTURE);
-  gtk_widget_add_controller(GTK_WIDGET(ns(window)), ctrl);
+  gtk_widget_add_controller(GTK_WIDGET(_(window)), ctrl);
 
-  gtk_window_present(ns(window));
-  gtk_widget_set_visible(GTK_WIDGET(ns(window)), false);
+  gtk_window_present(_(window));
+  gtk_widget_set_visible(GTK_WIDGET(_(window)), false);
 
-  layer_shell_io_subscribe(ns(on_io_event));
+  layer_shell_io_subscribe(_(on_io_event));
 }
 
 window_t LAUNCHER = {
-    .init = ns(init), .activate = ns(activate), .toggle = ns(toggle)};
+    .init = _(init), .activate = _(activate), .toggle = _(toggle)};
