@@ -14,7 +14,7 @@ LDFLAGS += `pkg-config --libs gtk4-layer-shell-0`
 LDFLAGS += `pkg-config --libs vte-2.91-gtk4`
 
 LDFLAGS += -L$(RUST_TARGET_DIR) -llayer_shell_io
-CFLAGS += -Wl,-rpath='$$ORIGIN/$(RUST_TARGET_DIR)'
+LDFLAGS += -Wl,-rpath='$$ORIGIN/$(RUST_TARGET_DIR)'
 
 run: main
 	./main start
@@ -29,7 +29,8 @@ OBJS = css.o \
 		network-window.o \
 		launcher-window.o \
 		htop-window.o \
-		top-bar-window.o
+		top-bar-window.o \
+		utils.o
 
 %.o: %.c %.h bindings.h
 	$(CC) -c $(CFLAGS) $< -o $@

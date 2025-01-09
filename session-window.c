@@ -1,7 +1,8 @@
 #include "session-window.h"
 #include "bindings.h"
-#include "gtk4-layer-shell.h"
+#include "utils.h"
 #include <gtk/gtk.h>
+#include <gtk4-layer-shell.h>
 
 GtkWindow *session_window;
 GtkButton *lock_button;
@@ -41,10 +42,7 @@ void init_session_window(void) {
   gtk_box_append(layout, GTK_WIDGET(logout_button));
 }
 
-void toggle_session_window(void) {
-  gtk_widget_set_visible(GTK_WIDGET(session_window),
-                         !gtk_widget_get_visible(GTK_WIDGET(session_window)));
-}
+void toggle_session_window(void) { flip_window_visibility(session_window); }
 
 static void session_lock(void) {
   toggle_session_window();

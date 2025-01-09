@@ -1,7 +1,7 @@
 #ifndef ICONS_H
 #define ICONS_H
 
-#include "gio/gio.h"
+#include <gio/gio.h>
 
 typedef enum {
   FOGGY_ICON,

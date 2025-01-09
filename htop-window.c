@@ -1,9 +1,12 @@
 #include "htop-window.h"
-#include "vte/vte.h"
+#include "utils.h"
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
+#include <vte/vte.h>
 
 GtkWindow *htop_window;
+
+const uint32_t HTOP_WINDOW_WIDTH = 1000;
 
 void init_htop_window(void) {
   htop_window = GTK_WINDOW(gtk_window_new());
@@ -13,7 +16,7 @@ void init_htop_window(void) {
 
   GValue width_request = G_VALUE_INIT;
   g_value_init(&width_request, G_TYPE_INT);
-  g_value_set_int(&width_request, 1000);
+  g_value_set_int(&width_request, HTOP_WINDOW_WIDTH);
   g_object_set_property(G_OBJECT(htop_window), "width-request", &width_request);
 
   GValue height_request = G_VALUE_INIT;
@@ -23,10 +26,7 @@ void init_htop_window(void) {
                         &height_request);
 }
 
-void toggle_htop_window(void) {
-  gtk_widget_set_visible(GTK_WIDGET(htop_window),
-                         !gtk_widget_get_visible(GTK_WIDGET(htop_window)));
-}
+void toggle_htop_window(void) { flip_window_visibility(htop_window); }
 
 void on_htop_window_key_press(__attribute__((unused))
                               GtkEventControllerKey *self,
@@ -44,10 +44,8 @@ void activate_htop_window(GApplication *app) {
 
   gtk_layer_init_for_window(htop_window);
   gtk_layer_set_layer(htop_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_anchor(htop_window, GTK_LAYER_SHELL_EDGE_LEFT, true);
   gtk_layer_set_anchor(htop_window, GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(htop_window, GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_TOP, 50);
-  gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_RIGHT, 600);
   gtk_layer_set_namespace(htop_window, "LayerShell/Htop");
   gtk_layer_set_keyboard_mode(htop_window,
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
@@ -72,3 +70,10 @@ void activate_htop_window(GApplication *app) {
   gtk_window_present(htop_window);
   gtk_widget_set_visible(GTK_WIDGET(htop_window), false);
 }
+
+void move_htop_window(uint32_t margin_left, uint32_t margin_top) {
+  gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_LEFT, margin_left);
+  gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_TOP, margin_top);
+}
+
+uint32_t htop_window_width(void) { return HTOP_WINDOW_WIDTH; }

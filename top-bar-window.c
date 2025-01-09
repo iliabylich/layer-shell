@@ -305,6 +305,60 @@ static void top_bar_window_on_event(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
+bool bottom_right_point_of(GtkWidget *widget, graphene_point_t *out) {
+  graphene_rect_t bounds;
+  if (!gtk_widget_compute_bounds(widget, GTK_WIDGET(top_bar_window), &bounds)) {
+    return false;
+  }
+
+  out->x = bounds.origin.x + bounds.size.width;
+  out->y = bounds.origin.y + bounds.size.height;
+
+  printf("bottom-right point %f %f\n", out->x, out->y);
+
+  return true;
+}
+
+void on_htop_btn_click() {
+  graphene_point_t bottom_right;
+  if (!bottom_right_point_of(GTK_WIDGET(htop_widget), &bottom_right)) {
+    fprintf(stderr, "Failed to compute bottom-right of the htop widget");
+    return;
+  }
+  uint32_t margin_left = bottom_right.x - htop_window_width() / 2.0;
+  uint32_t margin_top = bottom_right.y;
+  move_htop_window(margin_left, margin_top);
+
+  toggle_htop_window();
+}
+
+void on_weather_btn_click() {
+  graphene_point_t bottom_right;
+  if (!bottom_right_point_of(GTK_WIDGET(weather_widget), &bottom_right)) {
+    fprintf(stderr, "Failed to compute bottom-right of the weather widget");
+    return;
+  }
+  uint32_t margin_left = bottom_right.x - weather_window_width();
+  uint32_t margin_top = bottom_right.y;
+  move_weather_window(margin_left, margin_top);
+  printf("%d %d\n", margin_left, margin_top);
+
+  toggle_weather_window();
+}
+
+void on_network_btn_click() {
+  graphene_point_t bottom_right;
+  if (!bottom_right_point_of(GTK_WIDGET(network_widget), &bottom_right)) {
+    fprintf(stderr, "Failed to compute bottom-right of the network widget");
+    return;
+  }
+  uint32_t margin_left = bottom_right.x - network_window_width();
+  uint32_t margin_top = bottom_right.y;
+  move_network_window(margin_left, margin_top);
+
+  toggle_network_window();
+}
+
 void activate_top_bar_window(GApplication *app) {
   gtk_window_set_application(top_bar_window, GTK_APPLICATION(app));
 
@@ -322,7 +376,9 @@ void activate_top_bar_window(GApplication *app) {
                      (void *)idx);
   }
 
-  g_signal_connect(htop_widget, "clicked", toggle_htop_window, NULL);
+  g_signal_connect(htop_widget, "clicked", on_htop_btn_click, NULL);
+
+  g_signal_connect(weather_widget, "clicked", on_weather_btn_click, NULL);
 
   GtkGestureClick *sound_ctrl = GTK_GESTURE_CLICK(gtk_gesture_click_new());
   gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(sound_ctrl),
@@ -333,11 +389,9 @@ void activate_top_bar_window(GApplication *app) {
 
   g_signal_connect(ram_widget, "clicked", spawn_system_monitor, NULL);
 
-  g_signal_connect(network_widget, "clicked", toggle_network_window, NULL);
+  g_signal_connect(network_widget, "clicked", on_network_btn_click, NULL);
 
   g_signal_connect(session_widget, "clicked", toggle_session_window, NULL);
-
-  g_signal_connect(weather_widget, "clicked", toggle_weather_window, NULL);
 
   layer_shell_io_subscribe(top_bar_window_on_event);
 

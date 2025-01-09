@@ -1,8 +1,6 @@
 #include "css.h"
 #include "bindings.h"
-#include "gdk/gdk.h"
-#include "gtk/gtk.h"
-#include "gtk/gtkcssprovider.h"
+#include <gtk/gtk.h>
 #include <stdio.h>
 
 static void on_css_parse_error(__attribute__((unused)) GtkCssProvider *self,

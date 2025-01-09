@@ -1,5 +1,6 @@
 #include "network-window.h"
 #include "bindings.h"
+#include "utils.h"
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
@@ -11,6 +12,8 @@ typedef struct {
 network_row_t networks_rows[5];
 network_row_t network_settings_row;
 network_row_t network_exit_row;
+
+const uint32_t NETWORK_WINDOW_WIDTH = 700;
 
 static network_row_t network_row_new(const char *text, const char *icon_name) {
   GtkCenterBox *row = GTK_CENTER_BOX(gtk_center_box_new());
@@ -38,7 +41,7 @@ void init_network_window(void) {
   gtk_widget_set_name(GTK_WIDGET(network_window), "NetworksWindow");
   GValue width_request = G_VALUE_INIT;
   g_value_init(&width_request, G_TYPE_INT);
-  g_value_set_int(&width_request, 700);
+  g_value_set_int(&width_request, NETWORK_WINDOW_WIDTH);
   g_object_set_property(G_OBJECT(network_window), "width-request",
                         &width_request);
 
@@ -163,9 +166,8 @@ void activate_network_window(GApplication *app) {
 
   gtk_layer_init_for_window(network_window);
   gtk_layer_set_layer(network_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_anchor(network_window, GTK_LAYER_SHELL_EDGE_LEFT, true);
   gtk_layer_set_anchor(network_window, GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(network_window, GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_margin(network_window, GTK_LAYER_SHELL_EDGE_TOP, 50);
   gtk_layer_set_namespace(network_window, "LayerShell/Networks");
   gtk_layer_set_keyboard_mode(network_window,
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
@@ -192,7 +194,11 @@ void activate_network_window(GApplication *app) {
   layer_shell_io_subscribe(on_network_window_event);
 }
 
-void toggle_network_window(void) {
-  gtk_widget_set_visible(GTK_WIDGET(network_window),
-                         !gtk_widget_get_visible(GTK_WIDGET(network_window)));
+void toggle_network_window(void) { flip_window_visibility(network_window); }
+
+void move_network_window(uint32_t margin_left, uint32_t margin_top) {
+  gtk_layer_set_margin(network_window, GTK_LAYER_SHELL_EDGE_LEFT, margin_left);
+  gtk_layer_set_margin(network_window, GTK_LAYER_SHELL_EDGE_TOP, margin_top);
 }
+
+uint32_t network_window_width(void) { return NETWORK_WINDOW_WIDTH; }

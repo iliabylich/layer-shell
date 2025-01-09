@@ -1,5 +1,6 @@
 #include "launcher-window.h"
 #include "bindings.h"
+#include "utils.h"
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
@@ -66,8 +67,7 @@ void toggle_launcher_window(void) {
     layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListReset});
     gtk_editable_set_text(GTK_EDITABLE(launcher_input), "");
   }
-  gtk_widget_set_visible(GTK_WIDGET(launcher_window),
-                         !gtk_widget_get_visible(GTK_WIDGET(launcher_window)));
+  flip_window_visibility(launcher_window);
 }
 
 static void launcher_exec_selected(void) {

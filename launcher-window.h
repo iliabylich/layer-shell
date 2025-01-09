@@ -1,7 +1,7 @@
 #ifndef LAUNCHER_WINDOW_H
 #define LAUNCHER_WINDOW_H
 
-#include "gio/gio.h"
+#include <gio/gio.h>
 
 void init_launcher_window(void);
 void toggle_launcher_window(void);

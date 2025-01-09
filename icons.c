@@ -1,6 +1,6 @@
 #include "icons.h"
 #include "bindings.h"
-#include "glib.h"
+#include <glib.h>
 #include <stdio.h>
 
 GIcon *foggy_icon;

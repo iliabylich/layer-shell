@@ -1,6 +1,6 @@
 #include "bindings.h"
-#include "gio/gio.h"
 #include "icons.h"
+#include <gio/gio.h>
 
 const char *weather_code_to_description(LAYER_SHELL_IO_WeatherCode code) {
   switch (code) {
