@@ -107,7 +107,7 @@ void init_top_bar_window(void) {
   gtk_box_append(right, GTK_WIDGET(language_widget));
 
   // sound
-  sound_widget = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+  sound_widget = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5));
   gtk_widget_add_css_class(GTK_WIDGET(sound_widget), "widget");
   gtk_widget_add_css_class(GTK_WIDGET(sound_widget), "sound");
   gtk_widget_add_css_class(GTK_WIDGET(sound_widget), "padded");
