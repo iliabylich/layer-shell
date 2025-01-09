@@ -8,7 +8,7 @@ GtkWindow *htop_window;
 
 const uint32_t HTOP_WINDOW_WIDTH = 1000;
 
-void init_htop_window(void) {
+static void htop_window_init(void) {
   htop_window = GTK_WINDOW(gtk_window_new());
 
   gtk_widget_set_name(GTK_WIDGET(htop_window), "HtopWindow");
@@ -26,20 +26,19 @@ void init_htop_window(void) {
                         &height_request);
 }
 
-void toggle_htop_window(void) { flip_window_visibility(htop_window); }
+static void htop_window_toggle(void) { flip_window_visibility(htop_window); }
 
-void on_htop_window_key_press(__attribute__((unused))
-                              GtkEventControllerKey *self,
-                              guint keyval,
-                              __attribute__((unused)) guint keycode,
-                              __attribute__((unused)) GdkModifierType state,
-                              __attribute__((unused)) gpointer user_data) {
+static void
+htop_window_on_key_press(__attribute__((unused)) GtkEventControllerKey *self,
+                         guint keyval, __attribute__((unused)) guint keycode,
+                         __attribute__((unused)) GdkModifierType state,
+                         __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    toggle_htop_window();
+    htop_window_toggle();
   }
 }
 
-void activate_htop_window(GApplication *app) {
+static void htop_window_activate(GApplication *app) {
   gtk_window_set_application(htop_window, GTK_APPLICATION(app));
 
   gtk_layer_init_for_window(htop_window);
@@ -60,7 +59,7 @@ void activate_htop_window(GApplication *app) {
 
   GtkEventControllerKey *ctrl =
       GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
-  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(on_htop_window_key_press),
+  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(htop_window_on_key_press),
                    NULL);
   gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
                                              GTK_PHASE_CAPTURE);
@@ -71,9 +70,15 @@ void activate_htop_window(GApplication *app) {
   gtk_widget_set_visible(GTK_WIDGET(htop_window), false);
 }
 
-void move_htop_window(uint32_t margin_left, uint32_t margin_top) {
+static void htop_window_move(uint32_t margin_left, uint32_t margin_top) {
   gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_LEFT, margin_left);
   gtk_layer_set_margin(htop_window, GTK_LAYER_SHELL_EDGE_TOP, margin_top);
 }
 
 uint32_t htop_window_width(void) { return HTOP_WINDOW_WIDTH; }
+
+window_t HTOP = {.init = htop_window_init,
+                 .activate = htop_window_activate,
+                 .toggle = htop_window_toggle,
+                 .move = htop_window_move,
+                 .width = htop_window_width};

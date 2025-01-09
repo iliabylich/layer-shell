@@ -28,7 +28,7 @@ static weather_row_t weather_row_new(void) {
   return (weather_row_t){.wrapper = row, .image = image, .label = label};
 }
 
-void init_weather_window(void) {
+static void weather_window_init(void) {
   weather_window = GTK_WINDOW(gtk_window_new());
   gtk_widget_set_name(GTK_WIDGET(weather_window), "WeatherWindow");
   gtk_widget_add_css_class(GTK_WIDGET(weather_window), "widget-weather");
@@ -71,19 +71,21 @@ void init_weather_window(void) {
   }
 }
 
-void toggle_weather_window(void) { flip_window_visibility(weather_window); }
+static void weather_window_toggle(void) {
+  flip_window_visibility(weather_window);
+}
 
 static void
-on_weather_window_key_press(__attribute__((unused)) GtkEventControllerKey *self,
+weather_window_on_key_press(__attribute__((unused)) GtkEventControllerKey *self,
                             guint keyval, __attribute__((unused)) guint keycode,
                             __attribute__((unused)) GdkModifierType state,
                             __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    toggle_weather_window();
+    weather_window_toggle();
   }
 }
 
-static void weather_window_on_event(const LAYER_SHELL_IO_Event *event) {
+static void weather_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case ForecastWeather: {
     LAYER_SHELL_IO_CArray_WeatherOnDay daily = event->forecast_weather.daily;
@@ -122,7 +124,7 @@ static void weather_window_on_event(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-void activate_weather_window(GApplication *app) {
+static void weather_window_activate(GApplication *app) {
   gtk_window_set_application(weather_window, GTK_APPLICATION(app));
 
   gtk_layer_init_for_window(weather_window);
@@ -135,22 +137,28 @@ void activate_weather_window(GApplication *app) {
 
   GtkEventControllerKey *ctrl =
       GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
-  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(on_weather_window_key_press),
+  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(weather_window_on_key_press),
                    NULL);
   gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
                                              GTK_PHASE_CAPTURE);
   gtk_widget_add_controller(GTK_WIDGET(weather_window),
                             GTK_EVENT_CONTROLLER(ctrl));
 
-  layer_shell_io_subscribe(weather_window_on_event);
+  layer_shell_io_subscribe(weather_window_on_io_event);
 
   gtk_window_present(weather_window);
   gtk_widget_set_visible(GTK_WIDGET(weather_window), false);
 }
 
-void move_weather_window(uint32_t margin_left, uint32_t margin_top) {
+void weather_window_move(uint32_t margin_left, uint32_t margin_top) {
   gtk_layer_set_margin(weather_window, GTK_LAYER_SHELL_EDGE_LEFT, margin_left);
   gtk_layer_set_margin(weather_window, GTK_LAYER_SHELL_EDGE_TOP, margin_top);
 }
 
 uint32_t weather_window_width(void) { return WEATHER_WINDOW_WIDTH; }
+
+window_t WEATHER = {.init = weather_window_init,
+                    .activate = weather_window_activate,
+                    .toggle = weather_window_toggle,
+                    .move = weather_window_move,
+                    .width = weather_window_width};

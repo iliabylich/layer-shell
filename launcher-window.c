@@ -13,7 +13,7 @@ typedef struct {
 } launcher_row_t;
 launcher_row_t launcher_rows[5];
 
-void init_launcher_window(void) {
+static void launcher_window_init(void) {
   launcher_window = GTK_WINDOW(gtk_window_new());
   gtk_widget_set_name(GTK_WIDGET(launcher_window), "LauncherWindow");
   GValue width_request = G_VALUE_INIT;
@@ -62,7 +62,7 @@ void init_launcher_window(void) {
   }
 }
 
-void toggle_launcher_window(void) {
+static void launcher_window_toggle(void) {
   if (gtk_widget_get_visible(GTK_WIDGET(launcher_window)) == false) {
     layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListReset});
     gtk_editable_set_text(GTK_EDITABLE(launcher_input), "");
@@ -72,7 +72,7 @@ void toggle_launcher_window(void) {
 
 static void launcher_exec_selected(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListExecSelected});
-  toggle_launcher_window();
+  launcher_window_toggle();
 }
 
 static void launcher_input_changed(GtkEditable *editable) {
@@ -82,13 +82,13 @@ static void launcher_input_changed(GtkEditable *editable) {
       .tag = AppListSetSearch, .app_list_set_search = {.search = search}});
 }
 
-static gboolean on_launcher_window_key_press(
+static gboolean launcher_window_on_key_press(
     __attribute__((unused)) GtkEventControllerKey *self, guint keyval,
     __attribute__((unused)) guint keycode,
     __attribute__((unused)) GdkModifierType state,
     __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    toggle_launcher_window();
+    launcher_window_toggle();
   } else if (strcmp(gdk_keyval_name(keyval), "Up") == 0) {
     layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListGoUp});
   } else if (strcmp(gdk_keyval_name(keyval), "Down") == 0) {
@@ -98,10 +98,10 @@ static gboolean on_launcher_window_key_press(
   return false;
 }
 
-static void launcher_window_on_event(const LAYER_SHELL_IO_Event *event) {
+static void launcher_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case ToggleLauncher:
-    toggle_launcher_window();
+    launcher_window_toggle();
     break;
   case AppList: {
     LAYER_SHELL_IO_CArray_App apps = event->app_list.apps;
@@ -133,7 +133,7 @@ static void launcher_window_on_event(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-void activate_launcher_window(GApplication *app) {
+static void launcher_window_activate(GApplication *app) {
   gtk_window_set_application(launcher_window, GTK_APPLICATION(app));
 
   gtk_layer_init_for_window(launcher_window);
@@ -149,7 +149,7 @@ void activate_launcher_window(GApplication *app) {
   GtkEventControllerKey *ctrl =
       GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
   g_signal_connect(ctrl, "key-pressed",
-                   G_CALLBACK(on_launcher_window_key_press), NULL);
+                   G_CALLBACK(launcher_window_on_key_press), NULL);
   gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
                                              GTK_PHASE_CAPTURE);
   gtk_widget_add_controller(GTK_WIDGET(launcher_window),
@@ -158,5 +158,9 @@ void activate_launcher_window(GApplication *app) {
   gtk_window_present(launcher_window);
   gtk_widget_set_visible(GTK_WIDGET(launcher_window), false);
 
-  layer_shell_io_subscribe(launcher_window_on_event);
+  layer_shell_io_subscribe(launcher_window_on_io_event);
 }
+
+window_t LAUNCHER = {.init = launcher_window_init,
+                     .activate = launcher_window_activate,
+                     .toggle = launcher_window_toggle};

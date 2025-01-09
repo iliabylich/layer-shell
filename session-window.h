@@ -1,10 +1,9 @@
 #ifndef SESSION_WINDOW_H
 #define SESSION_WINDOW_H
 
+#include "utils.h"
 #include <gio/gio.h>
 
-void init_session_window(void);
-void toggle_session_window(void);
-void activate_session_window(GApplication *app);
+extern window_t SESSION;
 
 #endif // SESSION_WINDOW_H

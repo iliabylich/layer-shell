@@ -202,7 +202,7 @@ static void spawn_system_monitor(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnSystemMonitor});
 }
 
-static void top_bar_window_on_event(const LAYER_SHELL_IO_Event *event) {
+static void top_bar_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case Workspaces: {
     for (size_t idx = 1; idx <= 10; idx++) {
@@ -325,11 +325,11 @@ void on_htop_btn_click() {
     fprintf(stderr, "Failed to compute bottom-right of the htop widget");
     return;
   }
-  uint32_t margin_left = bottom_right.x - htop_window_width() / 2.0;
+  uint32_t margin_left = bottom_right.x - HTOP.width() / 2.0;
   uint32_t margin_top = bottom_right.y;
-  move_htop_window(margin_left, margin_top);
+  HTOP.move(margin_left, margin_top);
 
-  toggle_htop_window();
+  HTOP.toggle();
 }
 
 void on_weather_btn_click() {
@@ -338,12 +338,12 @@ void on_weather_btn_click() {
     fprintf(stderr, "Failed to compute bottom-right of the weather widget");
     return;
   }
-  uint32_t margin_left = bottom_right.x - weather_window_width();
+  uint32_t margin_left = bottom_right.x - WEATHER.width();
   uint32_t margin_top = bottom_right.y;
-  move_weather_window(margin_left, margin_top);
+  WEATHER.move(margin_left, margin_top);
   printf("%d %d\n", margin_left, margin_top);
 
-  toggle_weather_window();
+  WEATHER.toggle();
 }
 
 void on_network_btn_click() {
@@ -352,11 +352,11 @@ void on_network_btn_click() {
     fprintf(stderr, "Failed to compute bottom-right of the network widget");
     return;
   }
-  uint32_t margin_left = bottom_right.x - network_window_width();
+  uint32_t margin_left = bottom_right.x - NETWORK.width();
   uint32_t margin_top = bottom_right.y;
-  move_network_window(margin_left, margin_top);
+  NETWORK.move(margin_left, margin_top);
 
-  toggle_network_window();
+  NETWORK.toggle();
 }
 
 void activate_top_bar_window(GApplication *app) {
@@ -391,9 +391,9 @@ void activate_top_bar_window(GApplication *app) {
 
   g_signal_connect(network_widget, "clicked", on_network_btn_click, NULL);
 
-  g_signal_connect(session_widget, "clicked", toggle_session_window, NULL);
+  g_signal_connect(session_widget, "clicked", SESSION.toggle, NULL);
 
-  layer_shell_io_subscribe(top_bar_window_on_event);
+  layer_shell_io_subscribe(top_bar_window_on_io_event);
 
   gtk_window_present(top_bar_window);
 }

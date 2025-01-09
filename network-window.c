@@ -36,7 +36,7 @@ static network_row_t network_row_new(const char *text, const char *icon_name) {
   return (network_row_t){.wrapper = row, .label = label};
 }
 
-void init_network_window(void) {
+static void network_window_init(void) {
   network_window = GTK_WINDOW(gtk_window_new());
   gtk_widget_set_name(GTK_WIDGET(network_window), "NetworksWindow");
   GValue width_request = G_VALUE_INIT;
@@ -63,17 +63,25 @@ void init_network_window(void) {
   gtk_box_append(layout, GTK_WIDGET(network_exit_row.wrapper));
 }
 
+static void network_window_toggle(void) {
+  flip_window_visibility(network_window);
+}
+
+static void network_window_move(uint32_t margin_left, uint32_t margin_top) {
+  move_layer_window(network_window, margin_left, margin_top);
+}
+
 static void
-on_network_window_key_press(__attribute__((unused)) GtkEventControllerKey *self,
+network_window_on_key_press(__attribute__((unused)) GtkEventControllerKey *self,
                             guint keyval, __attribute__((unused)) guint keycode,
                             __attribute__((unused)) GdkModifierType state,
                             __attribute__((unused)) gpointer user_data) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    toggle_network_window();
+    network_window_toggle();
   }
 }
 
-static void set_on_network_row_click(network_row_t row, GCallback callback,
+static void network_row_set_on_click(network_row_t row, GCallback callback,
                                      void *data) {
   GtkGestureClick *ctrl = GTK_GESTURE_CLICK(gtk_gesture_click_new());
   g_signal_connect(ctrl, "pressed", callback, data);
@@ -82,7 +90,7 @@ static void set_on_network_row_click(network_row_t row, GCallback callback,
 }
 
 static void on_network_settings_row_click(void) {
-  toggle_network_window();
+  network_window_toggle();
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnNetworkEditor});
 }
 
@@ -117,7 +125,7 @@ static void network_row_restore_label(gpointer user_data) {
   network_row_safe_point_free(safepoint);
 }
 
-static void on_network_row_click(__attribute__((unused)) GtkGestureClick *self,
+static void network_row_on_click(__attribute__((unused)) GtkGestureClick *self,
                                  __attribute__((unused)) gint n_press,
                                  __attribute__((unused)) gdouble x,
                                  __attribute__((unused)) gdouble y,
@@ -137,7 +145,7 @@ static void on_network_row_click(__attribute__((unused)) GtkGestureClick *self,
   g_timeout_add_seconds_once(1, network_row_restore_label, safepoint);
 }
 
-static void on_network_window_event(const LAYER_SHELL_IO_Event *event) {
+static void network_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case NetworkList: {
     LAYER_SHELL_IO_CArray_Network networks = event->network_list.list;
@@ -161,7 +169,7 @@ static void on_network_window_event(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-void activate_network_window(GApplication *app) {
+static void network_window_activate(GApplication *app) {
   gtk_window_set_application(network_window, GTK_APPLICATION(app));
 
   gtk_layer_init_for_window(network_window);
@@ -172,33 +180,32 @@ void activate_network_window(GApplication *app) {
   gtk_layer_set_keyboard_mode(network_window,
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  set_on_network_row_click(network_settings_row,
+  network_row_set_on_click(network_settings_row,
                            G_CALLBACK(on_network_settings_row_click), NULL);
-  set_on_network_row_click(network_exit_row, G_CALLBACK(toggle_network_window),
+  network_row_set_on_click(network_exit_row, G_CALLBACK(network_window_toggle),
                            NULL);
 
   for (size_t i = 0; i < 5; i++) {
     network_row_t row = networks_rows[i];
-    set_on_network_row_click(row, G_CALLBACK(on_network_row_click), (void *)i);
+    network_row_set_on_click(row, G_CALLBACK(network_row_on_click), (void *)i);
   }
 
   GtkEventControllerKey *ctrl =
       GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
-  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(on_network_window_key_press),
+  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(network_window_on_key_press),
                    NULL);
   gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
                                              GTK_PHASE_CAPTURE);
   gtk_widget_add_controller(GTK_WIDGET(network_window),
                             GTK_EVENT_CONTROLLER(ctrl));
 
-  layer_shell_io_subscribe(on_network_window_event);
+  layer_shell_io_subscribe(network_window_on_io_event);
 }
 
-void toggle_network_window(void) { flip_window_visibility(network_window); }
+static uint32_t network_window_width(void) { return NETWORK_WINDOW_WIDTH; }
 
-void move_network_window(uint32_t margin_left, uint32_t margin_top) {
-  gtk_layer_set_margin(network_window, GTK_LAYER_SHELL_EDGE_LEFT, margin_left);
-  gtk_layer_set_margin(network_window, GTK_LAYER_SHELL_EDGE_TOP, margin_top);
-}
-
-uint32_t network_window_width(void) { return NETWORK_WINDOW_WIDTH; }
+window_t NETWORK = {.init = network_window_init,
+                    .toggle = network_window_toggle,
+                    .activate = network_window_activate,
+                    .move = network_window_move,
+                    .width = network_window_width};

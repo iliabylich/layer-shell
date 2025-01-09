@@ -28,22 +28,22 @@ void on_app_activate(GApplication *app) {
   init_icons();
 
   init_top_bar_window();
-  init_session_window();
-  init_launcher_window();
-  init_network_window();
-  init_htop_window();
-  init_weather_window();
+  SESSION.init();
+  LAUNCHER.init();
+  NETWORK.init();
+  HTOP.init();
+  WEATHER.init();
 
   g_timeout_add(50, G_SOURCE_FUNC(poll_events), NULL);
 
   printf("Finished building widgets...\n");
 
   activate_top_bar_window(app);
-  activate_session_window(app);
-  activate_launcher_window(app);
-  activate_network_window(app);
-  activate_htop_window(app);
-  activate_weather_window(app);
+  SESSION.activate(app);
+  LAUNCHER.activate(app);
+  NETWORK.activate(app);
+  HTOP.activate(app);
+  WEATHER.activate(app);
 
   layer_shell_io_spawn_thread();
 }
