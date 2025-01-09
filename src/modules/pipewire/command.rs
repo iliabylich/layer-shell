@@ -1,13 +1,15 @@
 use anyhow::{Context, Result};
 use pipewire::{
-    node::Node,
+    device::Device,
     spa::{
         param::ParamType,
         pod::{serialize::PodSerializer, Object, Pod, Property, PropertyFlags, Value, ValueArray},
-        sys::{SPA_PARAM_Props, SPA_PROP_channelVolumes, SPA_PROP_mute, SPA_PROP_volume},
+        sys::{
+            SPA_PARAM_ROUTE_device, SPA_PARAM_ROUTE_index, SPA_PARAM_ROUTE_props, SPA_PARAM_Route,
+            SPA_PROP_channelVolumes, SPA_PROP_mute,
+        },
     },
 };
-use std::rc::Rc;
 
 pub(crate) fn set_volume(volume: f32) {
     if let Err(err) = try_set_volume(volume) {
@@ -17,27 +19,59 @@ pub(crate) fn set_volume(volume: f32) {
 
 fn try_set_volume(volume: f32) -> Result<()> {
     let store = crate::modules::pipewire::STORE::get();
-    let sink = store.default_sink().context("no default sink")?;
+    let (device, route) = store.default_device().context("no default device")?;
 
-    set_volume_attribute_on_node(sink, volume)
+    call_pw(device, route, Some(volume), None)
 }
 
-fn set_volume_attribute_on_node(sink: &Node, volume: f32) -> Result<()> {
+fn call_pw(
+    device: &Device,
+    route: (i32, i32),
+    volume: Option<f32>,
+    mute: Option<bool>,
+) -> Result<()> {
+    let mut props = vec![];
+
+    if let Some(volume) = volume {
+        props.push(Property {
+            key: SPA_PROP_channelVolumes,
+            flags: PropertyFlags::empty(),
+            value: Value::ValueArray(ValueArray::Float(vec![volume, volume])),
+        });
+    }
+
+    if let Some(mute) = mute {
+        props.push(Property {
+            key: SPA_PROP_mute,
+            flags: PropertyFlags::empty(),
+            value: Value::Bool(mute),
+        });
+    }
+
     let values: Vec<u8> = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
         &Value::Object(Object {
-            type_: pipewire::spa::utils::SpaTypes::ObjectParamProps.as_raw(),
-            id: SPA_PARAM_Props,
+            type_: pipewire::spa::utils::SpaTypes::ObjectParamRoute.as_raw(),
+            id: SPA_PARAM_Route,
             properties: vec![
                 Property {
-                    key: SPA_PROP_volume,
+                    key: SPA_PARAM_ROUTE_index,
                     flags: PropertyFlags::empty(),
-                    value: Value::Float(volume),
+                    value: Value::Int(route.0),
                 },
                 Property {
-                    key: SPA_PROP_channelVolumes,
+                    key: SPA_PARAM_ROUTE_device,
                     flags: PropertyFlags::empty(),
-                    value: Value::ValueArray(ValueArray::Float(vec![volume, volume])),
+                    value: Value::Int(route.1),
+                },
+                Property {
+                    key: SPA_PARAM_ROUTE_props,
+                    flags: PropertyFlags::empty(),
+                    value: Value::Object(Object {
+                        type_: pipewire::spa::utils::SpaTypes::ObjectParamProps.as_raw(),
+                        id: SPA_PARAM_Route,
+                        properties: props,
+                    }),
                 },
             ],
         }),
@@ -46,29 +80,6 @@ fn set_volume_attribute_on_node(sink: &Node, volume: f32) -> Result<()> {
     .0
     .into_inner();
     let param = Pod::from_bytes(&values).context("invalid pod value")?;
-    sink.set_param(ParamType::Props, 0, param);
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn set_muted_attribute_on_node(sink: Rc<Node>, muted: bool) -> Result<()> {
-    let values: Vec<u8> = PodSerializer::serialize(
-        std::io::Cursor::new(Vec::new()),
-        &Value::Object(Object {
-            type_: pipewire::spa::utils::SpaTypes::ObjectParamProps.as_raw(),
-            id: SPA_PARAM_Props,
-            properties: vec![Property {
-                key: SPA_PROP_mute,
-                flags: PropertyFlags::empty(),
-                value: Value::Bool(muted),
-            }],
-        }),
-    )
-    .context("invalid pod value")?
-    .0
-    .into_inner();
-    let param = Pod::from_bytes(&values).context("invalid pod value")?;
-    sink.set_param(ParamType::Props, 0, param);
-
+    device.set_param(ParamType::Route, 0, param);
     Ok(())
 }

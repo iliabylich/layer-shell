@@ -117,6 +117,7 @@ typedef enum {
   Language,
   AppList,
   Volume,
+  Mute,
   CurrentWeather,
   ForecastWeather,
   WiFiStatus,
@@ -157,6 +158,10 @@ typedef struct {
 } LAYER_SHELL_IO_Volume_Body;
 
 typedef struct {
+  bool muted;
+} LAYER_SHELL_IO_Mute_Body;
+
+typedef struct {
   float temperature;
   LAYER_SHELL_IO_WeatherCode code;
 } LAYER_SHELL_IO_CurrentWeather_Body;
@@ -185,6 +190,7 @@ typedef struct {
     LAYER_SHELL_IO_Language_Body language;
     LAYER_SHELL_IO_AppList_Body app_list;
     LAYER_SHELL_IO_Volume_Body volume;
+    LAYER_SHELL_IO_Mute_Body mute;
     LAYER_SHELL_IO_CurrentWeather_Body current_weather;
     LAYER_SHELL_IO_ForecastWeather_Body forecast_weather;
     LAYER_SHELL_IO_WiFiStatus_Body wi_fi_status;

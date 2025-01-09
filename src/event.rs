@@ -31,6 +31,9 @@ pub enum Event {
     Volume {
         volume: f32,
     },
+    Mute {
+        muted: bool,
+    },
     CurrentWeather {
         temperature: f32,
         code: WeatherCode,
