@@ -142,10 +142,8 @@ static void _(move)(uint32_t margin_left, uint32_t margin_top) {
   move_layer_window(_(window), margin_left, margin_top);
 }
 
-uint32_t _(width)(void) { return _(WIDTH); }
-
 window_t WEATHER = {.init = _(init),
                     .activate = _(activate),
                     .toggle = _(toggle),
                     .move = _(move),
-                    .width = _(width)};
+                    .width = _(WIDTH)};

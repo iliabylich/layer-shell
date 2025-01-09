@@ -8,14 +8,13 @@ typedef void (*init_window_f)(void);
 typedef void (*toggle_window_f)(void);
 typedef void (*activate_window_f)(GApplication *app);
 typedef void (*move_window_f)(uint32_t margin_left, uint32_t margin_top);
-typedef uint32_t (*get_width_f)(void);
 
 typedef struct {
   init_window_f init;
   activate_window_f activate;
   toggle_window_f toggle;
   move_window_f move;
-  get_width_f width;
+  uint32_t width;
 } window_t;
 
 void flip_window_visibility(GtkWindow *window);

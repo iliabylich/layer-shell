@@ -90,28 +90,28 @@ static void _(settings_row_on_click)(void) {
 typedef struct {
   size_t row_idx;
   char *text;
-} _(row_checkpoint_t);
+} row_checkpoint_t;
 
-static _(row_checkpoint_t) *
-    _(row_checkpoint_new)(size_t row_idx, const char *text) {
+static row_checkpoint_t *_(row_checkpoint_new)(size_t row_idx,
+                                               const char *text) {
   size_t len = strlen(text);
   char *copy = malloc(len + 1);
   memcpy(copy, text, len);
   copy[len] = 0;
 
-  _(row_checkpoint_t) *safepoint = malloc(sizeof(_(row_checkpoint_t)));
+  row_checkpoint_t *safepoint = malloc(sizeof(row_checkpoint_t));
   safepoint->row_idx = row_idx;
   safepoint->text = copy;
   return safepoint;
 }
 
-static void _(row_checkpoint_free)(_(row_checkpoint_t) * safepoint) {
+static void _(row_checkpoint_free)(row_checkpoint_t *safepoint) {
   free(safepoint->text);
   free(safepoint);
 }
 
 static void _(row_restore_label)(gpointer user_data) {
-  _(row_checkpoint_t) *safepoint = (_(row_checkpoint_t) *)user_data;
+  row_checkpoint_t *safepoint = (row_checkpoint_t *)user_data;
   GtkWidget *label = _(rows)[safepoint->row_idx].label;
   gtk_label_set_label(GTK_LABEL(label), safepoint->text);
   _(row_checkpoint_free)(safepoint);
@@ -123,7 +123,7 @@ static void _(row_on_click)(GtkGestureClick *, gint, gdouble, gdouble,
   row_t row = _(rows)[row_idx];
   const char *ip = gtk_widget_get_tooltip_text(row.label);
   const char *label = gtk_label_get_label(GTK_LABEL(row.label));
-  _(row_checkpoint_t) *safepoint = _(row_checkpoint_new)(row_idx, label);
+  row_checkpoint_t *safepoint = _(row_checkpoint_new)(row_idx, label);
 
   GdkDisplay *display = gdk_display_get_default();
   GdkClipboard *clipboard = gdk_display_get_clipboard(display);
@@ -185,10 +185,8 @@ static void _(activate)(GApplication *app) {
   layer_shell_io_subscribe(_(on_io_event));
 }
 
-static uint32_t _(width)(void) { return _(WIDTH); }
-
 window_t NETWORK = {.init = _(init),
                     .toggle = _(toggle),
                     .activate = _(activate),
                     .move = _(move),
-                    .width = _(width)};
+                    .width = _(WIDTH)};

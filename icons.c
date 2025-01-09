@@ -13,7 +13,7 @@ GIcon *power_icon;
 GIcon *snowy_icon;
 GIcon *wifi_icon;
 
-GIcon *load_texture(LAYER_SHELL_IO_CBytes from) {
+static GIcon *load_texture(LAYER_SHELL_IO_CBytes from) {
   GBytes *bytes = g_bytes_new_static(from.content, from.len);
   return g_bytes_icon_new(bytes);
 }

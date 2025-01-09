@@ -60,10 +60,8 @@ static void _(activate)(GApplication *app) {
   gtk_widget_set_visible(GTK_WIDGET(_(window)), false);
 }
 
-uint32_t _(width)(void) { return _(WIDTH); }
-
 window_t HTOP = {.init = _(init),
                  .activate = _(activate),
                  .toggle = _(toggle),
                  .move = _(move),
-                 .width = _(width)};
+                 .width = _(WIDTH)};
