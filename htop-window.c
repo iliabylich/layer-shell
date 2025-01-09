@@ -8,7 +8,7 @@
 
 static GtkWindow *_(window);
 
-static const uint32_t _(WIDTH) = 1000;
+static const int _(WIDTH) = 1000;
 
 static void _(init)(void) {
   _(window) = GTK_WINDOW(gtk_window_new());
@@ -20,10 +20,7 @@ static void _(init)(void) {
 }
 
 static void _(toggle)(void) { flip_window_visibility(_(window)); }
-
-static void _(move)(uint32_t margin_left, uint32_t margin_top) {
-  move_layer_window(_(window), margin_left, margin_top);
-}
+static void _(move)(int x, int y) { move_layer_window(_(window), x, y); }
 
 static void _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
                             GdkModifierType, gpointer) {

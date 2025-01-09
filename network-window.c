@@ -17,7 +17,7 @@ static row_t _(rows)[5];
 static row_t _(settings_row);
 static row_t _(exit_row);
 
-static const uint32_t _(WIDTH) = 700;
+static const int _(WIDTH) = 700;
 
 static row_t _(row_new)(const char *text, const char *icon_name) {
   GtkWidget *row = gtk_center_box_new();
@@ -64,10 +64,7 @@ static void _(init)(void) {
 }
 
 static void _(toggle)(void) { flip_window_visibility(_(window)); }
-
-static void _(move)(uint32_t margin_left, uint32_t margin_top) {
-  move_layer_window(_(window), margin_left, margin_top);
-}
+static void _(move)(int x, int y) { move_layer_window(_(window), x, y); }
 
 static void _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
                             GdkModifierType, gpointer) {

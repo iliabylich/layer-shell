@@ -21,7 +21,7 @@ static row_t _(hourly_rows)[HOURLY_ROWS_COUNT];
 #define DAILY_ROWS_COUNT 6
 static row_t _(daily_rows)[DAILY_ROWS_COUNT];
 
-static const uint32_t _(WIDTH) = 340;
+static const int _(WIDTH) = 340;
 
 static row_t _(make_row)(void) {
   GtkWidget *row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -138,9 +138,7 @@ static void _(activate)(GApplication *app) {
   gtk_widget_set_visible(GTK_WIDGET(_(window)), false);
 }
 
-static void _(move)(uint32_t margin_left, uint32_t margin_top) {
-  move_layer_window(_(window), margin_left, margin_top);
-}
+static void _(move)(int x, int y) { move_layer_window(_(window), x, y); }
 
 window_t WEATHER = {.init = _(init),
                     .activate = _(activate),

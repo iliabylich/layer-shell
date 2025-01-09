@@ -323,8 +323,8 @@ static void _(htop_btn_on_click)() {
     fprintf(stderr, "Failed to compute bottom-right of the htop widget");
     return;
   }
-  uint32_t margin_left = bottom_right.x - HTOP.width / 2.0;
-  uint32_t margin_top = bottom_right.y;
+  int margin_left = bottom_right.x - HTOP.width / 2.0;
+  int margin_top = bottom_right.y;
   HTOP.move(margin_left, margin_top);
 
   HTOP.toggle();
@@ -336,8 +336,8 @@ static void _(weather_btn_on_click)() {
     fprintf(stderr, "Failed to compute bottom-right of the weather widget");
     return;
   }
-  uint32_t margin_left = bottom_right.x - WEATHER.width;
-  uint32_t margin_top = bottom_right.y;
+  int margin_left = bottom_right.x - WEATHER.width;
+  int margin_top = bottom_right.y;
   WEATHER.move(margin_left, margin_top);
 
   WEATHER.toggle();
@@ -349,8 +349,8 @@ static void _(network_btn_on_click)() {
     fprintf(stderr, "Failed to compute bottom-right of the network widget");
     return;
   }
-  uint32_t margin_left = bottom_right.x - NETWORK.width;
-  uint32_t margin_top = bottom_right.y;
+  int margin_left = bottom_right.x - NETWORK.width;
+  int margin_top = bottom_right.y;
   NETWORK.move(margin_left, margin_top);
 
   NETWORK.toggle();
