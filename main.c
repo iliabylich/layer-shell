@@ -27,7 +27,7 @@ int poll_events(void) {
 void on_app_activate(GApplication *app) {
   init_icons();
 
-  init_top_bar_window();
+  TOP_BAR.init();
   SESSION.init();
   LAUNCHER.init();
   NETWORK.init();
@@ -38,7 +38,7 @@ void on_app_activate(GApplication *app) {
 
   printf("Finished building widgets...\n");
 
-  activate_top_bar_window(app);
+  TOP_BAR.activate(app);
   SESSION.activate(app);
   LAUNCHER.activate(app);
   NETWORK.activate(app);

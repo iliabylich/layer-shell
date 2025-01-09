@@ -9,46 +9,47 @@
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
-GtkWindow *top_bar_window;
+static GtkWindow *top_bar_window;
 
-GtkBox *workspaces_widget;
-GtkButton *workspace_buttons[10];
+static GtkBox *workspaces_widget;
+static GtkButton *workspace_buttons[10];
 
-GtkButton *htop_widget;
+static GtkButton *htop_widget;
 
-GtkButton *weather_widget;
-GtkLabel *weather_label;
+static GtkButton *weather_widget;
+static GtkLabel *weather_label;
 
-GtkCenterBox *language_widget;
-GtkLabel *language_label;
+static GtkCenterBox *language_widget;
+static GtkLabel *language_label;
 
-GtkBox *sound_widget;
-GtkImage *sound_image;
-GtkScale *sound_scale;
+static GtkBox *sound_widget;
+static GtkImage *sound_image;
+static GtkScale *sound_scale;
 
-GtkBox *cpu_widget;
-GtkLabel *cpu_labels[12];
-const char *CPU_INDICATORS[] = {
+static GtkBox *cpu_widget;
+static GtkLabel *cpu_labels[12];
+static const char *CPU_INDICATORS[] = {
     "<span color='#FFFFFF'>▁</span>", "<span color='#FFD5D5'>▂</span>",
     "<span color='#FFAAAA'>▃</span>", "<span color='#FF8080'>▄</span>",
     "<span color='#FF5555'>▅</span>", "<span color='#FF2B2B'>▆</span>",
     "<span color='#FF0000'>▇</span>", "<span color='#E60000'>█</span>",
 };
-const size_t CPU_INDICATORS_COUNT = sizeof(CPU_INDICATORS) / sizeof(char *);
+static const size_t CPU_INDICATORS_COUNT =
+    sizeof(CPU_INDICATORS) / sizeof(char *);
 
-GtkButton *ram_widget;
-GtkLabel *ram_label;
+static GtkButton *ram_widget;
+static GtkLabel *ram_label;
 
-GtkButton *network_widget;
-GtkLabel *network_label;
-GtkImage *network_image;
+static GtkButton *network_widget;
+static GtkLabel *network_label;
+static GtkImage *network_image;
 
-GtkCenterBox *time_widget;
-GtkLabel *time_label;
+static GtkCenterBox *time_widget;
+static GtkLabel *time_label;
 
-GtkButton *session_widget;
+static GtkButton *session_widget;
 
-void init_top_bar_window(void) {
+static void top_bar_window_init(void) {
   top_bar_window = GTK_WINDOW(gtk_window_new());
   gtk_widget_set_name(GTK_WIDGET(top_bar_window), "TopBarWindow");
 
@@ -184,21 +185,22 @@ void init_top_bar_window(void) {
   gtk_box_append(right, GTK_WIDGET(session_widget));
 }
 
-static void on_workspace_button_click(__attribute__((unused)) GtkButton *self,
-                                      gpointer data) {
+static void top_bar_workspace_btn_on_click(__attribute__((unused))
+                                           GtkButton *self,
+                                           gpointer data) {
   size_t idx = (size_t)data;
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = HyprlandGoToWorkspace, .hyprland_go_to_workspace = {idx}});
 }
 
-static void on_sound_scale_changed(void) {
+static void top_bar_sound_scale_on_change(void) {
   GtkAdjustment *adj = gtk_range_get_adjustment(GTK_RANGE(sound_scale));
   double value = CLAMP(gtk_adjustment_get_value(adj), 0.0, 1.0);
   layer_shell_io_publish((LAYER_SHELL_IO_Command){
       .tag = SetVolume, .set_volume = {.volume = value}});
 }
 
-static void spawn_system_monitor(void) {
+static void top_bar_spawn_system_monitor(void) {
   layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnSystemMonitor});
 }
 
@@ -305,7 +307,8 @@ static void top_bar_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-bool bottom_right_point_of(GtkWidget *widget, graphene_point_t *out) {
+static bool top_bar_bottom_right_point_of(GtkWidget *widget,
+                                          graphene_point_t *out) {
   graphene_rect_t bounds;
   if (!gtk_widget_compute_bounds(widget, GTK_WIDGET(top_bar_window), &bounds)) {
     return false;
@@ -319,9 +322,9 @@ bool bottom_right_point_of(GtkWidget *widget, graphene_point_t *out) {
   return true;
 }
 
-void on_htop_btn_click() {
+static void on_htop_btn_click() {
   graphene_point_t bottom_right;
-  if (!bottom_right_point_of(GTK_WIDGET(htop_widget), &bottom_right)) {
+  if (!top_bar_bottom_right_point_of(GTK_WIDGET(htop_widget), &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the htop widget");
     return;
   }
@@ -332,9 +335,10 @@ void on_htop_btn_click() {
   HTOP.toggle();
 }
 
-void on_weather_btn_click() {
+static void top_bar_weather_btn_on_click() {
   graphene_point_t bottom_right;
-  if (!bottom_right_point_of(GTK_WIDGET(weather_widget), &bottom_right)) {
+  if (!top_bar_bottom_right_point_of(GTK_WIDGET(weather_widget),
+                                     &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the weather widget");
     return;
   }
@@ -346,9 +350,10 @@ void on_weather_btn_click() {
   WEATHER.toggle();
 }
 
-void on_network_btn_click() {
+static void top_bar_network_btn_on_click() {
   graphene_point_t bottom_right;
-  if (!bottom_right_point_of(GTK_WIDGET(network_widget), &bottom_right)) {
+  if (!top_bar_bottom_right_point_of(GTK_WIDGET(network_widget),
+                                     &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the network widget");
     return;
   }
@@ -359,7 +364,7 @@ void on_network_btn_click() {
   NETWORK.toggle();
 }
 
-void activate_top_bar_window(GApplication *app) {
+static void top_bar_window_activate(GApplication *app) {
   gtk_window_set_application(top_bar_window, GTK_APPLICATION(app));
 
   gtk_layer_init_for_window(top_bar_window);
@@ -372,24 +377,26 @@ void activate_top_bar_window(GApplication *app) {
 
   for (size_t idx = 0; idx < 10; idx++) {
     GtkButton *button = workspace_buttons[idx];
-    g_signal_connect(button, "clicked", G_CALLBACK(on_workspace_button_click),
-                     (void *)idx);
+    g_signal_connect(button, "clicked",
+                     G_CALLBACK(top_bar_workspace_btn_on_click), (void *)idx);
   }
 
   g_signal_connect(htop_widget, "clicked", on_htop_btn_click, NULL);
 
-  g_signal_connect(weather_widget, "clicked", on_weather_btn_click, NULL);
+  g_signal_connect(weather_widget, "clicked", top_bar_weather_btn_on_click,
+                   NULL);
 
   GtkGestureClick *sound_ctrl = GTK_GESTURE_CLICK(gtk_gesture_click_new());
   gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(sound_ctrl),
                                              GTK_PHASE_CAPTURE);
-  g_signal_connect(sound_ctrl, "released", on_sound_scale_changed, NULL);
+  g_signal_connect(sound_ctrl, "released", top_bar_sound_scale_on_change, NULL);
   gtk_widget_add_controller(GTK_WIDGET(sound_widget),
                             GTK_EVENT_CONTROLLER(sound_ctrl));
 
-  g_signal_connect(ram_widget, "clicked", spawn_system_monitor, NULL);
+  g_signal_connect(ram_widget, "clicked", top_bar_spawn_system_monitor, NULL);
 
-  g_signal_connect(network_widget, "clicked", on_network_btn_click, NULL);
+  g_signal_connect(network_widget, "clicked", top_bar_network_btn_on_click,
+                   NULL);
 
   g_signal_connect(session_widget, "clicked", SESSION.toggle, NULL);
 
@@ -397,3 +404,6 @@ void activate_top_bar_window(GApplication *app) {
 
   gtk_window_present(top_bar_window);
 }
+
+window_t TOP_BAR = {.init = top_bar_window_init,
+                    .activate = top_bar_window_activate};
