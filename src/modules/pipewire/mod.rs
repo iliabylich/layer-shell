@@ -19,7 +19,7 @@ use store::Store;
 
 use crate::global;
 
-pub(crate) use command::set_volume;
+pub(crate) use command::{set_muted, set_volume};
 
 pub(crate) fn setup() {
     std::thread::spawn(move || {
@@ -67,17 +67,17 @@ fn on_global_object_added(obj: &GlobalObject<&DictRef>) -> Result<()> {
 
     if props.get("metadata.name") == Some("default") {
         let metadata: Metadata = REGISTRY::get().bind(obj).context("not a Metadata")?;
-        metadata_node::MetadataNode::on_add(obj.id, metadata)?;
+        metadata_node::MetadataNode::added(obj.id, metadata)?;
     }
 
     if props.get("media.class") == Some("Audio/Device") {
         let device: Device = REGISTRY::get().bind(obj).context("not a Device")?;
-        audio_device::AudioDevice::on_add(obj.id, device)?;
+        audio_device::AudioDevice::added(obj.id, device)?;
     }
 
     if props.get("media.class") == Some("Audio/Sink") {
         let node: Node = REGISTRY::get().bind(obj).context("not a Node")?;
-        audio_sink::AudioSink::on_add(obj.id, props, node)?;
+        audio_sink::AudioSink::added(obj.id, props, node)?;
     }
 
     Ok(())

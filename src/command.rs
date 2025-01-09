@@ -15,6 +15,7 @@ pub enum Command {
     AppListExecSelected,
 
     SetVolume { volume: f32 },
+    SetMuted { muted: bool },
     Lock,
     Reboot,
     Shutdown,
@@ -45,6 +46,7 @@ impl Command {
 
         match self {
             SetVolume { volume } => pipewire::set_volume(volume),
+            SetMuted { muted } => pipewire::set_muted(muted),
             HyprlandGoToWorkspace { idx } => hyprland::go_to_workspace(idx),
             AppListGoUp => app_list::go_up(),
             AppListGoDown => app_list::go_down(),

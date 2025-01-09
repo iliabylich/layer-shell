@@ -13,7 +13,7 @@ use pipewire::{
 pub(crate) struct AudioSink;
 
 impl AudioSink {
-    pub(crate) fn on_add(id: u32, props: &DictRef, node: Node) -> Result<()> {
+    pub(crate) fn added(id: u32, props: &DictRef, node: Node) -> Result<()> {
         let sink_name = props.get("node.name").context("no sink.name")?;
         let device_id = props
             .get("device.id")
@@ -26,7 +26,7 @@ impl AudioSink {
             .add_listener_local()
             .param(|_, _, _, _, param| {
                 if let Some(param) = param {
-                    if let Err(err) = Self::on_prop_change(param) {
+                    if let Err(err) = Self::prop_changed(param) {
                         log::error!("Failed to track sink prop change: {:?}", err);
                     }
                 } else {
@@ -41,7 +41,7 @@ impl AudioSink {
         Ok(())
     }
 
-    fn on_prop_change(param: &Pod) -> Result<()> {
+    fn prop_changed(param: &Pod) -> Result<()> {
         let value = match PodDeserializer::deserialize_any_from(param.as_bytes()) {
             Ok((_, value)) => value,
             Err(err) => bail!("Failed to parse sink node's route param: {:?}", err),

@@ -1,35 +1,31 @@
 use anyhow::{Context, Result};
-use pipewire::{
-    device::Device,
-    spa::{
-        param::ParamType,
-        pod::{serialize::PodSerializer, Object, Pod, Property, PropertyFlags, Value, ValueArray},
-        sys::{
-            SPA_PARAM_ROUTE_device, SPA_PARAM_ROUTE_index, SPA_PARAM_ROUTE_props, SPA_PARAM_Route,
-            SPA_PROP_channelVolumes, SPA_PROP_mute,
-        },
+use pipewire::spa::{
+    param::ParamType,
+    pod::{serialize::PodSerializer, Object, Pod, Property, PropertyFlags, Value, ValueArray},
+    sys::{
+        SPA_PARAM_ROUTE_device, SPA_PARAM_ROUTE_index, SPA_PARAM_ROUTE_props, SPA_PARAM_Route,
+        SPA_PROP_channelVolumes, SPA_PROP_mute,
     },
 };
 
 pub(crate) fn set_volume(volume: f32) {
-    if let Err(err) = try_set_volume(volume) {
+    call_pw(Some(volume), None);
+}
+
+pub(crate) fn set_muted(muted: bool) {
+    call_pw(None, Some(muted));
+}
+
+fn call_pw(volume: Option<f32>, muted: Option<bool>) {
+    if let Err(err) = try_call_pw(volume, muted) {
         log::error!("failed to call PW: {:?}", err);
     }
 }
 
-fn try_set_volume(volume: f32) -> Result<()> {
+fn try_call_pw(volume: Option<f32>, muted: Option<bool>) -> Result<()> {
     let store = crate::modules::pipewire::STORE::get();
     let (device, route) = store.default_device().context("no default device")?;
 
-    call_pw(device, route, Some(volume), None)
-}
-
-fn call_pw(
-    device: &Device,
-    route: (i32, i32),
-    volume: Option<f32>,
-    mute: Option<bool>,
-) -> Result<()> {
     let mut props = vec![];
 
     if let Some(volume) = volume {
@@ -40,11 +36,11 @@ fn call_pw(
         });
     }
 
-    if let Some(mute) = mute {
+    if let Some(muted) = muted {
         props.push(Property {
             key: SPA_PROP_mute,
             flags: PropertyFlags::empty(),
-            value: Value::Bool(mute),
+            value: Value::Bool(muted),
         });
     }
 

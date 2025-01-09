@@ -206,6 +206,7 @@ typedef enum {
   AppListSetSearch,
   AppListExecSelected,
   SetVolume,
+  SetMuted,
   Lock,
   Reboot,
   Shutdown,
@@ -227,11 +228,16 @@ typedef struct {
 } LAYER_SHELL_IO_SetVolume_Body;
 
 typedef struct {
+  bool muted;
+} LAYER_SHELL_IO_SetMuted_Body;
+
+typedef struct {
   LAYER_SHELL_IO_Command_Tag tag;
   union {
     LAYER_SHELL_IO_HyprlandGoToWorkspace_Body hyprland_go_to_workspace;
     LAYER_SHELL_IO_AppListSetSearch_Body app_list_set_search;
     LAYER_SHELL_IO_SetVolume_Body set_volume;
+    LAYER_SHELL_IO_SetMuted_Body set_muted;
   };
 } LAYER_SHELL_IO_Command;
 

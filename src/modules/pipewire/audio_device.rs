@@ -12,13 +12,13 @@ use pipewire::{
 pub(crate) struct AudioDevice;
 
 impl AudioDevice {
-    pub(crate) fn on_add(device_id: u32, device: Device) -> Result<()> {
+    pub(crate) fn added(device_id: u32, device: Device) -> Result<()> {
         device.subscribe_params(&[ParamType::Route]);
         let listener = device
             .add_listener_local()
             .param(move |_, _, _, _, param| {
                 if let Some(param) = param {
-                    if let Err(err) = Self::on_route_change(device_id, param) {
+                    if let Err(err) = Self::route_changed(device_id, param) {
                         log::error!("Failed to track route change: {:?}", err);
                     }
                 } else {
@@ -33,7 +33,7 @@ impl AudioDevice {
         Ok(())
     }
 
-    fn on_route_change(device_id: u32, param: &Pod) -> Result<()> {
+    fn route_changed(device_id: u32, param: &Pod) -> Result<()> {
         let value = match PodDeserializer::deserialize_any_from(param.as_bytes()) {
             Ok((_, value)) => value,
             Err(err) => bail!("Failed to parse sink node's route param: {:?}", err),
