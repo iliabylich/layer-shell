@@ -5,114 +5,109 @@
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 
-GtkWindow *weather_window;
+#define ns(name) weather_ns_##name
+
+GtkWindow *ns(window);
+
 typedef struct {
-  GtkBox *wrapper;
-  GtkLabel *label;
-  GtkImage *image;
+  GtkWidget *wrapper;
+  GtkWidget *label;
+  GtkWidget *image;
 } weather_row_t;
-#define WEATHER_HOURLY_ROWS_COUNT 10
-weather_row_t weather_hourly_rows[WEATHER_HOURLY_ROWS_COUNT];
-#define WEATHER_DAILY_ROWS_COUNT 6
-weather_row_t weather_daily_rows[WEATHER_DAILY_ROWS_COUNT];
 
-const uint32_t WEATHER_WINDOW_WIDTH = 340;
+#define HOURLY_ROWS_COUNT 10
+weather_row_t ns(hourly_rows)[HOURLY_ROWS_COUNT];
 
-static weather_row_t weather_row_new(void) {
-  GtkBox *row = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-  GtkLabel *label = GTK_LABEL(gtk_label_new("..."));
-  GtkImage *image = GTK_IMAGE(gtk_image_new());
-  gtk_image_set_pixel_size(image, 24);
-  gtk_box_append(row, GTK_WIDGET(label));
-  gtk_box_append(row, GTK_WIDGET(image));
+#define DAILY_ROWS_COUNT 6
+weather_row_t ns(daily_rows)[DAILY_ROWS_COUNT];
+
+static const uint32_t ns(WIDTH) = 340;
+
+static weather_row_t ns(make_row)(void) {
+  GtkWidget *row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *label = gtk_label_new("...");
+  GtkWidget *image = gtk_image_new();
+  gtk_image_set_pixel_size(GTK_IMAGE(image), 24);
+  gtk_box_append(GTK_BOX(row), label);
+  gtk_box_append(GTK_BOX(row), image);
   return (weather_row_t){.wrapper = row, .image = image, .label = label};
 }
 
-static void weather_window_init(void) {
-  weather_window = GTK_WINDOW(gtk_window_new());
-  gtk_widget_set_name(GTK_WIDGET(weather_window), "WeatherWindow");
-  gtk_widget_add_css_class(GTK_WIDGET(weather_window), "widget-weather");
+static void ns(init)(void) {
+  ns(window) = GTK_WINDOW(gtk_window_new());
+  gtk_widget_set_name(GTK_WIDGET(ns(window)), "WeatherWindow");
+  gtk_widget_add_css_class(GTK_WIDGET(ns(window)), "widget-weather");
+  window_set_width_request(ns(window), ns(WIDTH));
+  window_set_height_request(ns(window), 300);
 
-  GValue width_request = G_VALUE_INIT;
-  g_value_init(&width_request, G_TYPE_INT);
-  g_value_set_int(&width_request, WEATHER_WINDOW_WIDTH);
-  g_object_set_property(G_OBJECT(weather_window), "width-request",
-                        &width_request);
+  GtkWidget *layout = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_window_set_child(ns(window), layout);
 
-  GValue height_request = G_VALUE_INIT;
-  g_value_init(&height_request, G_TYPE_INT);
-  g_value_set_int(&height_request, 300);
-  g_object_set_property(G_OBJECT(weather_window), "height-request",
-                        &height_request);
+  GtkWidget *left_side = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(left_side, "weather-left-side");
+  gtk_box_append(GTK_BOX(layout), left_side);
 
-  GtkBox *layout = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-  gtk_window_set_child(weather_window, GTK_WIDGET(layout));
-
-  GtkBox *left_side = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-  gtk_widget_add_css_class(GTK_WIDGET(left_side), "weather-left-side");
-  gtk_box_append(layout, GTK_WIDGET(left_side));
-
-  gtk_box_append(left_side, gtk_label_new("Hourly"));
-  for (size_t i = 0; i < WEATHER_HOURLY_ROWS_COUNT; i++) {
-    weather_row_t row = weather_row_new();
-    gtk_box_append(left_side, GTK_WIDGET(row.wrapper));
-    weather_hourly_rows[i] = row;
+  gtk_box_append(GTK_BOX(left_side), gtk_label_new("Hourly"));
+  for (size_t i = 0; i < HOURLY_ROWS_COUNT; i++) {
+    weather_row_t row = ns(make_row)();
+    gtk_box_append(GTK_BOX(left_side), row.wrapper);
+    ns(hourly_rows)[i] = row;
   }
 
-  GtkBox *right_side = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-  gtk_widget_add_css_class(GTK_WIDGET(right_side), "weather-right-side");
-  gtk_box_append(layout, GTK_WIDGET(right_side));
+  GtkWidget *right_side = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(right_side, "weather-right-side");
+  gtk_box_append(GTK_BOX(layout), right_side);
 
-  gtk_box_append(right_side, gtk_label_new("Daily"));
-  for (size_t i = 0; i < WEATHER_DAILY_ROWS_COUNT; i++) {
-    weather_row_t row = weather_row_new();
-    gtk_box_append(right_side, GTK_WIDGET(row.wrapper));
-    weather_daily_rows[i] = row;
+  gtk_box_append(GTK_BOX(right_side), gtk_label_new("Daily"));
+  for (size_t i = 0; i < DAILY_ROWS_COUNT; i++) {
+    weather_row_t row = ns(make_row)();
+    gtk_box_append(GTK_BOX(right_side), row.wrapper);
+    ns(daily_rows)[i] = row;
   }
 }
 
-static void weather_window_toggle(void) {
-  flip_window_visibility(weather_window);
-}
+static void ns(toggle)(void) { flip_window_visibility(ns(window)); }
 
-static void weather_window_on_key_press(GtkEventControllerKey *, guint keyval,
-                                        guint, GdkModifierType, gpointer) {
+static void ns(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
+                             GdkModifierType, gpointer) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    weather_window_toggle();
+    ns(toggle)();
   }
 }
 
-static void weather_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
+static void ns(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
   case ForecastWeather: {
     LAYER_SHELL_IO_CArray_WeatherOnDay daily = event->forecast_weather.daily;
     LAYER_SHELL_IO_CArray_WeatherOnHour hourly = event->forecast_weather.hourly;
 
-    for (size_t i = 0; i < WEATHER_HOURLY_ROWS_COUNT; i++) {
+    for (size_t i = 0; i < HOURLY_ROWS_COUNT; i++) {
       LAYER_SHELL_IO_WeatherOnHour weather = hourly.ptr[i];
-      weather_row_t row = weather_hourly_rows[i];
+      weather_row_t row = ns(hourly_rows)[i];
 
       char buffer[100];
       sprintf(buffer, "%s' %5.1f℃", weather.hour.ptr, weather.temperature);
-      gtk_label_set_label(row.label, buffer);
-      gtk_widget_set_tooltip_text(GTK_WIDGET(row.label),
+      gtk_label_set_label(GTK_LABEL(row.label), buffer);
+      gtk_widget_set_tooltip_text(row.label,
                                   weather_code_to_description(weather.code));
 
-      gtk_image_set_from_gicon(row.image, weather_code_to_icon(weather.code));
+      gtk_image_set_from_gicon(GTK_IMAGE(row.image),
+                               weather_code_to_icon(weather.code));
     }
 
-    for (size_t i = 0; i < WEATHER_DAILY_ROWS_COUNT; i++) {
+    for (size_t i = 0; i < DAILY_ROWS_COUNT; i++) {
       LAYER_SHELL_IO_WeatherOnDay weather = daily.ptr[i];
-      weather_row_t row = weather_daily_rows[i];
+      weather_row_t row = ns(daily_rows)[i];
 
       char buffer[100];
       sprintf(buffer, "%s: %5.1f℃ - %5.1f℃", weather.day.ptr,
               weather.temperature_min, weather.temperature_max);
-      gtk_label_set_label(row.label, buffer);
-      gtk_widget_set_tooltip_text(GTK_WIDGET(row.label),
+      gtk_label_set_label(GTK_LABEL(row.label), buffer);
+      gtk_widget_set_tooltip_text(row.label,
                                   weather_code_to_description(weather.code));
 
-      gtk_image_set_from_gicon(row.image, weather_code_to_icon(weather.code));
+      gtk_image_set_from_gicon(GTK_IMAGE(row.image),
+                               weather_code_to_icon(weather.code));
     }
     break;
   }
@@ -121,40 +116,36 @@ static void weather_window_on_io_event(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-static void weather_window_activate(GApplication *app) {
-  gtk_window_set_application(weather_window, GTK_APPLICATION(app));
+static void ns(activate)(GApplication *app) {
+  gtk_window_set_application(ns(window), GTK_APPLICATION(app));
 
-  gtk_layer_init_for_window(weather_window);
-  gtk_layer_set_layer(weather_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_anchor(weather_window, GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(weather_window, GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_namespace(weather_window, "LayerShell/Weather");
-  gtk_layer_set_keyboard_mode(weather_window,
+  gtk_layer_init_for_window(ns(window));
+  gtk_layer_set_layer(ns(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_anchor(ns(window), GTK_LAYER_SHELL_EDGE_LEFT, true);
+  gtk_layer_set_anchor(ns(window), GTK_LAYER_SHELL_EDGE_TOP, true);
+  gtk_layer_set_namespace(ns(window), "LayerShell/Weather");
+  gtk_layer_set_keyboard_mode(ns(window),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  GtkEventControllerKey *ctrl =
-      GTK_EVENT_CONTROLLER_KEY(gtk_event_controller_key_new());
-  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(weather_window_on_key_press),
-                   NULL);
-  gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(ctrl),
-                                             GTK_PHASE_CAPTURE);
-  gtk_widget_add_controller(GTK_WIDGET(weather_window),
-                            GTK_EVENT_CONTROLLER(ctrl));
+  GtkEventController *ctrl = gtk_event_controller_key_new();
+  g_signal_connect(ctrl, "key-pressed", G_CALLBACK(ns(on_key_press)), NULL);
+  gtk_event_controller_set_propagation_phase(ctrl, GTK_PHASE_CAPTURE);
+  gtk_widget_add_controller(GTK_WIDGET(ns(window)), ctrl);
 
-  layer_shell_io_subscribe(weather_window_on_io_event);
+  layer_shell_io_subscribe(ns(on_io_event));
 
-  gtk_window_present(weather_window);
-  gtk_widget_set_visible(GTK_WIDGET(weather_window), false);
+  gtk_window_present(ns(window));
+  gtk_widget_set_visible(GTK_WIDGET(ns(window)), false);
 }
 
-void weather_window_move(uint32_t margin_left, uint32_t margin_top) {
-  move_layer_window(weather_window, margin_left, margin_top);
+static void ns(move)(uint32_t margin_left, uint32_t margin_top) {
+  move_layer_window(ns(window), margin_left, margin_top);
 }
 
-uint32_t weather_window_width(void) { return WEATHER_WINDOW_WIDTH; }
+uint32_t ns(width)(void) { return ns(WIDTH); }
 
-window_t WEATHER = {.init = weather_window_init,
-                    .activate = weather_window_activate,
-                    .toggle = weather_window_toggle,
-                    .move = weather_window_move,
-                    .width = weather_window_width};
+window_t WEATHER = {.init = ns(init),
+                    .activate = ns(activate),
+                    .toggle = ns(toggle),
+                    .move = ns(move),
+                    .width = ns(width)};
