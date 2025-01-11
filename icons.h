@@ -3,19 +3,16 @@
 
 #include <gio/gio.h>
 
-typedef enum {
-  FOGGY_ICON,
-  QUESTION_MARK_ICON,
-  SUNNY_ICON,
-  PARTLY_CLOUDY_ICON,
-  RAINY_ICON,
-  THUNDERSTORM_ICON,
-  POWER_ICON,
-  SNOWY_ICON,
-  WIFI_ICON,
-} icon_t;
-
 void init_icons();
-GIcon *get_icon(icon_t icon_name);
+
+GIcon *get_foggy_icon();
+GIcon *get_sunny_icon();
+GIcon *get_partly_cloudy_icon();
+GIcon *get_rainy_icon();
+GIcon *get_thunderstorm_icon();
+GIcon *get_snowy_icon();
+GIcon *get_power_icon();
+GIcon *get_question_mark_icon();
+GIcon *get_wifi_icon();
 
 #endif // ICONS_H

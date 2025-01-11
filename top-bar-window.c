@@ -150,7 +150,7 @@ static void _(init)(void) {
   // network
   _(network_label) = gtk_label_new("--");
   _(network_image) = gtk_image_new();
-  gtk_image_set_from_gicon(GTK_IMAGE(_(network_image)), get_icon(WIFI_ICON));
+  gtk_image_set_from_gicon(GTK_IMAGE(_(network_image)), get_wifi_icon());
   GtkWidget *network_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_append(GTK_BOX(network_wrapper), _(network_label));
   gtk_box_append(GTK_BOX(network_wrapper), _(network_image));
@@ -180,7 +180,7 @@ static void _(init)(void) {
   gtk_widget_add_css_class(_(session), "clickable");
   gtk_widget_set_cursor(_(network), gdk_cursor_new_from_name("pointer", NULL));
   GtkWidget *session_image = gtk_image_new();
-  gtk_image_set_from_gicon(GTK_IMAGE(session_image), get_icon(POWER_ICON));
+  gtk_image_set_from_gicon(GTK_IMAGE(session_image), get_power_icon());
   gtk_button_set_child(GTK_BUTTON(_(session)), session_image);
   gtk_box_append(GTK_BOX(right), _(session));
 }

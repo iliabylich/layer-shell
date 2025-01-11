@@ -71,13 +71,13 @@ GIcon *weather_code_to_icon(LAYER_SHELL_IO_WeatherCode code) {
   switch (code) {
   case ClearSky:
   case MainlyClear:
-    return get_icon(SUNNY_ICON);
+    return get_sunny_icon();
   case PartlyCloudy:
   case Overcast:
-    return get_icon(PARTLY_CLOUDY_ICON);
+    return get_partly_cloudy_icon();
   case FogDepositingRime:
   case FogNormal:
-    return get_icon(FOGGY_ICON);
+    return get_foggy_icon();
   case DrizzleDense:
   case DrizzleLight:
   case DrizzleModerate:
@@ -91,20 +91,20 @@ GIcon *weather_code_to_icon(LAYER_SHELL_IO_WeatherCode code) {
   case RainShowersSlight:
   case RainShowersModerate:
   case RainShowersViolent:
-    return get_icon(RAINY_ICON);
+    return get_rainy_icon();
   case SnowFallSlight:
   case SnowFallModerate:
   case SnowFallHeavy:
   case SnowGrains:
   case SnowShowersSlight:
   case SnowShowersHeavy:
-    return get_icon(SNOWY_ICON);
+    return get_snowy_icon();
   case Thunderstorm:
   case ThunderstormWithHailSight:
   case ThunderstormWithHailHeavy:
-    return get_icon(THUNDERSTORM_ICON);
+    return get_thunderstorm_icon();
   case Unknown:
-    return get_icon(QUESTION_MARK_ICON);
+    return get_question_mark_icon();
   }
 
   return NULL;

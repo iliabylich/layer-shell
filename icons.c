@@ -1,17 +1,35 @@
 #include "icons.h"
 #include "bindings.h"
+#include "gio/gio.h"
 #include <glib.h>
 #include <stdio.h>
 
-GIcon *foggy_icon;
-GIcon *question_mark_icon;
-GIcon *sunny_icon;
-GIcon *partly_cloudy_icon;
-GIcon *rainy_icon;
-GIcon *thunderstorm_icon;
-GIcon *power_icon;
-GIcon *snowy_icon;
-GIcon *wifi_icon;
+static GIcon *foggy_icon;
+GIcon *get_foggy_icon() { return foggy_icon; }
+
+static GIcon *sunny_icon;
+GIcon *get_sunny_icon() { return sunny_icon; }
+
+static GIcon *partly_cloudy_icon;
+GIcon *get_partly_cloudy_icon() { return partly_cloudy_icon; }
+
+static GIcon *rainy_icon;
+GIcon *get_rainy_icon() { return rainy_icon; }
+
+static GIcon *thunderstorm_icon;
+GIcon *get_thunderstorm_icon() { return thunderstorm_icon; }
+
+static GIcon *snowy_icon;
+GIcon *get_snowy_icon() { return snowy_icon; }
+
+static GIcon *power_icon;
+GIcon *get_power_icon() { return power_icon; }
+
+static GIcon *question_mark_icon;
+GIcon *get_question_mark_icon() { return question_mark_icon; }
+
+static GIcon *wifi_icon;
+GIcon *get_wifi_icon() { return wifi_icon; }
 
 static GIcon *load_texture(LAYER_SHELL_IO_CBytes from) {
   GBytes *bytes = g_bytes_new_static(from.content, from.len);
@@ -30,29 +48,4 @@ void init_icons(void) {
   wifi_icon = load_texture(WIFI_ICON_BYTES);
 
   printf("Finished loading icons...\n");
-}
-
-GIcon *get_icon(icon_t icon_name) {
-  switch (icon_name) {
-  case FOGGY_ICON:
-    return foggy_icon;
-  case QUESTION_MARK_ICON:
-    return question_mark_icon;
-  case SUNNY_ICON:
-    return sunny_icon;
-  case PARTLY_CLOUDY_ICON:
-    return partly_cloudy_icon;
-  case RAINY_ICON:
-    return rainy_icon;
-  case THUNDERSTORM_ICON:
-    return foggy_icon;
-  case POWER_ICON:
-    return power_icon;
-  case SNOWY_ICON:
-    return snowy_icon;
-  case WIFI_ICON:
-    return wifi_icon;
-  }
-
-  return NULL;
 }
