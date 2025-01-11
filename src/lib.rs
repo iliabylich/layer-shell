@@ -14,7 +14,6 @@ mod subscriptions;
 
 pub use command::Command;
 pub use event::Event;
-use ffi::CString;
 use global::global;
 
 use args::parse_args;
@@ -92,18 +91,6 @@ pub extern "C" fn layer_shell_io_publish(command: Command) {
 #[no_mangle]
 pub extern "C" fn layer_shell_io_init_logger() {
     pretty_env_logger::init();
-}
-
-#[no_mangle]
-pub extern "C" fn layer_shell_io_main_css() -> CString {
-    let home = std::env::var("HOME").unwrap();
-
-    let theme_filepath = format!("{}/.theme.css", home);
-    let theme = std::fs::read_to_string(theme_filepath).unwrap_or_default();
-    let builtin = include_str!("../main.css");
-    let css = format!("{}\n{}", theme, builtin);
-
-    css.into()
 }
 
 pub mod icons {

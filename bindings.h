@@ -276,8 +276,6 @@ void layer_shell_io_publish(LAYER_SHELL_IO_Command command);
 
 void layer_shell_io_init_logger(void);
 
-LAYER_SHELL_IO_CString layer_shell_io_main_css(void);
-
 void layer_shell_io_on_sigusr1(void);
 
 #endif  /* BINDINGS_H */

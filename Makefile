@@ -1,4 +1,5 @@
 BUILD_TYPE ?= debug
+CC = clang
 
 RUST_TARGET_DIR = target/$(BUILD_TYPE)
 SO = $(RUST_TARGET_DIR)/liblayer_shell_io.so
