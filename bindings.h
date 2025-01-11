@@ -241,29 +241,6 @@ typedef struct {
   };
 } LAYER_SHELL_IO_Command;
 
-typedef struct {
-  const uint8_t *content;
-  size_t len;
-} LAYER_SHELL_IO_CBytes;
-
-extern LAYER_SHELL_IO_CBytes FOGGY_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes QUESTION_MARK_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes SUNNY_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes PARTLY_CLOUDY_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes RAINY_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes THUNDERSTORM_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes POWER_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes SNOWY_ICON_BYTES;
-
-extern LAYER_SHELL_IO_CBytes WIFI_ICON_BYTES;
-
 void layer_shell_io_subscribe(void (*f)(const LAYER_SHELL_IO_Event*));
 
 void layer_shell_io_init(void);

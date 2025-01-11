@@ -92,32 +92,3 @@ pub extern "C" fn layer_shell_io_publish(command: Command) {
 pub extern "C" fn layer_shell_io_init_logger() {
     pretty_env_logger::init();
 }
-
-pub mod icons {
-    use crate::ffi::CBytes;
-
-    macro_rules! icon {
-        ($path:literal) => {{
-            CBytes::new(include_bytes!($path))
-        }};
-    }
-
-    #[no_mangle]
-    pub static mut FOGGY_ICON_BYTES: CBytes = icon!("../icons/foggy.png");
-    #[no_mangle]
-    pub static mut QUESTION_MARK_ICON_BYTES: CBytes = icon!("../icons/question_mark.png");
-    #[no_mangle]
-    pub static mut SUNNY_ICON_BYTES: CBytes = icon!("../icons/sunny.png");
-    #[no_mangle]
-    pub static mut PARTLY_CLOUDY_ICON_BYTES: CBytes = icon!("../icons/partly_cloudy.png");
-    #[no_mangle]
-    pub static mut RAINY_ICON_BYTES: CBytes = icon!("../icons/rainy.png");
-    #[no_mangle]
-    pub static mut THUNDERSTORM_ICON_BYTES: CBytes = icon!("../icons/thunderstorm.png");
-    #[no_mangle]
-    pub static mut POWER_ICON_BYTES: CBytes = icon!("../icons/power.png");
-    #[no_mangle]
-    pub static mut SNOWY_ICON_BYTES: CBytes = icon!("../icons/snowy.png");
-    #[no_mangle]
-    pub static mut WIFI_ICON_BYTES: CBytes = icon!("../icons/wifi.png");
-}

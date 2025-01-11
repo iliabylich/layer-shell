@@ -80,20 +80,3 @@ where
 }
 
 unsafe impl<T> Send for CArray<T> {}
-
-#[repr(C)]
-pub struct CBytes {
-    pub content: *const u8,
-    pub len: usize,
-}
-
-impl CBytes {
-    pub const fn new(slice: &'static [u8]) -> Self {
-        Self {
-            content: slice.as_ptr(),
-            len: slice.len(),
-        }
-    }
-}
-
-unsafe impl Send for CBytes {}
