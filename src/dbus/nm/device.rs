@@ -7,7 +7,7 @@ use crate::dbus::{
 };
 use anyhow::{Context, Result};
 use dbus::{
-    blocking::{Proxy, SyncConnection},
+    blocking::{Connection, Proxy},
     Path,
 };
 use std::time::Duration;
@@ -18,7 +18,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn interface(&self, conn: &SyncConnection) -> Result<String> {
+    pub fn interface(&self, conn: &Connection) -> Result<String> {
         Proxy::new(
             "org.freedesktop.NetworkManager",
             &self.path,
@@ -29,7 +29,7 @@ impl Device {
         .context("failed to get Interface property on Device")
     }
 
-    pub fn ip4_config(&self, conn: &SyncConnection) -> Result<Ip4Config> {
+    pub fn ip4_config(&self, conn: &Connection) -> Result<Ip4Config> {
         let path = Proxy::new(
             "org.freedesktop.NetworkManager",
             &self.path,
@@ -42,7 +42,7 @@ impl Device {
         Ok(Ip4Config { path })
     }
 
-    pub fn active_access_point(&self, conn: &SyncConnection) -> Result<AccessPoint> {
+    pub fn active_access_point(&self, conn: &Connection) -> Result<AccessPoint> {
         let path = Proxy::new(
             "org.freedesktop.NetworkManager",
             &self.path,

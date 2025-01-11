@@ -1,23 +1,47 @@
 use crate::global::global;
+use dbus::{blocking::Connection, Message};
 
 mod network_list;
 mod wifi_status;
 
-global!(CONNECTION, dbus::blocking::SyncConnection);
+global!(CONNECTION, Connection);
 
 pub(crate) fn setup() {
-    let conn = match dbus::blocking::SyncConnection::new_system() {
-        Ok(conn) => conn,
-        Err(err) => {
-            log::error!("Failed to connect to D-Bus: {:?}", err);
-            std::process::exit(1);
-        }
-    };
+    std::thread::spawn(|| {
+        match Connection::new_system() {
+            Ok(conn) => CONNECTION::set(conn),
+            Err(err) => {
+                log::error!("Failed to connect to D-Bus: {:?}", err);
+                return;
+            }
+        };
 
-    CONNECTION::set(conn);
+        reload();
+
+        let proxy = CONNECTION::get().with_proxy(
+            "org.freedesktop.NetworkManager",
+            "/org/freedesktop/NetworkManager",
+            std::time::Duration::from_millis(5000),
+        );
+
+        let _id = proxy.match_signal(
+            |_: crate::dbus::OrgFreedesktopNetworkManagerStateChanged,
+             _: &Connection,
+             _: &Message| {
+                reload();
+                true
+            },
+        );
+
+        loop {
+            if let Err(err) = CONNECTION::get().process(std::time::Duration::from_millis(1000)) {
+                log::error!("D-Bus polling loop error: {:?}", err);
+            }
+        }
+    });
 }
 
-pub(crate) fn tick() {
+fn reload() {
     match network_list::get(CONNECTION::get()) {
         Ok(event) => event.emit(),
         Err(err) => log::error!("{:?}", err),

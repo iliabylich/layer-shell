@@ -1,14 +1,14 @@
 use crate::{dbus::nm, event::Network, Event};
 use anyhow::Result;
-use dbus::blocking::SyncConnection;
+use dbus::blocking::Connection;
 
-pub(crate) fn get(conn: &SyncConnection) -> Result<Event> {
+pub(crate) fn get(conn: &Connection) -> Result<Event> {
     Ok(Event::NetworkList {
         list: get_networks(conn)?.into(),
     })
 }
 
-fn get_networks(conn: &SyncConnection) -> Result<Vec<Network>> {
+fn get_networks(conn: &Connection) -> Result<Vec<Network>> {
     let mut ifaces = vec![];
 
     let devices = nm::NetworkManager::get_devices(conn)?;
@@ -23,7 +23,7 @@ fn get_networks(conn: &SyncConnection) -> Result<Vec<Network>> {
     Ok(ifaces)
 }
 
-fn get_device(conn: &SyncConnection, device: &nm::Device) -> Result<Network> {
+fn get_device(conn: &Connection, device: &nm::Device) -> Result<Network> {
     let iface = device.interface(conn)?;
     let ip4_config = device.ip4_config(conn)?;
     let address = ip4_config.address(conn)?;

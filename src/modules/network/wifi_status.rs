@@ -1,8 +1,8 @@
 use crate::{dbus::nm::NetworkManager, Event};
 use anyhow::Result;
-use dbus::blocking::SyncConnection;
+use dbus::blocking::Connection;
 
-pub(crate) fn get(conn: &SyncConnection) -> Event {
+pub(crate) fn get(conn: &Connection) -> Event {
     let (ssid, strength) = match get_status(conn, "wlo1") {
         Ok(state) => state,
         Err(err) => {
@@ -16,7 +16,7 @@ pub(crate) fn get(conn: &SyncConnection) -> Event {
         strength,
     }
 }
-fn get_status(conn: &SyncConnection, iface: &str) -> Result<(String, u8)> {
+fn get_status(conn: &Connection, iface: &str) -> Result<(String, u8)> {
     let device = NetworkManager::get_device_by_ip_iface(conn, iface)?;
     let access_point = device.active_access_point(conn)?;
     let ssid = access_point.ssid(conn)?;

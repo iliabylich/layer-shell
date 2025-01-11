@@ -1,7 +1,7 @@
 use crate::dbus::gen::nm_access_point::OrgFreedesktopNetworkManagerAccessPoint;
 use anyhow::{Context, Result};
 use dbus::{
-    blocking::{Proxy, SyncConnection},
+    blocking::{Connection, Proxy},
     Path,
 };
 use std::time::Duration;
@@ -11,7 +11,7 @@ pub struct AccessPoint {
 }
 
 impl AccessPoint {
-    pub fn ssid(&self, conn: &SyncConnection) -> Result<String> {
+    pub fn ssid(&self, conn: &Connection) -> Result<String> {
         let ssid = Proxy::new(
             "org.freedesktop.NetworkManager",
             &self.path,
@@ -26,7 +26,7 @@ impl AccessPoint {
         Ok(ssid)
     }
 
-    pub fn strength(&self, conn: &SyncConnection) -> Result<u8> {
+    pub fn strength(&self, conn: &Connection) -> Result<u8> {
         Proxy::new(
             "org.freedesktop.NetworkManager",
             &self.path,

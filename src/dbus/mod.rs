@@ -1,4 +1,6 @@
 #[expect(clippy::needless_lifetimes)]
 mod gen;
 
-pub mod nm;
+pub(crate) mod nm;
+
+pub(crate) use gen::nm::OrgFreedesktopNetworkManagerStateChanged;

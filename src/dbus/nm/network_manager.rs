@@ -1,12 +1,12 @@
 use crate::dbus::{gen::nm::OrgFreedesktopNetworkManager, nm::Device};
 use anyhow::{Context, Result};
-use dbus::blocking::{Proxy, SyncConnection};
+use dbus::blocking::{Connection, Proxy};
 use std::time::Duration;
 
 pub struct NetworkManager;
 
 impl NetworkManager {
-    pub fn get_devices(conn: &SyncConnection) -> Result<Vec<Device>> {
+    pub fn get_devices(conn: &Connection) -> Result<Vec<Device>> {
         let paths = Proxy::new(
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
@@ -22,7 +22,7 @@ impl NetworkManager {
             .collect::<Vec<_>>())
     }
 
-    pub fn get_device_by_ip_iface(conn: &SyncConnection, iface: &str) -> Result<Device> {
+    pub fn get_device_by_ip_iface(conn: &Connection, iface: &str) -> Result<Device> {
         let path = Proxy::new(
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
