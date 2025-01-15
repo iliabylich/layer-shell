@@ -24,3 +24,16 @@ void window_set_height_request(GtkWindow *window, int height) {
   g_value_set_int(&height_request, height);
   g_object_set_property(G_OBJECT(window), "height-request", &height_request);
 }
+
+bool bottom_right_point_of(GtkWidget *widget, GtkWindow *window,
+                           graphene_point_t *out) {
+  graphene_rect_t bounds;
+  if (!gtk_widget_compute_bounds(widget, GTK_WIDGET(window), &bounds)) {
+    return false;
+  }
+
+  out->x = bounds.origin.x + bounds.size.width;
+  out->y = bounds.origin.y + bounds.size.height;
+
+  return true;
+}

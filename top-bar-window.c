@@ -1,7 +1,7 @@
 #include "top-bar-window.h"
 #include "bindings.h"
 #include "gtk/gtkshortcut.h"
-#include "htop-window.h"
+#include "htop-widget.h"
 #include "icons.h"
 #include "network-window.h"
 #include "session-window.h"
@@ -14,8 +14,6 @@
 #define _(name) top_bar_ns_##name
 
 static GtkWindow *_(window);
-
-static GtkWidget *_(htop);
 
 static GtkWidget *_(weather);
 static GtkWidget *_(weather_label);
@@ -72,14 +70,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(left), WORKSPACES_WIDGET.main_widget());
 
   // htop
-  _(htop) = gtk_button_new();
-  gtk_widget_add_css_class(_(htop), "widget");
-  gtk_widget_add_css_class(_(htop), "terminal");
-  gtk_widget_add_css_class(_(htop), "padded");
-  gtk_widget_add_css_class(_(htop), "clickable");
-  GtkWidget *htop_label = gtk_label_new("Htop");
-  gtk_button_set_child(GTK_BUTTON(_(htop)), htop_label);
-  gtk_box_append(GTK_BOX(right), _(htop));
+  HTOP_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), HTOP_WIDGET.main_widget());
 
   // weather
   _(weather_label) = gtk_label_new("--");
@@ -298,34 +290,9 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-static bool _(bottom_right_point_of)(GtkWidget *widget, graphene_point_t *out) {
-  graphene_rect_t bounds;
-  if (!gtk_widget_compute_bounds(widget, GTK_WIDGET(_(window)), &bounds)) {
-    return false;
-  }
-
-  out->x = bounds.origin.x + bounds.size.width;
-  out->y = bounds.origin.y + bounds.size.height;
-
-  return true;
-}
-
-static void _(htop_btn_on_click)() {
-  graphene_point_t bottom_right;
-  if (!_(bottom_right_point_of)(_(htop), &bottom_right)) {
-    fprintf(stderr, "Failed to compute bottom-right of the htop widget");
-    return;
-  }
-  int margin_left = bottom_right.x - HTOP.width / 2.0;
-  int margin_top = bottom_right.y;
-  HTOP.move(margin_left, margin_top);
-
-  HTOP.toggle();
-}
-
 static void _(weather_btn_on_click)() {
   graphene_point_t bottom_right;
-  if (!_(bottom_right_point_of)(_(weather), &bottom_right)) {
+  if (!bottom_right_point_of(_(weather), TOP_BAR.window(), &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the weather widget");
     return;
   }
@@ -338,7 +305,7 @@ static void _(weather_btn_on_click)() {
 
 static void _(network_btn_on_click)() {
   graphene_point_t bottom_right;
-  if (!_(bottom_right_point_of)(_(network), &bottom_right)) {
+  if (!bottom_right_point_of(_(network), TOP_BAR.window(), &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the network widget");
     return;
   }
@@ -348,6 +315,8 @@ static void _(network_btn_on_click)() {
 
   NETWORK.toggle();
 }
+
+static GtkWindow *_(get_window)(void) { return _(window); }
 
 static void _(activate)(GApplication *app) {
   gtk_window_set_application(_(window), GTK_APPLICATION(app));
@@ -361,8 +330,7 @@ static void _(activate)(GApplication *app) {
   gtk_layer_set_namespace(_(window), "LayerShell/TopBar");
 
   WORKSPACES_WIDGET.activate();
-
-  g_signal_connect(_(htop), "clicked", _(htop_btn_on_click), NULL);
+  HTOP_WIDGET.activate();
 
   g_signal_connect(_(weather), "clicked", _(weather_btn_on_click), NULL);
 
@@ -383,4 +351,5 @@ static void _(activate)(GApplication *app) {
   gtk_window_present(_(window));
 }
 
-window_t TOP_BAR = {.init = _(init), .activate = _(activate)};
+window_t TOP_BAR = {
+    .init = _(init), .activate = _(activate), .window = _(get_window)};

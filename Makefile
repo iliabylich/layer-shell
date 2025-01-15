@@ -32,7 +32,8 @@ OBJS = css.o \
 		htop-window.o \
 		top-bar-window.o \
 		utils.o \
-		workspaces-widget.o
+		workspaces-widget.o \
+		htop-widget.o
 
 %.o: %.c %.h bindings.h
 	$(CC) -c $(CFLAGS) $< -o $@
