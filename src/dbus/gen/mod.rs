@@ -17,3 +17,6 @@ pub(crate) mod nm_ip4_config;
 
 #[allow(dead_code)]
 pub(crate) mod nm_active_connection;
+
+#[allow(dead_code)]
+pub(crate) mod nm_device_statistics;

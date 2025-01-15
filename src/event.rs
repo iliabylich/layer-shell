@@ -1,6 +1,6 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use crate::ffi::{CArray, CString};
+use crate::ffi::{CArray, COption, CString};
 use crate::global;
 use crate::modules::weather::WeatherCode;
 
@@ -42,9 +42,12 @@ pub enum Event {
         hourly: CArray<WeatherOnHour>,
         daily: CArray<WeatherOnDay>,
     },
-    WiFiStatus {
-        ssid: CString,
-        strength: u8,
+    WifiStatus {
+        wifi_status: COption<WifiStatus>,
+    },
+    NetworkSpeed {
+        upload_speed: u64,
+        download_speed: u64,
     },
     NetworkList {
         list: CArray<Network>,
@@ -112,4 +115,11 @@ pub struct WeatherOnDay {
 pub struct Network {
     pub iface: CString,
     pub address: CString,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct WifiStatus {
+    pub ssid: CString,
+    pub strength: u8,
 }

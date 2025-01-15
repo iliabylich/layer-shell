@@ -98,6 +98,25 @@ typedef struct {
 } LAYER_SHELL_IO_CArray_WeatherOnDay;
 
 typedef struct {
+  LAYER_SHELL_IO_CString ssid;
+  uint8_t strength;
+} LAYER_SHELL_IO_WifiStatus;
+
+typedef enum {
+  None_WifiStatus,
+  Some_WifiStatus,
+} LAYER_SHELL_IO_COption_WifiStatus_Tag;
+
+typedef struct {
+  LAYER_SHELL_IO_COption_WifiStatus_Tag tag;
+  union {
+    struct {
+      LAYER_SHELL_IO_WifiStatus some;
+    };
+  };
+} LAYER_SHELL_IO_COption_WifiStatus;
+
+typedef struct {
   LAYER_SHELL_IO_CString iface;
   LAYER_SHELL_IO_CString address;
 } LAYER_SHELL_IO_Network;
@@ -118,7 +137,8 @@ typedef enum {
   Mute,
   CurrentWeather,
   ForecastWeather,
-  WiFiStatus,
+  WifiStatus,
+  NetworkSpeed,
   NetworkList,
   ToggleLauncher,
   ToggleSessionScreen,
@@ -170,9 +190,13 @@ typedef struct {
 } LAYER_SHELL_IO_ForecastWeather_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CString ssid;
-  uint8_t strength;
-} LAYER_SHELL_IO_WiFiStatus_Body;
+  LAYER_SHELL_IO_COption_WifiStatus wifi_status;
+} LAYER_SHELL_IO_WifiStatus_Body;
+
+typedef struct {
+  uint64_t upload_speed;
+  uint64_t download_speed;
+} LAYER_SHELL_IO_NetworkSpeed_Body;
 
 typedef struct {
   LAYER_SHELL_IO_CArray_Network list;
@@ -191,7 +215,8 @@ typedef struct {
     LAYER_SHELL_IO_Mute_Body mute;
     LAYER_SHELL_IO_CurrentWeather_Body current_weather;
     LAYER_SHELL_IO_ForecastWeather_Body forecast_weather;
-    LAYER_SHELL_IO_WiFiStatus_Body wi_fi_status;
+    LAYER_SHELL_IO_WifiStatus_Body wifi_status;
+    LAYER_SHELL_IO_NetworkSpeed_Body network_speed;
     LAYER_SHELL_IO_NetworkList_Body network_list;
   };
 } LAYER_SHELL_IO_Event;

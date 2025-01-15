@@ -274,15 +274,15 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     gtk_label_set_label(GTK_LABEL(_(ram_label)), buffer);
     break;
   }
-  case WiFiStatus: {
-    if (event->wi_fi_status.ssid == NULL) {
+  case WifiStatus: {
+    if (event->wifi_status.wifi_status.tag == None_WifiStatus) {
       gtk_widget_set_visible(_(network_image), false);
       gtk_label_set_label(GTK_LABEL(_(network_label)), "Not connected");
     } else {
       gtk_widget_set_visible(_(network_image), true);
       char buffer[100];
-      sprintf(buffer, "%s (%d)%% ", event->wi_fi_status.ssid,
-              event->wi_fi_status.strength);
+      sprintf(buffer, "%s (%d)%% ", event->wifi_status.wifi_status.some.ssid,
+              event->wifi_status.wifi_status.some.strength);
       gtk_label_set_label(GTK_LABEL(_(network_label)), buffer);
     }
     break;

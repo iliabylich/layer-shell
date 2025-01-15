@@ -1,6 +1,7 @@
 use crate::dbus::{
     gen::{
         nm_device::OrgFreedesktopNetworkManagerDevice,
+        nm_device_statistics::OrgFreedesktopNetworkManagerDeviceStatistics,
         nm_device_wireless::OrgFreedesktopNetworkManagerDeviceWireless,
     },
     nm::{AccessPoint, Ip4Config},
@@ -49,5 +50,23 @@ impl Device {
             .context("failed to get ActiveAccessPoint on Device")?;
 
         Ok(AccessPoint { path })
+    }
+
+    pub(crate) fn set_refresh_rate_in_ms(
+        &self,
+        conn: &Connection,
+        refresh_rate_in_ms: u32,
+    ) -> Result<()> {
+        self.proxy(conn)
+            .set_refresh_rate_ms(refresh_rate_in_ms)
+            .context("failed to update RefreshRateMs")
+    }
+
+    pub(crate) fn tx_bytes(&self, conn: &Connection) -> Result<u64> {
+        self.proxy(conn).tx_bytes().context("failed to get TxBytes")
+    }
+
+    pub(crate) fn rx_bytes(&self, conn: &Connection) -> Result<u64> {
+        self.proxy(conn).rx_bytes().context("failed to get RxBytes")
     }
 }

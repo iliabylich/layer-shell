@@ -4,7 +4,7 @@ set -eu
 
 getXML() {
     local path="$1"
-    local base_url="https://raw.githubusercontent.com/NetworkManager/NetworkManager/refs/heads/main/introspection/"
+    local base_url="https://raw.githubusercontent.com/NetworkManager/NetworkManager/refs/heads/main/introspection"
     local xml_url="$base_url/$path"
     wget "$xml_url" -O "src/dbus/interfaces/$path"
 }
@@ -33,3 +33,4 @@ processXML "org.freedesktop.NetworkManager.Device.Wireless.xml" "nm_device_wirel
 processXML "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
 processXML "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
 processXML "org.freedesktop.NetworkManager.Connection.Active.xml" "nm_active_connection.rs"
+processXML "org.freedesktop.NetworkManager.Device.Statistics.xml" "nm_device_statistics.rs"
