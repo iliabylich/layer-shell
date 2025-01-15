@@ -86,7 +86,7 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
       row_t row = _(hourly_rows)[i];
 
       char buffer[100];
-      sprintf(buffer, "%s' %5.1f℃", weather.hour.ptr, weather.temperature);
+      sprintf(buffer, "%s' %5.1f℃", weather.hour, weather.temperature);
       gtk_label_set_label(GTK_LABEL(row.label), buffer);
       gtk_widget_set_tooltip_text(row.label,
                                   weather_code_to_description(weather.code));
@@ -100,7 +100,7 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
       row_t row = _(daily_rows)[i];
 
       char buffer[100];
-      sprintf(buffer, "%s: %5.1f℃ - %5.1f℃", weather.day.ptr,
+      sprintf(buffer, "%s: %5.1f℃ - %5.1f℃", weather.day,
               weather.temperature_min, weather.temperature_max);
       gtk_label_set_label(GTK_LABEL(row.label), buffer);
       gtk_widget_set_tooltip_text(row.label,

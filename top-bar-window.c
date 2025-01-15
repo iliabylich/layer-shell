@@ -225,9 +225,9 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     break;
   }
   case Language: {
-    if (strcmp(event->language.lang.ptr, "English (US)") == 0) {
+    if (strcmp(event->language.lang, "English (US)") == 0) {
       gtk_label_set_label(GTK_LABEL(_(language_label)), "EN");
-    } else if (strcmp(event->language.lang.ptr, "Polish") == 0) {
+    } else if (strcmp(event->language.lang, "Polish") == 0) {
       gtk_label_set_label(GTK_LABEL(_(language_label)), "PL");
     } else {
       gtk_label_set_label(GTK_LABEL(_(language_label)), "??");
@@ -275,21 +275,21 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     break;
   }
   case WiFiStatus: {
-    if (event->wi_fi_status.ssid.ptr == NULL) {
+    if (event->wi_fi_status.ssid == NULL) {
       gtk_widget_set_visible(_(network_image), false);
       gtk_label_set_label(GTK_LABEL(_(network_label)), "Not connected");
     } else {
       gtk_widget_set_visible(_(network_image), true);
       char buffer[100];
-      sprintf(buffer, "%s (%d)%% ", event->wi_fi_status.ssid.ptr,
+      sprintf(buffer, "%s (%d)%% ", event->wi_fi_status.ssid,
               event->wi_fi_status.strength);
       gtk_label_set_label(GTK_LABEL(_(network_label)), buffer);
     }
     break;
   }
   case Time: {
-    gtk_label_set_label(GTK_LABEL(_(time_label)), event->time.time.ptr);
-    gtk_widget_set_tooltip_text(_(time_label), event->time.date.ptr);
+    gtk_label_set_label(GTK_LABEL(_(time_label)), event->time.time);
+    gtk_widget_set_tooltip_text(_(time_label), event->time.date);
     break;
   }
   case CurrentWeather: {

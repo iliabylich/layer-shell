@@ -115,11 +115,11 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
 
         if (app.icon.tag == IconName) {
           gtk_image_set_from_icon_name(GTK_IMAGE(row.image),
-                                       app.icon.icon_name.ptr);
+                                       app.icon.icon_name);
         } else {
-          gtk_image_set_from_file(GTK_IMAGE(row.image), app.icon.icon_path.ptr);
+          gtk_image_set_from_file(GTK_IMAGE(row.image), app.icon.icon_path);
         }
-        gtk_label_set_label(GTK_LABEL(row.label), app.name.ptr);
+        gtk_label_set_label(GTK_LABEL(row.label), app.name);
       } else {
         gtk_widget_set_visible(row.wrapper, false);
       }

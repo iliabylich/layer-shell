@@ -140,9 +140,9 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
         LAYER_SHELL_IO_Network network = networks.ptr[i];
         gtk_widget_set_visible(row.wrapper, true);
         char buffer[100];
-        sprintf(buffer, "%s: %s", network.iface.ptr, network.address.ptr);
+        sprintf(buffer, "%s: %s", network.iface, network.address);
         gtk_label_set_label(GTK_LABEL(row.label), buffer);
-        gtk_widget_set_tooltip_text(row.label, network.address.ptr);
+        gtk_widget_set_tooltip_text(row.label, network.address);
       } else {
         gtk_widget_set_visible(row.wrapper, false);
       }

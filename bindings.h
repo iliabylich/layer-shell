@@ -44,9 +44,7 @@ typedef struct {
   size_t len;
 } LAYER_SHELL_IO_CArray_usize;
 
-typedef struct {
-  char *ptr;
-} LAYER_SHELL_IO_CString;
+typedef char *LAYER_SHELL_IO_CString;
 
 typedef enum {
   IconPath,

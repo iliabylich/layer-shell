@@ -1,4 +1,4 @@
-#[repr(C)]
+#[repr(transparent)]
 pub struct CString {
     pub ptr: *mut std::ffi::c_char,
 }
