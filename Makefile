@@ -36,7 +36,8 @@ OBJS = css.o \
 		htop-widget.o \
 		weather-widget.o \
 		language-widget.o \
-		sound-widget.o
+		sound-widget.o \
+		cpu-widget.o
 
 %.o: %.c %.h bindings.h
 	$(CC) -c $(CFLAGS) $< -o $@

@@ -1,5 +1,6 @@
 #include "top-bar-window.h"
 #include "bindings.h"
+#include "cpu-widget.h"
 #include "gtk/gtkshortcut.h"
 #include "htop-widget.h"
 #include "icons.h"
@@ -15,16 +16,6 @@
 #define _(name) top_bar_ns_##name
 
 static GtkWindow *_(window);
-
-static GtkWidget *_(cpu);
-static GtkWidget *_(cpu_labels)[12];
-#define CPU_INDICATORS_COUNT 8
-static const char *CPU_INDICATORS[CPU_INDICATORS_COUNT] = {
-    "<span color='#FFFFFF'>▁</span>", "<span color='#FFD5D5'>▂</span>",
-    "<span color='#FFAAAA'>▃</span>", "<span color='#FF8080'>▄</span>",
-    "<span color='#FF5555'>▅</span>", "<span color='#FF2B2B'>▆</span>",
-    "<span color='#FF0000'>▇</span>", "<span color='#E60000'>█</span>",
-};
 
 static GtkWidget *_(ram);
 static GtkWidget *_(ram_label);
@@ -77,17 +68,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), SOUND_WIDGET.main_widget());
 
   // cpu
-  _(cpu) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
-  gtk_widget_add_css_class(_(cpu), "widget");
-  gtk_widget_add_css_class(_(cpu), "cpu");
-  gtk_widget_add_css_class(_(cpu), "padded");
-  for (size_t i = 0; i < 12; i++) {
-    GtkWidget *label = gtk_label_new(NULL);
-    gtk_label_set_use_markup(GTK_LABEL(label), true);
-    gtk_box_append(GTK_BOX(_(cpu)), label);
-    _(cpu_labels)[i] = label;
-  }
-  gtk_box_append(GTK_BOX(right), _(cpu));
+  CPU_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), CPU_WIDGET.main_widget());
 
   // ram
   _(ram_label) = gtk_label_new(NULL);
@@ -163,22 +145,6 @@ static void _(spawn_system_monitor)(void) {
 
 static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
-  case CpuUsage: {
-    for (size_t idx = 0; idx < 12; idx++) {
-      GtkWidget *label = _(cpu_labels)[idx];
-      size_t load = event->cpu_usage.usage_per_core.ptr[idx];
-      size_t indicator_idx =
-          (size_t)((double)load / 100.0 * (double)CPU_INDICATORS_COUNT);
-
-      if (indicator_idx == CPU_INDICATORS_COUNT) {
-        indicator_idx -= 1;
-      }
-
-      const char *markup = CPU_INDICATORS[indicator_idx];
-      gtk_label_set_label(GTK_LABEL(label), markup);
-    }
-    break;
-  }
   case Memory: {
     char buffer[100];
     sprintf(buffer, "RAM %.1fG/%.1fG", event->memory.used, event->memory.total);
@@ -247,6 +213,7 @@ static void _(activate)(GApplication *app) {
   WEATHER_WIDGET.activate();
   LANGUAGE_WIDGET.activate();
   SOUND_WIDGET.activate();
+  CPU_WIDGET.activate();
 
   g_signal_connect(_(ram), "clicked", _(spawn_system_monitor), NULL);
 
