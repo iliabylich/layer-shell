@@ -40,7 +40,8 @@ OBJS = css.o \
 		cpu-widget.o \
 		network-widget.o \
 		memory-widget.o \
-		time-widget.o
+		time-widget.o \
+		session-widget.o
 
 %.o: %.c %.h bindings.h
 	$(CC) -c $(CFLAGS) $< -o $@

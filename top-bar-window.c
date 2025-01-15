@@ -1,11 +1,10 @@
 #include "top-bar-window.h"
 #include "cpu-widget.h"
 #include "htop-widget.h"
-#include "icons.h"
 #include "language-widget.h"
 #include "memory-widget.h"
 #include "network-widget.h"
-#include "session-window.h"
+#include "session-widget.h"
 #include "sound-widget.h"
 #include "time-widget.h"
 #include "weather-widget.h"
@@ -16,8 +15,6 @@
 #define _(name) top_bar_ns_##name
 
 static GtkWindow *_(window);
-
-static GtkWidget *_(session);
 
 static void _(init)(void) {
   _(window) = GTK_WINDOW(gtk_window_new());
@@ -70,16 +67,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), TIME_WIDGET.main_widget());
 
   // session
-  _(session) = gtk_button_new();
-  gtk_widget_add_css_class(_(session), "widget");
-  gtk_widget_add_css_class(_(session), "power");
-  gtk_widget_add_css_class(_(session), "padded");
-  gtk_widget_add_css_class(_(session), "clickable");
-  gtk_widget_set_cursor(_(session), gdk_cursor_new_from_name("pointer", NULL));
-  GtkWidget *session_image = gtk_image_new();
-  gtk_image_set_from_gicon(GTK_IMAGE(session_image), get_power_icon());
-  gtk_button_set_child(GTK_BUTTON(_(session)), session_image);
-  gtk_box_append(GTK_BOX(right), _(session));
+  SESSION_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), SESSION_WIDGET.main_widget());
 }
 
 static GtkWindow *_(get_window)(void) { return _(window); }
@@ -104,8 +93,7 @@ static void _(activate)(GApplication *app) {
   MEMORY_WIDGET.activate();
   NETWORK_WIDGET.activate();
   TIME_WIDGET.activate();
-
-  g_signal_connect(_(session), "clicked", SESSION.toggle, NULL);
+  SESSION_WIDGET.activate();
 
   gtk_window_present(_(window));
 }
