@@ -1,11 +1,14 @@
 mod network_manager;
-pub use network_manager::NetworkManager;
+pub(crate) use network_manager::NetworkManager;
 
 mod device;
-pub use device::Device;
+pub(crate) use device::Device;
 
 mod ip4_config;
-pub use ip4_config::Ip4Config;
+pub(crate) use ip4_config::Ip4Config;
 
 mod access_point;
-pub use access_point::AccessPoint;
+pub(crate) use access_point::AccessPoint;
+
+mod active_connection;
+pub(crate) use active_connection::ActiveConnection;

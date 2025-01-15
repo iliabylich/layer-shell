@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub trait OrgFreedesktopNetworkManager {
+pub(crate) trait OrgFreedesktopNetworkManager {
     fn reload(&self, flags: u32) -> Result<(), dbus::Error>;
     fn get_devices(&self) -> Result<Vec<dbus::Path<'static>>, dbus::Error>;
     fn get_all_devices(&self) -> Result<Vec<dbus::Path<'static>>, dbus::Error>;
@@ -58,7 +58,7 @@ pub trait OrgFreedesktopNetworkManager {
 }
 
 #[derive(Debug)]
-pub struct OrgFreedesktopNetworkManagerCheckPermissions {
+pub(crate) struct OrgFreedesktopNetworkManagerCheckPermissions {
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerCheckPermissions {
@@ -79,8 +79,8 @@ impl dbus::message::SignalArgs for OrgFreedesktopNetworkManagerCheckPermissions 
 }
 
 #[derive(Debug)]
-pub struct OrgFreedesktopNetworkManagerStateChanged {
-    pub state: u32,
+pub(crate) struct OrgFreedesktopNetworkManagerStateChanged {
+    pub(crate) state: u32,
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerStateChanged {
@@ -103,8 +103,8 @@ impl dbus::message::SignalArgs for OrgFreedesktopNetworkManagerStateChanged {
 }
 
 #[derive(Debug)]
-pub struct OrgFreedesktopNetworkManagerDeviceAdded {
-    pub device_path: dbus::Path<'static>,
+pub(crate) struct OrgFreedesktopNetworkManagerDeviceAdded {
+    pub(crate) device_path: dbus::Path<'static>,
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerDeviceAdded {
@@ -127,8 +127,8 @@ impl dbus::message::SignalArgs for OrgFreedesktopNetworkManagerDeviceAdded {
 }
 
 #[derive(Debug)]
-pub struct OrgFreedesktopNetworkManagerDeviceRemoved {
-    pub device_path: dbus::Path<'static>,
+pub(crate) struct OrgFreedesktopNetworkManagerDeviceRemoved {
+    pub(crate) device_path: dbus::Path<'static>,
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerDeviceRemoved {

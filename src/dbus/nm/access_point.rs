@@ -6,34 +6,31 @@ use dbus::{
 };
 use std::time::Duration;
 
-pub struct AccessPoint {
+pub(crate) struct AccessPoint {
     pub(crate) path: Path<'static>,
 }
 
 impl AccessPoint {
-    pub fn ssid(&self, conn: &Connection) -> Result<String> {
-        let ssid = Proxy::new(
-            "org.freedesktop.NetworkManager",
-            &self.path,
-            Duration::from_millis(5000),
-            conn,
-        )
-        .ssid()
-        .context("failed to get Ssid")?;
-
-        let ssid = String::from_utf8(ssid).context("non UTF-8 ssid")?;
-
-        Ok(ssid)
-    }
-
-    pub fn strength(&self, conn: &Connection) -> Result<u8> {
+    fn proxy<'a>(&'a self, conn: &'a Connection) -> Proxy<'a, &'a Connection> {
         Proxy::new(
             "org.freedesktop.NetworkManager",
             &self.path,
             Duration::from_millis(5000),
             conn,
         )
-        .strength()
-        .context("failed to get Strength property")
+    }
+
+    pub(crate) fn ssid(&self, conn: &Connection) -> Result<String> {
+        let ssid = self.proxy(conn).ssid().context("failed to get Ssid")?;
+
+        let ssid = String::from_utf8(ssid).context("non UTF-8 ssid")?;
+
+        Ok(ssid)
+    }
+
+    pub(crate) fn strength(&self, conn: &Connection) -> Result<u8> {
+        self.proxy(conn)
+            .strength()
+            .context("failed to get Strength property")
     }
 }

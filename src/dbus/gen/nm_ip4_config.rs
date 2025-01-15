@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub trait OrgFreedesktopNetworkManagerIP4Config {
+pub(crate) trait OrgFreedesktopNetworkManagerIP4Config {
     fn addresses(&self) -> Result<Vec<Vec<u32>>, dbus::Error>;
     fn address_data(&self) -> Result<Vec<arg::PropMap>, dbus::Error>;
     fn gateway(&self) -> Result<String, dbus::Error>;

@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub trait OrgFreedesktopNetworkManagerDeviceWireless {
+pub(crate) trait OrgFreedesktopNetworkManagerDeviceWireless {
     fn get_access_points(&self) -> Result<Vec<dbus::Path<'static>>, dbus::Error>;
     fn get_all_access_points(&self) -> Result<Vec<dbus::Path<'static>>, dbus::Error>;
     fn request_scan(&self, options: arg::PropMap) -> Result<(), dbus::Error>;
@@ -19,8 +19,8 @@ pub trait OrgFreedesktopNetworkManagerDeviceWireless {
 }
 
 #[derive(Debug)]
-pub struct OrgFreedesktopNetworkManagerDeviceWirelessAccessPointAdded {
-    pub access_point: dbus::Path<'static>,
+pub(crate) struct OrgFreedesktopNetworkManagerDeviceWirelessAccessPointAdded {
+    pub(crate) access_point: dbus::Path<'static>,
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerDeviceWirelessAccessPointAdded {
@@ -43,8 +43,8 @@ impl dbus::message::SignalArgs for OrgFreedesktopNetworkManagerDeviceWirelessAcc
 }
 
 #[derive(Debug)]
-pub struct OrgFreedesktopNetworkManagerDeviceWirelessAccessPointRemoved {
-    pub access_point: dbus::Path<'static>,
+pub(crate) struct OrgFreedesktopNetworkManagerDeviceWirelessAccessPointRemoved {
+    pub(crate) access_point: dbus::Path<'static>,
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerDeviceWirelessAccessPointRemoved {

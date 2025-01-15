@@ -13,6 +13,7 @@ genXML() {
     local path="$1"
     local mod="$2"
     dbus-codegen-rust --client blocking < "src/dbus/interfaces/$path" -o "src/dbus/gen/$2"
+    sed -i -e 's/pub/pub(crate)/g' "src/dbus/gen/$2"
 }
 
 processXML() {
@@ -30,3 +31,5 @@ processXML "org.freedesktop.NetworkManager.Device.xml" "nm_device.rs"
 processXML "org.freedesktop.NetworkManager.IP4Config.xml" "nm_ip4_config.rs"
 processXML "org.freedesktop.NetworkManager.Device.Wireless.xml" "nm_device_wireless.rs"
 processXML "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
+processXML "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
+processXML "org.freedesktop.NetworkManager.Connection.Active.xml" "nm_active_connection.rs"
