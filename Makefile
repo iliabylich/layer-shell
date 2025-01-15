@@ -22,26 +22,26 @@ run: main
 
 SRC=$(wildcard *.c)
 HDRS=$(wildcard *.h)
-OBJS = css.o \
-		icons.o \
-		weather-helper.o \
-		weather-window.o \
-		session-window.o \
-		network-window.o \
-		launcher-window.o \
-		htop-window.o \
-		top-bar-window.o \
-		utils.o \
-		workspaces-widget.o \
-		htop-widget.o \
-		weather-widget.o \
-		language-widget.o \
-		sound-widget.o \
-		cpu-widget.o \
-		network-widget.o \
-		memory-widget.o \
-		time-widget.o \
-		session-widget.o
+OBJS = utils/css.o \
+		utils/icons.o \
+		utils/weather-helper.o \
+		utils/window.o \
+		windows/weather.o \
+		windows/session.o \
+		windows/network.o \
+		windows/launcher.o \
+		windows/htop.o \
+		windows/top-bar.o \
+		widgets/workspaces.o \
+		widgets/htop.o \
+		widgets/weather.o \
+		widgets/language.o \
+		widgets/sound.o \
+		widgets/cpu.o \
+		widgets/network.o \
+		widgets/memory.o \
+		widgets/time.o \
+		widgets/session.o
 
 %.o: %.c %.h bindings.h
 	$(CC) -c $(CFLAGS) $< -o $@
