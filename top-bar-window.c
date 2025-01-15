@@ -1,10 +1,10 @@
 #include "top-bar-window.h"
 #include "bindings.h"
 #include "cpu-widget.h"
-#include "gtk/gtkshortcut.h"
 #include "htop-widget.h"
 #include "icons.h"
 #include "language-widget.h"
+#include "memory-widget.h"
 #include "network-widget.h"
 #include "session-window.h"
 #include "sound-widget.h"
@@ -16,9 +16,6 @@
 #define _(name) top_bar_ns_##name
 
 static GtkWindow *_(window);
-
-static GtkWidget *_(ram);
-static GtkWidget *_(ram_label);
 
 static GtkWidget *_(time);
 static GtkWidget *_(time_label);
@@ -64,14 +61,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), CPU_WIDGET.main_widget());
 
   // ram
-  _(ram_label) = gtk_label_new(NULL);
-  _(ram) = gtk_button_new();
-  gtk_widget_add_css_class(_(ram), "widget");
-  gtk_widget_add_css_class(_(ram), "memory");
-  gtk_widget_add_css_class(_(ram), "padded");
-  gtk_widget_add_css_class(_(ram), "clickable");
-  gtk_button_set_child(GTK_BUTTON(_(ram)), _(ram_label));
-  gtk_box_append(GTK_BOX(right), _(ram));
+  MEMORY_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), MEMORY_WIDGET.main_widget());
 
   // network
   NETWORK_WIDGET.init();
@@ -99,18 +90,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), _(session));
 }
 
-static void _(spawn_system_monitor)(void) {
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnSystemMonitor});
-}
-
 static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
-  case Memory: {
-    char buffer[100];
-    sprintf(buffer, "RAM %.1fG/%.1fG", event->memory.used, event->memory.total);
-    gtk_label_set_label(GTK_LABEL(_(ram_label)), buffer);
-    break;
-  }
   case Time: {
     gtk_label_set_label(GTK_LABEL(_(time_label)), event->time.time);
     gtk_widget_set_tooltip_text(_(time_label), event->time.date);
@@ -141,9 +122,8 @@ static void _(activate)(GApplication *app) {
   LANGUAGE_WIDGET.activate();
   SOUND_WIDGET.activate();
   CPU_WIDGET.activate();
+  MEMORY_WIDGET.activate();
   NETWORK_WIDGET.activate();
-
-  g_signal_connect(_(ram), "clicked", _(spawn_system_monitor), NULL);
 
   g_signal_connect(_(session), "clicked", SESSION.toggle, NULL);
 

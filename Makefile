@@ -38,7 +38,8 @@ OBJS = css.o \
 		language-widget.o \
 		sound-widget.o \
 		cpu-widget.o \
-		network-widget.o
+		network-widget.o \
+		memory-widget.o
 
 %.o: %.c %.h bindings.h
 	$(CC) -c $(CFLAGS) $< -o $@
