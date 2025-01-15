@@ -25,14 +25,12 @@ void window_set_height_request(GtkWindow *window, int height);
 bool bottom_right_point_of(GtkWidget *widget, GtkWindow *window,
                            graphene_point_t *out);
 
-typedef void (*init_widget_f)(void);
+typedef GtkWidget *(*init_widget_f)(void);
 typedef void (*active_widget_f)(void);
-typedef GtkWidget *(*main_widget_f)(void);
 
 typedef struct {
   init_widget_f init;
   active_widget_f activate;
-  main_widget_f main_widget;
 } widget_t;
 
 #endif // UTILS_H

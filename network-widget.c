@@ -15,17 +15,22 @@ static GtkWidget *_(download_speed_icon);
 static GtkWidget *_(upload_speed_label);
 static GtkWidget *_(upload_speed_icon);
 
-static void _(init)(void) {
+static GtkWidget *_(init)(void) {
   _(label) = gtk_label_new("--");
+
   _(image) = gtk_image_new();
   gtk_image_set_from_gicon(GTK_IMAGE(_(image)), get_wifi_icon());
+
   _(download_speed_label) = gtk_label_new("??");
   gtk_widget_add_css_class(_(download_speed_label), "network-speed-label");
+
   _(download_speed_icon) = gtk_image_new();
   gtk_image_set_from_gicon(GTK_IMAGE(_(download_speed_icon)),
                            get_download_speed_icon());
+
   _(upload_speed_label) = gtk_label_new("??");
   gtk_widget_add_css_class(_(upload_speed_label), "network-speed-label");
+
   _(upload_speed_icon) = gtk_image_new();
   gtk_image_set_from_gicon(GTK_IMAGE(_(upload_speed_icon)),
                            get_upload_speed_icon());
@@ -49,6 +54,8 @@ static void _(init)(void) {
   gtk_widget_add_css_class(_(widget), "clickable");
   gtk_widget_set_cursor(_(widget), gdk_cursor_new_from_name("pointer", NULL));
   gtk_button_set_child(GTK_BUTTON(_(widget)), network_wrapper);
+
+  return _(widget);
 }
 
 static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
@@ -98,7 +105,4 @@ static void _(activate)(void) {
   layer_shell_io_subscribe(_(on_io_event));
 }
 
-static GtkWidget *_(main_widget)(void) { return _(widget); }
-
-widget_t NETWORK_WIDGET = {
-    .init = _(init), .activate = _(activate), .main_widget = _(main_widget)};
+widget_t NETWORK_WIDGET = {.init = _(init), .activate = _(activate)};

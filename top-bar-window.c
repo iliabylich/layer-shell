@@ -25,50 +25,22 @@ static void _(init)(void) {
   gtk_window_set_child(_(window), layout);
 
   GtkWidget *left = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-  gtk_center_box_set_start_widget(GTK_CENTER_BOX(layout), left);
-
   GtkWidget *right = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+
+  gtk_center_box_set_start_widget(GTK_CENTER_BOX(layout), left);
   gtk_center_box_set_end_widget(GTK_CENTER_BOX(layout), right);
 
-  // workspaces
-  WORKSPACES_WIDGET.init();
-  gtk_box_append(GTK_BOX(left), WORKSPACES_WIDGET.main_widget());
+  gtk_box_append(GTK_BOX(left), WORKSPACES_WIDGET.init());
 
-  // htop
-  HTOP_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), HTOP_WIDGET.main_widget());
-
-  // weather
-  WEATHER_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), WEATHER_WIDGET.main_widget());
-
-  // language
-  LANGUAGE_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), LANGUAGE_WIDGET.main_widget());
-
-  // sound
-  SOUND_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), SOUND_WIDGET.main_widget());
-
-  // cpu
-  CPU_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), CPU_WIDGET.main_widget());
-
-  // ram
-  MEMORY_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), MEMORY_WIDGET.main_widget());
-
-  // network
-  NETWORK_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), NETWORK_WIDGET.main_widget());
-
-  // clock
-  TIME_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), TIME_WIDGET.main_widget());
-
-  // session
-  SESSION_WIDGET.init();
-  gtk_box_append(GTK_BOX(right), SESSION_WIDGET.main_widget());
+  gtk_box_append(GTK_BOX(right), HTOP_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), WEATHER_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), LANGUAGE_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), SOUND_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), CPU_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), MEMORY_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), NETWORK_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), TIME_WIDGET.init());
+  gtk_box_append(GTK_BOX(right), SESSION_WIDGET.init());
 }
 
 static GtkWindow *_(get_window)(void) { return _(window); }

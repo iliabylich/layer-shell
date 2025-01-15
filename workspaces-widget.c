@@ -7,10 +7,11 @@
 static GtkWidget *_(widget);
 static GtkWidget *_(buttons)[10];
 
-static void _(init)(void) {
+static GtkWidget *_(init)(void) {
   _(widget) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "workspaces");
+
   for (size_t i = 0; i < 10; i++) {
     GtkWidget *button = gtk_button_new();
     char buffer[3];
@@ -20,6 +21,8 @@ static void _(init)(void) {
     gtk_box_append(GTK_BOX(_(widget)), button);
     _(buttons)[i] = button;
   }
+
+  return _(widget);
 }
 
 static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
@@ -66,7 +69,4 @@ static void _(activate)(void) {
   layer_shell_io_subscribe(_(on_io_event));
 }
 
-static GtkWidget *_(main_widget)(void) { return _(widget); }
-
-widget_t WORKSPACES_WIDGET = {
-    .init = _(init), .activate = _(activate), .main_widget = _(main_widget)};
+widget_t WORKSPACES_WIDGET = {.init = _(init), .activate = _(activate)};

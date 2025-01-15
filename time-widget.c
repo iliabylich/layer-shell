@@ -7,13 +7,16 @@
 static GtkWidget *_(widget);
 static GtkWidget *_(label);
 
-static void _(init)(void) {
-  _(label) = gtk_label_new("--");
+static GtkWidget *_(init)(void) {
   _(widget) = gtk_center_box_new();
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "clock");
   gtk_widget_add_css_class(_(widget), "padded");
+
+  _(label) = gtk_label_new("--");
   gtk_center_box_set_center_widget(GTK_CENTER_BOX(_(widget)), _(label));
+
+  return _(widget);
 }
 
 static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
@@ -31,7 +34,4 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
 
 static void _(activate)(void) { layer_shell_io_subscribe(_(on_io_event)); }
 
-static GtkWidget *_(main_widget)(void) { return _(widget); }
-
-widget_t TIME_WIDGET = {
-    .init = _(init), .activate = _(activate), .main_widget = _(main_widget)};
+widget_t TIME_WIDGET = {.init = _(init), .activate = _(activate)};

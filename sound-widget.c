@@ -8,7 +8,7 @@ static GtkWidget *_(widget);
 static GtkWidget *_(image);
 static GtkWidget *_(scale);
 
-static void _(init)(void) {
+static GtkWidget *_(init)(void) {
   _(widget) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "sound");
@@ -23,6 +23,8 @@ static void _(init)(void) {
   gtk_widget_add_css_class(_(scale), "sound-slider");
 
   gtk_box_append(GTK_BOX(_(widget)), _(scale));
+
+  return _(widget);
 }
 
 static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
@@ -68,7 +70,4 @@ static void _(activate)(void) {
   layer_shell_io_subscribe(_(on_io_event));
 }
 
-static GtkWidget *_(main_widget)(void) { return _(widget); }
-
-widget_t SOUND_WIDGET = {
-    .init = _(init), .activate = _(activate), .main_widget = _(main_widget)};
+widget_t SOUND_WIDGET = {.init = _(init), .activate = _(activate)};

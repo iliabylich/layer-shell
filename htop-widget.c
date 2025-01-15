@@ -7,14 +7,17 @@
 
 static GtkWidget *_(widget);
 
-static void _(init)(void) {
+static GtkWidget *_(init)(void) {
   _(widget) = gtk_button_new();
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "terminal");
   gtk_widget_add_css_class(_(widget), "padded");
   gtk_widget_add_css_class(_(widget), "clickable");
+
   GtkWidget *label = gtk_label_new("Htop");
   gtk_button_set_child(GTK_BUTTON(_(widget)), label);
+
+  return _(widget);
 }
 
 static void _(on_click)(void) {
@@ -34,7 +37,4 @@ static void _(activate)(void) {
   g_signal_connect(_(widget), "clicked", _(on_click), NULL);
 }
 
-static GtkWidget *_(main_widget)(void) { return _(widget); }
-
-widget_t HTOP_WIDGET = {
-    .init = _(init), .activate = _(activate), .main_widget = _(main_widget)};
+widget_t HTOP_WIDGET = {.init = _(init), .activate = _(activate)};
