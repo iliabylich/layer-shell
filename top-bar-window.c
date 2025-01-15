@@ -5,8 +5,7 @@
 #include "icons.h"
 #include "network-window.h"
 #include "session-window.h"
-#include "weather-helper.h"
-#include "weather-window.h"
+#include "weather-widget.h"
 #include "workspaces-widget.h"
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
@@ -14,9 +13,6 @@
 #define _(name) top_bar_ns_##name
 
 static GtkWindow *_(window);
-
-static GtkWidget *_(weather);
-static GtkWidget *_(weather_label);
 
 static GtkWidget *_(language);
 static GtkWidget *_(language_label);
@@ -74,14 +70,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), HTOP_WIDGET.main_widget());
 
   // weather
-  _(weather_label) = gtk_label_new("--");
-  _(weather) = gtk_button_new();
-  gtk_widget_add_css_class(_(weather), "widget");
-  gtk_widget_add_css_class(_(weather), "weather");
-  gtk_widget_add_css_class(_(weather), "padded");
-  gtk_widget_add_css_class(_(weather), "clickable");
-  gtk_button_set_child(GTK_BUTTON(_(weather)), _(weather_label));
-  gtk_box_append(GTK_BOX(right), _(weather));
+  WEATHER_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), WEATHER_WIDGET.main_widget());
 
   // language
   _(language_label) = gtk_label_new("--");
@@ -277,30 +267,10 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     gtk_widget_set_tooltip_text(_(time_label), event->time.date);
     break;
   }
-  case CurrentWeather: {
-    char buffer[100];
-    sprintf(buffer, "%.1f℃ %s", event->current_weather.temperature,
-            weather_code_to_description(event->current_weather.code));
-    gtk_label_set_label(GTK_LABEL(_(weather_label)), buffer);
-    break;
-  }
 
   default:
     break;
   }
-}
-
-static void _(weather_btn_on_click)() {
-  graphene_point_t bottom_right;
-  if (!bottom_right_point_of(_(weather), TOP_BAR.window(), &bottom_right)) {
-    fprintf(stderr, "Failed to compute bottom-right of the weather widget");
-    return;
-  }
-  int margin_left = bottom_right.x - WEATHER.width;
-  int margin_top = bottom_right.y;
-  WEATHER.move(margin_left, margin_top);
-
-  WEATHER.toggle();
 }
 
 static void _(network_btn_on_click)() {
@@ -331,8 +301,7 @@ static void _(activate)(GApplication *app) {
 
   WORKSPACES_WIDGET.activate();
   HTOP_WIDGET.activate();
-
-  g_signal_connect(_(weather), "clicked", _(weather_btn_on_click), NULL);
+  WEATHER_WIDGET.activate();
 
   GtkEventController *sound_ctrl =
       GTK_EVENT_CONTROLLER(gtk_gesture_click_new());
