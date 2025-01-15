@@ -7,7 +7,7 @@ pub(crate) enum RawEvent {
 }
 
 impl RawEvent {
-    pub(crate) fn parse(line: String) -> Option<Self> {
+    pub(crate) fn parse(line: &str) -> Option<Self> {
         log::info!("parsing {line:?}");
 
         let (event, payload) = line.split_once(">>")?;

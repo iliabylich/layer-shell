@@ -32,7 +32,7 @@ pub(crate) fn setup() {
         let mut lines = buffered.lines();
 
         while let Some(Ok(line)) = lines.next() {
-            if let Some(event) = raw_event::RawEvent::parse(line) {
+            if let Some(event) = raw_event::RawEvent::parse(&line) {
                 let event = state.apply(event);
                 event.emit();
             }
