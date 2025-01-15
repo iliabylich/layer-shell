@@ -1,5 +1,6 @@
 #include "top-bar-window.h"
 #include "bindings.h"
+#include "gtk/gtkshortcut.h"
 #include "htop-window.h"
 #include "icons.h"
 #include "network-window.h"
@@ -44,6 +45,10 @@ static GtkWidget *_(ram_label);
 static GtkWidget *_(network);
 static GtkWidget *_(network_label);
 static GtkWidget *_(network_image);
+static GtkWidget *_(download_speed_label);
+static GtkWidget *_(download_speed_icon);
+static GtkWidget *_(upload_speed_label);
+static GtkWidget *_(upload_speed_icon);
 
 static GtkWidget *_(time);
 static GtkWidget *_(time_label);
@@ -151,9 +156,29 @@ static void _(init)(void) {
   _(network_label) = gtk_label_new("--");
   _(network_image) = gtk_image_new();
   gtk_image_set_from_gicon(GTK_IMAGE(_(network_image)), get_wifi_icon());
+  _(download_speed_label) = gtk_label_new("??");
+  gtk_widget_add_css_class(_(download_speed_label), "network-speed-label");
+  _(download_speed_icon) = gtk_image_new();
+  gtk_image_set_from_gicon(GTK_IMAGE(_(download_speed_icon)),
+                           get_download_speed_icon());
+  _(upload_speed_label) = gtk_label_new("??");
+  gtk_widget_add_css_class(_(upload_speed_label), "network-speed-label");
+  _(upload_speed_icon) = gtk_image_new();
+  gtk_image_set_from_gicon(GTK_IMAGE(_(upload_speed_icon)),
+                           get_upload_speed_icon());
+
   GtkWidget *network_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_append(GTK_BOX(network_wrapper), _(network_label));
   gtk_box_append(GTK_BOX(network_wrapper), _(network_image));
+
+  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_box_append(GTK_BOX(network_wrapper), sep);
+
+  gtk_box_append(GTK_BOX(network_wrapper), _(download_speed_label));
+  gtk_box_append(GTK_BOX(network_wrapper), _(download_speed_icon));
+  gtk_box_append(GTK_BOX(network_wrapper), _(upload_speed_label));
+  gtk_box_append(GTK_BOX(network_wrapper), _(upload_speed_icon));
+
   _(network) = gtk_button_new();
   gtk_widget_add_css_class(_(network), "widget");
   gtk_widget_add_css_class(_(network), "network");
@@ -285,6 +310,13 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
               event->wifi_status.wifi_status.some.strength);
       gtk_label_set_label(GTK_LABEL(_(network_label)), buffer);
     }
+    break;
+  }
+  case NetworkSpeed: {
+    gtk_label_set_label(GTK_LABEL(_(download_speed_label)),
+                        event->network_speed.download_speed);
+    gtk_label_set_label(GTK_LABEL(_(upload_speed_label)),
+                        event->network_speed.upload_speed);
     break;
   }
   case Time: {

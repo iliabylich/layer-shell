@@ -194,8 +194,8 @@ typedef struct {
 } LAYER_SHELL_IO_WifiStatus_Body;
 
 typedef struct {
-  uint64_t upload_speed;
-  uint64_t download_speed;
+  LAYER_SHELL_IO_CString upload_speed;
+  LAYER_SHELL_IO_CString download_speed;
 } LAYER_SHELL_IO_NetworkSpeed_Body;
 
 typedef struct {

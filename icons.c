@@ -59,6 +59,18 @@ static const uint8_t WIFI_ICON_BYTES[] = {
 static GIcon *wifi_icon;
 GIcon *get_wifi_icon() { return wifi_icon; }
 
+static const uint8_t DOWNLOAD_SPEED_ICON_BYTES[] = {
+#embed "icons/download.png" if_empty('-')
+    , 0};
+static GIcon *download_speed_icon;
+GIcon *get_download_speed_icon() { return download_speed_icon; }
+
+static const uint8_t UPLOAD_SPEED_ICON_BYTES[] = {
+#embed "icons/upload.png" if_empty('-')
+    , 0};
+static GIcon *upload_speed_icon;
+GIcon *get_upload_speed_icon() { return upload_speed_icon; }
+
 static GIcon *load_texture(const uint8_t *icon, size_t len) {
   GBytes *bytes = g_bytes_new_static(icon, len);
   return g_bytes_icon_new(bytes);
@@ -66,14 +78,21 @@ static GIcon *load_texture(const uint8_t *icon, size_t len) {
 
 void init_icons(void) {
   foggy_icon = load_texture(FOGGY_ICON_BYTES, sizeof(FOGGY_ICON_BYTES));
-  question_mark_icon = load_texture(QUESTION_MARK_ICON_BYTES, sizeof(QUESTION_MARK_ICON_BYTES));
+  question_mark_icon =
+      load_texture(QUESTION_MARK_ICON_BYTES, sizeof(QUESTION_MARK_ICON_BYTES));
   sunny_icon = load_texture(SUNNY_ICON_BYTES, sizeof(SUNNY_ICON_BYTES));
-  partly_cloudy_icon = load_texture(PARTLY_CLOUDY_ICON_BYTES, sizeof(PARTLY_CLOUDY_ICON_BYTES));
+  partly_cloudy_icon =
+      load_texture(PARTLY_CLOUDY_ICON_BYTES, sizeof(PARTLY_CLOUDY_ICON_BYTES));
   rainy_icon = load_texture(RAINY_ICON_BYTES, sizeof(RAINY_ICON_BYTES));
-  thunderstorm_icon = load_texture(THUNDERSTORM_ICON_BYTES, sizeof(THUNDERSTORM_ICON_BYTES));
+  thunderstorm_icon =
+      load_texture(THUNDERSTORM_ICON_BYTES, sizeof(THUNDERSTORM_ICON_BYTES));
   power_icon = load_texture(POWER_ICON_BYTES, sizeof(POWER_ICON_BYTES));
   snowy_icon = load_texture(SNOWY_ICON_BYTES, sizeof(SNOWY_ICON_BYTES));
   wifi_icon = load_texture(WIFI_ICON_BYTES, sizeof(WIFI_ICON_BYTES));
+  download_speed_icon = load_texture(DOWNLOAD_SPEED_ICON_BYTES,
+                                     sizeof(DOWNLOAD_SPEED_ICON_BYTES));
+  upload_speed_icon =
+      load_texture(UPLOAD_SPEED_ICON_BYTES, sizeof(UPLOAD_SPEED_ICON_BYTES));
 
   printf("Finished loading icons...\n");
 }

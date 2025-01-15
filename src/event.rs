@@ -46,8 +46,8 @@ pub enum Event {
         wifi_status: COption<WifiStatus>,
     },
     NetworkSpeed {
-        upload_speed: u64,
-        download_speed: u64,
+        upload_speed: CString,
+        download_speed: CString,
     },
     NetworkList {
         list: CArray<Network>,

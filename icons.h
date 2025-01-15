@@ -14,5 +14,7 @@ GIcon *get_snowy_icon();
 GIcon *get_power_icon();
 GIcon *get_question_mark_icon();
 GIcon *get_wifi_icon();
+GIcon *get_download_speed_icon();
+GIcon *get_upload_speed_icon();
 
 #endif // ICONS_H

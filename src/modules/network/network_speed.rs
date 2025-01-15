@@ -1,4 +1,4 @@
-use crate::{dbus::nm::NetworkManager, global::global, Event};
+use crate::{dbus::nm::NetworkManager, ffi::CString, global::global, Event};
 use anyhow::Result;
 use dbus::blocking::Connection;
 
@@ -40,10 +40,39 @@ pub(crate) fn update(conn: &Connection) -> Result<()> {
     let download_speed = update_stat_and_return_delta(RECEIVED_BYTES::get(), rx_bytes);
 
     let event = Event::NetworkSpeed {
-        upload_speed,
-        download_speed,
+        upload_speed: format_speed(upload_speed),
+        download_speed: format_speed(download_speed),
     };
     event.emit();
 
     Ok(())
+}
+
+fn format_speed(mut speed: u64) -> CString {
+    enum Unit {
+        B,
+        KB,
+        MB,
+    }
+
+    let mut units = Unit::B;
+
+    if speed / 1_024 > 0 {
+        speed /= 1024;
+        units = Unit::KB;
+        if speed / 1_024 > 0 {
+            speed /= 1024;
+            units = Unit::MB;
+        }
+    }
+
+    format!(
+        "{speed}{}",
+        match units {
+            Unit::B => "B/s",
+            Unit::KB => "KB/s",
+            Unit::MB => "MB/s",
+        }
+    )
+    .into()
 }

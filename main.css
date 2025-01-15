@@ -19,6 +19,12 @@
     text-decoration: none;
 }
 
+separator.horizontal {
+    border-left: 1px solid var(--accent-color);
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
 .main-wrapper {
     padding: 10px;
     min-height: 36px;
@@ -97,6 +103,10 @@ tooltip {
 }
 
 /* network */
+.network-speed-label {
+    min-width: 50px;
+}
+
 .widget-network-row-list {
     border: 5px solid var(--theme-accent-color);
     border-radius: 10px;
