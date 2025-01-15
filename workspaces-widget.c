@@ -7,7 +7,7 @@
 static GtkWidget *_(widget);
 static GtkWidget *_(buttons)[10];
 
-static void _(init)() {
+static void _(init)(void) {
   _(widget) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "workspaces");
@@ -56,7 +56,7 @@ static void _(button_on_click)(GtkButton *, gpointer data) {
       .tag = HyprlandGoToWorkspace, .hyprland_go_to_workspace = {idx}});
 }
 
-static void _(activate)() {
+static void _(activate)(void) {
   for (size_t idx = 0; idx < 10; idx++) {
     GtkWidget *button = _(buttons)[idx];
     g_signal_connect(button, "clicked", G_CALLBACK(_(button_on_click)),
@@ -66,7 +66,7 @@ static void _(activate)() {
   layer_shell_io_subscribe(_(on_io_event));
 }
 
-static GtkWidget *_(main_widget)() { return _(widget); }
+static GtkWidget *_(main_widget)(void) { return _(widget); }
 
 widget_t WORKSPACES_WIDGET = {
     .init = _(init), .activate = _(activate), .main_widget = _(main_widget)};

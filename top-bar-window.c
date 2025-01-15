@@ -255,7 +255,7 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   }
 }
 
-static void _(network_btn_on_click)() {
+static void _(network_btn_on_click)(void) {
   graphene_point_t bottom_right;
   if (!bottom_right_point_of(_(network), TOP_BAR.window(), &bottom_right)) {
     fprintf(stderr, "Failed to compute bottom-right of the network widget");
