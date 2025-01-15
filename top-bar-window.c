@@ -1,5 +1,4 @@
 #include "top-bar-window.h"
-#include "bindings.h"
 #include "cpu-widget.h"
 #include "htop-widget.h"
 #include "icons.h"
@@ -8,6 +7,7 @@
 #include "network-widget.h"
 #include "session-window.h"
 #include "sound-widget.h"
+#include "time-widget.h"
 #include "weather-widget.h"
 #include "workspaces-widget.h"
 #include <gtk/gtk.h>
@@ -16,9 +16,6 @@
 #define _(name) top_bar_ns_##name
 
 static GtkWindow *_(window);
-
-static GtkWidget *_(time);
-static GtkWidget *_(time_label);
 
 static GtkWidget *_(session);
 
@@ -69,13 +66,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), NETWORK_WIDGET.main_widget());
 
   // clock
-  _(time_label) = gtk_label_new("--");
-  _(time) = gtk_center_box_new();
-  gtk_widget_add_css_class(_(time), "widget");
-  gtk_widget_add_css_class(_(time), "clock");
-  gtk_widget_add_css_class(_(time), "padded");
-  gtk_center_box_set_center_widget(GTK_CENTER_BOX(_(time)), _(time_label));
-  gtk_box_append(GTK_BOX(right), _(time));
+  TIME_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), TIME_WIDGET.main_widget());
 
   // session
   _(session) = gtk_button_new();
@@ -88,19 +80,6 @@ static void _(init)(void) {
   gtk_image_set_from_gicon(GTK_IMAGE(session_image), get_power_icon());
   gtk_button_set_child(GTK_BUTTON(_(session)), session_image);
   gtk_box_append(GTK_BOX(right), _(session));
-}
-
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
-  switch (event->tag) {
-  case Time: {
-    gtk_label_set_label(GTK_LABEL(_(time_label)), event->time.time);
-    gtk_widget_set_tooltip_text(_(time_label), event->time.date);
-    break;
-  }
-
-  default:
-    break;
-  }
 }
 
 static GtkWindow *_(get_window)(void) { return _(window); }
@@ -124,10 +103,9 @@ static void _(activate)(GApplication *app) {
   CPU_WIDGET.activate();
   MEMORY_WIDGET.activate();
   NETWORK_WIDGET.activate();
+  TIME_WIDGET.activate();
 
   g_signal_connect(_(session), "clicked", SESSION.toggle, NULL);
-
-  layer_shell_io_subscribe(_(on_io_event));
 
   gtk_window_present(_(window));
 }
