@@ -5,7 +5,7 @@
 #include "htop-widget.h"
 #include "icons.h"
 #include "language-widget.h"
-#include "network-window.h"
+#include "network-widget.h"
 #include "session-window.h"
 #include "sound-widget.h"
 #include "weather-widget.h"
@@ -19,14 +19,6 @@ static GtkWindow *_(window);
 
 static GtkWidget *_(ram);
 static GtkWidget *_(ram_label);
-
-static GtkWidget *_(network);
-static GtkWidget *_(network_label);
-static GtkWidget *_(network_image);
-static GtkWidget *_(download_speed_label);
-static GtkWidget *_(download_speed_icon);
-static GtkWidget *_(upload_speed_label);
-static GtkWidget *_(upload_speed_icon);
 
 static GtkWidget *_(time);
 static GtkWidget *_(time_label);
@@ -82,40 +74,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), _(ram));
 
   // network
-  _(network_label) = gtk_label_new("--");
-  _(network_image) = gtk_image_new();
-  gtk_image_set_from_gicon(GTK_IMAGE(_(network_image)), get_wifi_icon());
-  _(download_speed_label) = gtk_label_new("??");
-  gtk_widget_add_css_class(_(download_speed_label), "network-speed-label");
-  _(download_speed_icon) = gtk_image_new();
-  gtk_image_set_from_gicon(GTK_IMAGE(_(download_speed_icon)),
-                           get_download_speed_icon());
-  _(upload_speed_label) = gtk_label_new("??");
-  gtk_widget_add_css_class(_(upload_speed_label), "network-speed-label");
-  _(upload_speed_icon) = gtk_image_new();
-  gtk_image_set_from_gicon(GTK_IMAGE(_(upload_speed_icon)),
-                           get_upload_speed_icon());
-
-  GtkWidget *network_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_append(GTK_BOX(network_wrapper), _(network_label));
-  gtk_box_append(GTK_BOX(network_wrapper), _(network_image));
-
-  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  gtk_box_append(GTK_BOX(network_wrapper), sep);
-
-  gtk_box_append(GTK_BOX(network_wrapper), _(download_speed_label));
-  gtk_box_append(GTK_BOX(network_wrapper), _(download_speed_icon));
-  gtk_box_append(GTK_BOX(network_wrapper), _(upload_speed_label));
-  gtk_box_append(GTK_BOX(network_wrapper), _(upload_speed_icon));
-
-  _(network) = gtk_button_new();
-  gtk_widget_add_css_class(_(network), "widget");
-  gtk_widget_add_css_class(_(network), "network");
-  gtk_widget_add_css_class(_(network), "padded");
-  gtk_widget_add_css_class(_(network), "clickable");
-  gtk_widget_set_cursor(_(network), gdk_cursor_new_from_name("pointer", NULL));
-  gtk_button_set_child(GTK_BUTTON(_(network)), network_wrapper);
-  gtk_box_append(GTK_BOX(right), _(network));
+  NETWORK_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), NETWORK_WIDGET.main_widget());
 
   // clock
   _(time_label) = gtk_label_new("--");
@@ -132,7 +92,7 @@ static void _(init)(void) {
   gtk_widget_add_css_class(_(session), "power");
   gtk_widget_add_css_class(_(session), "padded");
   gtk_widget_add_css_class(_(session), "clickable");
-  gtk_widget_set_cursor(_(network), gdk_cursor_new_from_name("pointer", NULL));
+  gtk_widget_set_cursor(_(session), gdk_cursor_new_from_name("pointer", NULL));
   GtkWidget *session_image = gtk_image_new();
   gtk_image_set_from_gicon(GTK_IMAGE(session_image), get_power_icon());
   gtk_button_set_child(GTK_BUTTON(_(session)), session_image);
@@ -151,26 +111,6 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     gtk_label_set_label(GTK_LABEL(_(ram_label)), buffer);
     break;
   }
-  case WifiStatus: {
-    if (event->wifi_status.wifi_status.tag == None_WifiStatus) {
-      gtk_widget_set_visible(_(network_image), false);
-      gtk_label_set_label(GTK_LABEL(_(network_label)), "Not connected");
-    } else {
-      gtk_widget_set_visible(_(network_image), true);
-      char buffer[100];
-      sprintf(buffer, "%s (%d)%% ", event->wifi_status.wifi_status.some.ssid,
-              event->wifi_status.wifi_status.some.strength);
-      gtk_label_set_label(GTK_LABEL(_(network_label)), buffer);
-    }
-    break;
-  }
-  case NetworkSpeed: {
-    gtk_label_set_label(GTK_LABEL(_(download_speed_label)),
-                        event->network_speed.download_speed);
-    gtk_label_set_label(GTK_LABEL(_(upload_speed_label)),
-                        event->network_speed.upload_speed);
-    break;
-  }
   case Time: {
     gtk_label_set_label(GTK_LABEL(_(time_label)), event->time.time);
     gtk_widget_set_tooltip_text(_(time_label), event->time.date);
@@ -180,19 +120,6 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   default:
     break;
   }
-}
-
-static void _(network_btn_on_click)(void) {
-  graphene_point_t bottom_right;
-  if (!bottom_right_point_of(_(network), TOP_BAR.window(), &bottom_right)) {
-    fprintf(stderr, "Failed to compute bottom-right of the network widget");
-    return;
-  }
-  int margin_left = bottom_right.x - NETWORK.width;
-  int margin_top = bottom_right.y;
-  NETWORK.move(margin_left, margin_top);
-
-  NETWORK.toggle();
 }
 
 static GtkWindow *_(get_window)(void) { return _(window); }
@@ -214,10 +141,9 @@ static void _(activate)(GApplication *app) {
   LANGUAGE_WIDGET.activate();
   SOUND_WIDGET.activate();
   CPU_WIDGET.activate();
+  NETWORK_WIDGET.activate();
 
   g_signal_connect(_(ram), "clicked", _(spawn_system_monitor), NULL);
-
-  g_signal_connect(_(network), "clicked", _(network_btn_on_click), NULL);
 
   g_signal_connect(_(session), "clicked", SESSION.toggle, NULL);
 
