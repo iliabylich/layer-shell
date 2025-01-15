@@ -52,22 +52,22 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
     Event::set_receiver(erx);
 
     std::thread::spawn(move || {
-        crate::modules::cpu::setup();
-        crate::modules::pipewire::setup();
-        crate::modules::hyprland::setup();
-        crate::modules::app_list::setup();
-        crate::modules::network::setup();
+        use crate::modules::{app_list, cpu, hyprland, memory, network, pipewire, time, weather};
+
+        cpu::setup();
+        pipewire::setup();
+        hyprland::setup();
+        app_list::setup();
+        network::setup();
 
         use scheduler::Scheduler;
         let mut scheduler = Scheduler::new(40, crx);
-        scheduler.add(1_000, crate::modules::time::tick);
-        scheduler.add(1_000, crate::modules::memory::tick);
-        scheduler.add(1_000, crate::modules::cpu::tick);
-        scheduler.add(120_000, crate::modules::weather::tick);
+        scheduler.add(1_000, time::tick);
+        scheduler.add(1_000, memory::tick);
+        scheduler.add(1_000, cpu::tick);
+        scheduler.add(120_000, weather::tick);
 
-        loop {
-            scheduler.tick();
-        }
+        scheduler.start_loop();
     });
 }
 

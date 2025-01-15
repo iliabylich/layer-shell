@@ -35,7 +35,7 @@ impl Scheduler {
         self.actors.push(Actor { f, interval_in_ms });
     }
 
-    pub(crate) fn tick(&mut self) {
+    fn tick(&mut self) {
         let dt_in_ms = self.iteration * self.duration_of_iteration();
         for actor in self.actors.iter() {
             if dt_in_ms % actor.interval_in_ms == 0 {
@@ -51,6 +51,12 @@ impl Scheduler {
             1_000 / self.iterations_per_second,
         ));
         self.iteration += 1;
+    }
+
+    pub(crate) fn start_loop(mut self) {
+        loop {
+            self.tick();
+        }
     }
 
     fn duration_of_iteration(&self) -> u64 {
