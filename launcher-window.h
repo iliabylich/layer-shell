@@ -2,7 +2,6 @@
 #define LAUNCHER_WINDOW_H
 
 #include "utils.h"
-#include <gio/gio.h>
 
 extern window_t LAUNCHER;
 

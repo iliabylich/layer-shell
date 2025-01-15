@@ -2,7 +2,6 @@
 #define TOP_BAR_WINDOW_H
 
 #include "utils.h"
-#include <gio/gio.h>
 
 extern window_t TOP_BAR;
 

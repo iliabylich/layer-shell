@@ -21,4 +21,14 @@ void move_layer_window(GtkWindow *window, int x, int y);
 void window_set_width_request(GtkWindow *window, int width);
 void window_set_height_request(GtkWindow *window, int height);
 
+typedef void (*init_widget_f)(void);
+typedef void (*active_widget_f)(void);
+typedef GtkWidget *(*main_widget_f)(void);
+
+typedef struct {
+  init_widget_f init;
+  active_widget_f activate;
+  main_widget_f main_widget;
+} widget_t;
+
 #endif // UTILS_H
