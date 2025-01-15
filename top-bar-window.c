@@ -3,6 +3,7 @@
 #include "gtk/gtkshortcut.h"
 #include "htop-widget.h"
 #include "icons.h"
+#include "language-widget.h"
 #include "network-window.h"
 #include "session-window.h"
 #include "weather-widget.h"
@@ -13,9 +14,6 @@
 #define _(name) top_bar_ns_##name
 
 static GtkWindow *_(window);
-
-static GtkWidget *_(language);
-static GtkWidget *_(language_label);
 
 static GtkWidget *_(sound);
 static GtkWidget *_(sound_image);
@@ -74,14 +72,8 @@ static void _(init)(void) {
   gtk_box_append(GTK_BOX(right), WEATHER_WIDGET.main_widget());
 
   // language
-  _(language_label) = gtk_label_new("--");
-  _(language) = gtk_center_box_new();
-  gtk_widget_add_css_class(_(language), "widget");
-  gtk_widget_add_css_class(_(language), "language");
-  gtk_widget_add_css_class(_(language), "padded");
-  gtk_center_box_set_center_widget(GTK_CENTER_BOX(_(language)),
-                                   _(language_label));
-  gtk_box_append(GTK_BOX(right), _(language));
+  LANGUAGE_WIDGET.init();
+  gtk_box_append(GTK_BOX(right), LANGUAGE_WIDGET.main_widget());
 
   // sound
   _(sound) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
@@ -192,16 +184,6 @@ static void _(spawn_system_monitor)(void) {
 
 static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
   switch (event->tag) {
-  case Language: {
-    if (strcmp(event->language.lang, "English (US)") == 0) {
-      gtk_label_set_label(GTK_LABEL(_(language_label)), "EN");
-    } else if (strcmp(event->language.lang, "Polish") == 0) {
-      gtk_label_set_label(GTK_LABEL(_(language_label)), "PL");
-    } else {
-      gtk_label_set_label(GTK_LABEL(_(language_label)), "??");
-    }
-    break;
-  }
   case Volume: {
     float volume = event->volume.volume;
     gtk_range_set_value(GTK_RANGE(_(sound_scale)), volume);
@@ -302,6 +284,7 @@ static void _(activate)(GApplication *app) {
   WORKSPACES_WIDGET.activate();
   HTOP_WIDGET.activate();
   WEATHER_WIDGET.activate();
+  LANGUAGE_WIDGET.activate();
 
   GtkEventController *sound_ctrl =
       GTK_EVENT_CONTROLLER(gtk_gesture_click_new());
