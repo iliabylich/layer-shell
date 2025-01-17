@@ -1,19 +1,30 @@
-use crate::{global::global, Event};
+use crate::{fatal::fatal, Event};
+use std::sync::{LazyLock, Mutex};
 
 pub(crate) struct Subscriptions;
 
-global!(SUBSCRIPTIONS, Vec<extern "C" fn(*const Event)>);
+type F = extern "C" fn(*const Event);
+
+static SUBSCRIPTIONS0: LazyLock<Mutex<Vec<F>>> = LazyLock::new(|| Mutex::new(vec![]));
 
 impl Subscriptions {
-    pub(crate) fn setup() {
-        SUBSCRIPTIONS::set(vec![]);
+    pub(crate) fn add(f: F) {
+        let mut subscriptions = SUBSCRIPTIONS0
+            .lock()
+            .unwrap_or_else(|_| fatal!("lock is poisoned"));
+        subscriptions.push(f);
     }
 
-    pub(crate) fn add(f: extern "C" fn(*const Event)) {
-        SUBSCRIPTIONS::get().push(f);
-    }
+    pub(crate) fn call_each(event: *const Event) {
+        let subscriptions = {
+            SUBSCRIPTIONS0
+                .lock()
+                .unwrap_or_else(|_| fatal!("lock is poisoned"))
+                .clone()
+        };
 
-    pub(crate) fn iter() -> impl Iterator<Item = extern "C" fn(*const Event)> {
-        SUBSCRIPTIONS::get().iter().copied()
+        for sub in subscriptions.iter() {
+            sub(event);
+        }
     }
 }

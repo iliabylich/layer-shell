@@ -30,7 +30,6 @@ pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_init() {
-    Subscriptions::setup();
     if let Err(err) = parse_args() {
         fatal!("Error while parsing args: {:?}", err);
     }
@@ -64,10 +63,7 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
 pub extern "C" fn layer_shell_io_poll_events() {
     while let Some(event) = Event::try_recv() {
         log::info!("Received event {:?}", event);
-
-        for f in Subscriptions::iter() {
-            (f)(&event);
-        }
+        Subscriptions::call_each(&event);
     }
 }
 
