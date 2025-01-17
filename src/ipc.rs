@@ -23,8 +23,10 @@ impl IPCMessage {
 pub(crate) struct IPC;
 
 impl IPC {
-    pub(crate) fn set_current_process_as_main() -> Result<()> {
-        Config::write_pid()
+    pub(crate) fn set_current_process_as_main() {
+        if let Err(err) = Config::write_pid() {
+            fatal!("Failed to set current process as main in IPC: {:?}", err);
+        }
     }
 
     pub(crate) fn send_to_running_instance(message: IPCMessage) -> Result<()> {

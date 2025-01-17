@@ -19,7 +19,6 @@ pub use event::Event;
 use global::global;
 
 use args::parse_args;
-use fatal::fatal;
 use ipc::IPC;
 use subscriptions::Subscriptions;
 
@@ -30,12 +29,9 @@ pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_init() {
-    if let Err(err) = parse_args() {
-        fatal!("Error while parsing args: {:?}", err);
-    }
-    if let Err(err) = IPC::set_current_process_as_main() {
-        fatal!("Failed to set current process as main in IPC: {:?}", err);
-    }
+    pretty_env_logger::init();
+    parse_args();
+    IPC::set_current_process_as_main();
 }
 
 #[no_mangle]
@@ -70,9 +66,4 @@ pub extern "C" fn layer_shell_io_poll_events() {
 #[no_mangle]
 pub extern "C" fn layer_shell_io_publish(command: Command) {
     command.send();
-}
-
-#[no_mangle]
-pub extern "C" fn layer_shell_io_init_logger() {
-    pretty_env_logger::init();
 }
