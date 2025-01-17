@@ -1,7 +1,7 @@
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use crate::{fatal::fatal, Event};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum IPCMessage {
@@ -23,10 +23,6 @@ impl IPCMessage {
 pub(crate) struct IPC;
 
 impl IPC {
-    pub(crate) fn prepare() -> Result<()> {
-        Config::init()
-    }
-
     pub(crate) fn set_current_process_as_main() -> Result<()> {
         Config::write_pid()
     }
@@ -54,50 +50,43 @@ struct Config {
     pipe: String,
     pidfile: String,
 }
-static CONFIG: OnceLock<Config> = OnceLock::new();
+static CONFIG: LazyLock<Config> = LazyLock::new(|| {
+    let home = match std::env::var("HOME") {
+        Ok(home) => home,
+        Err(_) => {
+            fatal!("no $HOME");
+        }
+    };
+
+    let dir = format!("{home}/.config/layer-shell",);
+    if let Err(err) = std::fs::create_dir_all(&dir) {
+        fatal!("failed to create dir for shared message file: {:?}", err);
+    }
+
+    let pipe = format!("{}/.message", dir);
+    if let Err(err) = std::fs::File::create(&pipe) {
+        fatal!("failed to create shared message file: {:?}", err);
+    }
+
+    let pidfile = format!("{}/.pid", dir);
+
+    Config { pipe, pidfile }
+});
 
 impl Config {
-    fn init() -> Result<()> {
-        let dir = format!(
-            "{}/.config/layer-shell",
-            std::env::var("HOME").context("no $HOME")?
-        );
-        std::fs::create_dir_all(&dir).context("failed to create dir for shared message file")?;
-
-        let pipe = format!("{}/.message", dir);
-        std::fs::File::create(&pipe).context("failed to create shared message file")?;
-
-        let pidfile = format!("{}/.pid", dir);
-
-        if CONFIG.set(Self { pipe, pidfile }).is_err() {
-            bail!("Config has been already set");
-        }
-
-        Ok(())
-    }
-
-    fn get() -> &'static Self {
-        match CONFIG.get() {
-            Some(config) => config,
-            None => {
-                fatal!("Config has not been initialized");
-            }
-        }
-    }
-
     fn write_pid() -> Result<()> {
-        std::fs::write(&Self::get().pidfile, format!("{}", std::process::id()))
+        std::fs::write(&CONFIG.pidfile, format!("{}", std::process::id()))
             .context("failed to write PID to pidfile")
     }
 
     fn read_pid() -> Option<String> {
-        std::fs::read_to_string(&Self::get().pidfile).ok()
+        std::fs::read_to_string(&CONFIG.pidfile).ok()
     }
 
     fn write_message(message: IPCMessage) {
         match serde_json::to_string(&message) {
             Ok(message) => {
-                if let Err(err) = std::fs::write(&Self::get().pipe, message) {
+                if let Err(err) = std::fs::write(&CONFIG.pipe, message) {
                     fatal!("failed to write message: {:?}", err);
                 }
             }
@@ -108,7 +97,7 @@ impl Config {
     }
 
     fn read_message() -> Option<IPCMessage> {
-        let command = std::fs::read_to_string(&Self::get().pipe).ok()?;
+        let command = std::fs::read_to_string(&CONFIG.pipe).ok()?;
         serde_json::from_str::<IPCMessage>(&command).ok()
     }
 }

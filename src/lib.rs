@@ -30,9 +30,6 @@ pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
 #[no_mangle]
 pub extern "C" fn layer_shell_io_init() {
     Subscriptions::setup();
-    if let Err(err) = IPC::prepare() {
-        fatal!("Failed to start IPC: {:?}", err);
-    }
     if let Err(err) = parse_args() {
         fatal!("Error while parsing args: {:?}", err);
     }
