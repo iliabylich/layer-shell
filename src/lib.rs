@@ -9,6 +9,7 @@ mod fatal;
 mod ffi;
 mod global;
 mod ipc;
+mod lock_channel;
 mod modules;
 mod scheduler;
 mod subscriptions;
@@ -40,13 +41,6 @@ pub extern "C" fn layer_shell_io_init() {
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_spawn_thread() {
-    let (etx, erx) = std::sync::mpsc::channel::<Event>();
-    let (ctx, crx) = std::sync::mpsc::channel::<Command>();
-
-    Command::set_sender(ctx);
-    Event::set_sender(etx.clone());
-    Event::set_receiver(erx);
-
     std::thread::spawn(move || {
         use crate::modules::{cpu, hyprland, memory, network, pipewire, time, weather};
 
@@ -56,7 +50,7 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
         network::setup();
 
         use scheduler::Scheduler;
-        let mut scheduler = Scheduler::new(40, crx);
+        let mut scheduler = Scheduler::new(40);
         scheduler.add(1_000, time::tick);
         scheduler.add(1_000, memory::tick);
         scheduler.add(1_000, cpu::tick);

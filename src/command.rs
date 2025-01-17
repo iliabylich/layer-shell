@@ -1,8 +1,8 @@
 use crate::{
-    fatal::fatal,
+    lock_channel::LockChannel,
     modules::{app_list, hyprland, pipewire},
 };
-use std::sync::{mpsc::Sender, OnceLock};
+use std::sync::LazyLock;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -25,28 +25,17 @@ pub enum Command {
     SpawnSystemMonitor,
 }
 
-static SENDER: OnceLock<Sender<Command>> = OnceLock::new();
-
 unsafe impl Send for Command {}
 
+static CHANNEL: LazyLock<LockChannel<Command>> = LazyLock::new(LockChannel::new);
+
 impl Command {
-    pub(crate) fn set_sender(sender: Sender<Command>) {
-        if SENDER.set(sender).is_err() {
-            fatal!("Command sender has already been set");
-        }
+    pub(crate) fn send(self) {
+        CHANNEL.emit(self);
     }
 
-    pub(crate) fn send(self) {
-        match SENDER.get() {
-            Some(sender) => {
-                if let Err(err) = sender.send(self) {
-                    log::error!("failed to publish event: {:?}", err);
-                }
-            }
-            None => {
-                fatal!("Command sender is not set");
-            }
-        }
+    pub(crate) fn try_recv() -> Option<Self> {
+        CHANNEL.try_recv()
     }
 
     pub(crate) fn execute(self) {

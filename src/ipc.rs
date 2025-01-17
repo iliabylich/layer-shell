@@ -51,12 +51,7 @@ struct Config {
     pidfile: String,
 }
 static CONFIG: LazyLock<Config> = LazyLock::new(|| {
-    let home = match std::env::var("HOME") {
-        Ok(home) => home,
-        Err(_) => {
-            fatal!("no $HOME");
-        }
-    };
+    let home = std::env::var("HOME").unwrap_or_else(|_| fatal!("no $HOME"));
 
     let dir = format!("{home}/.config/layer-shell",);
     if let Err(err) = std::fs::create_dir_all(&dir) {
@@ -84,15 +79,11 @@ impl Config {
     }
 
     fn write_message(message: IPCMessage) {
-        match serde_json::to_string(&message) {
-            Ok(message) => {
-                if let Err(err) = std::fs::write(&CONFIG.pipe, message) {
-                    fatal!("failed to write message: {:?}", err);
-                }
-            }
-            Err(err) => {
-                fatal!("failed to serialize IPCMessage: {:?}", err);
-            }
+        let message = serde_json::to_string(&message)
+            .unwrap_or_else(|err| fatal!("failed to serialize IPCMessage: {:?}", err));
+
+        if let Err(err) = std::fs::write(&CONFIG.pipe, message) {
+            fatal!("failed to write message: {:?}", err);
         }
     }
 

@@ -1,10 +1,7 @@
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::OnceLock;
-
-use crate::fatal::fatal;
 use crate::ffi::{CArray, COption, CString};
-use crate::global;
+use crate::lock_channel::LockChannel;
 use crate::modules::weather::WeatherCode;
+use std::sync::LazyLock;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -58,34 +55,15 @@ pub enum Event {
     ToggleSessionScreen,
 }
 
-static SENDER: OnceLock<Sender<Event>> = OnceLock::new();
-global!(RECEIVER, Receiver<Event>);
+static CHANNEL: LazyLock<LockChannel<Event>> = LazyLock::new(LockChannel::new);
 
 impl Event {
-    pub(crate) fn set_sender(sender: Sender<Event>) {
-        if SENDER.set(sender).is_err() {
-            fatal!("Event sender has been already set");
-        }
-    }
-    pub(crate) fn set_receiver(sender: Receiver<Event>) {
-        RECEIVER::set(sender);
-    }
-
     pub(crate) fn emit(self) {
-        match SENDER.get() {
-            Some(sender) => {
-                if let Err(err) = sender.send(self) {
-                    log::error!("failed to publish event: {:?}", err);
-                }
-            }
-            None => {
-                fatal!("Event sender is not set");
-            }
-        }
+        CHANNEL.emit(self);
     }
 
     pub(crate) fn try_recv() -> Option<Self> {
-        RECEIVER::get().try_recv().ok()
+        CHANNEL.try_recv()
     }
 }
 

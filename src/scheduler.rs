@@ -1,5 +1,4 @@
 use crate::Command;
-use std::sync::mpsc::Receiver;
 
 struct Actor {
     f: fn(),
@@ -13,12 +12,10 @@ pub(crate) struct Scheduler {
     iteration: u64,
 
     pool: threadpool::ThreadPool,
-
-    crx: Receiver<Command>,
 }
 
 impl Scheduler {
-    pub(crate) fn new(iterations_per_second: u64, crx: Receiver<Command>) -> Self {
+    pub(crate) fn new(iterations_per_second: u64) -> Self {
         debug_assert_eq!(1_000 % iterations_per_second, 0);
 
         Self {
@@ -26,7 +23,6 @@ impl Scheduler {
             iterations_per_second,
             iteration: 0,
             pool: threadpool::ThreadPool::new(5),
-            crx,
         }
     }
 
@@ -43,7 +39,7 @@ impl Scheduler {
             }
         }
 
-        while let Ok(command) = self.crx.try_recv() {
+        while let Some(command) = Command::try_recv() {
             self.pool.execute(move || command.execute())
         }
 
