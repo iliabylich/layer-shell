@@ -7,7 +7,6 @@ mod dbus;
 mod event;
 mod fatal;
 mod ffi;
-mod global;
 mod ipc;
 mod lock_channel;
 mod modules;
@@ -16,7 +15,6 @@ mod subscriptions;
 
 pub use command::Command;
 pub use event::Event;
-use global::global;
 
 use args::parse_args;
 use ipc::IPC;

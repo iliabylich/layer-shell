@@ -1,5 +1,5 @@
-use crate::modules::pipewire::STORE;
-use anyhow::Result;
+use crate::modules::pipewire::Store;
+use anyhow::{Context as _, Result};
 use pipewire::metadata::Metadata;
 
 pub(crate) struct MetadataNode;
@@ -17,8 +17,9 @@ impl MetadataNode {
             })
             .register();
 
-        STORE::get().register_meta(metadata_id, metadata);
-        STORE::get().register_listener(metadata_id, Box::new(listener));
+        Store::register_meta(metadata_id, metadata).context("failed to register meta")?;
+        Store::register_listener(metadata_id, Box::new(listener))
+            .context("failed to register listener")?;
 
         Ok(())
     }
@@ -30,7 +31,9 @@ impl MetadataNode {
                 name: String,
             }
             if let Ok(Value { name }) = serde_json::from_str(value) {
-                STORE::get().register_default_sink_name(name);
+                if let Err(err) = Store::register_default_sink_name(name) {
+                    log::error!("failed to register default sink name: {:?}", err);
+                }
             }
         }
         0

@@ -8,6 +8,7 @@ use pipewire::{
     registry::{GlobalObject, Listener, Registry},
     spa::utils::dict::DictRef,
 };
+use std::time::Duration;
 
 mod audio_device;
 mod audio_sink;
@@ -15,9 +16,8 @@ mod command;
 mod metadata_node;
 mod store;
 
+use command::InternalCommand;
 use store::Store;
-
-use crate::global;
 
 pub(crate) use command::{set_muted, set_volume};
 
@@ -29,29 +29,40 @@ pub(crate) fn setup() {
     });
 }
 
-global!(STORE, Store);
-global!(REGISTRY, Registry);
-
 fn start_pw_mainloop() -> Result<()> {
     let mainloop = MainLoop::new(None).context("failed to instantiate PW loop")?;
     let context = Context::new(&mainloop)?;
     let core = context.connect(None)?;
 
-    REGISTRY::set(core.get_registry()?);
-    STORE::set(Store::new());
+    Store::init_for_current_thread();
+    let registry: &'static Registry = Box::leak(Box::new(core.get_registry()?));
 
-    let _listener = start_pw_listener();
+    let _listener = start_pw_listener(registry);
+
+    let timer = mainloop.loop_().add_timer(|_| {
+        while let Some(cmd) = InternalCommand::try_recv() {
+            cmd.exec();
+        }
+    });
+
+    timer
+        .update_timer(
+            Some(Duration::from_millis(100)),
+            Some(Duration::from_millis(100)),
+        )
+        .into_result()
+        .context("invalid timer")?;
 
     mainloop.run();
 
     Ok(())
 }
 
-fn start_pw_listener() -> Listener {
-    REGISTRY::get()
+fn start_pw_listener(registry: &'static Registry) -> Listener {
+    registry
         .add_listener_local()
         .global(|obj| {
-            if let Err(err) = on_global_object_added(obj) {
+            if let Err(err) = on_global_object_added(registry, obj) {
                 log::error!("Failed to track new global object: {:?}", err);
             }
         })
@@ -59,24 +70,24 @@ fn start_pw_listener() -> Listener {
         .register()
 }
 
-fn on_global_object_added(obj: &GlobalObject<&DictRef>) -> Result<()> {
+fn on_global_object_added(registry: &Registry, obj: &GlobalObject<&DictRef>) -> Result<()> {
     let Some(props) = obj.props else {
         // ignore empty objects
         return Ok(());
     };
 
     if props.get("metadata.name") == Some("default") {
-        let metadata: Metadata = REGISTRY::get().bind(obj).context("not a Metadata")?;
+        let metadata: Metadata = registry.bind(obj).context("not a Metadata")?;
         metadata_node::MetadataNode::added(obj.id, metadata)?;
     }
 
     if props.get("media.class") == Some("Audio/Device") {
-        let device: Device = REGISTRY::get().bind(obj).context("not a Device")?;
+        let device: Device = registry.bind(obj).context("not a Device")?;
         audio_device::AudioDevice::added(obj.id, device)?;
     }
 
     if props.get("media.class") == Some("Audio/Sink") {
-        let node: Node = REGISTRY::get().bind(obj).context("not a Node")?;
+        let node: Node = registry.bind(obj).context("not a Node")?;
         audio_sink::AudioSink::added(obj.id, props, node)?;
     }
 
@@ -84,5 +95,7 @@ fn on_global_object_added(obj: &GlobalObject<&DictRef>) -> Result<()> {
 }
 
 fn on_global_object_removed(id: u32) {
-    STORE::get().remove(id);
+    if let Err(err) = Store::remove(id) {
+        log::error!("Failed to remove device: {:?}", err);
+    }
 }

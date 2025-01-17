@@ -1,4 +1,4 @@
-use crate::{modules::pipewire::STORE, Event};
+use crate::{modules::pipewire::Store, Event};
 use anyhow::{bail, Context as _, Result};
 use pipewire::{
     node::Node,
@@ -35,8 +35,8 @@ impl AudioSink {
             })
             .register();
 
-        STORE::get().register_sink(id, sink_name, device_id, node);
-        STORE::get().register_listener(id, Box::new(listener));
+        Store::register_sink(id, sink_name, device_id, node).context("failed to register sink")?;
+        Store::register_listener(id, Box::new(listener)).context("failed to register listener")?;
 
         Ok(())
     }

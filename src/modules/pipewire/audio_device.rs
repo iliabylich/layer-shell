@@ -1,4 +1,4 @@
-use crate::modules::pipewire::STORE;
+use crate::modules::pipewire::Store;
 use anyhow::{bail, Context as _, Result};
 use pipewire::{
     device::Device,
@@ -27,8 +27,9 @@ impl AudioDevice {
             })
             .register();
 
-        STORE::get().register_device(device_id, device);
-        STORE::get().register_listener(device_id, Box::new(listener));
+        Store::register_device(device_id, device).context("failed to register device")?;
+        Store::register_listener(device_id, Box::new(listener))
+            .context("failed to register listener")?;
 
         Ok(())
     }
@@ -65,7 +66,8 @@ impl AudioDevice {
         let route_index = route_index.context("no Route index prop")?;
         let route_device = route_device.context("no Route device prop")?;
 
-        STORE::get().register_route(device_id, (route_index, route_device));
+        Store::register_route(device_id, (route_index, route_device))
+            .context("failed to register route")?;
 
         Ok(())
     }
