@@ -39,7 +39,6 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
     std::thread::spawn(move || {
         use crate::modules::{cpu, hyprland, memory, network, pipewire, time, weather};
 
-        cpu::setup();
         pipewire::setup();
         hyprland::setup();
         network::setup();

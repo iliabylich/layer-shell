@@ -1,5 +1,6 @@
 use anyhow::{Context as _, Result};
 
+#[derive(Debug, Clone)]
 pub(crate) struct CpuCoreInfo {
     id: usize,
     idle: usize,
@@ -47,26 +48,23 @@ impl CpuCoreInfo {
     }
 
     pub(crate) fn parse_current_comparing_to(
-        previous: &mut Option<Vec<CpuCoreInfo>>,
-    ) -> Result<Vec<usize>> {
+        previous: Option<Vec<CpuCoreInfo>>,
+    ) -> Result<(Vec<usize>, Vec<CpuCoreInfo>)> {
         let current = Self::parse_current()?;
         let count = current.len();
 
-        if let Some(previous_owned) = previous.take() {
-            assert_eq!(previous_owned.len(), current.len());
+        let usage = if let Some(previous) = previous {
+            assert_eq!(previous.len(), current.len());
 
-            let usage = previous_owned
+            previous
                 .iter()
                 .zip(current.iter())
                 .map(|(prev, next)| next.load_comparing_to(prev))
-                .collect::<Vec<_>>();
-
-            *previous = Some(current);
-
-            Ok(usage)
+                .collect::<Vec<_>>()
         } else {
-            *previous = Some(current);
-            Ok(vec![0; count])
-        }
+            vec![0; count]
+        };
+
+        Ok((usage, current))
     }
 }
