@@ -102,6 +102,10 @@ tooltip {
     margin: -10px;
 }
 
+.clock {
+    min-width: 50px;
+}
+
 /* network */
 .network-speed-label {
     min-width: 50px;
