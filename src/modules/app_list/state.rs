@@ -21,7 +21,10 @@ impl State {
     }
 
     pub(crate) fn go_up() {
-        let mut this = INSTANCE.lock().unwrap();
+        let Ok(mut this) = INSTANCE.lock() else {
+            log::error!("lock is poisoned");
+            return;
+        };
         if this.selected_idx == 0 {
             return;
         }
@@ -30,27 +33,39 @@ impl State {
     }
 
     pub(crate) fn go_down() {
-        let mut this = INSTANCE.lock().unwrap();
+        let Ok(mut this) = INSTANCE.lock() else {
+            log::error!("lock is poisoned");
+            return;
+        };
         this.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, this.selected_idx + 1);
         this.emit();
     }
 
     pub(crate) fn set_search(pattern: String) {
-        let mut this = INSTANCE.lock().unwrap();
+        let Ok(mut this) = INSTANCE.lock() else {
+            log::error!("lock is poisoned");
+            return;
+        };
         this.selected_idx = 0;
         this.pattern = pattern;
         this.emit();
     }
 
     pub(crate) fn exec_selected() {
-        let this = INSTANCE.lock().unwrap();
+        let Ok(this) = INSTANCE.lock() else {
+            log::error!("lock is poisoned");
+            return;
+        };
         if let Some(app) = this.visible_apps().get(this.selected_idx) {
             app.exec();
         }
     }
 
     pub(crate) fn reset() {
-        let mut this = INSTANCE.lock().unwrap();
+        let Ok(mut this) = INSTANCE.lock() else {
+            log::error!("lock is poisoned");
+            return;
+        };
         this.pattern = String::new();
         this.selected_idx = 0;
         match SystemApp::parse_all() {

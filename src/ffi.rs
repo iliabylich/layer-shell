@@ -1,3 +1,5 @@
+use crate::fatal::fatal;
+
 #[repr(transparent)]
 pub struct CString {
     pub ptr: *mut std::ffi::c_char,
@@ -5,7 +7,7 @@ pub struct CString {
 
 impl From<String> for CString {
     fn from(s: String) -> Self {
-        let cstring = std::ffi::CString::new(s).unwrap();
+        let cstring = std::ffi::CString::new(s).unwrap_or_else(|err| fatal!("{:?}", err));
         Self {
             ptr: cstring.into_raw(),
         }
@@ -26,7 +28,7 @@ impl Drop for CString {
 impl std::fmt::Debug for CString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = unsafe { std::ffi::CString::from_raw(self.ptr) };
-        write!(f, "{:?}", s).unwrap();
+        write!(f, "{:?}", s)?;
         std::mem::forget(s);
         Ok(())
     }
@@ -73,7 +75,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let vec = unsafe { Vec::from_raw_parts(self.ptr, self.len, self.len) };
-        f.debug_list().entries(&vec).finish().unwrap();
+        f.debug_list().entries(&vec).finish()?;
         std::mem::forget(vec);
         Ok(())
     }
