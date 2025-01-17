@@ -52,6 +52,7 @@ static GtkWidget *_(init)(void) {
   gtk_widget_add_css_class(_(widget), "network");
   gtk_widget_add_css_class(_(widget), "padded");
   gtk_widget_add_css_class(_(widget), "clickable");
+  gtk_widget_set_name(_(widget), "Network");
   gtk_widget_set_cursor(_(widget), gdk_cursor_new_from_name("pointer", NULL));
   gtk_button_set_child(GTK_BUTTON(_(widget)), network_wrapper);
 

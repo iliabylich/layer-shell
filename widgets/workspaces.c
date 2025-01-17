@@ -11,6 +11,7 @@ static GtkWidget *_(init)(void) {
   _(widget) = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "workspaces");
+  gtk_widget_set_name(_(widget), "Workspaces");
 
   for (size_t i = 0; i < 10; i++) {
     GtkWidget *button = gtk_button_new();

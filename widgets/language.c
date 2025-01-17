@@ -12,6 +12,7 @@ static GtkWidget *_(init)(void) {
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "language");
   gtk_widget_add_css_class(_(widget), "padded");
+  gtk_widget_set_name(_(widget), "Language");
 
   _(label) = gtk_label_new("--");
   gtk_center_box_set_center_widget(GTK_CENTER_BOX(_(widget)), _(label));

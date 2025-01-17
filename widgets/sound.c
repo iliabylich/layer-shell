@@ -13,6 +13,7 @@ static GtkWidget *_(init)(void) {
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "sound");
   gtk_widget_add_css_class(_(widget), "padded");
+  gtk_widget_set_name(_(widget), "Sound");
 
   _(image) = gtk_image_new();
   gtk_image_set_from_icon_name(GTK_IMAGE(_(image)), "dialog-question");

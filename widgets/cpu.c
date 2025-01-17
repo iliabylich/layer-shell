@@ -19,6 +19,7 @@ static GtkWidget *_(init)(void) {
   gtk_widget_add_css_class(_(widget), "widget");
   gtk_widget_add_css_class(_(widget), "cpu");
   gtk_widget_add_css_class(_(widget), "padded");
+  gtk_widget_set_name(_(widget), "CPU");
 
   for (size_t i = 0; i < 12; i++) {
     GtkWidget *label = gtk_label_new(NULL);

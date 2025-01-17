@@ -13,6 +13,7 @@ static GtkWidget *_(init)(void) {
   gtk_widget_add_css_class(_(widget), "terminal");
   gtk_widget_add_css_class(_(widget), "padded");
   gtk_widget_add_css_class(_(widget), "clickable");
+  gtk_widget_set_name(_(widget), "HTop");
 
   GtkWidget *label = gtk_label_new("Htop");
   gtk_button_set_child(GTK_BUTTON(_(widget)), label);

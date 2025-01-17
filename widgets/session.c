@@ -14,6 +14,7 @@ static GtkWidget *_(init)(void) {
   gtk_widget_add_css_class(_(widget), "padded");
   gtk_widget_add_css_class(_(widget), "clickable");
   gtk_widget_set_cursor(_(widget), gdk_cursor_new_from_name("pointer", NULL));
+  gtk_widget_set_name(_(widget), "Session");
 
   GtkWidget *image = gtk_image_new();
   gtk_image_set_from_gicon(GTK_IMAGE(image), get_power_icon());
