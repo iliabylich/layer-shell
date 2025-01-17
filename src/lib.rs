@@ -51,12 +51,11 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
     Event::set_receiver(erx);
 
     std::thread::spawn(move || {
-        use crate::modules::{app_list, cpu, hyprland, memory, network, pipewire, time, weather};
+        use crate::modules::{cpu, hyprland, memory, network, pipewire, time, weather};
 
         cpu::setup();
         pipewire::setup();
         hyprland::setup();
-        app_list::setup();
         network::setup();
 
         use scheduler::Scheduler;

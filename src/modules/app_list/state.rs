@@ -1,22 +1,16 @@
-use crate::{event::App, global::global, modules::app_list::system_app::SystemApp, Event};
+use std::sync::{LazyLock, Mutex};
+
+use crate::{event::App, modules::app_list::system_app::SystemApp, Event};
 
 pub(crate) struct State {
     selected_idx: usize,
     apps: Vec<SystemApp>,
     pattern: String,
 }
-global!(INSTANCE, State);
+static INSTANCE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::new()));
 
 impl State {
     const MAX_ITEMS: usize = 5;
-
-    pub(crate) fn setup() {
-        INSTANCE::set(Self::new());
-    }
-
-    pub(crate) fn instance() -> &'static mut State {
-        INSTANCE::get()
-    }
 
     fn new() -> Self {
         Self {
@@ -26,35 +20,44 @@ impl State {
         }
     }
 
-    pub(crate) fn go_up(&mut self) {
-        if self.selected_idx == 0 {
+    pub(crate) fn go_up() {
+        let mut this = INSTANCE.lock().unwrap();
+        if this.selected_idx == 0 {
             return;
         }
-        self.selected_idx = std::cmp::max(0, self.selected_idx - 1);
-        self.emit();
+        this.selected_idx = std::cmp::max(0, this.selected_idx - 1);
+        this.emit();
     }
-    pub(crate) fn go_down(&mut self) {
-        self.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, self.selected_idx + 1);
-        self.emit();
+
+    pub(crate) fn go_down() {
+        let mut this = INSTANCE.lock().unwrap();
+        this.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, this.selected_idx + 1);
+        this.emit();
     }
-    pub(crate) fn set_search(&mut self, pattern: String) {
-        self.selected_idx = 0;
-        self.pattern = pattern;
-        self.emit();
+
+    pub(crate) fn set_search(pattern: String) {
+        let mut this = INSTANCE.lock().unwrap();
+        this.selected_idx = 0;
+        this.pattern = pattern;
+        this.emit();
     }
-    pub(crate) fn exec_selected(&mut self) {
-        if let Some(app) = self.visible_apps().get(self.selected_idx) {
+
+    pub(crate) fn exec_selected() {
+        let this = INSTANCE.lock().unwrap();
+        if let Some(app) = this.visible_apps().get(this.selected_idx) {
             app.exec();
         }
     }
-    pub(crate) fn reset(&mut self) {
-        self.pattern = String::new();
-        self.selected_idx = 0;
+
+    pub(crate) fn reset() {
+        let mut this = INSTANCE.lock().unwrap();
+        this.pattern = String::new();
+        this.selected_idx = 0;
         match SystemApp::parse_all() {
-            Ok(apps) => self.apps = apps,
+            Ok(apps) => this.apps = apps,
             Err(err) => log::error!("failed to refresh app list: {:?}", err),
         }
-        self.emit();
+        this.emit();
     }
 
     fn emit(&self) {
