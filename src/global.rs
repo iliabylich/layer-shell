@@ -14,8 +14,7 @@ macro_rules! global {
                         match [< $name Instance >].as_mut() {
                             Some(value) => value,
                             None => {
-                                log::error!("global! {} is not set", stringify!($name));
-                                std::process::exit(1);
+                                crate::fatal::fatal!("global! {} is not set", stringify!($name));
                             }
                         }
                     }

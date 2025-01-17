@@ -47,10 +47,13 @@ impl NetworkManager {
 
     pub(crate) fn primary_wireless_device(conn: &Connection) -> Result<Device> {
         let devices = Self::primary_wireless_connection(conn)?.devices(conn)?;
-        if devices.len() != 1 {
+        let mut iter = devices.into_iter();
+        let Some(device) = iter.next() else {
+            bail!("NM returned no device for active connection");
+        };
+        if iter.next().is_some() {
             bail!("NM returned multiple devices for active connection");
         }
-        let device = devices.into_iter().next().unwrap();
         Ok(device)
     }
 }

@@ -5,6 +5,7 @@ mod args;
 mod command;
 mod dbus;
 mod event;
+mod fatal;
 mod ffi;
 mod global;
 mod ipc;
@@ -17,6 +18,7 @@ pub use event::Event;
 use global::global;
 
 use args::parse_args;
+use fatal::fatal;
 use ipc::IPC;
 use subscriptions::Subscriptions;
 
@@ -29,16 +31,13 @@ pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
 pub extern "C" fn layer_shell_io_init() {
     Subscriptions::setup();
     if let Err(err) = IPC::prepare() {
-        log::error!("Failed to start IPC: {:?}", err);
-        std::process::exit(1);
+        fatal!("Failed to start IPC: {:?}", err);
     }
     if let Err(err) = parse_args() {
-        log::error!("Error while parsing args: {:?}", err);
-        std::process::exit(1);
+        fatal!("Error while parsing args: {:?}", err);
     }
     if let Err(err) = IPC::set_current_process_as_main() {
-        log::error!("Failed to set current process as main in IPC: {:?}", err);
-        std::process::exit(1);
+        fatal!("Failed to set current process as main in IPC: {:?}", err);
     }
 }
 

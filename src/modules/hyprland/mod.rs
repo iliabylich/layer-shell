@@ -1,3 +1,4 @@
+use crate::fatal::fatal;
 use std::io::{BufRead as _, BufReader};
 
 mod command;
@@ -12,16 +13,14 @@ pub(crate) fn setup() {
         let socket = match connection::connect_to_socket() {
             Ok(socket) => socket,
             Err(err) => {
-                log::error!("failed to connect to Hyprland socket: {:?}", err);
-                std::process::exit(1)
+                fatal!("failed to connect to Hyprland socket: {:?}", err);
             }
         };
 
         let mut state = match state::State::new() {
             Ok(state) => state,
             Err(err) => {
-                log::error!("failed to get initial Hyprland state: {:?}", err);
-                std::process::exit(1)
+                fatal!("failed to get initial Hyprland state: {:?}", err);
             }
         };
 

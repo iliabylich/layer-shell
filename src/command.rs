@@ -1,8 +1,8 @@
 use crate::{
-    global::global,
+    fatal::fatal,
     modules::{app_list, hyprland, pipewire},
 };
-use std::sync::mpsc::Sender;
+use std::sync::{mpsc::Sender, OnceLock};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -25,18 +25,27 @@ pub enum Command {
     SpawnSystemMonitor,
 }
 
-global!(SENDER, Sender<Command>);
+static SENDER: OnceLock<Sender<Command>> = OnceLock::new();
 
 unsafe impl Send for Command {}
 
 impl Command {
     pub(crate) fn set_sender(sender: Sender<Command>) {
-        SENDER::set(sender);
+        if SENDER.set(sender).is_err() {
+            fatal!("Command sender has already been set");
+        }
     }
 
     pub(crate) fn send(self) {
-        if let Err(err) = SENDER::get().send(self) {
-            log::error!("failed to publish event: {:?}", err);
+        match SENDER.get() {
+            Some(sender) => {
+                if let Err(err) = sender.send(self) {
+                    log::error!("failed to publish event: {:?}", err);
+                }
+            }
+            None => {
+                fatal!("Command sender is not set");
+            }
         }
     }
 

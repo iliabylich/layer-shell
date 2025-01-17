@@ -1,5 +1,7 @@
-use crate::{global, Event};
-use anyhow::{Context, Result};
+use std::sync::OnceLock;
+
+use crate::{fatal::fatal, Event};
+use anyhow::{bail, Context, Result};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum IPCMessage {
@@ -52,7 +54,7 @@ struct Config {
     pipe: String,
     pidfile: String,
 }
-global!(CONFIG, Config);
+static CONFIG: OnceLock<Config> = OnceLock::new();
 
 impl Config {
     fn init() -> Result<()> {
@@ -67,37 +69,46 @@ impl Config {
 
         let pidfile = format!("{}/.pid", dir);
 
-        CONFIG::set(Self { pipe, pidfile });
+        if CONFIG.set(Self { pipe, pidfile }).is_err() {
+            bail!("Config has been already set");
+        }
 
         Ok(())
     }
 
+    fn get() -> &'static Self {
+        match CONFIG.get() {
+            Some(config) => config,
+            None => {
+                fatal!("Config has not been initialized");
+            }
+        }
+    }
+
     fn write_pid() -> Result<()> {
-        std::fs::write(&CONFIG::get().pidfile, format!("{}", std::process::id()))
+        std::fs::write(&Self::get().pidfile, format!("{}", std::process::id()))
             .context("failed to write PID to pidfile")
     }
 
     fn read_pid() -> Option<String> {
-        std::fs::read_to_string(&CONFIG::get().pidfile).ok()
+        std::fs::read_to_string(&Self::get().pidfile).ok()
     }
 
     fn write_message(message: IPCMessage) {
         match serde_json::to_string(&message) {
             Ok(message) => {
-                if let Err(err) = std::fs::write(&CONFIG::get().pipe, message) {
-                    log::error!("failed to write message: {:?}", err);
-                    std::process::exit(1);
+                if let Err(err) = std::fs::write(&Self::get().pipe, message) {
+                    fatal!("failed to write message: {:?}", err);
                 }
             }
             Err(err) => {
-                log::error!("failed to serialize IPCMessage: {:?}", err);
-                std::process::exit(1);
+                fatal!("failed to serialize IPCMessage: {:?}", err);
             }
         }
     }
 
     fn read_message() -> Option<IPCMessage> {
-        let command = std::fs::read_to_string(&CONFIG::get().pipe).ok()?;
+        let command = std::fs::read_to_string(&Self::get().pipe).ok()?;
         serde_json::from_str::<IPCMessage>(&command).ok()
     }
 }
