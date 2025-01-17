@@ -1,31 +1,27 @@
-use crate::{dbus::nm::NetworkManager, global::global};
+use crate::dbus::nm::NetworkManager;
 use dbus::{blocking::Connection, Message};
 
 mod network_list;
 mod network_speed;
 mod wifi_status;
 
-global!(CONNECTION, Connection);
-
 pub(crate) fn setup() {
-    std::thread::spawn(|| {
-        match Connection::new_system() {
-            Ok(conn) => CONNECTION::set(conn),
-            Err(err) => {
-                log::error!("Failed to connect to D-Bus: {:?}", err);
-                return;
-            }
-        };
+    let conn = match Connection::new_system() {
+        Ok(conn) => conn,
+        Err(err) => {
+            log::error!("Failed to connect to D-Bus: {:?}", err);
+            return;
+        }
+    };
 
-        state_changed();
+    std::thread::spawn(move || {
+        state_changed(&conn);
 
-        let conn = CONNECTION::get();
-
-        let _id = NetworkManager::proxy(conn).match_signal(
-            |_: crate::dbus::OrgFreedesktopNetworkManagerStateChanged,
-             _: &Connection,
-             _: &Message| {
-                state_changed();
+        let _id = NetworkManager::proxy(&conn).match_signal(
+            move |_: crate::dbus::OrgFreedesktopNetworkManagerStateChanged,
+                  conn: &Connection,
+                  _: &Message| {
+                state_changed(conn);
                 true
             },
         );
@@ -35,16 +31,14 @@ pub(crate) fn setup() {
                 log::error!("D-Bus polling loop error: {:?}", err);
             }
 
-            if let Err(err) = network_speed::update(conn) {
+            if let Err(err) = network_speed::update(&conn) {
                 log::error!("{:?}", err);
             }
         }
     });
 }
 
-fn state_changed() {
-    let conn = CONNECTION::get();
-
+fn state_changed(conn: &Connection) {
     match network_list::get(conn) {
         Ok(event) => event.emit(),
         Err(err) => log::error!("{:?}", err),

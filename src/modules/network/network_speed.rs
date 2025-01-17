@@ -1,27 +1,26 @@
-use crate::{dbus::nm::NetworkManager, ffi::CString, global::global, Event};
+use crate::{dbus::nm::NetworkManager, ffi::CString, Event};
 use anyhow::Result;
 use dbus::blocking::Connection;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-global!(TRANSMITTED_BYTES, Option<u64>);
-global!(RECEIVED_BYTES, Option<u64>);
+static TRANSMITTED_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
+static RECEIVED_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
 
-fn update_stat_and_return_delta(stat: &'static mut Option<u64>, value: u64) -> u64 {
-    match stat {
-        Some(prev) => {
-            let delta = value - *prev;
-            *prev = value;
-            delta
-        }
-        None => {
-            *stat = Some(value);
-            0
-        }
+fn update_stat_and_return_delta(stat: &AtomicU64, value: u64) -> u64 {
+    let prev = stat.load(Ordering::Relaxed);
+    if prev == u64::MAX {
+        stat.store(value, Ordering::Relaxed);
+        0
+    } else {
+        let delta = value - prev;
+        stat.store(value, Ordering::Relaxed);
+        delta
     }
 }
 
 pub(crate) fn reset() {
-    TRANSMITTED_BYTES::set(None);
-    RECEIVED_BYTES::set(None);
+    TRANSMITTED_BYTES.store(u64::MAX, Ordering::Relaxed);
+    RECEIVED_BYTES.store(u64::MAX, Ordering::Relaxed);
 }
 
 pub(crate) fn update(conn: &Connection) -> Result<()> {
@@ -31,13 +30,13 @@ pub(crate) fn update(conn: &Connection) -> Result<()> {
         .tx_bytes(conn)
         .inspect_err(|err| log::error!("{:?}", err))
         .unwrap_or(0);
-    let upload_speed = update_stat_and_return_delta(TRANSMITTED_BYTES::get(), tx_bytes);
+    let upload_speed = update_stat_and_return_delta(&TRANSMITTED_BYTES, tx_bytes);
 
     let rx_bytes = device
         .rx_bytes(conn)
         .inspect_err(|err| log::error!("{:?}", err))
         .unwrap_or(0);
-    let download_speed = update_stat_and_return_delta(RECEIVED_BYTES::get(), rx_bytes);
+    let download_speed = update_stat_and_return_delta(&RECEIVED_BYTES, rx_bytes);
 
     let event = Event::NetworkSpeed {
         upload_speed: format_speed(upload_speed),
