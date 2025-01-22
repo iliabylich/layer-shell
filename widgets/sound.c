@@ -28,9 +28,9 @@ static GtkWidget *_(init)(void) {
   return _(widget);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case Volume: {
+  case IO_Event_Volume: {
     float volume = event->volume.volume;
     gtk_range_set_value(GTK_RANGE(_(scale)), volume);
     char *icon = NULL;
@@ -57,8 +57,8 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
 static void _(scale_on_change)(void) {
   GtkAdjustment *adj = gtk_range_get_adjustment(GTK_RANGE(_(scale)));
   double value = CLAMP(gtk_adjustment_get_value(adj), 0.0, 1.0);
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){
-      .tag = SetVolume, .set_volume = {.volume = value}});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_SetVolume,
+                                      .set_volume = {.volume = value}});
 }
 
 static void _(activate)(void) {

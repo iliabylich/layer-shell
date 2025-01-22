@@ -80,7 +80,7 @@ static void _(row_set_on_click)(row_t row, GCallback callback, void *data) {
 
 static void _(settings_row_on_click)(void) {
   _(toggle)();
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnNetworkEditor});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_SpawnNetworkEditor});
 }
 
 typedef struct {
@@ -129,14 +129,14 @@ static void _(row_on_click)(GtkGestureClick *, gint, gdouble, gdouble,
   g_timeout_add_seconds_once(1, _(row_restore_label), safepoint);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case NetworkList: {
-    LAYER_SHELL_IO_CArray_Network networks = event->network_list.list;
+  case IO_Event_NetworkList: {
+    IO_CArray_Network networks = event->network_list.list;
     for (size_t i = 0; i < 5; i++) {
       row_t row = _(rows)[i];
       if (i < networks.len) {
-        LAYER_SHELL_IO_Network network = networks.ptr[i];
+        IO_Network network = networks.ptr[i];
         gtk_widget_set_visible(row.wrapper, true);
         char buffer[100];
         sprintf(buffer, "%s: %s", network.iface, network.address);

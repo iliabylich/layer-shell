@@ -24,9 +24,9 @@ static GtkWidget *_(init)(void) {
   return _(widget);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case CurrentWeather: {
+  case IO_Event_CurrentWeather: {
     char buffer[100];
     sprintf(buffer, "%.1f℃ %s", event->current_weather.temperature,
             weather_code_to_description(event->current_weather.code));

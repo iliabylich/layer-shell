@@ -59,10 +59,11 @@ static GtkWidget *_(init)(void) {
   return _(widget);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case WifiStatus: {
-    if (event->wifi_status.wifi_status.tag == None_WifiStatus) {
+  case IO_Event_WifiStatus: {
+    if (event->wifi_status.wifi_status.tag ==
+        IO_COption_WifiStatus_None_WifiStatus) {
       gtk_widget_set_visible(_(image), false);
       gtk_label_set_label(GTK_LABEL(_(label)), "Not connected");
     } else {
@@ -74,7 +75,7 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     }
     break;
   }
-  case NetworkSpeed: {
+  case IO_Event_NetworkSpeed: {
     gtk_label_set_label(GTK_LABEL(_(download_speed_label)),
                         event->network_speed.download_speed);
     gtk_label_set_label(GTK_LABEL(_(upload_speed_label)),

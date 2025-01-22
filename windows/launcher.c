@@ -63,22 +63,23 @@ static void _(init)(void) {
 
 static void _(toggle)(void) {
   if (gtk_widget_get_visible(GTK_WIDGET(_(window))) == false) {
-    layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListReset});
+    layer_shell_io_publish((IO_Command){.tag = IO_Command_AppListReset});
     gtk_editable_set_text(GTK_EDITABLE(_(input)), "");
   }
   flip_window_visibility(_(window));
 }
 
 static void _(exec_selected)(void) {
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListExecSelected});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_AppListExecSelected});
   _(toggle)();
 }
 
 static void _(on_input_change)(GtkEditable *editable) {
   const unsigned char *search =
       (const unsigned char *)gtk_editable_get_text(editable);
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){
-      .tag = AppListSetSearch, .app_list_set_search = {.search = search}});
+  layer_shell_io_publish(
+      (IO_Command){.tag = IO_Command_AppListSetSearch,
+                   .app_list_set_search = {.search = search}});
 }
 
 static gboolean _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
@@ -86,25 +87,25 @@ static gboolean _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     _(toggle)();
   } else if (strcmp(gdk_keyval_name(keyval), "Up") == 0) {
-    layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListGoUp});
+    layer_shell_io_publish((IO_Command){.tag = IO_Command_AppListGoUp});
   } else if (strcmp(gdk_keyval_name(keyval), "Down") == 0) {
-    layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = AppListGoDown});
+    layer_shell_io_publish((IO_Command){.tag = IO_Command_AppListGoDown});
   }
 
   return false;
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case ToggleLauncher:
+  case IO_Event_ToggleLauncher:
     _(toggle)();
     break;
-  case AppList: {
-    LAYER_SHELL_IO_CArray_App apps = event->app_list.apps;
+  case IO_Event_AppList: {
+    IO_CArray_App apps = event->app_list.apps;
     for (size_t i = 0; i < 5; i++) {
       row_t row = _(rows)[i];
       if (i < apps.len) {
-        LAYER_SHELL_IO_App app = apps.ptr[i];
+        IO_App app = apps.ptr[i];
         gtk_widget_set_visible(row.wrapper, true);
         if (app.selected) {
           gtk_widget_add_css_class(row.wrapper, "active");
@@ -112,7 +113,7 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
           gtk_widget_remove_css_class(row.wrapper, "active");
         }
 
-        if (app.icon.tag == IconName) {
+        if (app.icon.tag == IO_AppIcon_IconName) {
           gtk_image_set_from_icon_name(GTK_IMAGE(row.image),
                                        app.icon.icon_name);
         } else {

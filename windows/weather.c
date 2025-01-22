@@ -74,14 +74,14 @@ static void _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
   }
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case ForecastWeather: {
-    LAYER_SHELL_IO_CArray_WeatherOnDay daily = event->forecast_weather.daily;
-    LAYER_SHELL_IO_CArray_WeatherOnHour hourly = event->forecast_weather.hourly;
+  case IO_Event_ForecastWeather: {
+    IO_CArray_WeatherOnDay daily = event->forecast_weather.daily;
+    IO_CArray_WeatherOnHour hourly = event->forecast_weather.hourly;
 
     for (size_t i = 0; i < HOURLY_ROWS_COUNT; i++) {
-      LAYER_SHELL_IO_WeatherOnHour weather = hourly.ptr[i];
+      IO_WeatherOnHour weather = hourly.ptr[i];
       row_t row = _(hourly_rows)[i];
 
       char buffer[100];
@@ -95,7 +95,7 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
     }
 
     for (size_t i = 0; i < DAILY_ROWS_COUNT; i++) {
-      LAYER_SHELL_IO_WeatherOnDay weather = daily.ptr[i];
+      IO_WeatherOnDay weather = daily.ptr[i];
       row_t row = _(daily_rows)[i];
 
       char buffer[100];

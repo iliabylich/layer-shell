@@ -26,9 +26,9 @@ static GtkWidget *_(init)(void) {
   return _(widget);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case Workspaces: {
+  case IO_Event_Workspaces: {
     for (size_t idx = 1; idx <= 10; idx++) {
       GtkWidget *button = _(buttons)[idx - 1];
       bool visible = false;
@@ -56,8 +56,8 @@ static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
 
 static void _(button_on_click)(GtkButton *, gpointer data) {
   size_t idx = (size_t)data;
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){
-      .tag = HyprlandGoToWorkspace, .hyprland_go_to_workspace = {idx}});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_HyprlandGoToWorkspace,
+                                      .hyprland_go_to_workspace = {idx}});
 }
 
 static void _(activate)(void) {

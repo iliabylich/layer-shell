@@ -22,12 +22,12 @@ static GtkWidget *_(init)(void) {
 }
 
 static void _(spawn_system_monitor)(void) {
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = SpawnSystemMonitor});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_SpawnSystemMonitor});
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case Memory: {
+  case IO_Event_Memory: {
     char buffer[100];
     sprintf(buffer, "RAM %.1fG/%.1fG", event->memory.used, event->memory.total);
     gtk_label_set_label(GTK_LABEL(_(label)), buffer);

@@ -4,4 +4,7 @@ usize_is_size_t = true
 style = "type"
 
 [export]
-prefix = "LAYER_SHELL_IO_"
+prefix = "IO_"
+
+[enum]
+prefix_with_name = true

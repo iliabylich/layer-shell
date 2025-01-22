@@ -31,9 +31,9 @@ static GtkWidget *_(init)(void) {
   return _(widget);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case CpuUsage: {
+  case IO_Event_CpuUsage: {
     for (size_t idx = 0; idx < 12; idx++) {
       GtkWidget *label = _(labels)[idx];
       size_t load = event->cpu_usage.usage_per_core.ptr[idx];

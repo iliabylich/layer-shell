@@ -8,324 +8,324 @@
 #include <stdlib.h>
 
 typedef enum {
-  ClearSky,
-  MainlyClear,
-  PartlyCloudy,
-  Overcast,
-  FogNormal,
-  FogDepositingRime,
-  DrizzleLight,
-  DrizzleModerate,
-  DrizzleDense,
-  FreezingDrizzleLight,
-  FreezingDrizzleDense,
-  RainSlight,
-  RainModerate,
-  RainHeavy,
-  FreezingRainLight,
-  FreezingRainHeavy,
-  SnowFallSlight,
-  SnowFallModerate,
-  SnowFallHeavy,
-  SnowGrains,
-  RainShowersSlight,
-  RainShowersModerate,
-  RainShowersViolent,
-  SnowShowersSlight,
-  SnowShowersHeavy,
-  Thunderstorm,
-  ThunderstormWithHailSight,
-  ThunderstormWithHailHeavy,
-  Unknown,
-} LAYER_SHELL_IO_WeatherCode;
+  IO_WeatherCode_ClearSky,
+  IO_WeatherCode_MainlyClear,
+  IO_WeatherCode_PartlyCloudy,
+  IO_WeatherCode_Overcast,
+  IO_WeatherCode_FogNormal,
+  IO_WeatherCode_FogDepositingRime,
+  IO_WeatherCode_DrizzleLight,
+  IO_WeatherCode_DrizzleModerate,
+  IO_WeatherCode_DrizzleDense,
+  IO_WeatherCode_FreezingDrizzleLight,
+  IO_WeatherCode_FreezingDrizzleDense,
+  IO_WeatherCode_RainSlight,
+  IO_WeatherCode_RainModerate,
+  IO_WeatherCode_RainHeavy,
+  IO_WeatherCode_FreezingRainLight,
+  IO_WeatherCode_FreezingRainHeavy,
+  IO_WeatherCode_SnowFallSlight,
+  IO_WeatherCode_SnowFallModerate,
+  IO_WeatherCode_SnowFallHeavy,
+  IO_WeatherCode_SnowGrains,
+  IO_WeatherCode_RainShowersSlight,
+  IO_WeatherCode_RainShowersModerate,
+  IO_WeatherCode_RainShowersViolent,
+  IO_WeatherCode_SnowShowersSlight,
+  IO_WeatherCode_SnowShowersHeavy,
+  IO_WeatherCode_Thunderstorm,
+  IO_WeatherCode_ThunderstormWithHailSight,
+  IO_WeatherCode_ThunderstormWithHailHeavy,
+  IO_WeatherCode_Unknown,
+} IO_WeatherCode;
 
 typedef struct {
   size_t *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_usize;
+} IO_CArray_usize;
 
-typedef char *LAYER_SHELL_IO_CString;
+typedef char *IO_CString;
 
 typedef enum {
-  IconPath,
-  IconName,
-} LAYER_SHELL_IO_AppIcon_Tag;
+  IO_AppIcon_IconPath,
+  IO_AppIcon_IconName,
+} IO_AppIcon_Tag;
 
 typedef struct {
-  LAYER_SHELL_IO_AppIcon_Tag tag;
+  IO_AppIcon_Tag tag;
   union {
     struct {
-      LAYER_SHELL_IO_CString icon_path;
+      IO_CString icon_path;
     };
     struct {
-      LAYER_SHELL_IO_CString icon_name;
+      IO_CString icon_name;
     };
   };
-} LAYER_SHELL_IO_AppIcon;
+} IO_AppIcon;
 
 typedef struct {
-  LAYER_SHELL_IO_CString name;
+  IO_CString name;
   bool selected;
-  LAYER_SHELL_IO_AppIcon icon;
-} LAYER_SHELL_IO_App;
+  IO_AppIcon icon;
+} IO_App;
 
 typedef struct {
-  LAYER_SHELL_IO_App *ptr;
+  IO_App *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_App;
+} IO_CArray_App;
 
 typedef struct {
-  LAYER_SHELL_IO_CString hour;
+  IO_CString hour;
   float temperature;
-  LAYER_SHELL_IO_WeatherCode code;
-} LAYER_SHELL_IO_WeatherOnHour;
+  IO_WeatherCode code;
+} IO_WeatherOnHour;
 
 typedef struct {
-  LAYER_SHELL_IO_WeatherOnHour *ptr;
+  IO_WeatherOnHour *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_WeatherOnHour;
+} IO_CArray_WeatherOnHour;
 
 typedef struct {
-  LAYER_SHELL_IO_CString day;
+  IO_CString day;
   float temperature_min;
   float temperature_max;
-  LAYER_SHELL_IO_WeatherCode code;
-} LAYER_SHELL_IO_WeatherOnDay;
+  IO_WeatherCode code;
+} IO_WeatherOnDay;
 
 typedef struct {
-  LAYER_SHELL_IO_WeatherOnDay *ptr;
+  IO_WeatherOnDay *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_WeatherOnDay;
+} IO_CArray_WeatherOnDay;
 
 typedef struct {
-  LAYER_SHELL_IO_CString ssid;
+  IO_CString ssid;
   uint8_t strength;
-} LAYER_SHELL_IO_WifiStatus;
+} IO_WifiStatus;
 
 typedef enum {
-  None_WifiStatus,
-  Some_WifiStatus,
-} LAYER_SHELL_IO_COption_WifiStatus_Tag;
+  IO_COption_WifiStatus_None_WifiStatus,
+  IO_COption_WifiStatus_Some_WifiStatus,
+} IO_COption_WifiStatus_Tag;
 
 typedef struct {
-  LAYER_SHELL_IO_COption_WifiStatus_Tag tag;
+  IO_COption_WifiStatus_Tag tag;
   union {
     struct {
-      LAYER_SHELL_IO_WifiStatus some;
+      IO_WifiStatus some;
     };
   };
-} LAYER_SHELL_IO_COption_WifiStatus;
+} IO_COption_WifiStatus;
 
 typedef struct {
-  LAYER_SHELL_IO_CString iface;
-  LAYER_SHELL_IO_CString address;
-} LAYER_SHELL_IO_Network;
+  IO_CString iface;
+  IO_CString address;
+} IO_Network;
 
 typedef struct {
-  LAYER_SHELL_IO_Network *ptr;
+  IO_Network *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_Network;
+} IO_CArray_Network;
 
 typedef struct {
   int32_t id;
-  LAYER_SHELL_IO_CString label;
-} LAYER_SHELL_IO_TrayItem;
+  IO_CString label;
+} IO_TrayItem;
 
 typedef struct {
-  LAYER_SHELL_IO_TrayItem *ptr;
+  IO_TrayItem *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_TrayItem;
+} IO_CArray_TrayItem;
 
 typedef struct {
   uint8_t *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_u8;
+} IO_CArray_u8;
 
 typedef enum {
-  Path,
-  Name,
-  PixmapVariant,
-  None,
-} LAYER_SHELL_IO_TrayIcon_Tag;
+  IO_TrayIcon_Path,
+  IO_TrayIcon_Name,
+  IO_TrayIcon_PixmapVariant,
+  IO_TrayIcon_None,
+} IO_TrayIcon_Tag;
 
 typedef struct {
-  LAYER_SHELL_IO_CString path;
-} LAYER_SHELL_IO_Path_Body;
+  IO_CString path;
+} IO_TrayIcon_IO_Path_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CString name;
-} LAYER_SHELL_IO_Name_Body;
+  IO_CString name;
+} IO_TrayIcon_IO_Name_Body;
 
 typedef struct {
   uint32_t w;
   uint32_t h;
-  LAYER_SHELL_IO_CArray_u8 bytes;
-} LAYER_SHELL_IO_PixmapVariant_Body;
+  IO_CArray_u8 bytes;
+} IO_TrayIcon_IO_PixmapVariant_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_TrayIcon_Tag tag;
+  IO_TrayIcon_Tag tag;
   union {
-    LAYER_SHELL_IO_Path_Body path;
-    LAYER_SHELL_IO_Name_Body name;
-    LAYER_SHELL_IO_PixmapVariant_Body pixmap_variant;
+    IO_TrayIcon_IO_Path_Body path;
+    IO_TrayIcon_IO_Name_Body name;
+    IO_TrayIcon_IO_PixmapVariant_Body pixmap_variant;
   };
-} LAYER_SHELL_IO_TrayIcon;
+} IO_TrayIcon;
 
 typedef struct {
-  LAYER_SHELL_IO_CArray_TrayItem items;
-  LAYER_SHELL_IO_TrayIcon icon;
-} LAYER_SHELL_IO_TrayApp;
+  IO_CArray_TrayItem items;
+  IO_TrayIcon icon;
+} IO_TrayApp;
 
 typedef struct {
-  LAYER_SHELL_IO_TrayApp *ptr;
+  IO_TrayApp *ptr;
   size_t len;
-} LAYER_SHELL_IO_CArray_TrayApp;
+} IO_CArray_TrayApp;
 
 typedef enum {
-  Memory,
-  CpuUsage,
-  Time,
-  Workspaces,
-  Language,
-  AppList,
-  Volume,
-  Mute,
-  CurrentWeather,
-  ForecastWeather,
-  WifiStatus,
-  NetworkSpeed,
-  NetworkList,
-  Tray,
-  ToggleLauncher,
-  ToggleSessionScreen,
-} LAYER_SHELL_IO_Event_Tag;
+  IO_Event_Memory,
+  IO_Event_CpuUsage,
+  IO_Event_Time,
+  IO_Event_Workspaces,
+  IO_Event_Language,
+  IO_Event_AppList,
+  IO_Event_Volume,
+  IO_Event_Mute,
+  IO_Event_CurrentWeather,
+  IO_Event_ForecastWeather,
+  IO_Event_WifiStatus,
+  IO_Event_NetworkSpeed,
+  IO_Event_NetworkList,
+  IO_Event_Tray,
+  IO_Event_ToggleLauncher,
+  IO_Event_ToggleSessionScreen,
+} IO_Event_Tag;
 
 typedef struct {
   double used;
   double total;
-} LAYER_SHELL_IO_Memory_Body;
+} IO_Event_IO_Memory_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CArray_usize usage_per_core;
-} LAYER_SHELL_IO_CpuUsage_Body;
+  IO_CArray_usize usage_per_core;
+} IO_Event_IO_CpuUsage_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CString date;
-  LAYER_SHELL_IO_CString time;
-} LAYER_SHELL_IO_Time_Body;
+  IO_CString date;
+  IO_CString time;
+} IO_Event_IO_Time_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CArray_usize ids;
+  IO_CArray_usize ids;
   size_t active_id;
-} LAYER_SHELL_IO_Workspaces_Body;
+} IO_Event_IO_Workspaces_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CString lang;
-} LAYER_SHELL_IO_Language_Body;
+  IO_CString lang;
+} IO_Event_IO_Language_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CArray_App apps;
-} LAYER_SHELL_IO_AppList_Body;
+  IO_CArray_App apps;
+} IO_Event_IO_AppList_Body;
 
 typedef struct {
   float volume;
-} LAYER_SHELL_IO_Volume_Body;
+} IO_Event_IO_Volume_Body;
 
 typedef struct {
   bool muted;
-} LAYER_SHELL_IO_Mute_Body;
+} IO_Event_IO_Mute_Body;
 
 typedef struct {
   float temperature;
-  LAYER_SHELL_IO_WeatherCode code;
-} LAYER_SHELL_IO_CurrentWeather_Body;
+  IO_WeatherCode code;
+} IO_Event_IO_CurrentWeather_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CArray_WeatherOnHour hourly;
-  LAYER_SHELL_IO_CArray_WeatherOnDay daily;
-} LAYER_SHELL_IO_ForecastWeather_Body;
+  IO_CArray_WeatherOnHour hourly;
+  IO_CArray_WeatherOnDay daily;
+} IO_Event_IO_ForecastWeather_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_COption_WifiStatus wifi_status;
-} LAYER_SHELL_IO_WifiStatus_Body;
+  IO_COption_WifiStatus wifi_status;
+} IO_Event_IO_WifiStatus_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CString upload_speed;
-  LAYER_SHELL_IO_CString download_speed;
-} LAYER_SHELL_IO_NetworkSpeed_Body;
+  IO_CString upload_speed;
+  IO_CString download_speed;
+} IO_Event_IO_NetworkSpeed_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CArray_Network list;
-} LAYER_SHELL_IO_NetworkList_Body;
+  IO_CArray_Network list;
+} IO_Event_IO_NetworkList_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_CArray_TrayApp list;
-} LAYER_SHELL_IO_Tray_Body;
+  IO_CArray_TrayApp list;
+} IO_Event_IO_Tray_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_Event_Tag tag;
+  IO_Event_Tag tag;
   union {
-    LAYER_SHELL_IO_Memory_Body memory;
-    LAYER_SHELL_IO_CpuUsage_Body cpu_usage;
-    LAYER_SHELL_IO_Time_Body time;
-    LAYER_SHELL_IO_Workspaces_Body workspaces;
-    LAYER_SHELL_IO_Language_Body language;
-    LAYER_SHELL_IO_AppList_Body app_list;
-    LAYER_SHELL_IO_Volume_Body volume;
-    LAYER_SHELL_IO_Mute_Body mute;
-    LAYER_SHELL_IO_CurrentWeather_Body current_weather;
-    LAYER_SHELL_IO_ForecastWeather_Body forecast_weather;
-    LAYER_SHELL_IO_WifiStatus_Body wifi_status;
-    LAYER_SHELL_IO_NetworkSpeed_Body network_speed;
-    LAYER_SHELL_IO_NetworkList_Body network_list;
-    LAYER_SHELL_IO_Tray_Body tray;
+    IO_Event_IO_Memory_Body memory;
+    IO_Event_IO_CpuUsage_Body cpu_usage;
+    IO_Event_IO_Time_Body time;
+    IO_Event_IO_Workspaces_Body workspaces;
+    IO_Event_IO_Language_Body language;
+    IO_Event_IO_AppList_Body app_list;
+    IO_Event_IO_Volume_Body volume;
+    IO_Event_IO_Mute_Body mute;
+    IO_Event_IO_CurrentWeather_Body current_weather;
+    IO_Event_IO_ForecastWeather_Body forecast_weather;
+    IO_Event_IO_WifiStatus_Body wifi_status;
+    IO_Event_IO_NetworkSpeed_Body network_speed;
+    IO_Event_IO_NetworkList_Body network_list;
+    IO_Event_IO_Tray_Body tray;
   };
-} LAYER_SHELL_IO_Event;
+} IO_Event;
 
 typedef enum {
-  HyprlandGoToWorkspace,
-  AppListReset,
-  AppListGoUp,
-  AppListGoDown,
-  AppListSetSearch,
-  AppListExecSelected,
-  SetVolume,
-  SetMuted,
-  Lock,
-  Reboot,
-  Shutdown,
-  Logout,
-  SpawnNetworkEditor,
-  SpawnSystemMonitor,
-} LAYER_SHELL_IO_Command_Tag;
+  IO_Command_HyprlandGoToWorkspace,
+  IO_Command_AppListReset,
+  IO_Command_AppListGoUp,
+  IO_Command_AppListGoDown,
+  IO_Command_AppListSetSearch,
+  IO_Command_AppListExecSelected,
+  IO_Command_SetVolume,
+  IO_Command_SetMuted,
+  IO_Command_Lock,
+  IO_Command_Reboot,
+  IO_Command_Shutdown,
+  IO_Command_Logout,
+  IO_Command_SpawnNetworkEditor,
+  IO_Command_SpawnSystemMonitor,
+} IO_Command_Tag;
 
 typedef struct {
   size_t idx;
-} LAYER_SHELL_IO_HyprlandGoToWorkspace_Body;
+} IO_Command_IO_HyprlandGoToWorkspace_Body;
 
 typedef struct {
   const uint8_t *search;
-} LAYER_SHELL_IO_AppListSetSearch_Body;
+} IO_Command_IO_AppListSetSearch_Body;
 
 typedef struct {
   float volume;
-} LAYER_SHELL_IO_SetVolume_Body;
+} IO_Command_IO_SetVolume_Body;
 
 typedef struct {
   bool muted;
-} LAYER_SHELL_IO_SetMuted_Body;
+} IO_Command_IO_SetMuted_Body;
 
 typedef struct {
-  LAYER_SHELL_IO_Command_Tag tag;
+  IO_Command_Tag tag;
   union {
-    LAYER_SHELL_IO_HyprlandGoToWorkspace_Body hyprland_go_to_workspace;
-    LAYER_SHELL_IO_AppListSetSearch_Body app_list_set_search;
-    LAYER_SHELL_IO_SetVolume_Body set_volume;
-    LAYER_SHELL_IO_SetMuted_Body set_muted;
+    IO_Command_IO_HyprlandGoToWorkspace_Body hyprland_go_to_workspace;
+    IO_Command_IO_AppListSetSearch_Body app_list_set_search;
+    IO_Command_IO_SetVolume_Body set_volume;
+    IO_Command_IO_SetMuted_Body set_muted;
   };
-} LAYER_SHELL_IO_Command;
+} IO_Command;
 
-void layer_shell_io_subscribe(void (*f)(const LAYER_SHELL_IO_Event*));
+void layer_shell_io_subscribe(void (*f)(const IO_Event*));
 
 void layer_shell_io_init(void);
 
@@ -333,7 +333,7 @@ void layer_shell_io_spawn_thread(void);
 
 void layer_shell_io_poll_events(void);
 
-void layer_shell_io_publish(LAYER_SHELL_IO_Command command);
+void layer_shell_io_publish(IO_Command command);
 
 void layer_shell_io_on_sigusr1(void);
 

@@ -20,9 +20,9 @@ static GtkWidget *_(init)(void) {
   return _(widget);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case Time: {
+  case IO_Event_Time: {
     gtk_label_set_label(GTK_LABEL(_(label)), event->time.time);
     gtk_widget_set_tooltip_text(_(label), event->time.date);
     break;

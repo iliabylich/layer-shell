@@ -48,19 +48,19 @@ static void _(toggle)(void) { flip_window_visibility(_(window)); }
 
 static void _(lock)(void) {
   _(toggle)();
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = Lock});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_Lock});
 }
 static void _(reboot)(void) {
   _(toggle)();
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = Reboot});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_Reboot});
 }
 static void _(shutdown)(void) {
   _(toggle)();
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = Shutdown});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_Shutdown});
 }
 static void _(logout)(void) {
   _(toggle)();
-  layer_shell_io_publish((LAYER_SHELL_IO_Command){.tag = Logout});
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_Logout});
 }
 
 static void _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
@@ -70,9 +70,9 @@ static void _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,
   }
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case ToggleSessionScreen: {
+  case IO_Event_ToggleSessionScreen: {
     _(toggle)();
     break;
   }

@@ -20,9 +20,9 @@ static GtkWidget *_(init)(void) {
   return _(widget);
 }
 
-static void _(on_io_event)(const LAYER_SHELL_IO_Event *event) {
+static void _(on_io_event)(const IO_Event *event) {
   switch (event->tag) {
-  case Language: {
+  case IO_Event_Language: {
     if (strcmp(event->language.lang, "English (US)") == 0) {
       gtk_label_set_label(GTK_LABEL(_(label)), "EN");
     } else if (strcmp(event->language.lang, "Polish") == 0) {

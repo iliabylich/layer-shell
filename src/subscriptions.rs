@@ -5,11 +5,11 @@ pub(crate) struct Subscriptions;
 
 type F = extern "C" fn(*const Event);
 
-static SUBSCRIPTIONS0: LazyLock<Mutex<Vec<F>>> = LazyLock::new(|| Mutex::new(vec![]));
+static SUBSCRIPTIONS: LazyLock<Mutex<Vec<F>>> = LazyLock::new(|| Mutex::new(vec![]));
 
 impl Subscriptions {
     pub(crate) fn add(f: F) {
-        let mut subscriptions = SUBSCRIPTIONS0
+        let mut subscriptions = SUBSCRIPTIONS
             .lock()
             .unwrap_or_else(|_| fatal!("lock is poisoned"));
         subscriptions.push(f);
@@ -17,7 +17,7 @@ impl Subscriptions {
 
     pub(crate) fn call_each(event: *const Event) {
         let subscriptions = {
-            SUBSCRIPTIONS0
+            SUBSCRIPTIONS
                 .lock()
                 .unwrap_or_else(|_| fatal!("lock is poisoned"))
                 .clone()
