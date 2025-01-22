@@ -1,6 +1,6 @@
 use crate::{
     lock_channel::LockChannel,
-    modules::{app_list, hyprland, pipewire},
+    modules::{app_list, hyprland, pipewire, tray},
 };
 use std::sync::LazyLock;
 
@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 #[repr(C)]
 pub enum Command {
     HyprlandGoToWorkspace { idx: usize },
+
     AppListReset,
     AppListGoUp,
     AppListGoDown,
@@ -16,10 +17,13 @@ pub enum Command {
 
     SetVolume { volume: f32 },
     SetMuted { muted: bool },
+
     Lock,
     Reboot,
     Shutdown,
     Logout,
+
+    TriggerTray { uuid: *const u8 },
 
     SpawnNetworkEditor,
     SpawnSystemMonitor,
@@ -43,18 +47,23 @@ impl Command {
         use Command::*;
 
         match self {
-            SetVolume { volume } => pipewire::set_volume(volume),
-            SetMuted { muted } => pipewire::set_muted(muted),
             HyprlandGoToWorkspace { idx } => hyprland::go_to_workspace(idx),
+
             AppListGoUp => app_list::go_up(),
             AppListGoDown => app_list::go_down(),
             AppListReset => app_list::reset(),
             AppListExecSelected => app_list::exec_selected(),
             AppListSetSearch { search } => app_list::set_search(search),
+
+            SetVolume { volume } => pipewire::set_volume(volume),
+            SetMuted { muted } => pipewire::set_muted(muted),
+
             Lock => lock(),
             Reboot => reboot(),
             Shutdown => shutdown(),
             Logout => logout(),
+
+            TriggerTray { uuid } => tray::trigger(uuid),
 
             SpawnNetworkEditor => spawn_network_editor(),
             SpawnSystemMonitor => spawn_system_monitor(),

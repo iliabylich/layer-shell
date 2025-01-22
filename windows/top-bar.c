@@ -7,6 +7,7 @@
 #include "../widgets/session.h"
 #include "../widgets/sound.h"
 #include "../widgets/time.h"
+#include "../widgets/tray.h"
 #include "../widgets/weather.h"
 #include "../widgets/workspaces.h"
 #include <gtk/gtk.h>
@@ -32,6 +33,7 @@ static void _(init)(void) {
 
   gtk_box_append(GTK_BOX(left), WORKSPACES_WIDGET.init());
 
+  gtk_box_append(GTK_BOX(right), TRAY_WIDGET.init());
   gtk_box_append(GTK_BOX(right), HTOP_WIDGET.init());
   gtk_box_append(GTK_BOX(right), WEATHER_WIDGET.init());
   gtk_box_append(GTK_BOX(right), LANGUAGE_WIDGET.init());
@@ -57,6 +59,7 @@ static void _(activate)(GApplication *app) {
   gtk_layer_set_namespace(_(window), "LayerShell/TopBar");
 
   WORKSPACES_WIDGET.activate();
+  TRAY_WIDGET.activate();
   HTOP_WIDGET.activate();
   WEATHER_WIDGET.activate();
   LANGUAGE_WIDGET.activate();

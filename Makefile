@@ -41,7 +41,8 @@ OBJS = utils/css.o \
 		widgets/network.o \
 		widgets/memory.o \
 		widgets/time.o \
-		widgets/session.o
+		widgets/session.o \
+		widgets/tray.o
 
 %.o: %.c %.h bindings.h
 	$(CC) -c $(CFLAGS) $< -o $@

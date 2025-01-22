@@ -126,8 +126,8 @@ pub struct TrayApp {
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct TrayItem {
-    pub id: i32,
     pub label: CString,
+    pub uuid: CString,
 }
 
 #[derive(Clone)]

@@ -1,5 +1,5 @@
 use crate::{
-    dbus::gen::dbus_menu::ComCanonicalDbusmenu,
+    dbus::{gen::dbus_menu::ComCanonicalDbusmenu, tray::UUID},
     event::{TrayApp, TrayIcon, TrayItem},
 };
 use anyhow::{Context as _, Result};
@@ -34,12 +34,23 @@ impl DBusMenu {
 
         let mut items = vec![];
 
-        visit_root(raw_tree, &mut items);
+        visit_root(raw_tree, &mut items, &self.service, &self.path);
 
         Ok(TrayApp {
             items: items.into(),
             icon: TrayIcon::None,
         })
+    }
+
+    pub(crate) fn event(&self, conn: &Connection, id: i32) -> Result<()> {
+        self.proxy(conn)
+            .event(
+                id,
+                "clicked",
+                Variant(Box::new(0i32) as Box<dyn RefArg>),
+                10118055,
+            )
+            .context("failed to call Event")
     }
 }
 
@@ -49,25 +60,42 @@ type DBusInternalTree = (
     Vec<dbus::arg::Variant<Box<dyn dbus::arg::RefArg + 'static>>>,
 );
 
-fn visit_root(root: DBusInternalTree, out: &mut Vec<TrayItem>) {
+fn visit_root(root: DBusInternalTree, out: &mut Vec<TrayItem>, service: &str, path: &str) {
     let (_root_id, _props, children) = root;
 
-    visit_children(children, out);
+    visit_children(children, out, service, path);
 }
 
-fn visit_children(children: Vec<Variant<Box<dyn RefArg>>>, out: &mut Vec<TrayItem>) {
+fn visit_children(
+    children: Vec<Variant<Box<dyn RefArg>>>,
+    out: &mut Vec<TrayItem>,
+    service: &str,
+    path: &str,
+) {
     for child in children {
-        visit_child(child, out);
+        visit_child(child, out, service, path);
     }
 }
 
-fn visit_child(child: Variant<Box<dyn RefArg>>, out: &mut Vec<TrayItem>) {
+fn visit_child(
+    child: Variant<Box<dyn RefArg>>,
+    out: &mut Vec<TrayItem>,
+    service: &str,
+    path: &str,
+) {
     if let Some(mut iter) = child.as_iter() {
         if let Some(child) = iter.next() {
             if let Some(mut iter) = child.as_iter() {
                 let triplet = iter.next().zip(iter.next()).zip(iter.next());
                 if let Some(((v1, v2), v3)) = triplet {
-                    visit_triplet(v1.box_clone(), v2.box_clone(), v3.box_clone(), out);
+                    visit_triplet(
+                        v1.box_clone(),
+                        v2.box_clone(),
+                        v3.box_clone(),
+                        out,
+                        service,
+                        path,
+                    );
                 }
             }
         }
@@ -79,12 +107,14 @@ fn visit_triplet(
     v2: Box<dyn RefArg>,
     v3: Box<dyn RefArg>,
     out: &mut Vec<TrayItem>,
+    service: &str,
+    path: &str,
 ) {
-    if let Some(id) = cast(&v1).copied() {
+    if let Some(id) = cast::<i32>(&v1).copied() {
         if let Some(props) = Props::parse(v2) {
             out.push(TrayItem {
                 label: props.label.into(),
-                id,
+                uuid: UUID::encode(service, path, id).into(),
             });
 
             if let Some(iter) = v3.as_iter() {

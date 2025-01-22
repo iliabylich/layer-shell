@@ -2,7 +2,7 @@
 #include "../bindings.h"
 #include <gtk/gtk.h>
 
-#define _(name) memory_widget_ns_##name
+#define _(name) time_widget_ns_##name
 
 static GtkWidget *_(widget);
 static GtkWidget *_(label);

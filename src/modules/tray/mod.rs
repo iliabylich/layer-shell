@@ -1,14 +1,15 @@
 use crate::{
     dbus::{
         register_org_kde_status_notifier_watcher,
-        tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem},
+        tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem, UUID},
     },
+    lock_channel::LockChannel,
     modules::tray::watcher::{Watcher, WatcherData},
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, channel::MatchingReceiver as _, message::MatchRule};
 use dbus_crossroads::Crossroads;
-use std::time::Duration;
+use std::{sync::LazyLock, time::Duration};
 
 mod state;
 mod watcher;
@@ -20,6 +21,18 @@ pub(crate) fn setup() {
         }
     });
 }
+
+pub(crate) fn trigger(uuid: *const u8) {
+    let uuid = unsafe { std::ffi::CStr::from_ptr(uuid.cast()) };
+    let Ok(uuid) = uuid.to_str() else {
+        log::error!("Tray: invalid uuid");
+        return;
+    };
+
+    CHANNEL.emit(uuid.to_string());
+}
+
+static CHANNEL: LazyLock<LockChannel<String>> = LazyLock::new(LockChannel::new);
 
 fn try_setup() -> Result<()> {
     let conn = Connection::new_session()?;
@@ -58,7 +71,15 @@ fn try_setup() -> Result<()> {
     );
 
     loop {
-        conn.process(Duration::from_secs(1))?;
+        while let Some(uuid) = CHANNEL.try_recv() {
+            if let Ok((service, path, id)) = UUID::decode(uuid) {
+                if let Err(err) = DBusMenu::new(service, path).event(&conn, id) {
+                    log::error!("{:?}", err);
+                }
+            }
+        }
+
+        conn.process(Duration::from_millis(200))?;
 
         while let Ok(data) = rx.try_recv() {
             let (service, item_path, dbus_menu_path) = match data {
@@ -78,7 +99,7 @@ fn try_setup() -> Result<()> {
                 ),
             };
 
-            let dbus_menu = DBusMenu::new(&service, dbus_menu_path);
+            let dbus_menu = DBusMenu::new(&service, &dbus_menu_path);
 
             match dbus_menu.get_layout(&conn) {
                 Ok(mut app) => {

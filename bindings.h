@@ -127,8 +127,8 @@ typedef struct {
 } IO_CArray_Network;
 
 typedef struct {
-  int32_t id;
   IO_CString label;
+  IO_CString uuid;
 } IO_TrayItem;
 
 typedef struct {
@@ -295,6 +295,7 @@ typedef enum {
   IO_Command_Reboot,
   IO_Command_Shutdown,
   IO_Command_Logout,
+  IO_Command_TriggerTray,
   IO_Command_SpawnNetworkEditor,
   IO_Command_SpawnSystemMonitor,
 } IO_Command_Tag;
@@ -316,12 +317,17 @@ typedef struct {
 } IO_Command_IO_SetMuted_Body;
 
 typedef struct {
+  const uint8_t *uuid;
+} IO_Command_IO_TriggerTray_Body;
+
+typedef struct {
   IO_Command_Tag tag;
   union {
     IO_Command_IO_HyprlandGoToWorkspace_Body hyprland_go_to_workspace;
     IO_Command_IO_AppListSetSearch_Body app_list_set_search;
     IO_Command_IO_SetVolume_Body set_volume;
     IO_Command_IO_SetMuted_Body set_muted;
+    IO_Command_IO_TriggerTray_Body trigger_tray;
   };
 } IO_Command;
 
