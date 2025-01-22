@@ -25,6 +25,22 @@ separator.horizontal {
     margin-right: 10px;
 }
 
+popover {
+    border: 2px solid var(--theme-accent-color);
+    background-color: var(--theme-solid-bg-color);
+}
+
+popover modelbutton {
+    padding: 20px;
+    border-bottom: 1px solid var(--theme-accent-color);
+    padding: 10px;
+}
+
+popover modelbutton:hover {
+    background-color: var(--theme-solid-bg-color-hover);
+}
+
+
 .main-wrapper {
     padding: 10px;
     min-height: 36px;
@@ -104,6 +120,10 @@ tooltip {
 
 .clock {
     min-width: 50px;
+}
+
+.widget.memory label {
+    min-width: 100px;
 }
 
 /* network */

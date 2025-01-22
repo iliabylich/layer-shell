@@ -88,10 +88,12 @@ static void _(set_tray_item)(icon_with_menu_t *icon_with_menu, IO_TrayApp app) {
   }
 
   icon_with_menu->menu = gtk_popover_menu_new_from_model(G_MENU_MODEL(menu));
+  gtk_popover_set_has_arrow(GTK_POPOVER(icon_with_menu->menu), FALSE);
   gtk_widget_set_parent(icon_with_menu->menu, icon_with_menu->icon);
 
   GtkGesture *gesture = gtk_gesture_click_new();
-  gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(gesture), 3);
+  gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(gesture),
+                                3 /* right click */);
   gtk_widget_add_controller(icon_with_menu->icon,
                             GTK_EVENT_CONTROLLER(gesture));
 
