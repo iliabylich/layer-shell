@@ -250,6 +250,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dbus-crossroads"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a4c83437187544ba5142427746835061b330446ca8902eabd70e4afb8f76de0"
+dependencies = [
+ "dbus",
+]
+
+[[package]]
 name = "displaydoc"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -657,6 +666,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "dbus",
+ "dbus-crossroads",
  "log",
  "paste",
  "pipewire",

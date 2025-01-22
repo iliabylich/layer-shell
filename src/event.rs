@@ -51,6 +51,9 @@ pub enum Event {
     NetworkList {
         list: CArray<Network>,
     },
+    Tray {
+        list: CArray<TrayApp>,
+    },
     ToggleLauncher,
     ToggleSessionScreen,
 }
@@ -111,4 +114,43 @@ pub struct Network {
 pub struct WifiStatus {
     pub ssid: CString,
     pub strength: u8,
+}
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct TrayApp {
+    pub items: CArray<TrayItem>,
+    pub icon: TrayIcon,
+}
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct TrayItem {
+    pub id: i32,
+    pub label: CString,
+}
+
+#[derive(Clone)]
+#[repr(C)]
+pub enum TrayIcon {
+    Path { path: CString },
+    Name { name: CString },
+    PixmapVariant { w: u32, h: u32, bytes: CArray<u8> },
+    None,
+}
+
+impl std::fmt::Debug for TrayIcon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TrayIcon::Path { path } => f.debug_struct("TrayIconPath").field("path", path).finish(),
+            TrayIcon::Name { name } => f.debug_struct("TrayIconName").field("name", name).finish(),
+            TrayIcon::PixmapVariant { w, h, bytes } => f
+                .debug_struct("TrayIconPixmapVariant")
+                .field("w", w)
+                .field("h", h)
+                .field("bytes", &format!("[...{} bytes]", bytes.len))
+                .finish(),
+            TrayIcon::None => write!(f, "None"),
+        }
+    }
 }

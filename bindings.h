@@ -126,6 +126,61 @@ typedef struct {
   size_t len;
 } LAYER_SHELL_IO_CArray_Network;
 
+typedef struct {
+  int32_t id;
+  LAYER_SHELL_IO_CString label;
+} LAYER_SHELL_IO_TrayItem;
+
+typedef struct {
+  LAYER_SHELL_IO_TrayItem *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_TrayItem;
+
+typedef struct {
+  uint8_t *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_u8;
+
+typedef enum {
+  Path,
+  Name,
+  PixmapVariant,
+  None,
+} LAYER_SHELL_IO_TrayIcon_Tag;
+
+typedef struct {
+  LAYER_SHELL_IO_CString path;
+} LAYER_SHELL_IO_Path_Body;
+
+typedef struct {
+  LAYER_SHELL_IO_CString name;
+} LAYER_SHELL_IO_Name_Body;
+
+typedef struct {
+  uint32_t w;
+  uint32_t h;
+  LAYER_SHELL_IO_CArray_u8 bytes;
+} LAYER_SHELL_IO_PixmapVariant_Body;
+
+typedef struct {
+  LAYER_SHELL_IO_TrayIcon_Tag tag;
+  union {
+    LAYER_SHELL_IO_Path_Body path;
+    LAYER_SHELL_IO_Name_Body name;
+    LAYER_SHELL_IO_PixmapVariant_Body pixmap_variant;
+  };
+} LAYER_SHELL_IO_TrayIcon;
+
+typedef struct {
+  LAYER_SHELL_IO_CArray_TrayItem items;
+  LAYER_SHELL_IO_TrayIcon icon;
+} LAYER_SHELL_IO_TrayApp;
+
+typedef struct {
+  LAYER_SHELL_IO_TrayApp *ptr;
+  size_t len;
+} LAYER_SHELL_IO_CArray_TrayApp;
+
 typedef enum {
   Memory,
   CpuUsage,
@@ -140,6 +195,7 @@ typedef enum {
   WifiStatus,
   NetworkSpeed,
   NetworkList,
+  Tray,
   ToggleLauncher,
   ToggleSessionScreen,
 } LAYER_SHELL_IO_Event_Tag;
@@ -203,6 +259,10 @@ typedef struct {
 } LAYER_SHELL_IO_NetworkList_Body;
 
 typedef struct {
+  LAYER_SHELL_IO_CArray_TrayApp list;
+} LAYER_SHELL_IO_Tray_Body;
+
+typedef struct {
   LAYER_SHELL_IO_Event_Tag tag;
   union {
     LAYER_SHELL_IO_Memory_Body memory;
@@ -218,6 +278,7 @@ typedef struct {
     LAYER_SHELL_IO_WifiStatus_Body wifi_status;
     LAYER_SHELL_IO_NetworkSpeed_Body network_speed;
     LAYER_SHELL_IO_NetworkList_Body network_list;
+    LAYER_SHELL_IO_Tray_Body tray;
   };
 } LAYER_SHELL_IO_Event;
 

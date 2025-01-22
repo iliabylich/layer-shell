@@ -24,6 +24,7 @@ clap = { version = "4.5", default-features = false, features = [
 ] }
 clap_complete = "4.5"
 dbus = "0.9"
+dbus-crossroads = "0.5"
 pipewire = "0.8"
 pretty_env_logger = "0.5"
 threadpool = "1.8.1"

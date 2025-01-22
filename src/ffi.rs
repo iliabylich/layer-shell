@@ -61,6 +61,14 @@ impl<T> From<Vec<T>> for CArray<T> {
     }
 }
 
+impl<T> From<CArray<T>> for Vec<T> {
+    fn from(array: CArray<T>) -> Self {
+        let vec = unsafe { Vec::from_raw_parts(array.ptr, array.len, array.len) };
+        std::mem::forget(array);
+        vec
+    }
+}
+
 impl<T> Drop for CArray<T> {
     fn drop(&mut self) {
         unsafe {
@@ -78,6 +86,18 @@ where
         f.debug_list().entries(&vec).finish()?;
         std::mem::forget(vec);
         Ok(())
+    }
+}
+
+impl<T> Clone for CArray<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        let vec = unsafe { Vec::from_raw_parts(self.ptr, self.len, self.len) };
+        let clone = vec.clone();
+        std::mem::forget(vec);
+        Self::from(clone)
     }
 }
 
