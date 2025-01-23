@@ -13,10 +13,13 @@
 }
 
 * {
-    font-size: 12px;
-    font-weight: normal;
     color: var(--theme-text-color);
     text-decoration: none;
+
+    font-family: "Inter Variable", serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 12px;
 }
 
 separator.horizontal {

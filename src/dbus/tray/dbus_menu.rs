@@ -1,7 +1,4 @@
-use crate::{
-    dbus::{gen::dbus_menu::ComCanonicalDbusmenu, tray::UUID},
-    event::{TrayApp, TrayIcon, TrayItem},
-};
+use crate::dbus::{gen::dbus_menu::ComCanonicalDbusmenu, tray::UUID};
 use anyhow::{Context as _, Result};
 use dbus::{
     arg::{cast, RefArg, Variant},
@@ -12,6 +9,12 @@ use std::time::Duration;
 pub(crate) struct DBusMenu {
     service: String,
     path: String,
+}
+
+pub(crate) struct DBusMenuItem {
+    pub(crate) label: String,
+    pub(crate) disabled: bool,
+    pub(crate) uuid: String,
 }
 
 impl DBusMenu {
@@ -26,7 +29,7 @@ impl DBusMenu {
         Proxy::new(&self.service, &self.path, Duration::from_millis(5000), conn)
     }
 
-    pub(crate) fn get_layout(&self, conn: &Connection) -> Result<TrayApp> {
+    pub(crate) fn get_layout(&self, conn: &Connection) -> Result<Vec<DBusMenuItem>> {
         let (_, raw_tree) = self
             .proxy(conn)
             .get_layout(0, 10, vec!["label", "enabled", "visible"])
@@ -36,10 +39,7 @@ impl DBusMenu {
 
         visit_root(raw_tree, &mut items, &self.service, &self.path);
 
-        Ok(TrayApp {
-            items: items.into(),
-            icon: TrayIcon::None,
-        })
+        Ok(items)
     }
 
     pub(crate) fn event(&self, conn: &Connection, id: i32) -> Result<()> {
@@ -60,7 +60,7 @@ type DBusInternalTree = (
     Vec<dbus::arg::Variant<Box<dyn dbus::arg::RefArg + 'static>>>,
 );
 
-fn visit_root(root: DBusInternalTree, out: &mut Vec<TrayItem>, service: &str, path: &str) {
+fn visit_root(root: DBusInternalTree, out: &mut Vec<DBusMenuItem>, service: &str, path: &str) {
     let (_root_id, _props, children) = root;
 
     visit_children(children, out, service, path);
@@ -68,7 +68,7 @@ fn visit_root(root: DBusInternalTree, out: &mut Vec<TrayItem>, service: &str, pa
 
 fn visit_children(
     children: Vec<Variant<Box<dyn RefArg>>>,
-    out: &mut Vec<TrayItem>,
+    out: &mut Vec<DBusMenuItem>,
     service: &str,
     path: &str,
 ) {
@@ -79,7 +79,7 @@ fn visit_children(
 
 fn visit_child(
     child: Variant<Box<dyn RefArg>>,
-    out: &mut Vec<TrayItem>,
+    out: &mut Vec<DBusMenuItem>,
     service: &str,
     path: &str,
 ) {
@@ -106,13 +106,13 @@ fn visit_triplet(
     v1: Box<dyn RefArg>,
     v2: Box<dyn RefArg>,
     v3: Box<dyn RefArg>,
-    out: &mut Vec<TrayItem>,
+    out: &mut Vec<DBusMenuItem>,
     service: &str,
     path: &str,
 ) {
     if let Some(id) = cast::<i32>(&v1).copied() {
         if let Some(props) = Props::parse(v2) {
-            out.push(TrayItem {
+            out.push(DBusMenuItem {
                 label: props.label.into(),
                 disabled: !props.enabled,
                 uuid: UUID::encode(service, path, id).into(),

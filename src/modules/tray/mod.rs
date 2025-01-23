@@ -6,6 +6,7 @@ use crate::{
         OrgKdeStatusNotifierItemNewOverlayIcon, OrgKdeStatusNotifierItemNewStatus,
         OrgKdeStatusNotifierItemNewTitle, OrgKdeStatusNotifierItemNewToolTip,
     },
+    event::{TrayApp, TrayItem},
     modules::tray::{
         channel::{Command, CHANNEL},
         item::Item,
@@ -153,9 +154,21 @@ fn handle_command(conn: &Connection, command: Command) -> Result<()> {
 fn reload_tray_app(conn: &Connection, item: Item) -> Result<()> {
     let dbus_menu = DBusMenu::new(&item.service, &item.menu_path);
 
-    let mut app = dbus_menu.get_layout(conn)?;
+    let items = dbus_menu.get_layout(conn)?;
     let status_notifier_item = StatusNotifierItem::new(&item.service, &item.path);
-    app.icon = status_notifier_item.any_icon(conn);
+
+    let app = TrayApp {
+        items: items
+            .into_iter()
+            .map(|item| TrayItem {
+                label: item.label.into(),
+                disabled: item.disabled,
+                uuid: item.uuid.into(),
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        icon: status_notifier_item.any_icon(conn),
+    };
 
     state::State::app_added(item, app);
 
