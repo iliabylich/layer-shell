@@ -11,7 +11,6 @@
 #include <glib-object.h>
 #include <glib-unix.h>
 #include <gtk/gtk.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -48,8 +47,6 @@ void on_app_activate(GApplication *app) {
 
 int main(void) {
   layer_shell_io_init();
-
-  g_unix_signal_add(SIGUSR1, G_SOURCE_FUNC(layer_shell_io_on_sigusr1), NULL);
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
 

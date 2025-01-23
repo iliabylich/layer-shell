@@ -1,13 +1,11 @@
 #![expect(clippy::type_complexity)]
 #![expect(clippy::upper_case_acronyms)]
 
-mod args;
 mod command;
 mod dbus;
 mod event;
 mod fatal;
 mod ffi;
-mod ipc;
 mod lock_channel;
 mod modules;
 mod scheduler;
@@ -16,8 +14,6 @@ mod subscriptions;
 pub use command::Command;
 pub use event::Event;
 
-use args::parse_args;
-use ipc::IPC;
 use subscriptions::Subscriptions;
 
 #[no_mangle]
@@ -28,8 +24,6 @@ pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
 #[no_mangle]
 pub extern "C" fn layer_shell_io_init() {
     pretty_env_logger::init();
-    parse_args();
-    IPC::set_current_process_as_main();
 }
 
 #[no_mangle]

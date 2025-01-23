@@ -342,6 +342,4 @@ void layer_shell_io_poll_events(void);
 
 void layer_shell_io_publish(IO_Command command);
 
-void layer_shell_io_on_sigusr1(void);
-
 #endif  /* BINDINGS_H */

@@ -18,7 +18,7 @@ LDFLAGS += -L$(RUST_TARGET_DIR) -llayer_shell_io
 LDFLAGS += -Wl,-rpath='$$ORIGIN/$(RUST_TARGET_DIR)'
 
 run: main
-	./main start
+	./main
 
 SRC=$(wildcard *.c)
 HDRS=$(wildcard *.h)
