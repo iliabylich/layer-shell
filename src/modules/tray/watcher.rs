@@ -3,17 +3,11 @@ use std::sync::mpsc::Sender;
 
 #[derive(Debug)]
 pub(crate) struct Watcher {
-    sender: Sender<WatcherData>,
-}
-
-#[derive(Debug)]
-pub(crate) enum WatcherData {
-    StatusNotifierItem { service: String, path: String },
-    CanonicalDBusMenu { service: String },
+    sender: Sender<(String, String)>,
 }
 
 impl Watcher {
-    pub(crate) fn new(sender: Sender<WatcherData>) -> Self {
+    pub(crate) fn new(sender: Sender<(String, String)>) -> Self {
         Self { sender }
     }
 }
@@ -24,16 +18,8 @@ impl OrgKdeStatusNotifierWatcher for Watcher {
         path: String,
         ctx: &dbus_crossroads::Context,
     ) -> Result<(), dbus::MethodErr> {
-        if let Some(service) = ctx.message().sender() {
-            let service = service.to_string();
-
-            let data = if service == path {
-                WatcherData::CanonicalDBusMenu { service }
-            } else {
-                WatcherData::StatusNotifierItem { service, path }
-            };
-
-            if let Err(err) = self.sender.send(data) {
+        if let Some(service) = ctx.message().sender().map(|s| s.to_string()) {
+            if let Err(err) = self.sender.send((service, path)) {
                 log::error!("channel closed: {:?}", err);
             }
         }

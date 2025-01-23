@@ -4,7 +4,7 @@ use crate::{
         tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem, UUID},
     },
     lock_channel::LockChannel,
-    modules::tray::watcher::{Watcher, WatcherData},
+    modules::tray::watcher::Watcher,
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, channel::MatchingReceiver as _, message::MatchRule};
@@ -81,29 +81,27 @@ fn try_setup() -> Result<()> {
 
         conn.process(Duration::from_millis(200))?;
 
-        while let Ok(data) = rx.try_recv() {
-            let (service, item_path, dbus_menu_path) = match data {
-                WatcherData::StatusNotifierItem { service, path } => {
-                    match StatusNotifierItem::new(&service, &path).menu(&conn) {
-                        Ok(dbus_menu_path) => (service, path, dbus_menu_path.to_string()),
-                        Err(err) => {
-                            log::error!("{:?}", err);
-                            continue;
-                        }
+        while let Ok((service, mut path)) = rx.try_recv() {
+            let dbus_menu_path;
+
+            if service == path {
+                path = String::from("/StatusNotifierItem");
+                dbus_menu_path = String::from("/com/canonical/dbusmenu")
+            } else {
+                match StatusNotifierItem::new(&service, &path).menu(&conn) {
+                    Ok(menu_path) => dbus_menu_path = menu_path.to_string(),
+                    Err(err) => {
+                        log::error!("{:?}", err);
+                        continue;
                     }
                 }
-                WatcherData::CanonicalDBusMenu { service } => (
-                    service,
-                    String::from("/StatusNotifierItem"),
-                    String::from("/com/canonical/dbusmenu"),
-                ),
-            };
+            }
 
             let dbus_menu = DBusMenu::new(&service, &dbus_menu_path);
 
             match dbus_menu.get_layout(&conn) {
                 Ok(mut app) => {
-                    let status_notifier_item = StatusNotifierItem::new(&service, item_path);
+                    let status_notifier_item = StatusNotifierItem::new(&service, &path);
                     app.icon = status_notifier_item.any_icon(&conn);
 
                     state::State::app_added(service, app)
