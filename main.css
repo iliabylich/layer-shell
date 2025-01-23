@@ -27,19 +27,22 @@ separator.horizontal {
 
 popover {
     border: 2px solid var(--theme-accent-color);
-    background-color: var(--theme-solid-bg-color);
+    background-color: var(--theme-bg-color);
 }
 
 popover modelbutton {
-    padding: 20px;
     border-bottom: 1px solid var(--theme-accent-color);
     padding: 10px;
+}
+
+popover modelbutton:disabled label {
+    text-decoration: line-through;
+    color: var(--theme-solid-bg-color);
 }
 
 popover modelbutton:hover {
     background-color: var(--theme-solid-bg-color-hover);
 }
-
 
 .main-wrapper {
     padding: 10px;

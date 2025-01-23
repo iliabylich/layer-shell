@@ -131,16 +131,13 @@ fn visit_triplet(
 struct Props {
     label: String,
     enabled: bool,
-    visible: bool,
 }
 
 impl Props {
     fn parse(props: Box<dyn RefArg>) -> Option<Self> {
-        let mut out = Self {
-            label: String::from("<none>"),
-            enabled: true,
-            visible: true,
-        };
+        let mut label = None;
+        let mut enabled = true;
+        let mut visible = true;
 
         let mut iter = match props.as_iter() {
             Some(iter) => iter,
@@ -159,17 +156,17 @@ impl Props {
             if let Some(key) = key.as_str() {
                 match key {
                     "label" => match value.as_str() {
-                        Some(label) => out.label = label.to_string(),
+                        Some(value) => label = Some(value.to_string()),
                         None => {
                             log::error!("DBus menu item has no name, skipping");
                             return None;
                         }
                     },
                     "visible" => {
-                        out.visible = value.as_i64().map(|v| v != 0).unwrap_or(true);
+                        visible = value.as_i64().map(|v| v != 0).unwrap_or(true);
                     }
                     "enabled" => {
-                        out.enabled = value.as_i64().map(|v| v != 0).unwrap_or(true);
+                        enabled = value.as_i64().map(|v| v != 0).unwrap_or(true);
                     }
                     _ => {
                         log::error!("Unsupported key: {key}");
@@ -179,6 +176,13 @@ impl Props {
             }
         }
 
-        Some(out)
+        if !visible {
+            return None;
+        }
+
+        Some(Self {
+            label: label?,
+            enabled,
+        })
     }
 }

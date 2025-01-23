@@ -81,8 +81,12 @@ static void _(set_tray_item)(icon_with_menu_t *icon_with_menu, IO_TrayApp app) {
 
   for (size_t i = 0; i < app.items.len; i++) {
     GMenuItem *item = g_menu_item_new(app.items.ptr[i].label, NULL);
+    const char *action = "tray.clicked";
+    if (app.items.ptr[i].disabled) {
+      action = "tray.noop";
+    }
     g_menu_item_set_action_and_target_value(
-        item, "tray.clicked", g_variant_new_string(app.items.ptr[i].uuid));
+        item, action, g_variant_new_string(app.items.ptr[i].uuid));
     g_menu_append_item(menu, item);
     g_object_unref(item);
   }
