@@ -1,16 +1,10 @@
-use crate::dbus::OrgKdeStatusNotifierWatcher;
-use std::sync::mpsc::Sender;
+use crate::{
+    dbus::OrgKdeStatusNotifierWatcher,
+    modules::tray::channel::{Command, CHANNEL},
+};
 
 #[derive(Debug)]
-pub(crate) struct Watcher {
-    sender: Sender<(String, String)>,
-}
-
-impl Watcher {
-    pub(crate) fn new(sender: Sender<(String, String)>) -> Self {
-        Self { sender }
-    }
-}
+pub(crate) struct Watcher;
 
 impl OrgKdeStatusNotifierWatcher for Watcher {
     fn register_status_notifier_item(
@@ -19,9 +13,7 @@ impl OrgKdeStatusNotifierWatcher for Watcher {
         ctx: &dbus_crossroads::Context,
     ) -> Result<(), dbus::MethodErr> {
         if let Some(service) = ctx.message().sender().map(|s| s.to_string()) {
-            if let Err(err) = self.sender.send((service, path)) {
-                log::error!("channel closed: {:?}", err);
-            }
+            CHANNEL.emit(Command::ServiceAdded { service, path });
         }
 
         Ok(())

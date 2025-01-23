@@ -3,14 +3,17 @@ use crate::{
         register_org_kde_status_notifier_watcher,
         tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem, UUID},
     },
-    lock_channel::LockChannel,
-    modules::tray::watcher::Watcher,
+    modules::tray::{
+        channel::{Command, CHANNEL},
+        watcher::Watcher,
+    },
 };
 use anyhow::{Context as _, Result};
-use dbus::{blocking::Connection, channel::MatchingReceiver as _, message::MatchRule};
+use dbus::{blocking::Connection, channel::MatchingReceiver as _, message::SignalArgs};
 use dbus_crossroads::Crossroads;
-use std::{sync::LazyLock, time::Duration};
+use std::time::Duration;
 
+mod channel;
 mod state;
 mod watcher;
 
@@ -29,21 +32,18 @@ pub(crate) fn trigger(uuid: *const u8) {
         return;
     };
 
-    CHANNEL.emit(uuid.to_string());
+    CHANNEL.emit(Command::TriggerItem {
+        uuid: uuid.to_string(),
+    });
 }
-
-static CHANNEL: LazyLock<LockChannel<String>> = LazyLock::new(LockChannel::new);
 
 fn try_setup() -> Result<()> {
     let conn = Connection::new_session()?;
     conn.add_match(
-        MatchRule::new_signal(
-            <DBusNameOwnerChanged as dbus::message::SignalArgs>::INTERFACE,
-            <DBusNameOwnerChanged as dbus::message::SignalArgs>::NAME,
-        ),
-        |signal: DBusNameOwnerChanged, _conn, _message| {
-            if signal.is_remove() {
-                state::State::app_removed(signal.name);
+        DBusNameOwnerChanged::match_rule(None, None),
+        |e: DBusNameOwnerChanged, _, _| {
+            if e.name == e.old_owner && e.new_owner.is_empty() {
+                CHANNEL.emit(Command::ServiceRemoved { service: e.name });
             }
             true
         },
@@ -55,10 +55,7 @@ fn try_setup() -> Result<()> {
     let mut cr = Crossroads::new();
     let token = register_org_kde_status_notifier_watcher::<Watcher>(&mut cr);
 
-    let (tx, rx) = std::sync::mpsc::channel();
-    let watcher = Watcher::new(tx);
-
-    cr.insert("/StatusNotifierWatcher", &[token], watcher);
+    cr.insert("/StatusNotifierWatcher", &[token], Watcher);
 
     conn.start_receive(
         dbus::message::MatchRule::new_method_call(),
@@ -71,43 +68,53 @@ fn try_setup() -> Result<()> {
     );
 
     loop {
-        while let Some(uuid) = CHANNEL.try_recv() {
-            if let Ok((service, path, id)) = UUID::decode(uuid) {
-                if let Err(err) = DBusMenu::new(service, path).event(&conn, id) {
-                    log::error!("{:?}", err);
+        while let Some(command) = CHANNEL.try_recv() {
+            match command {
+                Command::TriggerItem { uuid } => {
+                    if let Ok((service, path, id)) = UUID::decode(uuid) {
+                        if let Err(err) = DBusMenu::new(service, path).event(&conn, id) {
+                            log::error!("{:?}", err);
+                        }
+                    }
                 }
+
+                Command::ServiceAdded { service, mut path } => {
+                    let dbus_menu_path;
+
+                    if service == path {
+                        path = String::from("/StatusNotifierItem");
+                        dbus_menu_path = String::from("/com/canonical/dbusmenu")
+                    } else {
+                        match StatusNotifierItem::new(&service, &path).menu(&conn) {
+                            Ok(menu_path) => dbus_menu_path = menu_path.to_string(),
+                            Err(err) => {
+                                log::error!("{:?}", err);
+                                continue;
+                            }
+                        }
+                    }
+
+                    let dbus_menu = DBusMenu::new(&service, &dbus_menu_path);
+
+                    match dbus_menu.get_layout(&conn) {
+                        Ok(mut app) => {
+                            let status_notifier_item = StatusNotifierItem::new(&service, &path);
+                            app.icon = status_notifier_item.any_icon(&conn);
+
+                            state::State::app_added(service, app)
+                        }
+                        Err(err) => log::error!("{:?}", err),
+                    }
+                }
+
+                Command::ServiceRemoved { service } => {
+                    state::State::app_removed(service);
+                }
+
+                _ => todo!("{:?}", command),
             }
         }
 
         conn.process(Duration::from_millis(200))?;
-
-        while let Ok((service, mut path)) = rx.try_recv() {
-            let dbus_menu_path;
-
-            if service == path {
-                path = String::from("/StatusNotifierItem");
-                dbus_menu_path = String::from("/com/canonical/dbusmenu")
-            } else {
-                match StatusNotifierItem::new(&service, &path).menu(&conn) {
-                    Ok(menu_path) => dbus_menu_path = menu_path.to_string(),
-                    Err(err) => {
-                        log::error!("{:?}", err);
-                        continue;
-                    }
-                }
-            }
-
-            let dbus_menu = DBusMenu::new(&service, &dbus_menu_path);
-
-            match dbus_menu.get_layout(&conn) {
-                Ok(mut app) => {
-                    let status_notifier_item = StatusNotifierItem::new(&service, &path);
-                    app.icon = status_notifier_item.any_icon(&conn);
-
-                    state::State::app_added(service, app)
-                }
-                Err(err) => log::error!("{:?}", err),
-            }
-        }
     }
 }
