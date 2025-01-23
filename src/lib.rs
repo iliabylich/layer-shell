@@ -23,7 +23,7 @@ pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_init() {
-    pretty_env_logger::init();
+    env_logger::init();
 }
 
 #[no_mangle]
