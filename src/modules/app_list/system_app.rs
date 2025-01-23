@@ -1,5 +1,5 @@
 use crate::event::AppIcon;
-use anyhow::{Context as _, Result};
+use anyhow::{Context, Result};
 use std::{
     collections::HashMap,
     io::{BufRead as _, BufReader},
@@ -74,17 +74,15 @@ impl SystemApp {
         })
     }
 
-    pub(crate) fn exec(&self) {
+    pub(crate) fn exec(&self) -> Result<()> {
         let parts = self.exec.split(" ").map(|s| s.trim()).collect::<Vec<_>>();
-        let child = std::process::Command::new(parts[0])
+        std::process::Command::new(parts[0])
             .args(&parts[1..])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .spawn();
-
-        if let Err(err) = child {
-            log::error!("Failed to spawn {}: {:?}", self.exec, err);
-        }
+            .spawn()
+            .with_context(|| format!("Failed to spawn {}", self.exec))?;
+        Ok(())
     }
 }
 fn desktop_files() -> Result<Vec<PathBuf>> {

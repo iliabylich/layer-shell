@@ -2,7 +2,7 @@ use crate::dbus::{
     gen::nm::OrgFreedesktopNetworkManager,
     nm::{ActiveConnection, Device},
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{ensure, Context, Result};
 use dbus::blocking::{Connection, Proxy};
 use std::time::Duration;
 
@@ -39,21 +39,23 @@ impl NetworkManager {
 
     pub(crate) fn primary_wireless_connection(conn: &Connection) -> Result<ActiveConnection> {
         let primary_connection = Self::primary_connection(conn)?;
-        if !primary_connection.type_(conn)?.contains("wireless") {
-            bail!("Default connection is not wireless");
-        }
+        ensure!(
+            primary_connection.type_(conn)?.contains("wireless"),
+            "Default connection is not wireless"
+        );
         Ok(primary_connection)
     }
 
     pub(crate) fn primary_wireless_device(conn: &Connection) -> Result<Device> {
         let devices = Self::primary_wireless_connection(conn)?.devices(conn)?;
         let mut iter = devices.into_iter();
-        let Some(device) = iter.next() else {
-            bail!("NM returned no device for active connection");
-        };
-        if iter.next().is_some() {
-            bail!("NM returned multiple devices for active connection");
-        }
+        let device = iter
+            .next()
+            .context("NM returned no device for active connection")?;
+        ensure!(
+            iter.next().is_none(),
+            "NM returned multiple devices for active connection"
+        );
         Ok(device)
     }
 }

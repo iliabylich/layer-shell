@@ -1,4 +1,5 @@
 use crate::{event::App, modules::app_list::system_app::SystemApp, Event};
+use anyhow::{anyhow, Result};
 use std::sync::{LazyLock, Mutex};
 
 pub(crate) struct State {
@@ -19,59 +20,60 @@ impl State {
         }
     }
 
-    pub(crate) fn go_up() {
-        let Ok(mut this) = INSTANCE.lock() else {
-            log::error!("lock is poisoned");
-            return;
-        };
-        if this.selected_idx == 0 {
-            return;
-        }
-        this.selected_idx = std::cmp::max(0, this.selected_idx - 1);
-        this.emit();
+    fn with<F>(f: F) -> Result<()>
+    where
+        F: FnOnce(&mut State) -> Result<()>,
+    {
+        let mut this = INSTANCE.lock().map_err(|_| anyhow!("lock is poisoned"))?;
+
+        f(&mut this)
     }
 
-    pub(crate) fn go_down() {
-        let Ok(mut this) = INSTANCE.lock() else {
-            log::error!("lock is poisoned");
-            return;
-        };
-        this.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, this.selected_idx + 1);
-        this.emit();
+    pub(crate) fn go_up() -> Result<()> {
+        Self::with(|state| {
+            if state.selected_idx == 0 {
+                return Ok(());
+            }
+            state.selected_idx = std::cmp::max(0, state.selected_idx - 1);
+            state.emit();
+            Ok(())
+        })
     }
 
-    pub(crate) fn set_search(pattern: String) {
-        let Ok(mut this) = INSTANCE.lock() else {
-            log::error!("lock is poisoned");
-            return;
-        };
-        this.selected_idx = 0;
-        this.pattern = pattern;
-        this.emit();
+    pub(crate) fn go_down() -> Result<()> {
+        Self::with(|state| {
+            state.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, state.selected_idx + 1);
+            state.emit();
+            Ok(())
+        })
     }
 
-    pub(crate) fn exec_selected() {
-        let Ok(this) = INSTANCE.lock() else {
-            log::error!("lock is poisoned");
-            return;
-        };
-        if let Some(app) = this.visible_apps().get(this.selected_idx) {
-            app.exec();
-        }
+    pub(crate) fn set_search(pattern: String) -> Result<()> {
+        Self::with(|state| {
+            state.selected_idx = 0;
+            state.pattern = pattern;
+            state.emit();
+            Ok(())
+        })
     }
 
-    pub(crate) fn reset() {
-        let Ok(mut this) = INSTANCE.lock() else {
-            log::error!("lock is poisoned");
-            return;
-        };
-        this.pattern = String::new();
-        this.selected_idx = 0;
-        match SystemApp::parse_all() {
-            Ok(apps) => this.apps = apps,
-            Err(err) => log::error!("failed to refresh app list: {:?}", err),
-        }
-        this.emit();
+    pub(crate) fn exec_selected() -> Result<()> {
+        Self::with(|state| {
+            if let Some(app) = state.visible_apps().get(state.selected_idx) {
+                app.exec()?;
+            }
+            Ok(())
+        })
+    }
+
+    pub(crate) fn reset() -> Result<()> {
+        Self::with(|state| {
+            state.pattern = String::new();
+            state.selected_idx = 0;
+            state.apps = SystemApp::parse_all()?;
+            state.emit();
+            Ok(())
+        })
     }
 
     fn emit(&self) {

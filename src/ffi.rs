@@ -1,4 +1,4 @@
-use crate::fatal::fatal;
+use crate::macros::fatal;
 
 #[repr(transparent)]
 pub struct CString {

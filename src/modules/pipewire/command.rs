@@ -10,12 +10,14 @@ use pipewire::spa::{
 };
 use std::sync::LazyLock;
 
-pub(crate) fn set_volume(volume: f32) {
+pub(crate) fn set_volume(volume: f32) -> Result<()> {
     InternalCommand::SetVolume(volume).send();
+    Ok(())
 }
 
-pub(crate) fn set_muted(muted: bool) {
+pub(crate) fn set_muted(muted: bool) -> Result<()> {
     InternalCommand::SetMuted(muted).send();
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -35,13 +37,7 @@ impl InternalCommand {
         CHANNEL.try_recv()
     }
 
-    pub(crate) fn exec(self) {
-        if let Err(err) = self.try_exec() {
-            log::error!("failed to call PW: {:?}", err);
-        }
-    }
-
-    fn try_exec(self) -> Result<()> {
+    pub(crate) fn exec(self) -> Result<()> {
         match self {
             Self::SetVolume(volume) => try_call_pw(Some(volume), None),
             Self::SetMuted(muted) => try_call_pw(None, Some(muted)),

@@ -60,7 +60,7 @@ impl StatusNotifierItem {
         self.icon_name(conn)
             .or_else(|_| self.icon_pixmap(conn))
             .unwrap_or_else(|_| {
-                log::error!("DBus service has no IconName/IconPixmap");
+                log::warn!("DBus service has no IconName/IconPixmap");
                 TrayIcon::None
             })
     }

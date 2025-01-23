@@ -1,29 +1,22 @@
 mod cpu_core_info;
 
-use crate::{fatal::fatal, Event};
+use crate::Event;
+use anyhow::{anyhow, Result};
 use cpu_core_info::CpuCoreInfo;
 use std::sync::{LazyLock, Mutex};
 
 static STATE: LazyLock<Mutex<Option<Vec<CpuCoreInfo>>>> = LazyLock::new(|| Mutex::new(None));
 
-pub(crate) fn tick() {
-    let state = {
-        STATE
-            .lock()
-            .unwrap_or_else(|_| fatal!("lock is poisoned"))
-            .clone()
+pub(crate) fn tick() -> Result<()> {
+    let mut state = STATE.lock().map_err(|_| anyhow!("lock is poisoned"))?;
+
+    let (usage, new_state) = CpuCoreInfo::parse_current_comparing_to(state.as_ref())?;
+    let event = Event::CpuUsage {
+        usage_per_core: usage.into(),
     };
+    event.emit();
 
-    match CpuCoreInfo::parse_current_comparing_to(state) {
-        Ok((usage, new_state)) => {
-            let event = Event::CpuUsage {
-                usage_per_core: usage.into(),
-            };
-            event.emit();
+    *state = Some(new_state);
 
-            let mut state = STATE.lock().unwrap_or_else(|_| fatal!("lock is poisoned"));
-            *state = Some(new_state);
-        }
-        Err(err) => log::error!("failed to retrieve CPU usage: {:?}", err),
-    }
+    Ok(())
 }

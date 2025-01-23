@@ -21,12 +21,14 @@ use store::Store;
 
 pub(crate) use command::{set_muted, set_volume};
 
-pub(crate) fn setup() {
-    std::thread::spawn(move || {
+pub(crate) fn setup() -> Result<()> {
+    std::thread::spawn(|| {
         if let Err(err) = start_pw_mainloop() {
             log::error!("{}", err);
         }
     });
+
+    Ok(())
 }
 
 fn start_pw_mainloop() -> Result<()> {
@@ -41,7 +43,9 @@ fn start_pw_mainloop() -> Result<()> {
 
     let timer = mainloop.loop_().add_timer(|_| {
         while let Some(cmd) = InternalCommand::try_recv() {
-            cmd.exec();
+            if let Err(err) = cmd.exec() {
+                log::error!("Failed to call PW: {:?}", err);
+            }
         }
     });
 

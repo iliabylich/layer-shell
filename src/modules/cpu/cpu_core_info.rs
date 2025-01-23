@@ -48,7 +48,7 @@ impl CpuCoreInfo {
     }
 
     pub(crate) fn parse_current_comparing_to(
-        previous: Option<Vec<CpuCoreInfo>>,
+        previous: Option<&Vec<CpuCoreInfo>>,
     ) -> Result<(Vec<usize>, Vec<CpuCoreInfo>)> {
         let current = Self::parse_current()?;
         let count = current.len();

@@ -1,5 +1,5 @@
 use crate::dbus::{gen::dbus_menu::ComCanonicalDbusmenu, tray::UUID};
-use anyhow::{Context as _, Result};
+use anyhow::{bail, ensure, Context as _, Result};
 use dbus::{
     arg::{cast, RefArg, Variant},
     blocking::{Connection, Proxy},
@@ -37,7 +37,7 @@ impl DBusMenu {
 
         let mut items = vec![];
 
-        visit_root(raw_tree, &mut items, &self.service, &self.path);
+        visit_root(raw_tree, &mut items, &self.service, &self.path)?;
 
         Ok(items)
     }
@@ -60,10 +60,16 @@ type DBusInternalTree = (
     Vec<dbus::arg::Variant<Box<dyn dbus::arg::RefArg + 'static>>>,
 );
 
-fn visit_root(root: DBusInternalTree, out: &mut Vec<DBusMenuItem>, service: &str, path: &str) {
+fn visit_root(
+    root: DBusInternalTree,
+    out: &mut Vec<DBusMenuItem>,
+    service: &str,
+    path: &str,
+) -> Result<()> {
     let (_root_id, _props, children) = root;
 
-    visit_children(children, out, service, path);
+    visit_children(children, out, service, path)?;
+    Ok(())
 }
 
 fn visit_children(
@@ -71,10 +77,11 @@ fn visit_children(
     out: &mut Vec<DBusMenuItem>,
     service: &str,
     path: &str,
-) {
+) -> Result<()> {
     for child in children {
-        visit_child(child, out, service, path);
+        visit_child(child, out, service, path)?;
     }
+    Ok(())
 }
 
 fn visit_child(
@@ -82,7 +89,7 @@ fn visit_child(
     out: &mut Vec<DBusMenuItem>,
     service: &str,
     path: &str,
-) {
+) -> Result<()> {
     if let Some(mut iter) = child.as_iter() {
         if let Some(child) = iter.next() {
             if let Some(mut iter) = child.as_iter() {
@@ -95,11 +102,13 @@ fn visit_child(
                         out,
                         service,
                         path,
-                    );
+                    )?;
                 }
             }
         }
     }
+
+    Ok(())
 }
 
 fn visit_triplet(
@@ -109,22 +118,22 @@ fn visit_triplet(
     out: &mut Vec<DBusMenuItem>,
     service: &str,
     path: &str,
-) {
+) -> Result<()> {
     if let Some(id) = cast::<i32>(&v1).copied() {
-        if let Some(props) = Props::parse(v2) {
+        if let Some(props) = Props::parse(v2)? {
             out.push(DBusMenuItem {
                 label: props.label,
                 disabled: !props.enabled,
                 uuid: UUID::encode(service, path, id),
             });
 
-            if let Some(iter) = v3.as_iter() {
-                for child in iter {
-                    log::error!("Nested child: {:?}, unsupported as of now", child);
-                }
+            if let Some(mut iter) = v3.as_iter() {
+                ensure!(iter.next().is_none());
             }
         }
     }
+
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -134,34 +143,28 @@ struct Props {
 }
 
 impl Props {
-    fn parse(props: Box<dyn RefArg>) -> Option<Self> {
+    fn parse(props: Box<dyn RefArg>) -> Result<Option<Self>> {
         let mut label = None;
         let mut enabled = true;
         let mut visible = true;
 
-        let mut iter = match props.as_iter() {
-            Some(iter) => iter,
-            None => {
-                log::error!("Props are not an interable");
-                return None;
-            }
-        };
+        let mut iter = props.as_iter().context("Props are not iterable")?;
 
         while let Some(key) = iter.next() {
-            let Some(value) = iter.next() else {
-                log::error!("Odd number of elements in the DBus Hash");
-                return None;
-            };
+            let value = iter
+                .next()
+                .context("Odd number of elements in the DBus Hash")?;
 
             if let Some(key) = key.as_str() {
                 match key {
-                    "label" => match value.as_str() {
-                        Some(value) => label = Some(value.to_string()),
-                        None => {
-                            log::error!("DBus menu item has no name, skipping");
-                            return None;
-                        }
-                    },
+                    "label" => {
+                        label = Some(
+                            value
+                                .as_str()
+                                .context("DBus menu item has no name, skipping")?
+                                .to_string(),
+                        )
+                    }
                     "visible" => {
                         visible = value.as_i64().map(|v| v != 0).unwrap_or(true);
                     }
@@ -169,20 +172,20 @@ impl Props {
                         enabled = value.as_i64().map(|v| v != 0).unwrap_or(true);
                     }
                     _ => {
-                        log::error!("Unsupported key: {key}");
-                        return None;
+                        bail!("Unsupported key: {key}")
                     }
                 }
             }
         }
 
         if !visible {
-            return None;
+            return Ok(None);
         }
 
-        Some(Self {
-            label: label?,
-            enabled,
-        })
+        if let Some(label) = label {
+            Ok(Some(Self { label, enabled }))
+        } else {
+            Ok(None)
+        }
     }
 }

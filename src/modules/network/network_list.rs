@@ -6,10 +6,12 @@ use crate::{
 use anyhow::Result;
 use dbus::blocking::Connection;
 
-pub(crate) fn get(conn: &Connection) -> Result<Event> {
-    Ok(Event::NetworkList {
+pub(crate) fn reset(conn: &Connection) -> Result<()> {
+    let event = Event::NetworkList {
         list: get_networks(conn)?.into(),
-    })
+    };
+    event.emit();
+    Ok(())
 }
 
 fn get_networks(conn: &Connection) -> Result<Vec<Network>> {

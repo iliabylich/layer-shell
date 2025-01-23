@@ -1,4 +1,4 @@
-use crate::fatal::fatal;
+use crate::macros::fatal;
 use std::sync::{
     mpsc::{Receiver, Sender},
     Mutex,

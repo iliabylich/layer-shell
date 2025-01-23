@@ -1,7 +1,9 @@
 use crate::Command;
+use anyhow::Result;
 
 struct Actor {
-    f: fn(),
+    f: fn() -> Result<()>,
+    name: &'static str,
     interval_in_ms: u64,
 }
 
@@ -26,16 +28,33 @@ impl Scheduler {
         }
     }
 
-    pub(crate) fn add(&mut self, interval_in_ms: u64, f: fn()) {
+    pub(crate) fn add_once(&self, name: &str, f: fn() -> Result<()>) {
+        if let Err(err) = f() {
+            log::error!("failed to setup {name} mod: {:?}", err);
+        }
+    }
+
+    pub(crate) fn add(&mut self, name: &'static str, interval_in_ms: u64, f: fn() -> Result<()>) {
         debug_assert_eq!(interval_in_ms % self.duration_of_iteration(), 0);
-        self.actors.push(Actor { f, interval_in_ms });
+        self.actors.push(Actor {
+            f,
+            name,
+            interval_in_ms,
+        });
     }
 
     fn tick(&mut self) {
         let dt_in_ms = self.iteration * self.duration_of_iteration();
         for actor in self.actors.iter() {
             if dt_in_ms % actor.interval_in_ms == 0 {
-                self.pool.execute(actor.f);
+                let f = actor.f;
+                let name = actor.name;
+
+                self.pool.execute(move || {
+                    if let Err(err) = f() {
+                        log::error!("failed to tick {name} mod: {:?}", err);
+                    }
+                });
             }
         }
 

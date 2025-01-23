@@ -1,4 +1,4 @@
-use crate::{fatal::fatal, Event};
+use crate::{macros::fatal, Event};
 use std::sync::{LazyLock, Mutex};
 
 pub(crate) struct Subscriptions;

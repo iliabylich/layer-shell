@@ -7,12 +7,16 @@ use dbus::{blocking::Connection, channel::MatchingReceiver as _};
 use dbus_crossroads::Crossroads;
 use std::time::Duration;
 
-pub(crate) fn setup() {
-    std::thread::spawn(|| {
-        if let Err(err) = try_setup() {
+pub(crate) fn setup() -> Result<()> {
+    let conn = Connection::new_session().context("failed to connect to DBus")?;
+
+    std::thread::spawn(move || {
+        if let Err(err) = in_thread(&conn) {
             log::error!("Failed to spawn session thread: {:?}", err);
         }
     });
+
+    Ok(())
 }
 
 struct Control;
@@ -33,9 +37,7 @@ impl OrgMeLayerShellControl for Control {
     }
 }
 
-pub(crate) fn try_setup() -> Result<()> {
-    let conn = Connection::new_session().context("failed to connect to DBus")?;
-
+pub(crate) fn in_thread(conn: &Connection) -> Result<()> {
     conn.request_name("org.me.LayerShellControl", true, true, true)?;
 
     let mut cr = Crossroads::new();

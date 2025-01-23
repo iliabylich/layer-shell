@@ -1,5 +1,5 @@
 use crate::{modules::pipewire::Store, Event};
-use anyhow::{bail, Context as _, Result};
+use anyhow::{anyhow, bail, ensure, Context as _, Result};
 use pipewire::{
     node::Node,
     spa::{
@@ -42,10 +42,8 @@ impl AudioSink {
     }
 
     fn prop_changed(param: &Pod) -> Result<()> {
-        let value = match PodDeserializer::deserialize_any_from(param.as_bytes()) {
-            Ok((_, value)) => value,
-            Err(err) => bail!("Failed to parse sink node's route param: {:?}", err),
-        };
+        let (_, value) = PodDeserializer::deserialize_any_from(param.as_bytes())
+            .map_err(|err| anyhow!("Failed to parse sink node's route param: {:?}", err))?;
 
         let Value::Object(object) = value else {
             bail!("Pod is not an Object");
@@ -54,15 +52,15 @@ impl AudioSink {
         for prop in object.properties {
             if prop.key == SPA_PROP_channelVolumes {
                 if let Value::ValueArray(ValueArray::Float(floats)) = prop.value {
-                    if floats.len() == 2 {
-                        let volume = (floats[0] + floats[1]) / 2.0;
-                        // convert to linear
-                        let volume = volume.powf(1.0 / 3.0);
-                        let event = Event::Volume { volume };
-                        event.emit();
-                    } else {
-                        bail!("channelVolumes must contain exactly two elements");
-                    }
+                    ensure!(
+                        floats.len() == 2,
+                        "channelVolumes must contain exactly two elements"
+                    );
+                    let volume = (floats[0] + floats[1]) / 2.0;
+                    // convert to linear
+                    let volume = volume.powf(1.0 / 3.0);
+                    let event = Event::Volume { volume };
+                    event.emit();
                 } else {
                     bail!("channelVolumes must be an Array of Floats");
                 }

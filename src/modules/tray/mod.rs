@@ -27,28 +27,28 @@ mod item;
 mod state;
 mod watcher;
 
-pub(crate) fn setup() {
-    std::thread::spawn(|| {
-        if let Err(err) = try_setup() {
-            log::error!("Failed to become StatusNotifierWatcher: {:?}", err);
-        }
-    });
-}
-
-pub(crate) fn trigger(uuid: *const u8) {
+pub(crate) fn trigger(uuid: *const u8) -> Result<()> {
     let uuid = unsafe { std::ffi::CStr::from_ptr(uuid.cast()) };
-    let Ok(uuid) = uuid.to_str() else {
-        log::error!("Tray: invalid uuid");
-        return;
-    };
-
+    let uuid = uuid.to_str().context("invalid uuid")?;
     CHANNEL.emit(Command::TriggerItem {
         uuid: uuid.to_string(),
     });
+    Ok(())
 }
 
-fn try_setup() -> Result<()> {
+pub(crate) fn setup() -> Result<()> {
     let conn = Connection::new_session()?;
+
+    std::thread::spawn(move || {
+        if let Err(err) = in_thread(&conn) {
+            log::error!("{:?}", err);
+        }
+    });
+
+    Ok(())
+}
+
+fn in_thread(conn: &Connection) -> Result<()> {
     conn.add_match(
         DBusNameOwnerChanged::match_rule(None, None),
         |e: DBusNameOwnerChanged, _, _| {

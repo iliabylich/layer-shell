@@ -2,6 +2,7 @@ use crate::{
     lock_channel::LockChannel,
     modules::{app_list, hyprland, pipewire, tray},
 };
+use anyhow::{Context as _, Result};
 use std::sync::LazyLock;
 
 #[derive(Debug)]
@@ -46,7 +47,7 @@ impl Command {
         log::info!("Running command {:?}", self);
         use Command::*;
 
-        match self {
+        let res = match self {
             HyprlandGoToWorkspace { idx } => hyprland::go_to_workspace(idx),
 
             AppListGoUp => app_list::go_up(),
@@ -67,31 +68,37 @@ impl Command {
 
             SpawnNetworkEditor => spawn_network_editor(),
             SpawnSystemMonitor => spawn_system_monitor(),
+        };
+
+        if let Err(err) = res {
+            log::error!("{:?}", err);
         }
     }
 }
 
-fn spawn_network_editor() {
-    spawn("kitty", ["--name", "nmtui", "nmtui"]);
+fn spawn_network_editor() -> Result<()> {
+    spawn("kitty", ["--name", "nmtui", "nmtui"])
 }
-fn spawn_system_monitor() {
-    spawn("gnome-system-monitor", []);
+fn spawn_system_monitor() -> Result<()> {
+    spawn("gnome-system-monitor", [])
 }
-fn lock() {
-    spawn("hyprlock", []);
+fn lock() -> Result<()> {
+    spawn("hyprlock", [])
 }
-fn reboot() {
-    spawn("systemctl", ["reboot"]);
+fn reboot() -> Result<()> {
+    spawn("systemctl", ["reboot"])
 }
-fn shutdown() {
-    spawn("systemctl", ["poweroff"]);
+fn shutdown() -> Result<()> {
+    spawn("systemctl", ["poweroff"])
 }
-fn logout() {
-    spawn("hyprctl", ["dispatch", "exit"]);
+fn logout() -> Result<()> {
+    spawn("hyprctl", ["dispatch", "exit"])
 }
 
-fn spawn(cmd: &str, args: impl IntoIterator<Item = &'static str>) {
-    if let Err(err) = std::process::Command::new(cmd).args(args).spawn() {
-        log::error!("failed to spawn {:?}: {:?}", cmd, err);
-    }
+fn spawn(cmd: &str, args: impl IntoIterator<Item = &'static str>) -> Result<()> {
+    std::process::Command::new(cmd)
+        .args(args)
+        .spawn()
+        .with_context(|| format!("failed to spawn {:?}", cmd))?;
+    Ok(())
 }

@@ -1,14 +1,7 @@
 use crate::Event;
 use anyhow::{Context as _, Result};
 
-pub(crate) fn tick() {
-    match parse() {
-        Ok(mem) => mem.emit(),
-        Err(err) => log::error!("failed to get memory info: {:?}", err),
-    }
-}
-
-fn parse() -> Result<Event> {
+pub(crate) fn tick() -> Result<()> {
     let contents =
         std::fs::read_to_string("/proc/meminfo").context("failed to read /proc/meminfo")?;
 
@@ -31,8 +24,10 @@ fn parse() -> Result<Event> {
     let available_kb = parse_mem(line_available, "MemAvailable:")?;
     let used_kb = total_kb - available_kb;
 
-    Ok(Event::Memory {
+    let event = Event::Memory {
         used: (used_kb as f64) / 1024.0 / 1024.0,
         total: (total_kb as f64) / 1024.0 / 1024.0,
-    })
+    };
+    event.emit();
+    Ok(())
 }

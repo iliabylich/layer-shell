@@ -1,5 +1,5 @@
 use crate::modules::pipewire::Store;
-use anyhow::{bail, Context as _, Result};
+use anyhow::{anyhow, bail, Context as _, Result};
 use pipewire::{
     device::Device,
     spa::{
@@ -35,10 +35,8 @@ impl AudioDevice {
     }
 
     fn route_changed(device_id: u32, param: &Pod) -> Result<()> {
-        let value = match PodDeserializer::deserialize_any_from(param.as_bytes()) {
-            Ok((_, value)) => value,
-            Err(err) => bail!("Failed to parse sink node's route param: {:?}", err),
-        };
+        let (_, value) = PodDeserializer::deserialize_any_from(param.as_bytes())
+            .map_err(|err| anyhow!("Failed to parse sink node's route param: {:?}", err))?;
 
         let Value::Object(object) = value else {
             bail!("Pod value is not an Object");

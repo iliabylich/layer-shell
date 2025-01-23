@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use pipewire::{device::Device, metadata::Metadata, node::Node, proxy::Listener};
 use std::{cell::RefCell, collections::HashMap};
 
@@ -21,25 +21,11 @@ thread_local! {
     static STORE: RefCell<Option<Store>> = const { RefCell::new(None) };
 }
 
-fn with_store<T>(f: impl Fn(&Store) -> Result<T>) -> Result<T> {
-    STORE.with(|store| {
-        let store = store.borrow();
-        if let Some(store) = store.as_ref() {
-            f(store)
-        } else {
-            bail!("no PW store, are you in PW loop?");
-        }
-    })
-}
-
-fn with_store_mut<T>(f: impl FnOnce(&mut Store) -> Result<T>) -> Result<T> {
+fn with_store<T>(f: impl FnOnce(&mut Store) -> Result<T>) -> Result<T> {
     STORE.with(|store| {
         let mut store = store.borrow_mut();
-        if let Some(store) = store.as_mut() {
-            f(store)
-        } else {
-            bail!("no PW store, are you in PW loop?");
-        }
+        let store = store.as_mut().context("no PW store, are you in PW loop?")?;
+        f(store)
     })
 }
 
@@ -65,21 +51,21 @@ impl Store {
     }
 
     pub(crate) fn register_meta(id: u32, meta: Metadata) -> Result<()> {
-        with_store_mut(|store| {
+        with_store(|store| {
             store.meta.insert(id, meta);
             Ok(())
         })
     }
 
     pub(crate) fn register_device(id: u32, device: Device) -> Result<()> {
-        with_store_mut(|store| {
+        with_store(|store| {
             store.devices.insert(id, device);
             Ok(())
         })
     }
 
     pub(crate) fn register_listener(id: u32, listener: Box<dyn Listener>) -> Result<()> {
-        with_store_mut(|store| {
+        with_store(|store| {
             store.listeners.entry(id).or_default().push(listener);
             Ok(())
         })
@@ -91,7 +77,7 @@ impl Store {
         device_id: u32,
         sink: Node,
     ) -> Result<()> {
-        with_store_mut(|store| {
+        with_store(|store| {
             store.nodes.insert(sink_id, sink);
             let name = name.as_ref().to_string();
             store.sink_name_to_sink_id.insert(name, sink_id);
@@ -101,14 +87,14 @@ impl Store {
     }
 
     pub(crate) fn register_default_sink_name(name: String) -> Result<()> {
-        with_store_mut(|store| {
+        with_store(|store| {
             store.default_sink_name = Some(name);
             Ok(())
         })
     }
 
     pub(crate) fn register_route(device_id: u32, route: (i32, i32)) -> Result<()> {
-        with_store_mut(|store| {
+        with_store(|store| {
             store.device_id_to_route.insert(device_id, route);
             Ok(())
         })
@@ -141,7 +127,7 @@ impl Store {
     }
 
     pub(crate) fn remove(id: u32) -> Result<()> {
-        with_store_mut(|store| {
+        with_store(|store| {
             store.devices.remove(&id);
             store.meta.remove(&id);
             store.nodes.remove(&id);

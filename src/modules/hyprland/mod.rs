@@ -1,4 +1,4 @@
-use crate::fatal::fatal;
+use anyhow::Result;
 use std::io::{BufRead as _, BufReader};
 
 mod command;
@@ -8,14 +8,11 @@ mod state;
 
 pub(crate) use command::go_to_workspace;
 
-pub(crate) fn setup() {
+pub(crate) fn setup() -> Result<()> {
+    let socket = connection::connect_to_socket()?;
+    let mut state = state::State::new()?;
+
     std::thread::spawn(move || {
-        let socket = connection::connect_to_socket()
-            .unwrap_or_else(|err| fatal!("failed to connect to Hyprland socket: {:?}", err));
-
-        let mut state = state::State::new()
-            .unwrap_or_else(|err| fatal!("failed to get initial Hyprland state: {:?}", err));
-
         state.as_language_changed_event().emit();
         state.as_workspaces_changed_event().emit();
 
@@ -29,4 +26,6 @@ pub(crate) fn setup() {
             }
         }
     });
+
+    Ok(())
 }
