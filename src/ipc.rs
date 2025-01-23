@@ -1,7 +1,6 @@
-use std::sync::LazyLock;
-
 use crate::{fatal::fatal, Event};
 use anyhow::{Context, Result};
+use std::sync::LazyLock;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum IPCMessage {

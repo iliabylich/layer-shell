@@ -1,4 +1,5 @@
 mod cpu_core_info;
+
 use crate::{fatal::fatal, Event};
 use cpu_core_info::CpuCoreInfo;
 use std::sync::{LazyLock, Mutex};

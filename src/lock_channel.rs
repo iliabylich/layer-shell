@@ -1,9 +1,8 @@
+use crate::fatal::fatal;
 use std::sync::{
     mpsc::{Receiver, Sender},
     Mutex,
 };
-
-use crate::fatal::fatal;
 
 pub(crate) struct LockChannel<T> {
     tx: Mutex<Sender<T>>,

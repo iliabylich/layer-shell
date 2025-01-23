@@ -1,8 +1,7 @@
+use crate::{dbus::gen::status_notifier_item::OrgKdeStatusNotifierItem, event::TrayIcon};
 use anyhow::{Context as _, Result};
 use dbus::blocking::{Connection, Proxy};
 use std::time::Duration;
-
-use crate::{dbus::gen::status_notifier_item::OrgKdeStatusNotifierItem, event::TrayIcon};
 
 #[derive(Debug)]
 pub(crate) struct StatusNotifierItem {

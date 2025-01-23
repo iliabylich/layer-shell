@@ -1,6 +1,5 @@
-use std::sync::{LazyLock, Mutex};
-
 use crate::{event::App, modules::app_list::system_app::SystemApp, Event};
+use std::sync::{LazyLock, Mutex};
 
 pub(crate) struct State {
     selected_idx: usize,

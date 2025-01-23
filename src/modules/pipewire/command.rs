@@ -1,5 +1,3 @@
-use std::sync::LazyLock;
-
 use crate::{lock_channel::LockChannel, modules::pipewire::Store};
 use anyhow::{Context, Result};
 use pipewire::spa::{
@@ -10,6 +8,7 @@ use pipewire::spa::{
         SPA_PROP_channelVolumes, SPA_PROP_mute,
     },
 };
+use std::sync::LazyLock;
 
 pub(crate) fn set_volume(volume: f32) {
     InternalCommand::SetVolume(volume).send();
