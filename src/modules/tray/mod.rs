@@ -13,7 +13,10 @@ use crate::{
     },
 };
 use anyhow::{Context as _, Result};
-use dbus::{blocking::Connection, channel::MatchingReceiver as _, message::SignalArgs as _};
+use dbus::{
+    arg::ReadAll, blocking::Connection, channel::MatchingReceiver as _, message::SignalArgs,
+    Message,
+};
 use dbus_crossroads::Crossroads;
 use state::State;
 use std::time::Duration;
@@ -56,80 +59,12 @@ fn try_setup() -> Result<()> {
     )
     .context("failed to subscribe to NameOwnerChanged signal")?;
 
-    conn.add_match(
-        OrgKdeStatusNotifierItemNewAttentionIcon::match_rule(None, None),
-        |_: OrgKdeStatusNotifierItemNewAttentionIcon, _, message| {
-            if let Some(service) = message.sender() {
-                CHANNEL.emit(Command::ServiceUpdated {
-                    service: service.to_string(),
-                });
-            }
-            true
-        },
-    )
-    .unwrap();
-    conn.add_match(
-        OrgKdeStatusNotifierItemNewIcon::match_rule(None, None),
-        |_: OrgKdeStatusNotifierItemNewIcon, _, message| {
-            if let Some(service) = message.sender() {
-                CHANNEL.emit(Command::ServiceUpdated {
-                    service: service.to_string(),
-                });
-            }
-            true
-        },
-    )
-    .unwrap();
-    conn.add_match(
-        OrgKdeStatusNotifierItemNewOverlayIcon::match_rule(None, None),
-        |_: OrgKdeStatusNotifierItemNewOverlayIcon, _, message| {
-            if let Some(service) = message.sender() {
-                CHANNEL.emit(Command::ServiceUpdated {
-                    service: service.to_string(),
-                });
-            }
-            true
-        },
-    )
-    .unwrap();
-    conn.add_match(
-        OrgKdeStatusNotifierItemNewStatus::match_rule(None, None),
-        |_: OrgKdeStatusNotifierItemNewStatus, _, message| {
-            if let Some(service) = message.sender() {
-                CHANNEL.emit(Command::ServiceUpdated {
-                    service: service.to_string(),
-                });
-            }
-            true
-        },
-    )
-    .unwrap();
-    conn.add_match(
-        OrgKdeStatusNotifierItemNewTitle::match_rule(None, None),
-        |_: OrgKdeStatusNotifierItemNewTitle, _, message| {
-            if let Some(service) = message.sender() {
-                CHANNEL.emit(Command::ServiceUpdated {
-                    service: service.to_string(),
-                });
-            }
-            true
-        },
-    )
-    .unwrap();
-    conn.add_match(
-        OrgKdeStatusNotifierItemNewToolTip::match_rule(None, None),
-        |_: OrgKdeStatusNotifierItemNewToolTip, _, message| {
-            println!("{:?}", message);
-
-            if let Some(service) = message.sender() {
-                CHANNEL.emit(Command::ServiceUpdated {
-                    service: service.to_string(),
-                });
-            }
-            true
-        },
-    )
-    .unwrap();
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewAttentionIcon>(&conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewIcon>(&conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewOverlayIcon>(&conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewStatus>(&conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewTitle>(&conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewToolTip>(&conn)?;
 
     conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)?;
 
@@ -150,59 +85,69 @@ fn try_setup() -> Result<()> {
 
     loop {
         while let Some(command) = CHANNEL.try_recv() {
-            match command {
-                Command::TriggerItem { uuid } => {
-                    if let Ok((service, path, id)) = UUID::decode(uuid) {
-                        if let Err(err) = DBusMenu::new(service, path).event(&conn, id) {
-                            log::error!("{:?}", err);
-                        }
-                    }
-                }
-
-                Command::ServiceAdded { service, mut path } => {
-                    let dbus_menu_path;
-
-                    if service == path {
-                        path = String::from("/StatusNotifierItem");
-                        dbus_menu_path = String::from("/com/canonical/dbusmenu")
-                    } else {
-                        match StatusNotifierItem::new(&service, &path).menu(&conn) {
-                            Ok(menu_path) => dbus_menu_path = menu_path.to_string(),
-                            Err(err) => {
-                                log::error!("{:?}", err);
-                                continue;
-                            }
-                        }
-                    }
-                    let item = Item {
-                        service: service.clone(),
-                        path: path.clone(),
-                        menu_path: dbus_menu_path,
-                    };
-
-                    if let Err(err) = reload_tray_app(&conn, item) {
-                        log::error!("{:?}", err);
-                    }
-                }
-
-                Command::ServiceRemoved { service } => {
-                    state::State::app_removed(service);
-                }
-                Command::ServiceUpdated { service } => {
-                    println!("Service updated: {:?}", service);
-                    if let Some(item) = State::find(&service) {
-                        println!("Item updated: {:?}", item);
-
-                        if let Err(err) = reload_tray_app(&conn, item) {
-                            log::error!("{:?}", err);
-                        }
-                    }
-                }
+            if let Err(err) = handle_command(&conn, command) {
+                log::error!("{:?}", err);
             }
         }
 
         conn.process(Duration::from_millis(200))?;
     }
+}
+
+fn subscribe_to_item_update<T: ReadAll + SignalArgs + 'static>(conn: &Connection) -> Result<()> {
+    let _token = conn
+        .add_match(
+            T::match_rule(None, None),
+            |_: T, _: &Connection, message: &Message| {
+                if let Some(service) = message.sender() {
+                    CHANNEL.emit(Command::ServiceUpdated {
+                        service: service.to_string(),
+                    });
+                }
+                true
+            },
+        )
+        .context("failed to call AddMatch")?;
+    Ok(())
+}
+
+fn handle_command(conn: &Connection, command: Command) -> Result<()> {
+    match command {
+        Command::ServiceAdded { service, mut path } => {
+            let menu_path;
+
+            if service == path {
+                path = String::from("/StatusNotifierItem");
+                menu_path = String::from("/com/canonical/dbusmenu")
+            } else {
+                menu_path = StatusNotifierItem::new(&service, &path).menu(conn)?;
+            }
+            let item = Item {
+                service,
+                path,
+                menu_path,
+            };
+
+            reload_tray_app(conn, item)?;
+        }
+
+        Command::ServiceRemoved { service } => {
+            State::app_removed(service);
+        }
+
+        Command::ServiceUpdated { service } => {
+            let item = State::find(&service)
+                .with_context(|| format!("failed to find service {service}"))?;
+            reload_tray_app(conn, item)?;
+        }
+
+        Command::TriggerItem { uuid } => {
+            let (service, path, id) = UUID::decode(uuid)?;
+            DBusMenu::new(service, path).event(conn, id)?;
+        }
+    }
+
+    Ok(())
 }
 
 fn reload_tray_app(conn: &Connection, item: Item) -> Result<()> {

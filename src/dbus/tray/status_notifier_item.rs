@@ -1,8 +1,5 @@
 use anyhow::{Context as _, Result};
-use dbus::{
-    blocking::{Connection, Proxy},
-    Path,
-};
+use dbus::blocking::{Connection, Proxy};
 use std::time::Duration;
 
 use crate::{dbus::gen::status_notifier_item::OrgKdeStatusNotifierItem, event::TrayIcon};
@@ -69,7 +66,8 @@ impl StatusNotifierItem {
             })
     }
 
-    pub(crate) fn menu(&self, conn: &Connection) -> Result<Path<'static>> {
-        self.proxy(conn).menu().context("failed to get Menu")
+    pub(crate) fn menu(&self, conn: &Connection) -> Result<String> {
+        let menu = self.proxy(conn).menu().context("failed to get Menu")?;
+        Ok(menu.to_string())
     }
 }
