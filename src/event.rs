@@ -127,6 +127,7 @@ pub struct TrayApp {
 #[repr(C)]
 pub struct TrayItem {
     pub label: CString,
+    pub disabled: bool,
     pub uuid: CString,
 }
 

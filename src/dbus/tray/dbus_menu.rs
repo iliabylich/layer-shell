@@ -114,6 +114,7 @@ fn visit_triplet(
         if let Some(props) = Props::parse(v2) {
             out.push(TrayItem {
                 label: props.label.into(),
+                disabled: !props.enabled,
                 uuid: UUID::encode(service, path, id).into(),
             });
 

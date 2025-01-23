@@ -128,6 +128,7 @@ typedef struct {
 
 typedef struct {
   IO_CString label;
+  bool disabled;
   IO_CString uuid;
 } IO_TrayItem;
 
