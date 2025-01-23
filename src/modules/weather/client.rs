@@ -1,8 +1,15 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
+use std::sync::Arc;
 
 pub(crate) fn get_weather() -> Result<Response> {
-    ureq::get("https://api.open-meteo.com/v1/forecast")
+    let tls_connector = Arc::new(ureq::native_tls::TlsConnector::new()?);
+    let agent = ureq::AgentBuilder::new()
+        .tls_connector(tls_connector)
+        .build();
+
+    agent
+        .get("https://api.open-meteo.com/v1/forecast")
         .query("latitude", "52.2298")
         .query("longitude", "21.0118")
         .query("current", CURRENT_FIELDS)
