@@ -15,14 +15,14 @@ getNetworkManagerClient() {
 mkdir -p "src/dbus/interfaces"
 mkdir -p "src/dbus/gen"
 
-# getNetworkManagerClient "org.freedesktop.NetworkManager.xml" "nm.rs"
-# getNetworkManagerClient "org.freedesktop.NetworkManager.Device.xml" "nm_device.rs"
-# getNetworkManagerClient "org.freedesktop.NetworkManager.IP4Config.xml" "nm_ip4_config.rs"
-# getNetworkManagerClient "org.freedesktop.NetworkManager.Device.Wireless.xml" "nm_device_wireless.rs"
-# getNetworkManagerClient "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
-# getNetworkManagerClient "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
-# getNetworkManagerClient "org.freedesktop.NetworkManager.Connection.Active.xml" "nm_active_connection.rs"
-# getNetworkManagerClient "org.freedesktop.NetworkManager.Device.Statistics.xml" "nm_device_statistics.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.xml" "nm.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.Device.xml" "nm_device.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.IP4Config.xml" "nm_ip4_config.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.Device.Wireless.xml" "nm_device_wireless.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.AccessPoint.xml" "nm_access_point.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.Connection.Active.xml" "nm_active_connection.rs"
+getNetworkManagerClient "org.freedesktop.NetworkManager.Device.Statistics.xml" "nm_device_statistics.rs"
 
 dbus-codegen-rust --crossroads < dbus/org.kde.StatusNotifierWatcher.xml -o src/dbus/gen/status_notifier_watcher.rs
 sed -i -e 's/pub/pub(crate)/g' src/dbus/gen/status_notifier_watcher.rs
@@ -35,3 +35,6 @@ sed -i -e 's/pub/pub(crate)/g' src/dbus/gen/status_notifier_item.rs
 
 dbus-codegen-rust --client blocking < dbus/com.canonical.dbusmenu.xml -o src/dbus/gen/dbus_menu.rs
 sed -i -e 's/pub/pub(crate)/g' src/dbus/gen/dbus_menu.rs
+
+dbus-codegen-rust --crossroads < dbus/org.me.LayerShellControl.xml -o src/dbus/gen/layer_shell_control.rs
+sed -i -e 's/pub/pub(crate)/g' src/dbus/gen/layer_shell_control.rs

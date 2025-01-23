@@ -35,12 +35,15 @@ pub extern "C" fn layer_shell_io_init() {
 #[no_mangle]
 pub extern "C" fn layer_shell_io_spawn_thread() {
     std::thread::spawn(move || {
-        use crate::modules::{cpu, hyprland, memory, network, pipewire, time, tray, weather};
+        use crate::modules::{
+            cpu, hyprland, memory, network, pipewire, session, time, tray, weather,
+        };
 
         pipewire::setup();
         hyprland::setup();
         network::setup();
         tray::setup();
+        session::setup();
 
         use scheduler::Scheduler;
         let mut scheduler = Scheduler::new(40);

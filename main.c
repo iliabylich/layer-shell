@@ -51,7 +51,7 @@ int main(void) {
 
   g_unix_signal_add(SIGUSR1, G_SOURCE_FUNC(layer_shell_io_on_sigusr1), NULL);
 
-  app = gtk_application_new("com.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
+  app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
 
   g_signal_connect(app, "activate", G_CALLBACK(on_app_activate), NULL);
   g_signal_connect(app, "startup", load_css, NULL);

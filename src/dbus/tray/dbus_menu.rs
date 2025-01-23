@@ -113,9 +113,9 @@ fn visit_triplet(
     if let Some(id) = cast::<i32>(&v1).copied() {
         if let Some(props) = Props::parse(v2) {
             out.push(DBusMenuItem {
-                label: props.label.into(),
+                label: props.label,
                 disabled: !props.enabled,
-                uuid: UUID::encode(service, path, id).into(),
+                uuid: UUID::encode(service, path, id),
             });
 
             if let Some(iter) = v3.as_iter() {

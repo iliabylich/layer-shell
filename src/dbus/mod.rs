@@ -15,3 +15,7 @@ pub(crate) use gen::status_notifier_item::{
     OrgKdeStatusNotifierItemNewOverlayIcon, OrgKdeStatusNotifierItemNewStatus,
     OrgKdeStatusNotifierItemNewTitle, OrgKdeStatusNotifierItemNewToolTip,
 };
+
+pub(crate) use gen::layer_shell_control::{
+    register_org_me_layer_shell_control, OrgMeLayerShellControl,
+};
