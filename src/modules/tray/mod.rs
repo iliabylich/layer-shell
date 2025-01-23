@@ -2,18 +2,24 @@ use crate::{
     dbus::{
         register_org_kde_status_notifier_watcher,
         tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem, UUID},
+        OrgKdeStatusNotifierItemNewAttentionIcon, OrgKdeStatusNotifierItemNewIcon,
+        OrgKdeStatusNotifierItemNewOverlayIcon, OrgKdeStatusNotifierItemNewStatus,
+        OrgKdeStatusNotifierItemNewTitle, OrgKdeStatusNotifierItemNewToolTip,
     },
     modules::tray::{
         channel::{Command, CHANNEL},
+        item::Item,
         watcher::Watcher,
     },
 };
 use anyhow::{Context as _, Result};
-use dbus::{blocking::Connection, channel::MatchingReceiver as _, message::SignalArgs};
+use dbus::{blocking::Connection, channel::MatchingReceiver as _, message::SignalArgs as _};
 use dbus_crossroads::Crossroads;
+use state::State;
 use std::time::Duration;
 
 mod channel;
+mod item;
 mod state;
 mod watcher;
 
@@ -49,6 +55,81 @@ fn try_setup() -> Result<()> {
         },
     )
     .context("failed to subscribe to NameOwnerChanged signal")?;
+
+    conn.add_match(
+        OrgKdeStatusNotifierItemNewAttentionIcon::match_rule(None, None),
+        |_: OrgKdeStatusNotifierItemNewAttentionIcon, _, message| {
+            if let Some(service) = message.sender() {
+                CHANNEL.emit(Command::ServiceUpdated {
+                    service: service.to_string(),
+                });
+            }
+            true
+        },
+    )
+    .unwrap();
+    conn.add_match(
+        OrgKdeStatusNotifierItemNewIcon::match_rule(None, None),
+        |_: OrgKdeStatusNotifierItemNewIcon, _, message| {
+            if let Some(service) = message.sender() {
+                CHANNEL.emit(Command::ServiceUpdated {
+                    service: service.to_string(),
+                });
+            }
+            true
+        },
+    )
+    .unwrap();
+    conn.add_match(
+        OrgKdeStatusNotifierItemNewOverlayIcon::match_rule(None, None),
+        |_: OrgKdeStatusNotifierItemNewOverlayIcon, _, message| {
+            if let Some(service) = message.sender() {
+                CHANNEL.emit(Command::ServiceUpdated {
+                    service: service.to_string(),
+                });
+            }
+            true
+        },
+    )
+    .unwrap();
+    conn.add_match(
+        OrgKdeStatusNotifierItemNewStatus::match_rule(None, None),
+        |_: OrgKdeStatusNotifierItemNewStatus, _, message| {
+            if let Some(service) = message.sender() {
+                CHANNEL.emit(Command::ServiceUpdated {
+                    service: service.to_string(),
+                });
+            }
+            true
+        },
+    )
+    .unwrap();
+    conn.add_match(
+        OrgKdeStatusNotifierItemNewTitle::match_rule(None, None),
+        |_: OrgKdeStatusNotifierItemNewTitle, _, message| {
+            if let Some(service) = message.sender() {
+                CHANNEL.emit(Command::ServiceUpdated {
+                    service: service.to_string(),
+                });
+            }
+            true
+        },
+    )
+    .unwrap();
+    conn.add_match(
+        OrgKdeStatusNotifierItemNewToolTip::match_rule(None, None),
+        |_: OrgKdeStatusNotifierItemNewToolTip, _, message| {
+            println!("{:?}", message);
+
+            if let Some(service) = message.sender() {
+                CHANNEL.emit(Command::ServiceUpdated {
+                    service: service.to_string(),
+                });
+            }
+            true
+        },
+    )
+    .unwrap();
 
     conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)?;
 
@@ -93,28 +174,45 @@ fn try_setup() -> Result<()> {
                             }
                         }
                     }
+                    let item = Item {
+                        service: service.clone(),
+                        path: path.clone(),
+                        menu_path: dbus_menu_path,
+                    };
 
-                    let dbus_menu = DBusMenu::new(&service, &dbus_menu_path);
-
-                    match dbus_menu.get_layout(&conn) {
-                        Ok(mut app) => {
-                            let status_notifier_item = StatusNotifierItem::new(&service, &path);
-                            app.icon = status_notifier_item.any_icon(&conn);
-
-                            state::State::app_added(service, app)
-                        }
-                        Err(err) => log::error!("{:?}", err),
+                    if let Err(err) = reload_tray_app(&conn, item) {
+                        log::error!("{:?}", err);
                     }
                 }
 
                 Command::ServiceRemoved { service } => {
                     state::State::app_removed(service);
                 }
+                Command::ServiceUpdated { service } => {
+                    println!("Service updated: {:?}", service);
+                    if let Some(item) = State::find(&service) {
+                        println!("Item updated: {:?}", item);
 
-                _ => todo!("{:?}", command),
+                        if let Err(err) = reload_tray_app(&conn, item) {
+                            log::error!("{:?}", err);
+                        }
+                    }
+                }
             }
         }
 
         conn.process(Duration::from_millis(200))?;
     }
+}
+
+fn reload_tray_app(conn: &Connection, item: Item) -> Result<()> {
+    let dbus_menu = DBusMenu::new(&item.service, &item.menu_path);
+
+    let mut app = dbus_menu.get_layout(conn)?;
+    let status_notifier_item = StatusNotifierItem::new(&item.service, &item.path);
+    app.icon = status_notifier_item.any_icon(conn);
+
+    state::State::app_added(item, app);
+
+    Ok(())
 }

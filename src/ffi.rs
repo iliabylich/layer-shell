@@ -45,6 +45,17 @@ impl Clone for CString {
     }
 }
 
+impl PartialEq for CString {
+    fn eq(&self, other: &Self) -> bool {
+        let s1 = unsafe { std::ffi::CString::from_raw(self.ptr) };
+        let s2 = unsafe { std::ffi::CString::from_raw(other.ptr) };
+        let eq = s1 == s2;
+        std::mem::forget(s1);
+        std::mem::forget(s2);
+        eq
+    }
+}
+
 #[repr(C)]
 pub struct CArray<T> {
     pub ptr: *mut T,
@@ -102,6 +113,20 @@ where
 }
 
 unsafe impl<T> Send for CArray<T> {}
+
+impl<T> PartialEq for CArray<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        let vec1 = unsafe { Vec::from_raw_parts(self.ptr, self.len, self.len) };
+        let vec2 = unsafe { Vec::from_raw_parts(other.ptr, other.len, other.len) };
+        let eq = vec1 == vec2;
+        std::mem::forget(vec1);
+        std::mem::forget(vec2);
+        eq
+    }
+}
 
 #[repr(C)]
 pub enum COption<T> {
