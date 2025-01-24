@@ -1,3 +1,4 @@
+use crate::scheduler::Module;
 use anyhow::{Context as _, Result};
 use pipewire::{
     context::Context,
@@ -21,14 +22,20 @@ use store::Store;
 
 pub(crate) use command::{set_muted, set_volume};
 
-pub(crate) fn setup() -> Result<()> {
-    std::thread::spawn(|| {
-        if let Err(err) = start_pw_mainloop() {
-            log::error!("{}", err);
-        }
-    });
+pub(crate) struct Pipewire;
 
-    Ok(())
+impl Module for Pipewire {
+    const NAME: &str = "Pipewire";
+
+    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+        std::thread::spawn(|| {
+            if let Err(err) = start_pw_mainloop() {
+                log::error!("{}", err);
+            }
+        });
+
+        Ok(None)
+    }
 }
 
 fn start_pw_mainloop() -> Result<()> {

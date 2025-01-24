@@ -1,5 +1,6 @@
 use crate::{
     dbus::{register_org_me_layer_shell_control, OrgMeLayerShellControl},
+    scheduler::Module,
     Event,
 };
 use anyhow::{Context as _, Result};
@@ -7,19 +8,23 @@ use dbus::{blocking::Connection, channel::MatchingReceiver as _};
 use dbus_crossroads::Crossroads;
 use std::time::Duration;
 
-pub(crate) fn setup() -> Result<()> {
-    let conn = Connection::new_session().context("failed to connect to DBus")?;
+pub(crate) struct Control;
 
-    std::thread::spawn(move || {
-        if let Err(err) = in_thread(&conn) {
-            log::error!("Failed to spawn session thread: {:?}", err);
-        }
-    });
+impl Module for Control {
+    const NAME: &str = "Control";
 
-    Ok(())
+    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+        let conn = Connection::new_session().context("failed to connect to DBus")?;
+
+        std::thread::spawn(move || {
+            if let Err(err) = in_thread(&conn) {
+                log::error!("Failed to spawn session thread: {:?}", err);
+            }
+        });
+
+        Ok(None)
+    }
 }
-
-struct Control;
 
 impl OrgMeLayerShellControl for Control {
     fn toggle_launcher(&mut self) -> std::result::Result<(), dbus::MethodErr> {

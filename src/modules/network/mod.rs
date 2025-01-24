@@ -1,4 +1,7 @@
-use crate::dbus::{nm::NetworkManager, OrgFreedesktopNetworkManagerStateChanged};
+use crate::{
+    dbus::{nm::NetworkManager, OrgFreedesktopNetworkManagerStateChanged},
+    scheduler::Module,
+};
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, message::SignalArgs};
 
@@ -6,16 +9,22 @@ mod network_list;
 mod network_speed;
 mod wifi_status;
 
-pub(crate) fn setup() -> Result<()> {
-    let conn = Connection::new_system().context("Failed to connect to D-Bus")?;
+pub(crate) struct Network;
 
-    std::thread::spawn(move || {
-        if let Err(err) = in_thread(&conn) {
-            log::error!("{:?}", err);
-        }
-    });
+impl Module for Network {
+    const NAME: &str = "Network";
 
-    Ok(())
+    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+        let conn = Connection::new_system().context("Failed to connect to D-Bus")?;
+
+        std::thread::spawn(move || {
+            if let Err(err) = in_thread(&conn) {
+                log::error!("{:?}", err);
+            }
+        });
+
+        Ok(None)
+    }
 }
 
 fn in_thread(conn: &Connection) -> Result<()> {

@@ -12,6 +12,7 @@ use crate::{
         item::Item,
         watcher::Watcher,
     },
+    scheduler::Module,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
@@ -36,16 +37,22 @@ pub(crate) fn trigger(uuid: *const u8) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn setup() -> Result<()> {
-    let conn = Connection::new_session()?;
+pub(crate) struct Tray;
 
-    std::thread::spawn(move || {
-        if let Err(err) = in_thread(&conn) {
-            log::error!("{:?}", err);
-        }
-    });
+impl Module for Tray {
+    const NAME: &str = "Tray";
 
-    Ok(())
+    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+        let conn = Connection::new_session()?;
+
+        std::thread::spawn(move || {
+            if let Err(err) = in_thread(&conn) {
+                log::error!("{:?}", err);
+            }
+        });
+
+        Ok(None)
+    }
 }
 
 fn in_thread(conn: &Connection) -> Result<()> {

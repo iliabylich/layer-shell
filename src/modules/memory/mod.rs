@@ -1,7 +1,17 @@
-use crate::Event;
+use crate::{scheduler::Module, Event};
 use anyhow::{Context as _, Result};
 
-pub(crate) fn tick() -> Result<()> {
+pub(crate) struct Memory;
+
+impl Module for Memory {
+    const NAME: &str = "Memory";
+
+    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+        Ok(Some((1_000, tick)))
+    }
+}
+
+fn tick() -> Result<()> {
     let contents =
         std::fs::read_to_string("/proc/meminfo").context("failed to read /proc/meminfo")?;
 

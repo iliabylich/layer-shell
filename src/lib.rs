@@ -31,20 +31,22 @@ pub extern "C" fn layer_shell_io_init() {
 pub extern "C" fn layer_shell_io_spawn_thread() {
     std::thread::spawn(move || {
         use crate::modules::{
-            control, cpu, hyprland, memory, network, pipewire, time, tray, weather,
+            control::Control, cpu::CPU, hyprland::Hyprland, memory::Memory, network::Network,
+            pipewire::Pipewire, time::Time, tray::Tray, weather::Weather,
         };
 
-        let mut scheduler = Scheduler::new(40);
+        Scheduler::init();
+        let mut scheduler = Scheduler::new();
 
-        scheduler.add_once("control", control::setup);
-        scheduler.add("cpu", 1_000, cpu::tick);
-        scheduler.add_once("hyprland", hyprland::setup);
-        scheduler.add("memory", 1_000, memory::tick);
-        scheduler.add_once("network", network::setup);
-        scheduler.add_once("pipewire", pipewire::setup);
-        scheduler.add("time", 1_000, time::tick);
-        scheduler.add_once("tray", tray::setup);
-        scheduler.add("weather", 120_000, weather::tick);
+        scheduler.add::<Control>();
+        scheduler.add::<CPU>();
+        scheduler.add::<Hyprland>();
+        scheduler.add::<Memory>();
+        scheduler.add::<Network>();
+        scheduler.add::<Pipewire>();
+        scheduler.add::<Time>();
+        scheduler.add::<Tray>();
+        scheduler.add::<Weather>();
 
         scheduler.start_loop();
     });

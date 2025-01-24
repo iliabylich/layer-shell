@@ -1,3 +1,4 @@
+use crate::scheduler::Module;
 use anyhow::Result;
 
 mod client;
@@ -6,7 +7,17 @@ mod mapper;
 
 pub use code::WeatherCode;
 
-pub(crate) fn tick() -> Result<()> {
+pub(crate) struct Weather;
+
+impl Module for Weather {
+    const NAME: &str = "Weather";
+
+    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+        Ok(Some((120_000, tick)))
+    }
+}
+
+fn tick() -> Result<()> {
     let res = client::get_weather()?;
 
     let event = mapper::map_current(res.current);
