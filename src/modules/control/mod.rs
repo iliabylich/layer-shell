@@ -12,22 +12,37 @@ pub(crate) struct Control;
 
 impl Module for Control {
     const NAME: &str = "Control";
-    const INTERVAL: Option<u64> = None;
+    const INTERVAL: Option<u64> = Some(200);
 
     fn start() -> Result<Box<dyn Any + Send + 'static>> {
         let conn = Connection::new_session().context("failed to connect to DBus")?;
 
-        std::thread::spawn(move || {
-            if let Err(err) = in_thread(&conn) {
-                log::error!("Failed to spawn session thread: {:?}", err);
-            }
-        });
+        conn.request_name("org.me.LayerShellControl", true, true, true)?;
 
-        Ok(Box::new(0))
+        let mut cr = Crossroads::new();
+        let token = register_org_me_layer_shell_control::<Control>(&mut cr);
+
+        cr.insert("/Control", &[token], Control);
+
+        conn.start_receive(
+            dbus::message::MatchRule::new_method_call(),
+            Box::new(move |msg, conn| {
+                if cr.handle_message(msg, conn).is_err() {
+                    log::error!("Failed to handle message");
+                }
+                true
+            }),
+        );
+
+        Ok(Box::new(conn))
     }
 
-    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
-        unreachable!()
+    fn tick(state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        let conn = state
+            .downcast_ref::<Connection>()
+            .context("Control state is malformed")?;
+        conn.process(Duration::from_millis(200))?;
+        Ok(())
     }
 }
 
@@ -44,28 +59,5 @@ impl OrgMeLayerShellControl for Control {
 
     fn exit(&mut self) -> std::result::Result<(), dbus::MethodErr> {
         std::process::exit(0);
-    }
-}
-
-pub(crate) fn in_thread(conn: &Connection) -> Result<()> {
-    conn.request_name("org.me.LayerShellControl", true, true, true)?;
-
-    let mut cr = Crossroads::new();
-    let token = register_org_me_layer_shell_control::<Control>(&mut cr);
-
-    cr.insert("/Control", &[token], Control);
-
-    conn.start_receive(
-        dbus::message::MatchRule::new_method_call(),
-        Box::new(move |msg, conn| {
-            if cr.handle_message(msg, conn).is_err() {
-                log::error!("Failed to handle message");
-            }
-            true
-        }),
-    );
-
-    loop {
-        conn.process(Duration::from_millis(200))?;
     }
 }
