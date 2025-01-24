@@ -21,7 +21,7 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::time::Duration;
+use std::{any::Any, time::Duration};
 
 mod channel;
 mod item;
@@ -41,8 +41,9 @@ pub(crate) struct Tray;
 
 impl Module for Tray {
     const NAME: &str = "Tray";
+    const INTERVAL: Option<u64> = None;
 
-    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+    fn start() -> Result<Box<dyn Any + Send + 'static>> {
         let conn = Connection::new_session()?;
 
         std::thread::spawn(move || {
@@ -51,7 +52,11 @@ impl Module for Tray {
             }
         });
 
-        Ok(None)
+        Ok(Box::new(0))
+    }
+
+    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        unreachable!()
     }
 }
 

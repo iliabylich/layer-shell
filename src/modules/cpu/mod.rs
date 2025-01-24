@@ -1,32 +1,35 @@
 mod cpu_core_info;
 
 use crate::{scheduler::Module, Event};
-use anyhow::{anyhow, Result};
+use anyhow::{Context as _, Result};
 use cpu_core_info::CpuCoreInfo;
-use std::sync::{LazyLock, Mutex};
+use std::any::Any;
 
-static STATE: LazyLock<Mutex<Option<Vec<CpuCoreInfo>>>> = LazyLock::new(|| Mutex::new(None));
+type State = Vec<CpuCoreInfo>;
 
 pub(crate) struct CPU;
 
 impl Module for CPU {
     const NAME: &str = "CPU";
+    const INTERVAL: Option<u64> = Some(1_000);
 
-    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
-        Ok(Some((1_000, tick)))
+    fn start() -> Result<Box<dyn Any + Send + 'static>> {
+        Ok(Box::new(Option::<State>::None))
     }
-}
 
-fn tick() -> Result<()> {
-    let mut state = STATE.lock().map_err(|_| anyhow!("lock is poisoned"))?;
+    fn tick(state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        let state = state
+            .downcast_mut::<Option<State>>()
+            .context("CPU state is malformed")?;
 
-    let (usage, new_state) = CpuCoreInfo::parse_current_comparing_to(state.as_ref())?;
-    let event = Event::CpuUsage {
-        usage_per_core: usage.into(),
-    };
-    event.emit();
+        let (usage, new_state) = CpuCoreInfo::parse_current_comparing_to(state.as_ref())?;
+        let event = Event::CpuUsage {
+            usage_per_core: usage.into(),
+        };
+        event.emit();
 
-    *state = Some(new_state);
+        *state = Some(new_state);
 
-    Ok(())
+        Ok(())
+    }
 }

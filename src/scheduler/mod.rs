@@ -1,22 +1,34 @@
 use crate::Command;
 use anyhow::Result;
 use queue::Queue;
-use std::collections::HashMap;
+use std::any::Any;
 use thread_pool::ThreadPool;
 
 mod queue;
 mod queue_item;
 mod thread_pool;
 
+pub(crate) struct RepeatingModule {
+    pub(crate) state: Box<dyn Any + Send + 'static>,
+    pub(crate) interval_in_ms: u64,
+    pub(crate) tick: fn(&mut Box<dyn Any + Send + 'static>) -> Result<()>,
+}
+
 pub(crate) trait Module {
     const NAME: &str;
+    const INTERVAL: Option<u64>;
 
-    fn start() -> Result<Option<(u64, fn() -> Result<()>)>>;
+    fn start() -> Result<Box<dyn Any + Send + 'static>>;
+    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()>;
 }
 
 pub(crate) struct Scheduler {
-    modules: HashMap<&'static str, fn() -> Result<Option<(u64, fn() -> Result<()>)>>>,
-    schedule: HashMap<&'static str, (u64, fn() -> Result<()>)>,
+    modules: Vec<(
+        &'static str,
+        Option<u64>,
+        fn() -> Result<Box<dyn Any + Send + 'static>>,
+        fn(&mut Box<dyn Any + Send + 'static>) -> Result<()>,
+    )>,
 }
 
 impl Scheduler {
@@ -25,28 +37,18 @@ impl Scheduler {
     }
 
     pub(crate) fn new() -> Self {
-        Self {
-            modules: HashMap::new(),
-            schedule: HashMap::new(),
-        }
+        Self { modules: vec![] }
     }
 
     pub(crate) fn add<T: Module>(&mut self) {
-        let name = T::NAME;
-        self.modules.insert(name, T::start);
+        self.modules.push((T::NAME, T::INTERVAL, T::start, T::tick))
     }
 
     fn process_queue(&self) {
         let ts = now();
 
-        while let Some(name) = Queue::pop_min_lt(ts) {
-            let (interval, tick_fn) = self
-                .schedule
-                .get(name)
-                .copied()
-                .expect("bug, module must be periodic");
-
-            ThreadPool::execute_and_enqueue_again(name, tick_fn, interval);
+        while let Some((name, module)) = Queue::pop_min_lt(ts) {
+            ThreadPool::execute_and_enqueue_again(name, module);
         }
 
         while let Some(command) = Command::try_recv() {
@@ -65,20 +67,25 @@ impl Scheduler {
     }
 
     fn start_and_enqueue_repeating_modules(&mut self) {
-        for (name, start_fn) in self.modules.iter() {
+        for (name, interval_in_ms, start, tick) in std::mem::take(&mut self.modules) {
             log::info!("Starting module {name}");
 
-            match start_fn() {
-                Ok(tick) => {
+            match start() {
+                Ok(state) => {
                     log::info!("Module {name} has started");
-                    match tick {
-                        Some((interval, tick_fn)) => {
-                            self.schedule.insert(name, (interval, tick_fn));
 
-                            log::info!("Enqueueing initial tick of module {name}");
-                            ThreadPool::execute_and_enqueue_again(name, tick_fn, interval);
-                        }
-                        None => log::info!("Module {name} doesn't tick"),
+                    if let Some(interval_in_ms) = interval_in_ms {
+                        log::info!("Enqueueing initial tick of module {name}");
+                        ThreadPool::execute_and_enqueue_again(
+                            name,
+                            RepeatingModule {
+                                state,
+                                interval_in_ms,
+                                tick,
+                            },
+                        );
+                    } else {
+                        log::info!("Module {name} doesn't tick");
                     }
                 }
                 Err(err) => log::error!("Failed to start module {name}, NOT queueing: {:?}", err),

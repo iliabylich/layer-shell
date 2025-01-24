@@ -1,7 +1,9 @@
-#[derive(Eq, Clone, Copy, Debug)]
+use crate::scheduler::RepeatingModule;
+
 pub(crate) struct QueueItem {
     pub(crate) name: &'static str,
     pub(crate) run_at: u64,
+    pub(crate) module: RepeatingModule,
 }
 
 impl Ord for QueueItem {
@@ -19,5 +21,17 @@ impl PartialOrd for QueueItem {
 impl PartialEq for QueueItem {
     fn eq(&self, other: &Self) -> bool {
         self.run_at == other.run_at
+    }
+}
+
+impl Eq for QueueItem {}
+
+impl std::fmt::Debug for QueueItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QueueItem")
+            .field("name", &self.name)
+            .field("run_at", &self.run_at)
+            .field("module", &"<module>")
+            .finish()
     }
 }

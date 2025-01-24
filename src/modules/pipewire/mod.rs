@@ -9,7 +9,7 @@ use pipewire::{
     registry::{GlobalObject, Listener, Registry},
     spa::utils::dict::DictRef,
 };
-use std::time::Duration;
+use std::{any::Any, time::Duration};
 
 mod audio_device;
 mod audio_sink;
@@ -26,15 +26,20 @@ pub(crate) struct Pipewire;
 
 impl Module for Pipewire {
     const NAME: &str = "Pipewire";
+    const INTERVAL: Option<u64> = None;
 
-    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+    fn start() -> Result<Box<dyn Any + Send + 'static>> {
         std::thread::spawn(|| {
             if let Err(err) = start_pw_mainloop() {
                 log::error!("{}", err);
             }
         });
 
-        Ok(None)
+        Ok(Box::new(0))
+    }
+
+    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        unreachable!()
     }
 }
 

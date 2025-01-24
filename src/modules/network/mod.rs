@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, message::SignalArgs};
+use std::any::Any;
 
 mod network_list;
 mod network_speed;
@@ -13,8 +14,9 @@ pub(crate) struct Network;
 
 impl Module for Network {
     const NAME: &str = "Network";
+    const INTERVAL: Option<u64> = None;
 
-    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+    fn start() -> Result<Box<dyn Any + Send + 'static>> {
         let conn = Connection::new_system().context("Failed to connect to D-Bus")?;
 
         std::thread::spawn(move || {
@@ -23,7 +25,11 @@ impl Module for Network {
             }
         });
 
-        Ok(None)
+        Ok(Box::new(2))
+    }
+
+    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        unreachable!()
     }
 }
 

@@ -6,14 +6,15 @@ use crate::{
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, channel::MatchingReceiver as _};
 use dbus_crossroads::Crossroads;
-use std::time::Duration;
+use std::{any::Any, time::Duration};
 
 pub(crate) struct Control;
 
 impl Module for Control {
     const NAME: &str = "Control";
+    const INTERVAL: Option<u64> = None;
 
-    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+    fn start() -> Result<Box<dyn Any + Send + 'static>> {
         let conn = Connection::new_session().context("failed to connect to DBus")?;
 
         std::thread::spawn(move || {
@@ -22,7 +23,11 @@ impl Module for Control {
             }
         });
 
-        Ok(None)
+        Ok(Box::new(0))
+    }
+
+    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        unreachable!()
     }
 }
 

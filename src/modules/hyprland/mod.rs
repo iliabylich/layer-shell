@@ -1,6 +1,9 @@
 use crate::scheduler::Module;
 use anyhow::Result;
-use std::io::{BufRead as _, BufReader};
+use std::{
+    any::Any,
+    io::{BufRead as _, BufReader},
+};
 
 mod command;
 mod connection;
@@ -13,8 +16,9 @@ pub(crate) struct Hyprland;
 
 impl Module for Hyprland {
     const NAME: &str = "Hyprland";
+    const INTERVAL: Option<u64> = None;
 
-    fn start() -> Result<Option<(u64, fn() -> Result<()>)>> {
+    fn start() -> Result<Box<dyn Any + Send + 'static>> {
         let socket = connection::connect_to_socket()?;
         let mut state = state::State::new()?;
 
@@ -33,6 +37,10 @@ impl Module for Hyprland {
             }
         });
 
-        Ok(None)
+        Ok(Box::new(0))
+    }
+
+    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        unreachable!()
     }
 }

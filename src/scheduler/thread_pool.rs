@@ -1,5 +1,4 @@
-use crate::scheduler::queue::Queue;
-use anyhow::Result;
+use crate::scheduler::{queue::Queue, RepeatingModule};
 use std::sync::LazyLock;
 
 static THREAD_POOL: LazyLock<threadpool::ThreadPool> =
@@ -8,18 +7,14 @@ static THREAD_POOL: LazyLock<threadpool::ThreadPool> =
 pub(crate) struct ThreadPool;
 
 impl ThreadPool {
-    pub(crate) fn execute_and_enqueue_again(
-        name: &'static str,
-        f: fn() -> Result<()>,
-        interval: u64,
-    ) {
+    pub(crate) fn execute_and_enqueue_again(name: &'static str, mut module: RepeatingModule) {
         THREAD_POOL.execute(move || {
-            if let Err(err) = f() {
+            if let Err(err) = (module.tick)(&mut module.state) {
                 log::error!("failed to tick {name} mod: {:?}", err);
             }
 
             let now = chrono::Utc::now().timestamp_millis() as u64;
-            Queue::push(name, now + interval);
+            Queue::push(name, now + module.interval_in_ms, module);
         });
     }
 
