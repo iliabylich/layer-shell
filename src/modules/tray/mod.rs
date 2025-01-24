@@ -41,69 +41,67 @@ pub(crate) struct Tray;
 
 impl Module for Tray {
     const NAME: &str = "Tray";
-    const INTERVAL: Option<u64> = None;
+    const INTERVAL: Option<u64> = Some(200);
 
     fn start() -> Result<Box<dyn Any + Send + 'static>> {
         let conn = Connection::new_session()?;
+        let state = State::new();
 
-        std::thread::spawn(move || {
-            if let Err(err) = in_thread(&conn) {
-                log::error!("{:?}", err);
-            }
-        });
+        conn.add_match(
+            DBusNameOwnerChanged::match_rule(None, None),
+            |e: DBusNameOwnerChanged, _, _| {
+                if e.name == e.old_owner && e.new_owner.is_empty() {
+                    CHANNEL.emit(Command::ServiceRemoved { service: e.name });
+                }
+                true
+            },
+        )
+        .context("failed to subscribe to NameOwnerChanged signal")?;
 
-        Ok(Box::new(0))
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewAttentionIcon>(&conn)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewIcon>(&conn)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewOverlayIcon>(&conn)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewStatus>(&conn)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewTitle>(&conn)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewToolTip>(&conn)?;
+
+        conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)?;
+
+        let mut cr = Crossroads::new();
+        let token = register_org_kde_status_notifier_watcher::<Watcher>(&mut cr);
+
+        cr.insert("/StatusNotifierWatcher", &[token], Watcher);
+
+        conn.start_receive(
+            dbus::message::MatchRule::new_method_call(),
+            Box::new(move |msg, conn| {
+                if cr.handle_message(msg, conn).is_err() {
+                    log::error!("Failed to handle message");
+                }
+                true
+            }),
+        );
+
+        Ok(Box::new((conn, state)))
     }
 
-    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
-        unreachable!()
-    }
-}
+    fn tick(state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        let (conn, state) = state
+            .downcast_mut::<(Connection, State)>()
+            .context("Tray state is malformed")?;
 
-fn in_thread(conn: &Connection) -> Result<()> {
-    conn.add_match(
-        DBusNameOwnerChanged::match_rule(None, None),
-        |e: DBusNameOwnerChanged, _, _| {
-            if e.name == e.old_owner && e.new_owner.is_empty() {
-                CHANNEL.emit(Command::ServiceRemoved { service: e.name });
-            }
-            true
-        },
-    )
-    .context("failed to subscribe to NameOwnerChanged signal")?;
-
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewAttentionIcon>(conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewIcon>(conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewOverlayIcon>(conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewStatus>(conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewTitle>(conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewToolTip>(conn)?;
-
-    conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)?;
-
-    let mut cr = Crossroads::new();
-    let token = register_org_kde_status_notifier_watcher::<Watcher>(&mut cr);
-
-    cr.insert("/StatusNotifierWatcher", &[token], Watcher);
-
-    conn.start_receive(
-        dbus::message::MatchRule::new_method_call(),
-        Box::new(move |msg, conn| {
-            if cr.handle_message(msg, conn).is_err() {
-                log::error!("Failed to handle message");
-            }
-            true
-        }),
-    );
-
-    loop {
         while let Some(command) = CHANNEL.try_recv() {
-            if let Err(err) = handle_command(conn, command) {
+            if let Err(err) = handle_command(conn, command, state) {
                 log::error!("{:?}", err);
             }
         }
 
-        conn.process(Duration::from_millis(200))?;
+        loop {
+            let got_message = conn.process(Duration::from_millis(100))?;
+            if !got_message {
+                return Ok(());
+            }
+        }
     }
 }
 
@@ -124,7 +122,7 @@ fn subscribe_to_item_update<T: ReadAll + SignalArgs + 'static>(conn: &Connection
     Ok(())
 }
 
-fn handle_command(conn: &Connection, command: Command) -> Result<()> {
+fn handle_command(conn: &Connection, command: Command, state: &mut State) -> Result<()> {
     match command {
         Command::ServiceAdded { service, mut path } => {
             let menu_path;
@@ -141,17 +139,18 @@ fn handle_command(conn: &Connection, command: Command) -> Result<()> {
                 menu_path,
             };
 
-            reload_tray_app(conn, item)?;
+            reload_tray_app(conn, item, state)?;
         }
 
         Command::ServiceRemoved { service } => {
-            State::app_removed(service);
+            state.app_removed(service);
         }
 
         Command::ServiceUpdated { service } => {
-            let item = State::find(&service)
+            let item = state
+                .find(&service)
                 .with_context(|| format!("failed to find service {service}"))?;
-            reload_tray_app(conn, item)?;
+            reload_tray_app(conn, item, state)?;
         }
 
         Command::TriggerItem { uuid } => {
@@ -163,7 +162,7 @@ fn handle_command(conn: &Connection, command: Command) -> Result<()> {
     Ok(())
 }
 
-fn reload_tray_app(conn: &Connection, item: Item) -> Result<()> {
+fn reload_tray_app(conn: &Connection, item: Item, state: &mut State) -> Result<()> {
     let dbus_menu = DBusMenu::new(&item.service, &item.menu_path);
 
     let items = dbus_menu.get_layout(conn)?;
@@ -182,7 +181,7 @@ fn reload_tray_app(conn: &Connection, item: Item) -> Result<()> {
         icon: status_notifier_item.any_icon(conn),
     };
 
-    state::State::app_added(item, app);
+    state.app_added(item, app);
 
     Ok(())
 }
