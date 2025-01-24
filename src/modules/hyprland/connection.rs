@@ -4,6 +4,9 @@ use std::os::unix::net::UnixStream;
 pub(crate) fn connect_to_socket() -> Result<UnixStream> {
     let socket_path = hyprland_socket_path()?;
     let socket = UnixStream::connect(&socket_path).context("failed to open unix socket")?;
+    socket
+        .set_nonblocking(true)
+        .context("UnixStream can't be marked as nonblocking")?;
     Ok(socket)
 }
 

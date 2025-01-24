@@ -1,8 +1,11 @@
 use crate::scheduler::Module;
-use anyhow::Result;
+use anyhow::{bail, Context, Result};
+use raw_event::RawEvent;
+use state::State;
 use std::{
     any::Any,
-    io::{BufRead as _, BufReader},
+    io::{BufRead as _, BufReader, ErrorKind, Lines},
+    os::unix::net::UnixStream,
 };
 
 mod command;
@@ -12,35 +15,51 @@ mod state;
 
 pub(crate) use command::go_to_workspace;
 
+type Reader = Lines<BufReader<UnixStream>>;
+
 pub(crate) struct Hyprland;
 
 impl Module for Hyprland {
     const NAME: &str = "Hyprland";
-    const INTERVAL: Option<u64> = None;
+    const INTERVAL: Option<u64> = Some(50);
 
     fn start() -> Result<Box<dyn Any + Send + 'static>> {
         let socket = connection::connect_to_socket()?;
-        let mut state = state::State::new()?;
 
-        std::thread::spawn(move || {
-            state.as_language_changed_event().emit();
-            state.as_workspaces_changed_event().emit();
+        let state = State::new()?;
+        state.as_language_changed_event().emit();
+        state.as_workspaces_changed_event().emit();
 
-            let buffered = BufReader::new(socket);
-            let mut lines = buffered.lines();
+        let buffered = BufReader::new(socket);
+        let lines = buffered.lines();
 
-            while let Some(Ok(line)) = lines.next() {
-                if let Some(event) = raw_event::RawEvent::parse(&line) {
-                    let event = state.apply(event);
-                    event.emit();
-                }
-            }
-        });
+        let state: (State, Reader) = (state, lines);
 
-        Ok(Box::new(0))
+        Ok(Box::new(state))
     }
 
-    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
-        unreachable!()
+    fn tick(state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+        let (state, reader) = state
+            .downcast_mut::<(State, Reader)>()
+            .context("Hyprland state is malformed")?;
+
+        loop {
+            let data = reader.next().context("Hyprland socket is closed")?;
+            match data {
+                Ok(line) => {
+                    if let Some(event) = RawEvent::parse(&line) {
+                        let event = state.apply(event);
+                        event.emit();
+                    }
+                }
+                Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                    // all good, there's no data left for now
+                    return Ok(());
+                }
+                Err(err) => {
+                    bail!("Hyprland IO error: {:?}", err);
+                }
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ use crate::{modules::hyprland::raw_event::RawEvent, Event};
 use anyhow::{Context as _, Result};
 use std::collections::HashSet;
 
+#[derive(Debug)]
 pub(crate) struct State {
     workspace_ids: HashSet<usize>,
     active_workspace_id: usize,
