@@ -1,5 +1,9 @@
 use crate::Command;
 use anyhow::Result;
+use std::sync::LazyLock;
+use threadpool::ThreadPool;
+
+static THREAD_POOL: LazyLock<ThreadPool> = LazyLock::new(|| ThreadPool::new(5));
 
 struct Actor {
     f: fn() -> Result<()>,
@@ -12,8 +16,6 @@ pub(crate) struct Scheduler {
 
     iterations_per_second: u64,
     iteration: u64,
-
-    pool: threadpool::ThreadPool,
 }
 
 impl Scheduler {
@@ -24,7 +26,6 @@ impl Scheduler {
             actors: vec![],
             iterations_per_second,
             iteration: 0,
-            pool: threadpool::ThreadPool::new(5),
         }
     }
 
@@ -50,7 +51,7 @@ impl Scheduler {
                 let f = actor.f;
                 let name = actor.name;
 
-                self.pool.execute(move || {
+                THREAD_POOL.execute(move || {
                     if let Err(err) = f() {
                         log::error!("failed to tick {name} mod: {:?}", err);
                     }
@@ -59,7 +60,7 @@ impl Scheduler {
         }
 
         while let Some(command) = Command::try_recv() {
-            self.pool.execute(move || command.execute())
+            THREAD_POOL.execute(move || command.execute())
         }
 
         std::thread::sleep(std::time::Duration::from_millis(

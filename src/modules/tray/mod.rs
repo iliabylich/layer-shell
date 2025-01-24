@@ -60,12 +60,12 @@ fn in_thread(conn: &Connection) -> Result<()> {
     )
     .context("failed to subscribe to NameOwnerChanged signal")?;
 
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewAttentionIcon>(&conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewIcon>(&conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewOverlayIcon>(&conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewStatus>(&conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewTitle>(&conn)?;
-    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewToolTip>(&conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewAttentionIcon>(conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewIcon>(conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewOverlayIcon>(conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewStatus>(conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewTitle>(conn)?;
+    subscribe_to_item_update::<OrgKdeStatusNotifierItemNewToolTip>(conn)?;
 
     conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)?;
 
@@ -86,7 +86,7 @@ fn in_thread(conn: &Connection) -> Result<()> {
 
     loop {
         while let Some(command) = CHANNEL.try_recv() {
-            if let Err(err) = handle_command(&conn, command) {
+            if let Err(err) = handle_command(conn, command) {
                 log::error!("{:?}", err);
             }
         }

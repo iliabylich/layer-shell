@@ -19,7 +19,7 @@ pub(crate) fn setup() -> Result<()> {
 }
 
 fn in_thread(conn: &Connection) -> Result<()> {
-    full_reset(&conn)?;
+    full_reset(conn)?;
 
     conn.add_match(
         OrgFreedesktopNetworkManagerStateChanged::match_rule(None, None),
@@ -33,7 +33,7 @@ fn in_thread(conn: &Connection) -> Result<()> {
     .context("failed to add_match")?;
 
     loop {
-        if let Err(err) = spin(&conn) {
+        if let Err(err) = spin(conn) {
             log::error!("{:?}", err);
         }
     }
@@ -41,7 +41,7 @@ fn in_thread(conn: &Connection) -> Result<()> {
 
 fn spin(conn: &Connection) -> Result<()> {
     conn.process(std::time::Duration::from_millis(1000))?;
-    network_speed::update(&conn)?;
+    network_speed::update(conn)?;
     Ok(())
 }
 
