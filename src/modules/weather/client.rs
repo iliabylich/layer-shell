@@ -1,13 +1,8 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
-use std::sync::Arc;
+use ureq::Agent;
 
-pub(crate) fn get_weather() -> Result<Response> {
-    let tls_connector = Arc::new(ureq::native_tls::TlsConnector::new()?);
-    let agent = ureq::AgentBuilder::new()
-        .tls_connector(tls_connector)
-        .build();
-
+pub(crate) fn get_weather(agent: &Agent) -> Result<Response> {
     agent
         .get("https://api.open-meteo.com/v1/forecast")
         .query("latitude", "52.2298")

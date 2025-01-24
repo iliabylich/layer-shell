@@ -29,6 +29,7 @@ pub(crate) struct Scheduler {
         fn() -> Result<Box<dyn Any + Send + 'static>>,
         fn(&mut Box<dyn Any + Send + 'static>) -> Result<()>,
     )>,
+    thread_pool: ThreadPool,
 }
 
 impl Scheduler {
@@ -37,7 +38,10 @@ impl Scheduler {
     }
 
     pub(crate) fn new() -> Self {
-        Self { modules: vec![] }
+        Self {
+            modules: vec![],
+            thread_pool: ThreadPool::new(),
+        }
     }
 
     pub(crate) fn add<T: Module>(&mut self) {
@@ -48,11 +52,11 @@ impl Scheduler {
         let ts = now();
 
         while let Some((name, module)) = Queue::pop_min_lt(ts) {
-            ThreadPool::execute_and_enqueue_again(name, module);
+            self.thread_pool.execute_and_enqueue_again(name, module);
         }
 
         while let Some(command) = Command::try_recv() {
-            ThreadPool::execute_once(move || command.execute());
+            self.thread_pool.execute_once(move || command.execute());
         }
     }
 
@@ -76,7 +80,7 @@ impl Scheduler {
 
                     if let Some(interval_in_ms) = interval_in_ms {
                         log::info!("Enqueueing initial tick of module {name}");
-                        ThreadPool::execute_and_enqueue_again(
+                        self.thread_pool.execute_and_enqueue_again(
                             name,
                             RepeatingModule {
                                 state,

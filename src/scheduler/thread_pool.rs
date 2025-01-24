@@ -1,14 +1,21 @@
 use crate::scheduler::{queue::Queue, RepeatingModule};
-use std::sync::LazyLock;
 
-static THREAD_POOL: LazyLock<threadpool::ThreadPool> =
-    LazyLock::new(|| threadpool::ThreadPool::new(5));
-
-pub(crate) struct ThreadPool;
+pub(crate) struct ThreadPool {
+    inner: threadpool::ThreadPool,
+}
 
 impl ThreadPool {
-    pub(crate) fn execute_and_enqueue_again(name: &'static str, mut module: RepeatingModule) {
-        THREAD_POOL.execute(move || {
+    pub(crate) fn new() -> Self {
+        Self {
+            inner: threadpool::ThreadPool::new(5),
+        }
+    }
+    pub(crate) fn execute_and_enqueue_again(
+        &self,
+        name: &'static str,
+        mut module: RepeatingModule,
+    ) {
+        self.inner.execute(move || {
             if let Err(err) = (module.tick)(&mut module.state) {
                 log::error!("failed to tick {name} mod: {:?}", err);
             }
@@ -18,7 +25,7 @@ impl ThreadPool {
         });
     }
 
-    pub(crate) fn execute_once(f: impl FnOnce() + Send + 'static) {
-        THREAD_POOL.execute(f);
+    pub(crate) fn execute_once(&self, f: impl FnOnce() + Send + 'static) {
+        self.inner.execute(f);
     }
 }
