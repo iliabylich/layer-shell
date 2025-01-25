@@ -41,7 +41,7 @@ impl Module for Control {
         let conn = state
             .downcast_ref::<Connection>()
             .context("Control state is malformed")?;
-        conn.process(Duration::from_millis(200))?;
+        while conn.process(Duration::from_millis(200))? {}
         Ok(())
     }
 }

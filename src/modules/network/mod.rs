@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, message::SignalArgs};
-use std::any::Any;
+use std::{any::Any, time::Duration};
 
 mod network_list;
 mod network_speed;
@@ -40,7 +40,7 @@ impl Module for Network {
             .downcast_ref::<Connection>()
             .context("Network state is malformed")?;
 
-        conn.process(std::time::Duration::from_millis(200))?;
+        while conn.process(Duration::from_millis(200))? {}
         network_speed::update(conn)?;
         Ok(())
     }

@@ -96,12 +96,8 @@ impl Module for Tray {
             }
         }
 
-        loop {
-            let got_message = conn.process(Duration::from_millis(100))?;
-            if !got_message {
-                return Ok(());
-            }
-        }
+        while conn.process(Duration::from_millis(100))? {}
+        Ok(())
     }
 }
 
