@@ -28,16 +28,18 @@ mod item;
 mod state;
 mod watcher;
 
-pub(crate) fn trigger(uuid: *const u8) -> Result<()> {
-    let uuid = unsafe { std::ffi::CStr::from_ptr(uuid.cast()) };
-    let uuid = uuid.to_str().context("invalid uuid")?;
-    CHANNEL.emit(Command::TriggerItem {
-        uuid: uuid.to_string(),
-    });
-    Ok(())
-}
-
 pub(crate) struct Tray;
+
+impl Tray {
+    pub(crate) fn trigger(uuid: *const u8) -> Result<()> {
+        let uuid = unsafe { std::ffi::CStr::from_ptr(uuid.cast()) };
+        let uuid = uuid.to_str().context("invalid uuid")?;
+        CHANNEL.emit(Command::TriggerItem {
+            uuid: uuid.to_string(),
+        });
+        Ok(())
+    }
+}
 
 impl Module for Tray {
     const NAME: &str = "Tray";

@@ -13,11 +13,15 @@ mod connection;
 mod raw_event;
 mod state;
 
-pub(crate) use command::go_to_workspace;
-
 type Reader = Lines<BufReader<UnixStream>>;
 
 pub(crate) struct Hyprland;
+
+impl Hyprland {
+    pub(crate) fn go_to_workspace(idx: usize) -> Result<()> {
+        command::go_to_workspace(idx)
+    }
+}
 
 impl Module for Hyprland {
     const NAME: &str = "Hyprland";

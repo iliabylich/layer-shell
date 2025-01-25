@@ -20,9 +20,17 @@ mod store;
 use command::InternalCommand;
 use store::Store;
 
-pub(crate) use command::{set_muted, set_volume};
-
 pub(crate) struct Pipewire;
+
+impl Pipewire {
+    pub(crate) fn set_muted(muted: bool) -> Result<()> {
+        command::set_muted(muted)
+    }
+
+    pub(crate) fn set_volume(volume: f32) -> Result<()> {
+        command::set_volume(volume)
+    }
+}
 
 impl Module for Pipewire {
     const NAME: &str = "Pipewire";

@@ -1,6 +1,6 @@
 use crate::{
     lock_channel::LockChannel,
-    modules::{app_list, hyprland, pipewire, tray},
+    modules::{app_list::AppList, hyprland::Hyprland, pipewire::Pipewire, tray::Tray},
 };
 use anyhow::{Context as _, Result};
 use std::sync::LazyLock;
@@ -48,23 +48,23 @@ impl Command {
         use Command::*;
 
         let res = match self {
-            HyprlandGoToWorkspace { idx } => hyprland::go_to_workspace(idx),
+            HyprlandGoToWorkspace { idx } => Hyprland::go_to_workspace(idx),
 
-            AppListGoUp => app_list::go_up(),
-            AppListGoDown => app_list::go_down(),
-            AppListReset => app_list::reset(),
-            AppListExecSelected => app_list::exec_selected(),
-            AppListSetSearch { search } => app_list::set_search(search),
+            AppListGoUp => AppList::go_up(),
+            AppListGoDown => AppList::go_down(),
+            AppListReset => AppList::reset(),
+            AppListExecSelected => AppList::exec_selected(),
+            AppListSetSearch { search } => AppList::set_search(search),
 
-            SetVolume { volume } => pipewire::set_volume(volume),
-            SetMuted { muted } => pipewire::set_muted(muted),
+            SetVolume { volume } => Pipewire::set_volume(volume),
+            SetMuted { muted } => Pipewire::set_muted(muted),
 
             Lock => lock(),
             Reboot => reboot(),
             Shutdown => shutdown(),
             Logout => logout(),
 
-            TriggerTray { uuid } => tray::trigger(uuid),
+            TriggerTray { uuid } => Tray::trigger(uuid),
 
             SpawnNetworkEditor => spawn_network_editor(),
             SpawnSystemMonitor => spawn_system_monitor(),
