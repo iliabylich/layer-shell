@@ -43,9 +43,7 @@ impl Scheduler {
     }
 
     fn process_queue(&self) {
-        let ts = now();
-
-        while let Some((name, module)) = Queue::pop_min_lt(ts) {
+        while let Some((name, module)) = Queue::pop_ready() {
             self.thread_pool.execute_and_enqueue_again(name, module);
         }
 
@@ -83,8 +81,4 @@ impl Scheduler {
             }
         }
     }
-}
-
-fn now() -> u64 {
-    chrono::Utc::now().timestamp_millis() as u64
 }

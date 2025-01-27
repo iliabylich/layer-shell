@@ -32,7 +32,9 @@ impl Queue {
         });
     }
 
-    pub(crate) fn pop_min_lt(value: u64) -> Option<(&'static str, Box<dyn RepeatingModule>)> {
+    pub(crate) fn pop_ready() -> Option<(&'static str, Box<dyn RepeatingModule>)> {
+        let now = chrono::Utc::now().timestamp_millis() as u64;
+
         let Ok(mut global) = QUEUE.lock() else {
             fatal!("lock is poisoned");
         };
@@ -40,7 +42,7 @@ impl Queue {
             fatal!("Queue::init() hasn't been called");
         };
 
-        if queue.peek_min().is_some_and(|item| item.run_at < value) {
+        if queue.peek_min().is_some_and(|item| item.run_at < now) {
             let item = queue.pop_min().expect("bug");
             Some((item.name, item.module))
         } else {
