@@ -332,9 +332,9 @@ typedef struct {
   };
 } IO_Command;
 
-void layer_shell_io_subscribe(void (*f)(const IO_Event*));
-
 void layer_shell_io_init(void);
+
+void layer_shell_io_subscribe(void (*f)(const IO_Event*));
 
 void layer_shell_io_spawn_thread(void);
 

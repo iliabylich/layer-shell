@@ -6,6 +6,7 @@ mod dbus;
 mod event;
 mod ffi;
 mod lock_channel;
+mod logger;
 mod macros;
 mod modules;
 mod scheduler;
@@ -18,13 +19,18 @@ use scheduler::Scheduler;
 use subscriptions::Subscriptions;
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
-    Subscriptions::add(f);
+pub extern "C" fn layer_shell_io_init() {
+    let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
+    if let Err(err) = log::set_logger(logger) {
+        eprintln!("Failed to set logger: {:?}", err);
+    } else {
+        log::set_max_level(log::LevelFilter::Trace);
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_init() {
-    env_logger::init();
+pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
+    Subscriptions::add(f);
 }
 
 #[no_mangle]
