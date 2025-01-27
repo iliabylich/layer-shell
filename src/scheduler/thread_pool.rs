@@ -13,15 +13,14 @@ impl ThreadPool {
     pub(crate) fn execute_and_enqueue_again(
         &self,
         name: &'static str,
-        mut module: RepeatingModule,
+        mut module: Box<dyn RepeatingModule>,
     ) {
-        self.inner.execute(move || {
-            if let Err(err) = (module.tick)(&mut module.state) {
-                log::error!("failed to tick {name} mod: {:?}", err);
+        self.inner.execute(move || match module.tick() {
+            Ok(interval) => {
+                let now = chrono::Utc::now().timestamp_millis() as u64;
+                Queue::push(name, now + interval.as_millis() as u64, module);
             }
-
-            let now = chrono::Utc::now().timestamp_millis() as u64;
-            Queue::push(name, now + module.interval_in_ms, module);
+            Err(err) => log::error!("failed to tick {name} mod: {:?}", err),
         });
     }
 

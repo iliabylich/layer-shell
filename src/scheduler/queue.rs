@@ -18,7 +18,7 @@ impl Queue {
         *global = Some(MinMaxHeap::new());
     }
 
-    pub(crate) fn push(name: &'static str, run_at: u64, module: RepeatingModule) {
+    pub(crate) fn push(name: &'static str, run_at: u64, module: Box<dyn RepeatingModule>) {
         let Ok(mut global) = QUEUE.lock() else {
             fatal!("lock is poisoned");
         };
@@ -32,7 +32,7 @@ impl Queue {
         });
     }
 
-    pub(crate) fn pop_min_lt(value: u64) -> Option<(&'static str, RepeatingModule)> {
+    pub(crate) fn pop_min_lt(value: u64) -> Option<(&'static str, Box<dyn RepeatingModule>)> {
         let Ok(mut global) = QUEUE.lock() else {
             fatal!("lock is poisoned");
         };

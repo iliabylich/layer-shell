@@ -1,22 +1,23 @@
 use crate::{
     dbus::{nm::NetworkManager, OrgFreedesktopNetworkManagerStateChanged},
-    scheduler::Module,
+    scheduler::{Module, RepeatingModule},
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, message::SignalArgs};
-use std::{any::Any, time::Duration};
+use std::time::Duration;
 
 mod network_list;
 mod network_speed;
 mod wifi_status;
 
-pub(crate) struct Network;
+pub(crate) struct Network {
+    conn: Connection,
+}
 
 impl Module for Network {
     const NAME: &str = "Network";
-    const INTERVAL: Option<u64> = Some(1000);
 
-    fn start() -> Result<Box<dyn Any + Send + 'static>> {
+    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
         let conn = Connection::new_system().context("Failed to connect to D-Bus")?;
 
         full_reset(&conn)?;
@@ -32,17 +33,16 @@ impl Module for Network {
         )
         .context("failed to add_match")?;
 
-        Ok(Box::new(conn))
+        Ok(Some(Box::new(Network { conn })))
     }
+}
 
-    fn tick(state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
-        let conn = state
-            .downcast_ref::<Connection>()
-            .context("Network state is malformed")?;
+impl RepeatingModule for Network {
+    fn tick(&mut self) -> Result<Duration> {
+        while self.conn.process(Duration::from_millis(200))? {}
+        network_speed::update(&self.conn)?;
 
-        while conn.process(Duration::from_millis(200))? {}
-        network_speed::update(conn)?;
-        Ok(())
+        Ok(Duration::from_secs(1))
     }
 }
 

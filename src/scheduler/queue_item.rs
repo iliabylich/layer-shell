@@ -3,7 +3,7 @@ use crate::scheduler::RepeatingModule;
 pub(crate) struct QueueItem {
     pub(crate) name: &'static str,
     pub(crate) run_at: u64,
-    pub(crate) module: RepeatingModule,
+    pub(crate) module: Box<dyn RepeatingModule + 'static>,
 }
 
 impl Ord for QueueItem {

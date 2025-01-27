@@ -1,33 +1,27 @@
 use crate::Command;
 use anyhow::Result;
 use queue::Queue;
-use std::any::Any;
+use std::time::Duration;
 use thread_pool::ThreadPool;
 
 mod queue;
 mod queue_item;
 mod thread_pool;
 
-pub(crate) struct RepeatingModule {
-    pub(crate) state: Box<dyn Any + Send + 'static>,
-    pub(crate) interval_in_ms: u64,
-    pub(crate) tick: fn(&mut Box<dyn Any + Send + 'static>) -> Result<()>,
-}
-
 pub(crate) trait Module {
     const NAME: &str;
-    const INTERVAL: Option<u64>;
 
-    fn start() -> Result<Box<dyn Any + Send + 'static>>;
-    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()>;
+    fn start() -> Result<Option<Box<dyn RepeatingModule>>>;
+}
+
+pub(crate) trait RepeatingModule: Send {
+    fn tick(&mut self) -> Result<Duration>;
 }
 
 pub(crate) struct Scheduler {
-    modules: Vec<(
+    modules_to_start: Vec<(
         &'static str,
-        Option<u64>,
-        fn() -> Result<Box<dyn Any + Send + 'static>>,
-        fn(&mut Box<dyn Any + Send + 'static>) -> Result<()>,
+        fn() -> Result<Option<Box<dyn RepeatingModule>>>,
     )>,
     thread_pool: ThreadPool,
 }
@@ -39,13 +33,13 @@ impl Scheduler {
 
     pub(crate) fn new() -> Self {
         Self {
-            modules: vec![],
+            modules_to_start: vec![],
             thread_pool: ThreadPool::new(),
         }
     }
 
     pub(crate) fn add<T: Module>(&mut self) {
-        self.modules.push((T::NAME, T::INTERVAL, T::start, T::tick))
+        self.modules_to_start.push((T::NAME, T::start))
     }
 
     fn process_queue(&self) {
@@ -71,23 +65,16 @@ impl Scheduler {
     }
 
     fn start_and_enqueue_repeating_modules(&mut self) {
-        for (name, interval_in_ms, start, tick) in std::mem::take(&mut self.modules) {
+        for (name, start) in std::mem::take(&mut self.modules_to_start) {
             log::info!("Starting module {name}");
 
             match start() {
-                Ok(state) => {
+                Ok(repeat) => {
                     log::info!("Module {name} has started");
 
-                    if let Some(interval_in_ms) = interval_in_ms {
+                    if let Some(repeat) = repeat {
                         log::info!("Enqueueing initial tick of module {name}");
-                        self.thread_pool.execute_and_enqueue_again(
-                            name,
-                            RepeatingModule {
-                                state,
-                                interval_in_ms,
-                                tick,
-                            },
-                        );
+                        self.thread_pool.execute_and_enqueue_again(name, repeat);
                     } else {
                         log::info!("Module {name} doesn't tick");
                     }

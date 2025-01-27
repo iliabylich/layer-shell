@@ -12,7 +12,7 @@ use crate::{
         item::Item,
         watcher::Watcher,
     },
-    scheduler::Module,
+    scheduler::{Module, RepeatingModule},
 };
 use anyhow::{Context as _, Result};
 use dbus::{
@@ -21,14 +21,17 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::{any::Any, time::Duration};
+use std::time::Duration;
 
 mod channel;
 mod item;
 mod state;
 mod watcher;
 
-pub(crate) struct Tray;
+pub(crate) struct Tray {
+    conn: Connection,
+    state: State,
+}
 
 impl Tray {
     pub(crate) fn trigger(uuid: *const u8) -> Result<()> {
@@ -43,9 +46,8 @@ impl Tray {
 
 impl Module for Tray {
     const NAME: &str = "Tray";
-    const INTERVAL: Option<u64> = Some(200);
 
-    fn start() -> Result<Box<dyn Any + Send + 'static>> {
+    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
         let conn = Connection::new_session()?;
         let state = State::new();
 
@@ -84,22 +86,21 @@ impl Module for Tray {
             }),
         );
 
-        Ok(Box::new((conn, state)))
+        Ok(Some(Box::new(Tray { conn, state })))
     }
+}
 
-    fn tick(state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
-        let (conn, state) = state
-            .downcast_mut::<(Connection, State)>()
-            .context("Tray state is malformed")?;
-
+impl RepeatingModule for Tray {
+    fn tick(&mut self) -> Result<Duration> {
         while let Some(command) = CHANNEL.try_recv() {
-            if let Err(err) = handle_command(conn, command, state) {
+            if let Err(err) = handle_command(&self.conn, command, &mut self.state) {
                 log::error!("{:?}", err);
             }
         }
 
-        while conn.process(Duration::from_millis(100))? {}
-        Ok(())
+        while self.conn.process(Duration::from_millis(100))? {}
+
+        Ok(Duration::from_millis(200))
     }
 }
 

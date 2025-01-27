@@ -1,4 +1,4 @@
-use crate::scheduler::Module;
+use crate::scheduler::{Module, RepeatingModule};
 use anyhow::{Context as _, Result};
 use pipewire::{
     context::Context,
@@ -9,7 +9,7 @@ use pipewire::{
     registry::{GlobalObject, Listener, Registry},
     spa::utils::dict::DictRef,
 };
-use std::{any::Any, time::Duration};
+use std::time::Duration;
 
 mod audio_device;
 mod audio_sink;
@@ -34,20 +34,15 @@ impl Pipewire {
 
 impl Module for Pipewire {
     const NAME: &str = "Pipewire";
-    const INTERVAL: Option<u64> = None;
 
-    fn start() -> Result<Box<dyn Any + Send + 'static>> {
+    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
         std::thread::spawn(|| {
             if let Err(err) = start_pw_mainloop() {
                 log::error!("{}", err);
             }
         });
 
-        Ok(Box::new(0))
-    }
-
-    fn tick(_: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
-        unreachable!()
+        Ok(None)
     }
 }
 

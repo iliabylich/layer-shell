@@ -1,20 +1,19 @@
 use crate::{
     dbus::{register_org_me_layer_shell_control, OrgMeLayerShellControl},
-    scheduler::Module,
+    scheduler::{Module, RepeatingModule},
     Event,
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, channel::MatchingReceiver as _};
 use dbus_crossroads::Crossroads;
-use std::{any::Any, time::Duration};
+use std::time::Duration;
 
 pub(crate) struct Control;
 
 impl Module for Control {
     const NAME: &str = "Control";
-    const INTERVAL: Option<u64> = Some(200);
 
-    fn start() -> Result<Box<dyn Any + Send + 'static>> {
+    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
         let conn = Connection::new_session().context("failed to connect to DBus")?;
 
         conn.request_name("org.me.LayerShellControl", true, true, true)?;
@@ -34,15 +33,19 @@ impl Module for Control {
             }),
         );
 
-        Ok(Box::new(conn))
+        Ok(Some(Box::new(ControlTick { conn })))
     }
+}
 
-    fn tick(state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
-        let conn = state
-            .downcast_ref::<Connection>()
-            .context("Control state is malformed")?;
-        while conn.process(Duration::from_millis(200))? {}
-        Ok(())
+struct ControlTick {
+    conn: Connection,
+}
+
+impl RepeatingModule for ControlTick {
+    fn tick(&mut self) -> Result<Duration> {
+        while self.conn.process(Duration::from_millis(200))? {}
+
+        Ok(Duration::from_millis(200))
     }
 }
 

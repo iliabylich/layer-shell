@@ -1,18 +1,22 @@
-use crate::{scheduler::Module, Event};
+use crate::{
+    scheduler::{Module, RepeatingModule},
+    Event,
+};
 use anyhow::{Context as _, Result};
-use std::any::Any;
+use std::time::Duration;
 
 pub(crate) struct Memory;
 
 impl Module for Memory {
     const NAME: &str = "Memory";
-    const INTERVAL: Option<u64> = Some(1_000);
 
-    fn start() -> Result<Box<dyn Any + Send + 'static>> {
-        Ok(Box::new(0))
+    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
+        Ok(Some(Box::new(Memory)))
     }
+}
 
-    fn tick(_state: &mut Box<dyn Any + Send + 'static>) -> Result<()> {
+impl RepeatingModule for Memory {
+    fn tick(&mut self) -> Result<Duration> {
         let contents =
             std::fs::read_to_string("/proc/meminfo").context("failed to read /proc/meminfo")?;
 
@@ -40,6 +44,7 @@ impl Module for Memory {
             total: (total_kb as f64) / 1024.0 / 1024.0,
         };
         event.emit();
-        Ok(())
+
+        Ok(Duration::from_secs(1))
     }
 }
