@@ -1,6 +1,7 @@
 use crate::{
     dbus::{nm::NetworkManager, OrgFreedesktopNetworkManagerStateChanged},
     scheduler::{Module, RepeatingModule},
+    Command,
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, message::SignalArgs};
@@ -43,6 +44,14 @@ impl RepeatingModule for Network {
         network_speed::update(&self.conn)?;
 
         Ok(Duration::from_secs(1))
+    }
+
+    fn exec(&mut self, cmd: &Command) -> Result<()> {
+        if let Command::SpawnNetworkEditor = cmd {
+            crate::command::spawn_network_editor()?;
+        }
+
+        Ok(())
     }
 }
 

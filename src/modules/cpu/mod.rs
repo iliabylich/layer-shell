@@ -32,4 +32,8 @@ impl RepeatingModule for CPU {
 
         Ok(Duration::from_secs(1))
     }
+
+    fn exec(&mut self, _: &crate::Command) -> Result<()> {
+        Ok(())
+    }
 }

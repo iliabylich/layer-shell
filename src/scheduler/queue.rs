@@ -2,6 +2,7 @@ use crate::{
     macros::fatal,
     scheduler::{queue_item::QueueItem, RepeatingModule},
 };
+use anyhow::Result;
 use min_max_heap::MinMaxHeap;
 use std::sync::Mutex;
 
@@ -48,5 +49,24 @@ impl Queue {
         } else {
             None
         }
+    }
+
+    pub(crate) fn foreach(f: impl Fn(&mut dyn RepeatingModule) -> Result<()>) -> Result<()> {
+        let Ok(mut global) = QUEUE.lock() else {
+            fatal!("lock is poisoned");
+        };
+        let Some(queue) = global.as_mut() else {
+            fatal!("Queue::init() hasn't been called");
+        };
+
+        let mut copy = MinMaxHeap::new();
+        for mut item in std::mem::take(queue) {
+            f(&mut *item.module)?;
+            copy.push(item);
+        }
+
+        *queue = copy;
+
+        Ok(())
     }
 }

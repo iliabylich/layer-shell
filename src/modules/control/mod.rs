@@ -47,6 +47,10 @@ impl RepeatingModule for ControlTick {
 
         Ok(Duration::from_millis(200))
     }
+
+    fn exec(&mut self, _: &crate::Command) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl OrgMeLayerShellControl for Control {

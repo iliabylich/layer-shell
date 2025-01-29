@@ -1,6 +1,6 @@
 use crate::{
     dbus::OrgKdeStatusNotifierWatcher,
-    modules::tray::channel::{Command, CHANNEL},
+    modules::tray::channel::{TrayCommand, CHANNEL},
 };
 
 #[derive(Debug)]
@@ -13,7 +13,7 @@ impl OrgKdeStatusNotifierWatcher for Watcher {
         ctx: &dbus_crossroads::Context,
     ) -> Result<(), dbus::MethodErr> {
         if let Some(service) = ctx.message().sender().map(|s| s.to_string()) {
-            CHANNEL.emit(Command::ServiceAdded { service, path });
+            CHANNEL.emit(TrayCommand::Added { service, path });
         }
 
         Ok(())

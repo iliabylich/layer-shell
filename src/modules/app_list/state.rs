@@ -1,18 +1,16 @@
 use crate::{event::App, modules::app_list::system_app::SystemApp, Event};
-use anyhow::{anyhow, Result};
-use std::sync::{LazyLock, Mutex};
+use anyhow::Result;
 
 pub(crate) struct State {
     selected_idx: usize,
     apps: Vec<SystemApp>,
     pattern: String,
 }
-static INSTANCE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::new()));
 
 impl State {
     const MAX_ITEMS: usize = 5;
 
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             selected_idx: 0,
             apps: vec![],
@@ -20,60 +18,41 @@ impl State {
         }
     }
 
-    fn with<F>(f: F) -> Result<()>
-    where
-        F: FnOnce(&mut State) -> Result<()>,
-    {
-        let mut this = INSTANCE.lock().map_err(|_| anyhow!("lock is poisoned"))?;
-
-        f(&mut this)
+    pub(crate) fn go_up(&mut self) -> Result<()> {
+        if self.selected_idx == 0 {
+            return Ok(());
+        }
+        self.selected_idx = std::cmp::max(0, self.selected_idx - 1);
+        self.emit();
+        Ok(())
     }
 
-    pub(crate) fn go_up() -> Result<()> {
-        Self::with(|state| {
-            if state.selected_idx == 0 {
-                return Ok(());
-            }
-            state.selected_idx = std::cmp::max(0, state.selected_idx - 1);
-            state.emit();
-            Ok(())
-        })
+    pub(crate) fn go_down(&mut self) -> Result<()> {
+        self.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, self.selected_idx + 1);
+        self.emit();
+        Ok(())
     }
 
-    pub(crate) fn go_down() -> Result<()> {
-        Self::with(|state| {
-            state.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, state.selected_idx + 1);
-            state.emit();
-            Ok(())
-        })
+    pub(crate) fn set_search(&mut self, pattern: String) -> Result<()> {
+        self.selected_idx = 0;
+        self.pattern = pattern;
+        self.emit();
+        Ok(())
     }
 
-    pub(crate) fn set_search(pattern: String) -> Result<()> {
-        Self::with(|state| {
-            state.selected_idx = 0;
-            state.pattern = pattern;
-            state.emit();
-            Ok(())
-        })
+    pub(crate) fn exec_selected(&self) -> Result<()> {
+        if let Some(app) = self.visible_apps().get(self.selected_idx) {
+            app.exec()?;
+        }
+        Ok(())
     }
 
-    pub(crate) fn exec_selected() -> Result<()> {
-        Self::with(|state| {
-            if let Some(app) = state.visible_apps().get(state.selected_idx) {
-                app.exec()?;
-            }
-            Ok(())
-        })
-    }
-
-    pub(crate) fn reset() -> Result<()> {
-        Self::with(|state| {
-            state.pattern = String::new();
-            state.selected_idx = 0;
-            state.apps = SystemApp::parse_all()?;
-            state.emit();
-            Ok(())
-        })
+    pub(crate) fn reset(&mut self) -> Result<()> {
+        self.pattern = String::new();
+        self.selected_idx = 0;
+        self.apps = SystemApp::parse_all()?;
+        self.emit();
+        Ok(())
     }
 
     fn emit(&self) {

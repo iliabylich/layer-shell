@@ -26,4 +26,8 @@ impl RepeatingModule for Time {
 
         Ok(Duration::from_secs(1))
     }
+
+    fn exec(&mut self, _: &crate::Command) -> Result<()> {
+        Ok(())
+    }
 }

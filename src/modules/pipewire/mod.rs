@@ -1,4 +1,7 @@
-use crate::scheduler::{Module, RepeatingModule};
+use crate::{
+    scheduler::{Module, RepeatingModule},
+    Command,
+};
 use anyhow::{Context as _, Result};
 use pipewire::{
     context::Context,
@@ -22,16 +25,6 @@ use store::Store;
 
 pub(crate) struct Pipewire;
 
-impl Pipewire {
-    pub(crate) fn set_muted(muted: bool) -> Result<()> {
-        command::set_muted(muted)
-    }
-
-    pub(crate) fn set_volume(volume: f32) -> Result<()> {
-        command::set_volume(volume)
-    }
-}
-
 impl Module for Pipewire {
     const NAME: &str = "Pipewire";
 
@@ -42,7 +35,24 @@ impl Module for Pipewire {
             }
         });
 
-        Ok(None)
+        Ok(Some(Box::new(Self)))
+    }
+}
+
+impl RepeatingModule for Pipewire {
+    fn tick(&mut self) -> Result<Duration> {
+        Ok(Duration::from_secs(100_000))
+    }
+
+    fn exec(&mut self, cmd: &Command) -> Result<()> {
+        match cmd {
+            Command::SetVolume { volume } => command::set_volume(*volume)?,
+            Command::SetMuted { muted } => command::set_muted(*muted)?,
+
+            _ => {}
+        }
+
+        Ok(())
     }
 }
 

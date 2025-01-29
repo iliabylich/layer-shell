@@ -1,26 +1,48 @@
-use anyhow::Result;
+use std::time::Duration;
 
-mod command;
+use crate::{
+    scheduler::{Module, RepeatingModule},
+    Command,
+};
+use anyhow::{Context as _, Result};
+use state::State;
+
 mod state;
 mod system_app;
 
-pub(crate) struct AppList;
+pub(crate) struct AppList {
+    state: State,
+}
 
-impl AppList {
-    pub(crate) fn exec_selected() -> Result<()> {
-        command::exec_selected()
+impl Module for AppList {
+    const NAME: &str = "AppList";
+
+    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
+        Ok(Some(Box::new(Self {
+            state: State::new(),
+        })))
+    }
+}
+
+impl RepeatingModule for AppList {
+    fn tick(&mut self) -> Result<Duration> {
+        Ok(Duration::from_secs(100_000))
     }
 
-    pub(crate) fn go_down() -> Result<()> {
-        command::go_down()
-    }
-    pub(crate) fn go_up() -> Result<()> {
-        command::go_up()
-    }
-    pub(crate) fn reset() -> Result<()> {
-        command::reset()
-    }
-    pub(crate) fn set_search(s: *const u8) -> Result<()> {
-        command::set_search(s)
+    fn exec(&mut self, cmd: &Command) -> Result<()> {
+        match cmd {
+            Command::AppListReset => self.state.reset()?,
+            Command::AppListGoUp => self.state.go_up()?,
+            Command::AppListGoDown => self.state.go_down()?,
+            Command::AppListSetSearch { search } => {
+                let search = unsafe { std::ffi::CStr::from_ptr(search.cast()) };
+                let search = search.to_str().context("invalid search pattern")?;
+                self.state.set_search(search.to_string())?;
+            }
+            Command::AppListExecSelected => self.state.exec_selected()?,
+
+            _ => {}
+        }
+        Ok(())
     }
 }

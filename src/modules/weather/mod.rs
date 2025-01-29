@@ -39,4 +39,8 @@ impl RepeatingModule for Weather {
 
         Ok(Duration::from_secs(2))
     }
+
+    fn exec(&mut self, _: &crate::Command) -> Result<()> {
+        Ok(())
+    }
 }

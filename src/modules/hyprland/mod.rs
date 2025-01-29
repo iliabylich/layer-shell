@@ -1,4 +1,7 @@
-use crate::scheduler::{Module, RepeatingModule};
+use crate::{
+    scheduler::{Module, RepeatingModule},
+    Command,
+};
 use anyhow::{bail, Context, Result};
 use raw_event::RawEvent;
 use state::State;
@@ -16,12 +19,6 @@ mod state;
 pub(crate) struct Hyprland {
     state: State,
     lines: Lines<BufReader<UnixStream>>,
-}
-
-impl Hyprland {
-    pub(crate) fn go_to_workspace(idx: usize) -> Result<()> {
-        command::go_to_workspace(idx)
-    }
 }
 
 impl Module for Hyprland {
@@ -63,5 +60,13 @@ impl RepeatingModule for Hyprland {
         }
 
         Ok(Duration::from_millis(50))
+    }
+
+    fn exec(&mut self, cmd: &Command) -> Result<()> {
+        if let Command::HyprlandGoToWorkspace { idx } = cmd {
+            command::go_to_workspace(*idx)?;
+        }
+
+        Ok(())
     }
 }

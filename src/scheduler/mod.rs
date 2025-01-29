@@ -16,6 +16,7 @@ pub(crate) trait Module {
 
 pub(crate) trait RepeatingModule: Send {
     fn tick(&mut self) -> Result<Duration>;
+    fn exec(&mut self, cmd: &Command) -> Result<()>;
 }
 
 pub(crate) struct Scheduler {
@@ -47,8 +48,9 @@ impl Scheduler {
             self.thread_pool.execute_and_enqueue_again(name, module);
         }
 
-        while let Some(command) = Command::try_recv() {
-            self.thread_pool.execute_once(move || command.execute());
+        while let Some(cmd) = Command::try_recv() {
+            self.thread_pool
+                .execute_once(move || Queue::foreach(|module| module.exec(&cmd)));
         }
     }
 

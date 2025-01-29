@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use crate::scheduler::{queue::Queue, RepeatingModule};
 
 pub(crate) struct ThreadPool {
@@ -24,7 +26,11 @@ impl ThreadPool {
         });
     }
 
-    pub(crate) fn execute_once(&self, f: impl FnOnce() + Send + 'static) {
-        self.inner.execute(f);
+    pub(crate) fn execute_once(&self, f: impl FnOnce() -> Result<()> + Send + 'static) {
+        self.inner.execute(move || {
+            if let Err(err) = f() {
+                log::error!("{:?}", err);
+            }
+        });
     }
 }

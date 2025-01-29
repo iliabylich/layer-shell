@@ -1,6 +1,6 @@
 use crate::{
     scheduler::{Module, RepeatingModule},
-    Event,
+    Command, Event,
 };
 use anyhow::{Context as _, Result};
 use std::time::Duration;
@@ -46,5 +46,13 @@ impl RepeatingModule for Memory {
         event.emit();
 
         Ok(Duration::from_secs(1))
+    }
+
+    fn exec(&mut self, cmd: &Command) -> Result<()> {
+        if let Command::SpawnSystemMonitor = cmd {
+            crate::command::spawn_system_monitor()?;
+        }
+
+        Ok(())
     }
 }

@@ -37,8 +37,9 @@ pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
 pub extern "C" fn layer_shell_io_spawn_thread() {
     std::thread::spawn(move || {
         use crate::modules::{
-            control::Control, cpu::CPU, hyprland::Hyprland, memory::Memory, network::Network,
-            pipewire::Pipewire, time::Time, tray::Tray, weather::Weather,
+            app_list::AppList, control::Control, cpu::CPU, hyprland::Hyprland, memory::Memory,
+            network::Network, pipewire::Pipewire, session::Session, time::Time, tray::Tray,
+            weather::Weather,
         };
 
         Scheduler::init();
@@ -53,6 +54,8 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
         scheduler.add::<Time>();
         scheduler.add::<Tray>();
         scheduler.add::<Weather>();
+        scheduler.add::<AppList>();
+        scheduler.add::<Session>();
 
         scheduler.start_loop();
     });

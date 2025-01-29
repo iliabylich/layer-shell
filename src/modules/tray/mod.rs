@@ -8,11 +8,12 @@ use crate::{
     },
     event::{TrayApp, TrayItem},
     modules::tray::{
-        channel::{Command, CHANNEL},
+        channel::{TrayCommand, CHANNEL},
         item::Item,
         watcher::Watcher,
     },
     scheduler::{Module, RepeatingModule},
+    Command,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
@@ -33,17 +34,6 @@ pub(crate) struct Tray {
     state: State,
 }
 
-impl Tray {
-    pub(crate) fn trigger(uuid: *const u8) -> Result<()> {
-        let uuid = unsafe { std::ffi::CStr::from_ptr(uuid.cast()) };
-        let uuid = uuid.to_str().context("invalid uuid")?;
-        CHANNEL.emit(Command::TriggerItem {
-            uuid: uuid.to_string(),
-        });
-        Ok(())
-    }
-}
-
 impl Module for Tray {
     const NAME: &str = "Tray";
 
@@ -55,7 +45,7 @@ impl Module for Tray {
             DBusNameOwnerChanged::match_rule(None, None),
             |e: DBusNameOwnerChanged, _, _| {
                 if e.name == e.old_owner && e.new_owner.is_empty() {
-                    CHANNEL.emit(Command::ServiceRemoved { service: e.name });
+                    CHANNEL.emit(TrayCommand::Removed { service: e.name });
                 }
                 true
             },
@@ -102,6 +92,17 @@ impl RepeatingModule for Tray {
 
         Ok(Duration::from_millis(200))
     }
+
+    fn exec(&mut self, cmd: &Command) -> Result<()> {
+        if let Command::TriggerTray { uuid } = cmd {
+            let uuid = unsafe { std::ffi::CStr::from_ptr(uuid.cast()) };
+            let uuid = uuid.to_str().context("invalid uuid")?;
+
+            let (service, path, id) = UUID::decode(uuid)?;
+            DBusMenu::new(service, path).event(&self.conn, id)?;
+        }
+        Ok(())
+    }
 }
 
 fn subscribe_to_item_update<T: ReadAll + SignalArgs + 'static>(conn: &Connection) -> Result<()> {
@@ -110,7 +111,7 @@ fn subscribe_to_item_update<T: ReadAll + SignalArgs + 'static>(conn: &Connection
             T::match_rule(None, None),
             |_: T, _: &Connection, message: &Message| {
                 if let Some(service) = message.sender() {
-                    CHANNEL.emit(Command::ServiceUpdated {
+                    CHANNEL.emit(TrayCommand::Updated {
                         service: service.to_string(),
                     });
                 }
@@ -121,9 +122,9 @@ fn subscribe_to_item_update<T: ReadAll + SignalArgs + 'static>(conn: &Connection
     Ok(())
 }
 
-fn handle_command(conn: &Connection, command: Command, state: &mut State) -> Result<()> {
+fn handle_command(conn: &Connection, command: TrayCommand, state: &mut State) -> Result<()> {
     match command {
-        Command::ServiceAdded { service, mut path } => {
+        TrayCommand::Added { service, mut path } => {
             let menu_path;
 
             if service == path {
@@ -141,20 +142,15 @@ fn handle_command(conn: &Connection, command: Command, state: &mut State) -> Res
             reload_tray_app(conn, item, state)?;
         }
 
-        Command::ServiceRemoved { service } => {
+        TrayCommand::Removed { service } => {
             state.app_removed(service);
         }
 
-        Command::ServiceUpdated { service } => {
+        TrayCommand::Updated { service } => {
             let item = state
                 .find(&service)
                 .with_context(|| format!("failed to find service {service}"))?;
             reload_tray_app(conn, item, state)?;
-        }
-
-        Command::TriggerItem { uuid } => {
-            let (service, path, id) = UUID::decode(uuid)?;
-            DBusMenu::new(service, path).event(conn, id)?;
         }
     }
 
