@@ -1,4 +1,5 @@
 use crate::{
+    hyprctl,
     scheduler::{Module, RepeatingModule},
     Command,
 };
@@ -11,37 +12,35 @@ use std::{
     time::Duration,
 };
 
-mod command;
 mod connection;
 mod raw_event;
 mod state;
 
 pub(crate) struct Hyprland {
     state: State,
-    lines: Lines<BufReader<UnixStream>>,
+    reader: Lines<BufReader<UnixStream>>,
 }
 
 impl Module for Hyprland {
     const NAME: &str = "Hyprland";
 
     fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
-        let socket = connection::connect_to_socket()?;
+        let reader = connection::reader()?;
 
         let state = State::new()?;
         state.as_language_changed_event().emit();
         state.as_workspaces_changed_event().emit();
 
-        let buffered = BufReader::new(socket);
-        let lines = buffered.lines();
+        let reader = BufReader::new(reader).lines();
 
-        Ok(Some(Box::new(Hyprland { state, lines })))
+        Ok(Some(Box::new(Hyprland { state, reader })))
     }
 }
 
 impl RepeatingModule for Hyprland {
     fn tick(&mut self) -> Result<Duration> {
         loop {
-            let data = self.lines.next().context("Hyprland socket is closed")?;
+            let data = self.reader.next().context("Hyprland socket is closed")?;
             match data {
                 Ok(line) => {
                     if let Some(event) = RawEvent::parse(&line) {
@@ -63,8 +62,12 @@ impl RepeatingModule for Hyprland {
     }
 
     fn exec(&mut self, cmd: &Command) -> Result<()> {
-        if let Command::HyprlandGoToWorkspace { idx } = cmd {
-            command::go_to_workspace(*idx)?;
+        match cmd {
+            Command::HyprlandGoToWorkspace { idx } => {
+                hyprctl::dispatch(format!("workspace {}", *idx + 1))?;
+            }
+
+            _ => {}
         }
 
         Ok(())

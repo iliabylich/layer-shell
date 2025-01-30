@@ -1,4 +1,5 @@
 use crate::{
+    hyprctl,
     scheduler::{Module, RepeatingModule},
     Command, Event,
 };
@@ -50,7 +51,7 @@ impl RepeatingModule for Memory {
 
     fn exec(&mut self, cmd: &Command) -> Result<()> {
         if let Command::SpawnSystemMonitor = cmd {
-            crate::command::spawn_system_monitor()?;
+            hyprctl::dispatch("exec gnome-system-monitor")?;
         }
 
         Ok(())

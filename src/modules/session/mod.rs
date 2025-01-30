@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::{
+    hyprctl,
     scheduler::{Module, RepeatingModule},
     Command,
 };
@@ -23,10 +24,10 @@ impl RepeatingModule for Session {
 
     fn exec(&mut self, cmd: &Command) -> Result<()> {
         match cmd {
-            Command::Lock => crate::command::lock()?,
-            Command::Reboot => crate::command::reboot()?,
-            Command::Shutdown => crate::command::shutdown()?,
-            Command::Logout => crate::command::logout()?,
+            Command::Lock => hyprctl::dispatch("exec hyprlock")?,
+            Command::Reboot => hyprctl::dispatch("exec systemctl reboot")?,
+            Command::Shutdown => hyprctl::dispatch("exec systemctl poweroff")?,
+            Command::Logout => hyprctl::dispatch("exit")?,
 
             _ => {}
         }

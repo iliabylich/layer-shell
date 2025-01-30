@@ -1,10 +1,9 @@
-use crate::event::AppIcon;
+use crate::{event::AppIcon, hyprctl};
 use anyhow::{Context, Result};
 use std::{
     collections::HashMap,
     io::{BufRead as _, BufReader},
     path::PathBuf,
-    process::Stdio,
 };
 
 #[derive(Debug, Clone)]
@@ -75,14 +74,8 @@ impl SystemApp {
     }
 
     pub(crate) fn exec(&self) -> Result<()> {
-        let parts = self.exec.split(" ").map(|s| s.trim()).collect::<Vec<_>>();
-        std::process::Command::new(parts[0])
-            .args(&parts[1..])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .with_context(|| format!("Failed to spawn {}", self.exec))?;
-        Ok(())
+        hyprctl::dispatch(format!("exec {}", self.exec))
+            .with_context(|| format!("failed to exec {}", self.exec))
     }
 }
 fn desktop_files() -> Result<Vec<PathBuf>> {

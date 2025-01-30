@@ -1,4 +1,4 @@
-use crate::{modules::hyprland::raw_event::RawEvent, Event};
+use crate::{hyprctl, modules::hyprland::raw_event::RawEvent, Event};
 use anyhow::{Context as _, Result};
 use std::collections::HashSet;
 
@@ -76,19 +76,19 @@ struct Workspace {
 }
 
 fn get_workspaces() -> Result<Vec<Workspace>> {
-    let stdout = exec_hyprctl("workspaces")?;
-    serde_json::from_str(&stdout).context("invalid response from hyprctl workspaces -j")
+    let json = hyprctl::write("[[BATCH]]j/workspaces")?;
+    serde_json::from_str(&json).context("invalid response from hyprctl workspaces -j")
 }
 
 fn get_active_workspace() -> Result<Workspace> {
-    let stdout = exec_hyprctl("activeworkspace")?;
-    serde_json::from_str(&stdout).context("invalid response from hyprctl activeworkspace -j")
+    let json = hyprctl::write("[[BATCH]]j/activeworkspace")?;
+    serde_json::from_str(&json).context("invalid response from hyprctl activeworkspace -j")
 }
 
 fn get_language() -> Result<String> {
-    let stdout = exec_hyprctl("devices")?;
+    let json = hyprctl::write("[[BATCH]]j/devices")?;
     let devices: Devices =
-        serde_json::from_str(&stdout).context("invalid response from hyprctl devices -j")?;
+        serde_json::from_str(&json).context("invalid response from hyprctl devices -j")?;
 
     let main_keyboard = devices
         .keyboards
@@ -97,14 +97,4 @@ fn get_language() -> Result<String> {
         .context("expected at least one hyprland device")?;
 
     Ok(main_keyboard.active_keymap)
-}
-
-fn exec_hyprctl(command: &str) -> Result<String> {
-    let stdout = std::process::Command::new("hyprctl")
-        .args([command, "-j"])
-        .output()
-        .with_context(|| format!("failed to spawn hyprctl {command} -j"))?
-        .stdout;
-    String::from_utf8(stdout)
-        .with_context(|| format!("hyprctl {command} -j returned non-utf-8 stdout"))
 }

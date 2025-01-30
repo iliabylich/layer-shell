@@ -1,5 +1,6 @@
 use crate::{
     dbus::{nm::NetworkManager, OrgFreedesktopNetworkManagerStateChanged},
+    hyprctl,
     scheduler::{Module, RepeatingModule},
     Command,
 };
@@ -48,7 +49,7 @@ impl RepeatingModule for Network {
 
     fn exec(&mut self, cmd: &Command) -> Result<()> {
         if let Command::SpawnNetworkEditor = cmd {
-            crate::command::spawn_network_editor()?;
+            hyprctl::dispatch("exec kitty --name nmtui nmtui")?;
         }
 
         Ok(())
