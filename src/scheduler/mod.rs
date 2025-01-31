@@ -50,7 +50,7 @@ impl Scheduler {
 
         while let Some(cmd) = Command::try_recv() {
             self.thread_pool
-                .execute_once(move || Queue::foreach(|module| module.exec(&cmd)));
+                .execute_once(move || Queue::foreach(|module, _name| module.exec(&cmd)));
         }
     }
 
