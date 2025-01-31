@@ -39,7 +39,7 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
     std::thread::spawn(move || {
         use crate::modules::{
             app_list::AppList, control::Control, cpu::CPU, hyprland::Hyprland, memory::Memory,
-            network::Network, pipewire::Pipewire, session::Session, time::Time, tray::Tray,
+            network::Network, pipewire2::Pipewire2, session::Session, time::Time, tray::Tray,
             weather::Weather,
         };
 
@@ -51,7 +51,7 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
         scheduler.add::<Hyprland>();
         scheduler.add::<Memory>();
         scheduler.add::<Network>();
-        scheduler.add::<Pipewire>();
+        scheduler.add::<Pipewire2>();
         scheduler.add::<Time>();
         scheduler.add::<Tray>();
         scheduler.add::<Weather>();

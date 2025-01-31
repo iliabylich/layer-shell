@@ -62,12 +62,8 @@ impl RepeatingModule for Hyprland {
     }
 
     fn exec(&mut self, cmd: &Command) -> Result<()> {
-        match cmd {
-            Command::HyprlandGoToWorkspace { idx } => {
-                hyprctl::dispatch(format!("workspace {}", *idx + 1))?;
-            }
-
-            _ => {}
+        if let Command::HyprlandGoToWorkspace { idx } = cmd {
+            hyprctl::dispatch(format!("workspace {}", *idx + 1))?;
         }
 
         Ok(())

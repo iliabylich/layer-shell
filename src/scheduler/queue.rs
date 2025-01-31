@@ -51,7 +51,9 @@ impl Queue {
         }
     }
 
-    pub(crate) fn foreach(f: impl Fn(&mut dyn RepeatingModule) -> Result<()>) -> Result<()> {
+    pub(crate) fn foreach(
+        f: impl Fn(&mut dyn RepeatingModule, &'static str) -> Result<()>,
+    ) -> Result<()> {
         let Ok(mut global) = QUEUE.lock() else {
             fatal!("lock is poisoned");
         };
@@ -61,7 +63,7 @@ impl Queue {
 
         let mut copy = MinMaxHeap::new();
         for mut item in std::mem::take(queue) {
-            f(&mut *item.module)?;
+            f(&mut *item.module, item.name)?;
             copy.push(item);
         }
 

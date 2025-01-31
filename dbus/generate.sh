@@ -38,3 +38,6 @@ sed -i -e 's/pub/pub(crate)/g' src/dbus/gen/dbus_menu.rs
 
 dbus-codegen-rust --crossroads < dbus/org.me.LayerShellControl.xml -o src/dbus/gen/layer_shell_control.rs
 sed -i -e 's/pub/pub(crate)/g' src/dbus/gen/layer_shell_control.rs
+
+dbus-codegen-rust --client blocking < dbus/org.local.PipewireDBus.xml -o src/dbus/gen/pipewire_dbus.rs
+sed -i -e 's/pub/pub(crate)/g' src/dbus/gen/pipewire_dbus.rs

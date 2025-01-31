@@ -19,3 +19,7 @@ pub(crate) use gen::status_notifier_item::{
 pub(crate) use gen::layer_shell_control::{
     register_org_me_layer_shell_control, OrgMeLayerShellControl,
 };
+
+pub(crate) use gen::pipewire_dbus::{
+    OrgLocalPipewireDBus, OrgLocalPipewireDBusMutedUpdated, OrgLocalPipewireDBusVolumeUpdated,
+};

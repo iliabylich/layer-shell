@@ -4,7 +4,7 @@ pub(crate) mod cpu;
 pub(crate) mod hyprland;
 pub(crate) mod memory;
 pub(crate) mod network;
-pub(crate) mod pipewire;
+pub(crate) mod pipewire2;
 pub(crate) mod session;
 pub(crate) mod time;
 pub(crate) mod tray;
