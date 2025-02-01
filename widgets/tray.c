@@ -8,6 +8,7 @@
 #include "glib.h"
 #include "glibconfig.h"
 #include <gtk/gtk.h>
+#include <string.h>
 
 #define _(name) tray_widget_ns_##name
 
@@ -20,10 +21,11 @@ typedef struct {
 static icon_with_menu_t _(icons)[ICONS_COUNT];
 
 void on_tray_clicked(GSimpleAction *, GVariant *parameter, gpointer) {
-  const char *s = g_variant_get_string(parameter, NULL);
-  layer_shell_io_publish(
-      (IO_Command){.tag = IO_Command_TriggerTray,
-                   .trigger_tray = {.uuid = (const unsigned char *)s}});
+  const char *uuid = g_variant_get_string(parameter, NULL);
+  char *owned_uuid = malloc(strlen(uuid) + 1);
+  strcpy(owned_uuid, uuid);
+  layer_shell_io_publish((IO_Command){.tag = IO_Command_TriggerTray,
+                                      .trigger_tray = {.uuid = owned_uuid}});
 }
 
 static GtkWidget *_(init)(void) {

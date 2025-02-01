@@ -2,6 +2,7 @@
 #include "../bindings.h"
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
+#include <string.h>
 
 #define _(name) launcher_ns_##name
 
@@ -75,11 +76,12 @@ static void _(exec_selected)(void) {
 }
 
 static void _(on_input_change)(GtkEditable *editable) {
-  const unsigned char *search =
-      (const unsigned char *)gtk_editable_get_text(editable);
+  const char *search = gtk_editable_get_text(editable);
+  char *owned_search = malloc(strlen(search) + 1);
+  strcpy(owned_search, search);
   layer_shell_io_publish(
       (IO_Command){.tag = IO_Command_AppListSetSearch,
-                   .app_list_set_search = {.search = search}});
+                   .app_list_set_search = {.search = owned_search}});
 }
 
 static gboolean _(on_key_press)(GtkEventControllerKey *, guint keyval, guint,

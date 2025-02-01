@@ -95,9 +95,7 @@ impl RepeatingModule for Tray {
 
     fn exec(&mut self, cmd: &Command) -> Result<()> {
         if let Command::TriggerTray { uuid } = cmd {
-            let uuid = unsafe { std::ffi::CStr::from_ptr(uuid.cast()) };
-            let uuid = uuid.to_str().context("invalid uuid")?;
-
+            let uuid = String::from(uuid.clone());
             let (service, path, id) = UUID::decode(uuid)?;
             DBusMenu::new(service, path).event(&self.conn, id)?;
         }

@@ -14,6 +14,15 @@ impl From<String> for CString {
     }
 }
 
+impl From<CString> for String {
+    fn from(s: CString) -> Self {
+        let out = unsafe { std::ffi::CString::from_raw(s.ptr) };
+        std::mem::forget(s);
+        out.into_string()
+            .unwrap_or_else(|_| fatal!("non-utf-8 string"))
+    }
+}
+
 unsafe impl Send for CString {}
 unsafe impl Sync for CString {}
 

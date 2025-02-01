@@ -306,7 +306,7 @@ typedef struct {
 } IO_Command_IO_HyprlandGoToWorkspace_Body;
 
 typedef struct {
-  const uint8_t *search;
+  IO_CString search;
 } IO_Command_IO_AppListSetSearch_Body;
 
 typedef struct {
@@ -318,7 +318,7 @@ typedef struct {
 } IO_Command_IO_SetMuted_Body;
 
 typedef struct {
-  const uint8_t *uuid;
+  IO_CString uuid;
 } IO_Command_IO_TriggerTray_Body;
 
 typedef struct {

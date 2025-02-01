@@ -1,7 +1,7 @@
-use crate::lock_channel::LockChannel;
+use crate::{ffi::CString, lock_channel::LockChannel};
 use std::sync::LazyLock;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub enum Command {
     HyprlandGoToWorkspace { idx: usize },
@@ -9,7 +9,7 @@ pub enum Command {
     AppListReset,
     AppListGoUp,
     AppListGoDown,
-    AppListSetSearch { search: *const u8 },
+    AppListSetSearch { search: CString },
     AppListExecSelected,
 
     SetVolume { volume: f32 },
@@ -20,7 +20,7 @@ pub enum Command {
     Shutdown,
     Logout,
 
-    TriggerTray { uuid: *const u8 },
+    TriggerTray { uuid: CString },
 
     SpawnNetworkEditor,
     SpawnSystemMonitor,

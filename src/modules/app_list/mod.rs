@@ -4,7 +4,7 @@ use crate::{
     scheduler::{Module, RepeatingModule},
     Command,
 };
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 use state::State;
 
 mod state;
@@ -35,8 +35,7 @@ impl RepeatingModule for AppList {
             Command::AppListGoUp => self.state.go_up()?,
             Command::AppListGoDown => self.state.go_down()?,
             Command::AppListSetSearch { search } => {
-                let search = unsafe { std::ffi::CStr::from_ptr(search.cast()) };
-                let search = search.to_str().context("invalid search pattern")?;
+                let search = String::from(search.clone());
                 self.state.set_search(search.to_string())?;
             }
             Command::AppListExecSelected => self.state.exec_selected()?,
