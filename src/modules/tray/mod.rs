@@ -12,7 +12,7 @@ use crate::{
         item::Item,
         watcher::Watcher,
     },
-    scheduler::{Module, RepeatingModule},
+    scheduler::Actor,
     Command,
 };
 use anyhow::{Context as _, Result};
@@ -22,7 +22,7 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::time::Duration;
+use std::{ops::ControlFlow, time::Duration};
 
 mod channel;
 mod item;
@@ -34,10 +34,12 @@ pub(crate) struct Tray {
     state: State,
 }
 
-impl Module for Tray {
-    const NAME: &str = "Tray";
+impl Actor for Tray {
+    fn name() -> &'static str {
+        "Tray"
+    }
 
-    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
+    fn start() -> Result<Box<dyn Actor>> {
         let conn = Connection::new_session()?;
         let state = State::new();
 
@@ -76,12 +78,10 @@ impl Module for Tray {
             }),
         );
 
-        Ok(Some(Box::new(Tray { conn, state })))
+        Ok(Box::new(Tray { conn, state }))
     }
-}
 
-impl RepeatingModule for Tray {
-    fn tick(&mut self) -> Result<Duration> {
+    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
         while let Some(command) = CHANNEL.try_recv() {
             if let Err(err) = handle_command(&self.conn, command, &mut self.state) {
                 log::error!("{:?}", err);
@@ -90,16 +90,25 @@ impl RepeatingModule for Tray {
 
         while self.conn.process(Duration::from_millis(100))? {}
 
-        Ok(Duration::from_millis(200))
+        Ok(ControlFlow::Continue(Duration::from_millis(200)))
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<()> {
+    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
         if let Command::TriggerTray { uuid } = cmd {
             let uuid = String::from(uuid.clone());
             let (service, path, id) = UUID::decode(uuid)?;
             DBusMenu::new(service, path).event(&self.conn, id)?;
         }
-        Ok(())
+        Ok(ControlFlow::Continue(()))
+    }
+}
+
+impl std::fmt::Debug for Tray {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tray")
+            .field("conn", &"<conn>")
+            .field("state", &self.state)
+            .finish()
     }
 }
 

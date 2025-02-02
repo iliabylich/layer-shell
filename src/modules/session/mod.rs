@@ -1,28 +1,24 @@
-use std::time::Duration;
-
-use crate::{
-    hyprctl,
-    scheduler::{Module, RepeatingModule},
-    Command,
-};
+use crate::{hyprctl, scheduler::Actor, Command};
 use anyhow::Result;
+use std::{ops::ControlFlow, time::Duration};
 
+#[derive(Debug)]
 pub(crate) struct Session;
 
-impl Module for Session {
-    const NAME: &str = "Session";
-
-    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
-        Ok(Some(Box::new(Self)))
-    }
-}
-
-impl RepeatingModule for Session {
-    fn tick(&mut self) -> Result<Duration> {
-        Ok(Duration::from_secs(100_000))
+impl Actor for Session {
+    fn name() -> &'static str {
+        "Session"
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<()> {
+    fn start() -> Result<Box<dyn Actor>> {
+        Ok(Box::new(Self))
+    }
+
+    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
+        Ok(ControlFlow::Break(()))
+    }
+
+    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
         match cmd {
             Command::Lock => hyprctl::dispatch("exec hyprlock")?,
             Command::Reboot => hyprctl::dispatch("exec systemctl reboot")?,
@@ -32,6 +28,6 @@ impl RepeatingModule for Session {
             _ => {}
         }
 
-        Ok(())
+        Ok(ControlFlow::Continue(()))
     }
 }

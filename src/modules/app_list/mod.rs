@@ -1,35 +1,32 @@
-use std::time::Duration;
-
-use crate::{
-    scheduler::{Module, RepeatingModule},
-    Command,
-};
+use crate::{scheduler::Actor, Command};
 use anyhow::Result;
 use state::State;
+use std::{ops::ControlFlow, time::Duration};
 
 mod state;
 mod system_app;
 
+#[derive(Debug)]
 pub(crate) struct AppList {
     state: State,
 }
 
-impl Module for AppList {
-    const NAME: &str = "AppList";
+impl Actor for AppList {
+    fn name() -> &'static str {
+        "AppList"
+    }
 
-    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
-        Ok(Some(Box::new(Self {
+    fn start() -> Result<Box<dyn Actor>> {
+        Ok(Box::new(Self {
             state: State::new(),
-        })))
-    }
-}
-
-impl RepeatingModule for AppList {
-    fn tick(&mut self) -> Result<Duration> {
-        Ok(Duration::from_secs(100_000))
+        }))
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<()> {
+    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
+        Ok(ControlFlow::Break(()))
+    }
+
+    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
         match cmd {
             Command::AppListReset => self.state.reset()?,
             Command::AppListGoUp => self.state.go_up()?,
@@ -42,6 +39,6 @@ impl RepeatingModule for AppList {
 
             _ => {}
         }
-        Ok(())
+        Ok(ControlFlow::Continue(()))
     }
 }

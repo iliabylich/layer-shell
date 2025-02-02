@@ -16,7 +16,6 @@ mod subscriptions;
 pub use command::Command;
 pub use event::Event;
 
-use scheduler::Scheduler;
 use subscriptions::Subscriptions;
 
 #[no_mangle]
@@ -42,23 +41,23 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
             network::Network, pipewire::Pipewire, session::Session, time::Time, tray::Tray,
             weather::Weather,
         };
+        use scheduler::{Config, Scheduler};
 
-        Scheduler::init();
-        let mut scheduler = Scheduler::new();
+        let mut config = Config::new();
+        config.add::<Control>();
+        config.add::<CPU>();
+        config.add::<Hyprland>();
+        config.add::<Memory>();
+        config.add::<Network>();
+        config.add::<Pipewire>();
+        config.add::<Time>();
+        config.add::<Tray>();
+        config.add::<Weather>();
+        config.add::<AppList>();
+        config.add::<Session>();
 
-        scheduler.add::<Control>();
-        scheduler.add::<CPU>();
-        scheduler.add::<Hyprland>();
-        scheduler.add::<Memory>();
-        scheduler.add::<Network>();
-        scheduler.add::<Pipewire>();
-        scheduler.add::<Time>();
-        scheduler.add::<Tray>();
-        scheduler.add::<Weather>();
-        scheduler.add::<AppList>();
-        scheduler.add::<Session>();
-
-        scheduler.start_loop();
+        let scheduler = Scheduler::new(config);
+        scheduler.run();
     });
 }
 

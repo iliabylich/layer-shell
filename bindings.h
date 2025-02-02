@@ -299,6 +299,7 @@ typedef enum {
   IO_Command_TriggerTray,
   IO_Command_SpawnNetworkEditor,
   IO_Command_SpawnSystemMonitor,
+  IO_Command_Probe,
 } IO_Command_Tag;
 
 typedef struct {

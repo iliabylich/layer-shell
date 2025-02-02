@@ -1,10 +1,10 @@
-use std::time::Duration;
+use std::{ops::ControlFlow, time::Duration};
 
 use crate::{
     dbus::{
         OrgLocalPipewireDBus, OrgLocalPipewireDBusMutedUpdated, OrgLocalPipewireDBusVolumeUpdated,
     },
-    scheduler::{Module, RepeatingModule},
+    scheduler::Actor,
     Command, Event,
 };
 use anyhow::{Context as _, Result};
@@ -14,10 +14,12 @@ pub(crate) struct Pipewire {
     conn: Connection,
 }
 
-impl Module for Pipewire {
-    const NAME: &str = "Pipewire2";
+impl Actor for Pipewire {
+    fn name() -> &'static str {
+        "Pipewire"
+    }
 
-    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
+    fn start() -> Result<Box<dyn Actor>> {
         let conn = Connection::new_session().context("Failed to connect to D-Bus")?;
 
         let proxy = conn.with_proxy(
@@ -55,17 +57,15 @@ impl Module for Pipewire {
         )
         .context("failed to add_match")?;
 
-        Ok(Some(Box::new(Self { conn })))
+        Ok(Box::new(Self { conn }))
     }
-}
 
-impl RepeatingModule for Pipewire {
-    fn tick(&mut self) -> Result<Duration> {
+    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
         while self.conn.process(Duration::from_millis(100))? {}
-        Ok(Duration::from_millis(100))
+        Ok(ControlFlow::Continue(Duration::from_millis(100)))
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<()> {
+    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
         let proxy = self.conn.with_proxy(
             "org.local.PipewireDBus",
             "/org/local/PipewireDBus",
@@ -85,6 +85,12 @@ impl RepeatingModule for Pipewire {
             _ => {}
         }
 
-        Ok(())
+        Ok(ControlFlow::Continue(()))
+    }
+}
+
+impl std::fmt::Debug for Pipewire {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Pipewire").field("conn", &"<conn>").finish()
     }
 }

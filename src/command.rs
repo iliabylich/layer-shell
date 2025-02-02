@@ -24,6 +24,8 @@ pub enum Command {
 
     SpawnNetworkEditor,
     SpawnSystemMonitor,
+
+    Probe,
 }
 
 unsafe impl Send for Command {}

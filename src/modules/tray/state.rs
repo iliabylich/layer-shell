@@ -1,6 +1,7 @@
 use crate::{event::TrayApp, modules::tray::item::Item, Event};
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub(crate) struct State {
     map: HashMap<Item, TrayApp>,
 }

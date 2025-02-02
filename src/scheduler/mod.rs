@@ -1,86 +1,102 @@
-use crate::Command;
-use anyhow::Result;
+use crate::{macros::fatal, Command};
+pub(crate) use actor::Actor;
+pub(crate) use config::{ActorConfig, Config};
 use queue::Queue;
-use std::time::Duration;
-use thread_pool::ThreadPool;
+use std::{
+    collections::HashMap,
+    sync::{mpsc::Sender, Arc, Mutex},
+    time::Duration,
+};
 
+mod actor;
+mod config;
 mod queue;
-mod queue_item;
-mod thread_pool;
-
-pub(crate) trait Module {
-    const NAME: &str;
-
-    fn start() -> Result<Option<Box<dyn RepeatingModule>>>;
-}
-
-pub(crate) trait RepeatingModule: Send {
-    fn tick(&mut self) -> Result<Duration>;
-    fn exec(&mut self, cmd: &Command) -> Result<()>;
-}
+mod timer;
 
 pub(crate) struct Scheduler {
-    modules_to_start: Vec<(
-        &'static str,
-        fn() -> Result<Option<Box<dyn RepeatingModule>>>,
-    )>,
-    thread_pool: ThreadPool,
+    queue: Arc<Mutex<Queue>>,
+    txs: HashMap<&'static str, Sender<Command>>,
+    thread_pool: threadpool::ThreadPool,
 }
 
 impl Scheduler {
-    pub(crate) fn init() {
-        Queue::init();
-    }
+    pub(crate) fn new(config: Config) -> Self {
+        let mut queue = Queue::new();
+        let mut txs = HashMap::new();
+        let thread_pool = threadpool::ThreadPool::new(5);
 
-    pub(crate) fn new() -> Self {
+        for config in config.into_iter() {
+            let (tx, rx) = std::sync::mpsc::channel::<Command>();
+            tx.send(Command::Probe)
+                .unwrap_or_else(|_| fatal!("channel was immediately closed"));
+            let ActorConfig { name, start } = config;
+
+            log::info!("Starting module {name}");
+            match start() {
+                Ok(module) => {
+                    log::info!("Module {name} has successfully started");
+                    queue.register(name, module, rx);
+                    txs.insert(name, tx);
+                }
+                Err(err) => log::error!("Failed to start module {name}: {:?}", err),
+            }
+        }
+
+        let queue = Arc::new(Mutex::new(queue));
         Self {
-            modules_to_start: vec![],
-            thread_pool: ThreadPool::new(),
+            queue,
+            txs,
+            thread_pool,
         }
     }
 
-    pub(crate) fn add<T: Module>(&mut self) {
-        self.modules_to_start.push((T::NAME, T::start))
-    }
-
-    fn process_queue(&self) {
-        while let Some((name, module)) = Queue::pop_ready() {
-            self.thread_pool.execute_and_enqueue_again(name, module);
-        }
-
-        while let Some(cmd) = Command::try_recv() {
-            self.thread_pool
-                .execute_once(move || Queue::foreach(|module, _name| module.exec(&cmd)));
-        }
-    }
-
-    pub(crate) fn start_loop(&mut self) {
-        self.start_and_enqueue_repeating_modules();
+    pub(crate) fn run(self) {
+        let Self {
+            queue,
+            txs,
+            thread_pool,
+        } = self;
 
         loop {
-            self.process_queue();
+            while let Some((item, action)) = queue
+                .lock()
+                .unwrap_or_else(|_| fatal!("poisoned lock"))
+                .pop_ready()
+            {
+                let queue = Arc::clone(&queue);
+                thread_pool.execute(move || {
+                    let mut item = item;
 
-            std::thread::sleep(std::time::Duration::from_millis(50));
-        }
-    }
+                    match action.exec(
+                        item.name,
+                        &mut *item.module,
+                        &mut item.execution_plan,
+                        &item.rx,
+                    ) {
+                        Ok(_) => queue
+                            .lock()
+                            .unwrap_or_else(|_| fatal!("poisoned lock"))
+                            .push(item),
+                        Err(err) => {
+                            log::error!("Stopping module {}: {:?}", item.name, err)
+                        }
+                    }
+                });
+            }
 
-    fn start_and_enqueue_repeating_modules(&mut self) {
-        for (name, start) in std::mem::take(&mut self.modules_to_start) {
-            log::info!("Starting module {name}");
-
-            match start() {
-                Ok(repeat) => {
-                    log::info!("Module {name} has started");
-
-                    if let Some(repeat) = repeat {
-                        log::info!("Enqueueing initial tick of module {name}");
-                        self.thread_pool.execute_and_enqueue_again(name, repeat);
-                    } else {
-                        log::info!("Module {name} doesn't tick");
+            while let Some(cmd) = Command::try_recv() {
+                for (name, tx) in txs.iter() {
+                    if tx.send(cmd.clone()).is_err() {
+                        log::error!(
+                            "Failed to send command {:?} to module {}, channel is closed",
+                            cmd,
+                            name
+                        );
                     }
                 }
-                Err(err) => log::error!("Failed to start module {name}, NOT queueing: {:?}", err),
             }
+
+            std::thread::sleep(Duration::from_millis(50));
         }
     }
 }

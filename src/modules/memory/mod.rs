@@ -1,23 +1,20 @@
-use crate::{
-    hyprctl,
-    scheduler::{Module, RepeatingModule},
-    Command, Event,
-};
+use crate::{hyprctl, scheduler::Actor, Command, Event};
 use anyhow::{Context as _, Result};
-use std::time::Duration;
+use std::{ops::ControlFlow, time::Duration};
 
+#[derive(Debug)]
 pub(crate) struct Memory;
 
-impl Module for Memory {
-    const NAME: &str = "Memory";
-
-    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
-        Ok(Some(Box::new(Memory)))
+impl Actor for Memory {
+    fn name() -> &'static str {
+        "Memory"
     }
-}
 
-impl RepeatingModule for Memory {
-    fn tick(&mut self) -> Result<Duration> {
+    fn start() -> Result<Box<dyn Actor>> {
+        Ok(Box::new(Memory))
+    }
+
+    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
         let contents =
             std::fs::read_to_string("/proc/meminfo").context("failed to read /proc/meminfo")?;
 
@@ -45,15 +42,14 @@ impl RepeatingModule for Memory {
             total: (total_kb as f64) / 1024.0 / 1024.0,
         };
         event.emit();
-
-        Ok(Duration::from_secs(1))
+        Ok(ControlFlow::Continue(Duration::from_secs(1)))
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<()> {
+    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
         if let Command::SpawnSystemMonitor = cmd {
             hyprctl::dispatch("exec gnome-system-monitor")?;
         }
 
-        Ok(())
+        Ok(ControlFlow::Continue(()))
     }
 }

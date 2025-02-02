@@ -1,74 +1,83 @@
 use crate::{
-    macros::fatal,
-    scheduler::{queue_item::QueueItem, RepeatingModule},
+    scheduler::{
+        actor::{Action, ExecutionPlan},
+        Actor,
+    },
+    Command,
 };
-use anyhow::Result;
 use min_max_heap::MinMaxHeap;
-use std::sync::Mutex;
+use std::sync::mpsc::Receiver;
 
-static QUEUE: Mutex<Option<MinMaxHeap<QueueItem>>> = Mutex::new(None);
+#[derive(Debug)]
+pub(crate) struct QueueItem {
+    pub(crate) name: &'static str,
+    pub(crate) execution_plan: ExecutionPlan,
+    pub(crate) module: Box<dyn Actor>,
+    pub(crate) rx: Receiver<Command>,
+}
 
-pub(crate) struct Queue;
+impl Ord for QueueItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.execution_plan.cmp(&other.execution_plan)
+    }
+}
+
+impl PartialOrd for QueueItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for QueueItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.execution_plan == other.execution_plan
+    }
+}
+
+impl Eq for QueueItem {}
+
+#[derive(Debug)]
+pub(crate) struct Queue {
+    heap: MinMaxHeap<QueueItem>,
+}
 
 impl Queue {
-    pub(crate) fn init() {
-        let Ok(mut global) = QUEUE.lock() else {
-            fatal!("lock is poisoned");
-        };
-
-        *global = Some(MinMaxHeap::new());
+    pub(crate) fn new() -> Self {
+        Self {
+            heap: MinMaxHeap::new(),
+        }
     }
 
-    pub(crate) fn push(name: &'static str, run_at: u64, module: Box<dyn RepeatingModule>) {
-        let Ok(mut global) = QUEUE.lock() else {
-            fatal!("lock is poisoned");
-        };
-        let Some(queue) = global.as_mut() else {
-            fatal!("Queue::init() hasn't been called");
-        };
-        queue.push(QueueItem {
+    pub(crate) fn register(
+        &mut self,
+        name: &'static str,
+        module: Box<dyn Actor>,
+        rx: Receiver<Command>,
+    ) {
+        let item = QueueItem {
             name,
-            run_at,
+            execution_plan: ExecutionPlan::initial(),
             module,
-        });
+            rx,
+        };
+        self.heap.push(item);
     }
 
-    pub(crate) fn pop_ready() -> Option<(&'static str, Box<dyn RepeatingModule>)> {
-        let now = chrono::Utc::now().timestamp_millis() as u64;
+    pub(crate) fn push(&mut self, item: QueueItem) {
+        self.heap.push(item);
+    }
 
-        let Ok(mut global) = QUEUE.lock() else {
-            fatal!("lock is poisoned");
-        };
-        let Some(queue) = global.as_mut() else {
-            fatal!("Queue::init() hasn't been called");
-        };
-
-        if queue.peek_min().is_some_and(|item| item.run_at < now) {
-            let item = queue.pop_min().expect("bug");
-            Some((item.name, item.module))
+    pub(crate) fn pop_ready(&mut self) -> Option<(QueueItem, Action)> {
+        if let Some(item) = self.heap.pop_min() {
+            let (timer, action) = item.execution_plan.first_timer_and_action();
+            if timer.in_the_past() {
+                Some((item, action))
+            } else {
+                self.heap.push(item);
+                None
+            }
         } else {
             None
         }
-    }
-
-    pub(crate) fn foreach(
-        f: impl Fn(&mut dyn RepeatingModule, &'static str) -> Result<()>,
-    ) -> Result<()> {
-        let Ok(mut global) = QUEUE.lock() else {
-            fatal!("lock is poisoned");
-        };
-        let Some(queue) = global.as_mut() else {
-            fatal!("Queue::init() hasn't been called");
-        };
-
-        let mut copy = MinMaxHeap::new();
-        for mut item in std::mem::take(queue) {
-            f(&mut *item.module, item.name)?;
-            copy.push(item);
-        }
-
-        *queue = copy;
-
-        Ok(())
     }
 }

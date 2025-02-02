@@ -1,7 +1,6 @@
-use std::{sync::Arc, time::Duration};
-
-use crate::scheduler::{Module, RepeatingModule};
+use crate::scheduler::Actor;
 use anyhow::Result;
+use std::{ops::ControlFlow, sync::Arc, time::Duration};
 
 mod client;
 mod code;
@@ -10,25 +9,26 @@ mod mapper;
 pub use code::WeatherCode;
 use ureq::Agent;
 
+#[derive(Debug)]
 pub(crate) struct Weather {
     agent: Agent,
 }
 
-impl Module for Weather {
-    const NAME: &str = "Weather";
+impl Actor for Weather {
+    fn name() -> &'static str {
+        "Weather"
+    }
 
-    fn start() -> Result<Option<Box<dyn RepeatingModule>>> {
+    fn start() -> Result<Box<dyn Actor>> {
         let tls_connector = Arc::new(ureq::native_tls::TlsConnector::new()?);
         let agent = ureq::AgentBuilder::new()
             .tls_connector(tls_connector)
             .build();
 
-        Ok(Some(Box::new(Weather { agent })))
+        Ok(Box::new(Weather { agent }))
     }
-}
 
-impl RepeatingModule for Weather {
-    fn tick(&mut self) -> Result<Duration> {
+    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
         let res = client::get_weather(&self.agent)?;
 
         let event = mapper::map_current(res.current);
@@ -36,11 +36,10 @@ impl RepeatingModule for Weather {
 
         let event = mapper::map_forecast(res.hourly, res.daily)?;
         event.emit();
-
-        Ok(Duration::from_secs(2))
+        Ok(ControlFlow::Continue(Duration::from_secs(120)))
     }
 
-    fn exec(&mut self, _: &crate::Command) -> Result<()> {
-        Ok(())
+    fn exec(&mut self, _: &crate::Command) -> Result<ControlFlow<()>> {
+        Ok(ControlFlow::Break(()))
     }
 }

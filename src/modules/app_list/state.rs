@@ -1,6 +1,7 @@
 use crate::{event::App, modules::app_list::system_app::SystemApp, Event};
 use anyhow::Result;
 
+#[derive(Debug)]
 pub(crate) struct State {
     selected_idx: usize,
     apps: Vec<SystemApp>,
