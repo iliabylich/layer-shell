@@ -7,10 +7,17 @@ pub(crate) struct Timer {
 }
 
 impl Timer {
-    pub(crate) fn start_now(interval: Duration) -> Self {
+    pub(crate) fn default_tick() -> Self {
         Self {
             ts: now(),
-            interval,
+            interval: Duration::from_secs(1),
+        }
+    }
+
+    pub(crate) fn default_exec() -> Self {
+        Self {
+            ts: now(),
+            interval: Duration::from_millis(50),
         }
     }
 
@@ -20,6 +27,10 @@ impl Timer {
 
     pub(crate) fn in_the_past(&self) -> bool {
         self.ts < now()
+    }
+
+    pub(crate) fn pretty(&self) -> String {
+        format!("{}/{:?}ms", self.ts, self.interval)
     }
 }
 

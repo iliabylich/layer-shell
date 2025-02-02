@@ -67,10 +67,11 @@ impl Scheduler {
                 thread_pool.execute(move || {
                     let mut item = item;
 
-                    match action.exec(
+                    match action.run(
                         item.name,
                         &mut *item.module,
-                        &mut item.execution_plan,
+                        &mut item.tick_timer,
+                        &mut item.exec_timer,
                         &item.rx,
                     ) {
                         Ok(_) => queue
