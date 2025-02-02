@@ -1,13 +1,17 @@
 use crate::scheduler::Actor;
 use anyhow::Result;
-use std::{ops::ControlFlow, sync::Arc, time::Duration};
+use std::{ops::ControlFlow, time::Duration};
 
 mod client;
 mod code;
 mod mapper;
 
 pub use code::WeatherCode;
-use ureq::Agent;
+use ureq::{
+    config::Config,
+    tls::{TlsConfig, TlsProvider},
+    Agent,
+};
 
 #[derive(Debug)]
 pub(crate) struct Weather {
@@ -20,10 +24,16 @@ impl Actor for Weather {
     }
 
     fn start() -> Result<Box<dyn Actor>> {
-        let tls_connector = Arc::new(ureq::native_tls::TlsConnector::new()?);
-        let agent = ureq::AgentBuilder::new()
-            .tls_connector(tls_connector)
+        let config = Config::builder()
+            .tls_config(
+                TlsConfig::builder()
+                    // requires the native-tls feature
+                    .provider(TlsProvider::NativeTls)
+                    .build(),
+            )
             .build();
+
+        let agent = config.new_agent();
 
         Ok(Box::new(Weather { agent }))
     }

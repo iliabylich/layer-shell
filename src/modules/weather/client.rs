@@ -13,7 +13,8 @@ pub(crate) fn get_weather(agent: &Agent) -> Result<Response> {
         .query("timezone", "Europe/Warsaw")
         .call()
         .context("failed to send a request")?
-        .into_json::<Response>()
+        .body_mut()
+        .read_json::<Response>()
         .context("failed to parse JSON response")
 }
 
