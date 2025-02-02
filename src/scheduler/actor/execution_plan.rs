@@ -8,11 +8,8 @@ use std::time::Duration;
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ExecutionPlan {
     Tick(Timer),
-    ProcessIncomingCommands(Timer),
-    Both {
-        tick_at: Timer,
-        process_incoming_commands_at: Timer,
-    },
+    Exec(Timer),
+    Both { tick_at: Timer, exec_at: Timer },
     None,
 }
 
@@ -20,25 +17,19 @@ impl ExecutionPlan {
     pub(crate) fn initial() -> Self {
         Self::Both {
             tick_at: Timer::start_now(Duration::from_secs(1_000)),
-            process_incoming_commands_at: Timer::start_now(Duration::from_millis(50)),
+            exec_at: Timer::start_now(Duration::from_millis(50)),
         }
     }
 
     pub(crate) fn first_timer_and_action(self) -> (Timer, Action) {
         match self {
             Self::Tick(timer) => (timer, Action::Tick),
-            Self::ProcessIncomingCommands(timer) => (timer, Action::ProcessIncomingCommands),
-            Self::Both {
-                tick_at,
-                process_incoming_commands_at,
-            } => {
-                if tick_at < process_incoming_commands_at {
+            Self::Exec(timer) => (timer, Action::Exec),
+            Self::Both { tick_at, exec_at } => {
+                if tick_at < exec_at {
                     (tick_at, Action::Tick)
                 } else {
-                    (
-                        process_incoming_commands_at,
-                        Action::ProcessIncomingCommands,
-                    )
+                    (exec_at, Action::Exec)
                 }
             }
             Self::None => fatal!("Execution plan has been disabled, can't re-enable"),
@@ -60,11 +51,8 @@ impl ExecutionPlan {
 
     pub(crate) fn commands_timer(&mut self) -> Result<&mut Timer> {
         match self {
-            ExecutionPlan::ProcessIncomingCommands(timer) => Ok(timer),
-            ExecutionPlan::Both {
-                process_incoming_commands_at,
-                ..
-            } => Ok(process_incoming_commands_at),
+            ExecutionPlan::Exec(timer) => Ok(timer),
+            ExecutionPlan::Both { exec_at, .. } => Ok(exec_at),
             plan => bail!("Execution plan {:?} doesn't have commands timer", plan),
         }
     }
@@ -73,24 +61,21 @@ impl ExecutionPlan {
         match self {
             Self::Tick(timer) => timer.interval = interval,
             Self::Both { tick_at, .. } => tick_at.interval = interval,
-            Self::ProcessIncomingCommands(_) | Self::None => fatal!("ticking is disabled"),
+            Self::Exec(_) | Self::None => fatal!("ticking is disabled"),
         }
     }
 
     pub(crate) fn disable_ticking(&mut self) {
         match self {
             Self::Tick(_) => *self = Self::None,
-            Self::Both {
-                process_incoming_commands_at,
-                ..
-            } => *self = Self::ProcessIncomingCommands(*process_incoming_commands_at),
-            Self::ProcessIncomingCommands(_) | Self::None => fatal!("ticking is ALREADY disabled"),
+            Self::Both { exec_at, .. } => *self = Self::Exec(*exec_at),
+            Self::Exec(_) | Self::None => fatal!("ticking is ALREADY disabled"),
         }
     }
 
     pub(crate) fn disable_processing_of_commands(&mut self) {
         match self {
-            Self::ProcessIncomingCommands(_) => *self = Self::None,
+            Self::Exec(_) => *self = Self::None,
             Self::Both { tick_at, .. } => *self = Self::Tick(*tick_at),
             Self::Tick(_) | Self::None => fatal!("processing of commands is ALREADY disabled"),
         }
@@ -121,18 +106,13 @@ impl ExecutionPlan {
     pub(crate) fn checksum(&self) -> [u64; 5] {
         match self {
             ExecutionPlan::Tick(timer) => [1, timer.ts, timer.interval.as_millis() as u64, 0, 0],
-            ExecutionPlan::ProcessIncomingCommands(timer) => {
-                [2, timer.ts, timer.interval.as_millis() as u64, 0, 0]
-            }
-            ExecutionPlan::Both {
-                tick_at,
-                process_incoming_commands_at,
-            } => [
+            ExecutionPlan::Exec(timer) => [2, timer.ts, timer.interval.as_millis() as u64, 0, 0],
+            ExecutionPlan::Both { tick_at, exec_at } => [
                 3,
                 tick_at.ts,
                 tick_at.interval.as_millis() as u64,
-                process_incoming_commands_at.ts,
-                process_incoming_commands_at.interval.as_millis() as u64,
+                exec_at.ts,
+                exec_at.interval.as_millis() as u64,
             ],
             ExecutionPlan::None => [4, 0, 0, 0, 0],
         }

@@ -9,7 +9,7 @@ use std::{ops::ControlFlow, sync::mpsc::Receiver};
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Action {
     Tick,
-    ProcessIncomingCommands,
+    Exec,
 }
 
 impl Action {
@@ -36,7 +36,7 @@ impl Action {
                     execution_plan.disable_ticking();
                 }
             }
-            Self::ProcessIncomingCommands => {
+            Self::Exec => {
                 let mut should_stop = false;
 
                 while let Ok(cmd) = rx.try_recv() {
