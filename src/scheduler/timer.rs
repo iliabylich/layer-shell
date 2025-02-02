@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use crate::macros::fatal;
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Timer {
     pub(crate) ts: u64,
@@ -55,5 +57,8 @@ impl PartialEq for Timer {
 impl Eq for Timer {}
 
 fn now() -> u64 {
-    chrono::Utc::now().timestamp_millis() as u64
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_else(|err| fatal!("failed to compute current UNIX timestamp: {:?}", err))
+        .as_millis() as u64
 }
