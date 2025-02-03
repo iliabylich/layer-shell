@@ -15,7 +15,6 @@ dbus-crossroads = "0.5"
 threadpool = "1.8.1"
 min-max-heap = "1.3.0"
 inotify = { version = "0.11", default-features = false }
-http_req = "0.13.1"
 miniserde = "0.1"
 
 [profile.release]
