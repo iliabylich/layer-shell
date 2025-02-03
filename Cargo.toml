@@ -20,6 +20,7 @@ ureq = { version = "3.0", default-features = false, features = [
     "json",
 ] }
 min-max-heap = "1.3.0"
+inotify = { version = "0.11", default-features = false }
 
 [profile.release]
 opt-level = "z"
