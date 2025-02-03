@@ -7,16 +7,9 @@ mod code;
 mod mapper;
 
 pub use code::WeatherCode;
-use ureq::{
-    config::Config,
-    tls::{TlsConfig, TlsProvider},
-    Agent,
-};
 
 #[derive(Debug)]
-pub(crate) struct Weather {
-    agent: Agent,
-}
+pub(crate) struct Weather;
 
 impl Actor for Weather {
     fn name() -> &'static str {
@@ -24,22 +17,11 @@ impl Actor for Weather {
     }
 
     fn start() -> Result<Box<dyn Actor>> {
-        let config = Config::builder()
-            .tls_config(
-                TlsConfig::builder()
-                    // requires the native-tls feature
-                    .provider(TlsProvider::NativeTls)
-                    .build(),
-            )
-            .build();
-
-        let agent = config.new_agent();
-
-        Ok(Box::new(Weather { agent }))
+        Ok(Box::new(Weather))
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        let res = client::get_weather(&self.agent)?;
+        let res = client::get_weather()?;
 
         let event = mapper::map_current(res.current);
         event.emit();
