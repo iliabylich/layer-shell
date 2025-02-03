@@ -1,5 +1,5 @@
 #include "session.h"
-#include "../bindings.h"
+#include "bindings.h"
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 

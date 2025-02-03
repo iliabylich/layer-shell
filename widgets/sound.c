@@ -1,5 +1,5 @@
 #include "sound.h"
-#include "../bindings.h"
+#include "bindings.h"
 #include <gtk/gtk.h>
 
 #define _(name) sound_widget_ns_##name

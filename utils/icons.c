@@ -6,67 +6,67 @@
 #include <stdio.h>
 
 static const uint8_t FOGGY_ICON_BYTES[] = {
-#embed "icons/foggy.png" if_empty('-')
+#embed "../icons/foggy.png" if_empty('-')
     , 0};
 static GIcon *foggy_icon;
 GIcon *get_foggy_icon() { return foggy_icon; }
 
 static const uint8_t SUNNY_ICON_BYTES[] = {
-#embed "icons/sunny.png" if_empty('-')
+#embed "../icons/sunny.png" if_empty('-')
     , 0};
 static GIcon *sunny_icon;
 GIcon *get_sunny_icon() { return sunny_icon; }
 
 static const uint8_t PARTLY_CLOUDY_ICON_BYTES[] = {
-#embed "icons/partly_cloudy.png" if_empty('-')
+#embed "../icons/partly_cloudy.png" if_empty('-')
     , 0};
 static GIcon *partly_cloudy_icon;
 GIcon *get_partly_cloudy_icon() { return partly_cloudy_icon; }
 
 static const uint8_t RAINY_ICON_BYTES[] = {
-#embed "icons/rainy.png" if_empty('-')
+#embed "../icons/rainy.png" if_empty('-')
     , 0};
 static GIcon *rainy_icon;
 GIcon *get_rainy_icon() { return rainy_icon; }
 
 static const uint8_t THUNDERSTORM_ICON_BYTES[] = {
-#embed "icons/thunderstorm.png" if_empty('-')
+#embed "../icons/thunderstorm.png" if_empty('-')
     , 0};
 static GIcon *thunderstorm_icon;
 GIcon *get_thunderstorm_icon() { return thunderstorm_icon; }
 
 static const uint8_t SNOWY_ICON_BYTES[] = {
-#embed "icons/snowy.png" if_empty('-')
+#embed "../icons/snowy.png" if_empty('-')
     , 0};
 static GIcon *snowy_icon;
 GIcon *get_snowy_icon() { return snowy_icon; }
 
 static const uint8_t POWER_ICON_BYTES[] = {
-#embed "icons/power.png" if_empty('-')
+#embed "../icons/power.png" if_empty('-')
     , 0};
 static GIcon *power_icon;
 GIcon *get_power_icon() { return power_icon; }
 
 static const uint8_t QUESTION_MARK_ICON_BYTES[] = {
-#embed "icons/question_mark.png" if_empty('-')
+#embed "../icons/question_mark.png" if_empty('-')
     , 0};
 static GIcon *question_mark_icon;
 GIcon *get_question_mark_icon() { return question_mark_icon; }
 
 static const uint8_t WIFI_ICON_BYTES[] = {
-#embed "icons/wifi.png" if_empty('-')
+#embed "../icons/wifi.png" if_empty('-')
     , 0};
 static GIcon *wifi_icon;
 GIcon *get_wifi_icon() { return wifi_icon; }
 
 static const uint8_t DOWNLOAD_SPEED_ICON_BYTES[] = {
-#embed "icons/download.png" if_empty('-')
+#embed "../icons/download.png" if_empty('-')
     , 0};
 static GIcon *download_speed_icon;
 GIcon *get_download_speed_icon() { return download_speed_icon; }
 
 static const uint8_t UPLOAD_SPEED_ICON_BYTES[] = {
-#embed "icons/upload.png" if_empty('-')
+#embed "../icons/upload.png" if_empty('-')
     , 0};
 static GIcon *upload_speed_icon;
 GIcon *get_upload_speed_icon() { return upload_speed_icon; }

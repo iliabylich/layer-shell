@@ -1,5 +1,5 @@
 #include "memory.h"
-#include "../bindings.h"
+#include "bindings.h"
 #include <gtk/gtk.h>
 
 #define _(name) memory_widget_ns_##name

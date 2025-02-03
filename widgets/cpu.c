@@ -1,5 +1,5 @@
-#include "cpu.h"
-#include "../bindings.h"
+#include "widgets/cpu.h"
+#include "bindings.h"
 #include <gtk/gtk.h>
 
 #define _(name) cpu_widget_ns_##name

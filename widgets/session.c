@@ -1,6 +1,6 @@
 #include "session.h"
-#include "../utils/icons.h"
-#include "../windows/session.h"
+#include "utils/icons.h"
+#include "windows/session.h"
 #include <gtk/gtk.h>
 
 #define _(name) session_widget_ns_##name

@@ -1,6 +1,6 @@
 #include "htop.h"
-#include "../windows/htop.h"
-#include "../windows/top-bar.h"
+#include "windows/htop.h"
+#include "windows/top-bar.h"
 #include <gtk/gtk.h>
 
 #define _(name) htop_widget_ns_##name

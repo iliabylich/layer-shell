@@ -1,5 +1,5 @@
 #include "language.h"
-#include "../bindings.h"
+#include "bindings.h"
 #include <gtk/gtk.h>
 
 #define _(name) language_widget_ns_##name

@@ -1,7 +1,7 @@
 #ifndef WEATHER_HELPER_H
 #define WEATHER_HELPER_H
 
-#include "../bindings.h"
+#include "bindings.h"
 #include <gio/gio.h>
 
 const char *weather_code_to_description(IO_WeatherCode code);

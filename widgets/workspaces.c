@@ -1,5 +1,5 @@
 #include "workspaces.h"
-#include "../bindings.h"
+#include "bindings.h"
 #include <gtk/gtk.h>
 
 #define _(name) workspaces_widget_ns_##name

@@ -1,5 +1,5 @@
 #include "time.h"
-#include "../bindings.h"
+#include "bindings.h"
 #include <gtk/gtk.h>
 
 #define _(name) time_widget_ns_##name

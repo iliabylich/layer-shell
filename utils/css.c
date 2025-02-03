@@ -52,7 +52,7 @@ static char *read_file(const char *filepath) {
 }
 
 const char MAIN_CSS[] = {
-#embed "main.css" if_empty('-')
+#embed "../main.css" if_empty('-')
     , 0};
 const size_t MAIN_CSS_LEN = sizeof(MAIN_CSS);
 

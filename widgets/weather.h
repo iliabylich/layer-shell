@@ -1,7 +1,7 @@
 #ifndef WEATHER_WIDGET_H
 #define WEATHER_WIDGET_H
 
-#include "../utils/widget.h"
+#include "utils/widget.h"
 
 extern widget_t WEATHER_WIDGET;
 

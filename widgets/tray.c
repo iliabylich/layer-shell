@@ -1,12 +1,12 @@
 #include "tray.h"
-#include "../bindings.h"
-#include "../utils/icons.h"
+#include "bindings.h"
 #include "gdk/gdk.h"
 #include "gio/gio.h"
 #include "gio/gmenu.h"
 #include "glib-object.h"
 #include "glib.h"
 #include "glibconfig.h"
+#include "utils/icons.h"
 #include <gtk/gtk.h>
 #include <string.h>
 

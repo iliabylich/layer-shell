@@ -1,8 +1,8 @@
 #include "weather.h"
-#include "../bindings.h"
-#include "../utils/weather-helper.h"
-#include "../windows/top-bar.h"
-#include "../windows/weather.h"
+#include "bindings.h"
+#include "utils/weather-helper.h"
+#include "windows/top-bar.h"
+#include "windows/weather.h"
 #include <gtk/gtk.h>
 
 #define _(name) weather_widget_ns_##name

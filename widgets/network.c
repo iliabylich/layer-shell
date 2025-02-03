@@ -1,8 +1,8 @@
 #include "network.h"
-#include "../bindings.h"
-#include "../utils/icons.h"
-#include "../windows/network.h"
-#include "../windows/top-bar.h"
+#include "bindings.h"
+#include "utils/icons.h"
+#include "windows/network.h"
+#include "windows/top-bar.h"
 #include <gtk/gtk.h>
 
 #define _(name) network_widget_ns_##name
