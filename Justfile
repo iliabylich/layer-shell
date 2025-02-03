@@ -4,12 +4,13 @@ dbus-generate:
 bindgen:
     cbindgen --output bindings.h
 
-dev:
+clean:
     rm -rf builddir
+
+setup-dev:
     CC=clang meson setup builddir --buildtype=debug
+
+dev:
+    cargo build
     ninja -C builddir
     ./builddir/layer-shell
-
-release:
-    CC=clang meson setup builddir --buildtype=release
-    ninja -C builddir
