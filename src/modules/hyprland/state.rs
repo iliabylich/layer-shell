@@ -61,34 +61,34 @@ impl State {
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(miniserde::Deserialize)]
 struct Devices {
     keyboards: Vec<Keyboard>,
 }
-#[derive(serde::Deserialize)]
+#[derive(miniserde::Deserialize)]
 struct Keyboard {
     main: bool,
     active_keymap: String,
 }
-#[derive(serde::Deserialize)]
+#[derive(miniserde::Deserialize)]
 struct Workspace {
     id: usize,
 }
 
 fn get_workspaces() -> Result<Vec<Workspace>> {
     let json = hyprctl::write("[[BATCH]]j/workspaces")?;
-    serde_json::from_str(&json).context("invalid response from hyprctl workspaces -j")
+    miniserde::json::from_str(&json).context("invalid response from hyprctl workspaces -j")
 }
 
 fn get_active_workspace() -> Result<Workspace> {
     let json = hyprctl::write("[[BATCH]]j/activeworkspace")?;
-    serde_json::from_str(&json).context("invalid response from hyprctl activeworkspace -j")
+    miniserde::json::from_str(&json).context("invalid response from hyprctl activeworkspace -j")
 }
 
 fn get_language() -> Result<String> {
     let json = hyprctl::write("[[BATCH]]j/devices")?;
     let devices: Devices =
-        serde_json::from_str(&json).context("invalid response from hyprctl devices -j")?;
+        miniserde::json::from_str(&json).context("invalid response from hyprctl devices -j")?;
 
     let main_keyboard = devices
         .keyboards

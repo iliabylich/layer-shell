@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use http_req::{request::Request, uri::Uri};
-use serde::Deserialize;
 
 pub(crate) fn get_weather() -> Result<Response> {
     let uri = format!("https://api.open-meteo.com/v1/forecast?latitude=52.2298&longitude=21.0118&current={CURRENT_FIELDS}&hourly={HOURLY_FIELDS}&daily={DAILY_FIELDS}&timezone=Europe/Warsaw");
@@ -18,10 +17,10 @@ pub(crate) fn get_weather() -> Result<Response> {
         );
     }
 
-    serde_json::from_str(&body).context("failed to parse response body")
+    miniserde::json::from_str(&body).context("failed to parse response body")
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(miniserde::Deserialize, Debug)]
 pub(crate) struct Response {
     pub(crate) current: CurrentResponse,
     pub(crate) hourly: HourlyResponse,
@@ -29,14 +28,14 @@ pub(crate) struct Response {
 }
 
 const CURRENT_FIELDS: &str = "temperature_2m,weather_code";
-#[derive(Deserialize, Debug)]
+#[derive(miniserde::Deserialize, Debug)]
 pub(crate) struct CurrentResponse {
     pub(crate) temperature_2m: f32,
     pub(crate) weather_code: u32,
 }
 
 const HOURLY_FIELDS: &str = "temperature_2m,weather_code";
-#[derive(Deserialize, Debug)]
+#[derive(miniserde::Deserialize, Debug)]
 pub(crate) struct HourlyResponse {
     pub(crate) time: Vec<String>,
     pub(crate) temperature_2m: Vec<f32>,
@@ -44,7 +43,7 @@ pub(crate) struct HourlyResponse {
 }
 
 const DAILY_FIELDS: &str = "temperature_2m_min,temperature_2m_max,weather_code";
-#[derive(Deserialize, Debug)]
+#[derive(miniserde::Deserialize, Debug)]
 pub(crate) struct DailyResponse {
     pub(crate) time: Vec<String>,
     pub(crate) temperature_2m_min: Vec<f32>,
