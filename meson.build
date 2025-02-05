@@ -26,7 +26,7 @@ summary(
   section: 'Directories',
 )
 
-sources = [
+sources = files(
   'utils/css.cpp',
   'utils/icons.cpp',
   'utils/weather-helper.cpp',
@@ -48,7 +48,7 @@ sources = [
   'windows/top-bar.cpp',
   'windows/weather.cpp',
   'main.cpp',
-]
+)
 
 rustlib = custom_target(
   'liblayer_shell_io.so',
