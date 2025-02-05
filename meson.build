@@ -8,16 +8,23 @@ project(
   ],
 )
 
-gtk4 = dependency('gtk4')
-gtkmm = dependency('gtkmm-4.0')
-gtk4_layer_shell = dependency('gtk4-layer-shell-0')
-vte = dependency('vte-2.91-gtk4')
+gtk4 = dependency('gtk4', required: true)
+gtkmm = dependency('gtkmm-4.0', required: true)
+gtk4_layer_shell = dependency('gtk4-layer-shell-0', required: true)
+vte = dependency('vte-2.91-gtk4', required: true)
+just = find_program('just', required: true)
 
 buildtype = get_option('buildtype')
-message('Build type', buildtype)
+libdir = get_option('libdir')
+bindir = get_option('bindir')
 
-rust_out_dir = meson.project_source_root() / 'target' / buildtype
-message('Rust dir', rust_out_dir)
+summary(
+  {
+    'libdir': libdir,
+    'bindir': bindir,
+  },
+  section: 'Directories',
+)
 
 sources = [
   'utils/css.cpp',
@@ -43,19 +50,24 @@ sources = [
   'main.cpp',
 ]
 
+rustlib = custom_target(
+  'liblayer_shell_io.so',
+  command: [just, f'cargo-@buildtype@', '@OUTPUT@'],
+  output: 'liblayer_shell_io.so',
+  build_always_stale: true,
+  build_by_default: true,
+  install: true,
+  install_dir: libdir,
+)
+
 executable(
   meson.project_name(),
   sources,
   cpp_args: ['-Wno-c23-extensions'],
   dependencies: [gtk4, gtk4_layer_shell, vte, gtkmm],
+  link_with: [rustlib],
+  link_depends: [rustlib],
   cpp_pch: 'pch/pch.hpp',
-  link_args: [f'-L@rust_out_dir@', '-llayer_shell_io'],
-  build_rpath: f'$ORIGIN/../target/@buildtype@',
   install: true,
-  install_dir: get_option('bindir'),
-)
-
-install_data(
-  rust_out_dir / 'liblayer_shell_io.so',
-  install_dir: get_option('libdir'),
+  install_dir: bindir,
 )
