@@ -1,5 +1,6 @@
 #![expect(clippy::type_complexity)]
 #![expect(clippy::upper_case_acronyms)]
+#![expect(clippy::missing_safety_doc)]
 
 mod command;
 mod dbus;
@@ -13,7 +14,7 @@ mod modules;
 mod scheduler;
 mod subscriptions;
 
-pub use command::Command;
+pub use command::*;
 pub use event::Event;
 
 use subscriptions::Subscriptions;
@@ -29,8 +30,11 @@ pub extern "C" fn layer_shell_io_init() {
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_subscribe(f: extern "C" fn(*const Event)) {
-    Subscriptions::add(f);
+pub extern "C" fn layer_shell_io_subscribe(
+    f: extern "C" fn(*const Event, *mut std::ffi::c_void),
+    data: *mut std::ffi::c_void,
+) {
+    Subscriptions::add(f, data);
 }
 
 #[no_mangle]
@@ -67,9 +71,4 @@ pub extern "C" fn layer_shell_io_poll_events() {
         log::info!("Received event {:?}", event);
         Subscriptions::call_each(&event);
     }
-}
-
-#[no_mangle]
-pub extern "C" fn layer_shell_io_publish(command: Command) {
-    command.send();
 }

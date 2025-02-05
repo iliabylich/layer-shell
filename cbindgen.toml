@@ -1,10 +1,7 @@
-language = "C"
-include_guard = "BINDINGS_H"
+language = "Cpp"
+pragma_once = true
 usize_is_size_t = true
 style = "type"
-
-[export]
-prefix = "IO_"
-
-[enum]
-prefix_with_name = true
+namespaces = ["layer_shell_io"]
+no_includes = true
+sys_includes = ["cstdarg", "cstddef", "cstdint", "cstdlib"]

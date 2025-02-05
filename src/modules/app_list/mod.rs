@@ -73,10 +73,7 @@ impl Actor for AppList {
             Command::AppListReset => self.state.reset(),
             Command::AppListGoUp => self.state.go_up(),
             Command::AppListGoDown => self.state.go_down(),
-            Command::AppListSetSearch { search } => {
-                let search = String::from(search.clone());
-                self.state.set_search(search.to_string());
-            }
+            Command::AppListSetSearch { search } => self.state.set_search(search.clone()),
             Command::AppListExecSelected => self.state.exec_selected()?,
 
             _ => {}

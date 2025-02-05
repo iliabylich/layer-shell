@@ -95,7 +95,6 @@ impl Actor for Tray {
 
     fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
         if let Command::TriggerTray { uuid } = cmd {
-            let uuid = String::from(uuid.clone());
             let (service, path, id) = UUID::decode(uuid)?;
             DBusMenu::new(service, path).event(&self.conn, id)?;
         }

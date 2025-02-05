@@ -1,14 +1,15 @@
 project(
   'layer-shell',
-  'c',
+  'cpp',
   version: '0.1',
   default_options: [
     'warning_level=3',
-    'c_std=c23',
+    'cpp_std=c++23',
   ],
 )
 
 gtk4 = dependency('gtk4')
+gtkmm = dependency('gtkmm-4.0')
 gtk4_layer_shell = dependency('gtk4-layer-shell-0')
 vte = dependency('vte-2.91-gtk4')
 
@@ -19,37 +20,35 @@ rust_out_dir = meson.project_source_root() / 'target' / buildtype
 message('Rust dir', rust_out_dir)
 
 sources = [
-  'utils/css.c',
-  'utils/icons.c',
-  'utils/weather-helper.c',
-  'utils/window.c',
-  # widgets
-  'widgets/cpu.c',
-  'widgets/htop.c',
-  'widgets/language.c',
-  'widgets/memory.c',
-  'widgets/network.c',
-  'widgets/session.c',
-  'widgets/sound.c',
-  'widgets/time.c',
-  'widgets/tray.c',
-  'widgets/weather.c',
-  'widgets/workspaces.c',
-  # windows
-  'windows/htop.c',
-  'windows/launcher.c',
-  'windows/network.c',
-  'windows/session.c',
-  'windows/top-bar.c',
-  'windows/weather.c',
-  # main
-  'main.c',
+  'utils/css.cpp',
+  'utils/icons.cpp',
+  'utils/weather-helper.cpp',
+  'widgets/cpu.cpp',
+  'widgets/htop.cpp',
+  'widgets/language.cpp',
+  'widgets/memory.cpp',
+  'widgets/network.cpp',
+  'widgets/session.cpp',
+  'widgets/sound.cpp',
+  'widgets/time.cpp',
+  'widgets/tray.cpp',
+  'widgets/weather.cpp',
+  'widgets/workspaces.cpp',
+  'windows/htop.cpp',
+  'windows/launcher.cpp',
+  'windows/network.cpp',
+  'windows/session.cpp',
+  'windows/top-bar.cpp',
+  'windows/weather.cpp',
+  'main.cpp',
 ]
 
 executable(
   meson.project_name(),
   sources,
-  dependencies: [gtk4, gtk4_layer_shell, vte],
+  cpp_args: ['-Wno-c23-extensions'],
+  dependencies: [gtk4, gtk4_layer_shell, vte, gtkmm],
+  cpp_pch: 'pch/pch.hpp',
   link_args: [f'-L@rust_out_dir@', '-llayer_shell_io'],
   build_rpath: f'$ORIGIN/../target/@buildtype@',
   install: true,
