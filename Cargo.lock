@@ -144,12 +144,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itoa"
-version = "1.0.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
-
-[[package]]
 name = "js-sys"
 version = "0.3.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -170,7 +164,7 @@ dependencies = [
  "inotify",
  "log",
  "min-max-heap",
- "miniserde",
+ "nanoserde",
  "threadpool",
 ]
 
@@ -202,26 +196,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2687e6cf9c00f48e9284cf9fd15f2ef341d03cc7743abf9df4c5f07fdee50b18"
 
 [[package]]
-name = "mini-internal"
-version = "0.1.41"
+name = "nanoserde"
+version = "0.2.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07b7f1340a7f0d2f89755aac4096f1c55352bfcb95cb8f351d6fcefa18df474f"
+checksum = "ded0298c4eb446523600e4d321834a5a80df610155141d20f181bb92bd784fb1"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "nanoserde-derive",
 ]
 
 [[package]]
-name = "miniserde"
-version = "0.1.41"
+name = "nanoserde-derive"
+version = "0.2.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "625208b7bc90255fe6d99338041880bf48a3049166f46fbefbd4e9b0478c0b66"
-dependencies = [
- "itoa",
- "mini-internal",
- "ryu",
-]
+checksum = "6da7f91479ba914a1b94a9b16479910adf24889f4162baebf1015b58b086ab43"
 
 [[package]]
 name = "num-traits"
@@ -277,12 +264,6 @@ name = "rustversion"
 version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7c45b9784283f1b2e7fb61b42047c2fd678ef0960d4f6f1eba131594cc369d4"
-
-[[package]]
-name = "ryu"
-version = "1.0.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ea1a2d0a644769cc99faa24c3ad26b379b786fe7c36fd3c546254801650e6dd"
 
 [[package]]
 name = "shlex"

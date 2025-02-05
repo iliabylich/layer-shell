@@ -1,22 +1,57 @@
 use crate::{
     event::{WeatherOnDay, WeatherOnHour},
-    modules::weather::{
-        client::{CurrentResponse, DailyResponse, HourlyResponse},
-        WeatherCode,
-    },
+    modules::weather::WeatherCode,
     Event,
 };
 use anyhow::{Context as _, Result};
 use chrono::{NaiveDate, NaiveDateTime};
+use nanoserde::DeJson;
 
-pub(crate) fn map_current(current: CurrentResponse) -> Event {
+#[derive(DeJson, Debug)]
+struct Response {
+    current: CurrentResponse,
+    hourly: HourlyResponse,
+    daily: DailyResponse,
+}
+
+#[derive(DeJson, Debug)]
+struct CurrentResponse {
+    temperature_2m: f32,
+    weather_code: u32,
+}
+
+#[derive(DeJson, Debug)]
+struct HourlyResponse {
+    time: Vec<String>,
+    temperature_2m: Vec<f32>,
+    weather_code: Vec<u32>,
+}
+
+#[derive(DeJson, Debug)]
+struct DailyResponse {
+    time: Vec<String>,
+    temperature_2m_min: Vec<f32>,
+    temperature_2m_max: Vec<f32>,
+    weather_code: Vec<u32>,
+}
+
+pub(crate) fn map(response: String) -> Result<(Event, Event)> {
+    let response: Response =
+        DeJson::deserialize_json(&response).context("failed to parse response body")?;
+
+    let current = map_current(response.current);
+    let forecast = map_forecast(response.hourly, response.daily)?;
+    Ok((current, forecast))
+}
+
+fn map_current(current: CurrentResponse) -> Event {
     Event::CurrentWeather {
         temperature: current.temperature_2m,
-        code: map_code(current.weather_code),
+        code: WeatherCode::from(current.weather_code),
     }
 }
 
-pub(crate) fn map_forecast(hourly: HourlyResponse, daily: DailyResponse) -> Result<Event> {
+fn map_forecast(hourly: HourlyResponse, daily: DailyResponse) -> Result<Event> {
     let hourly = map_hourly(hourly)?;
     let daily = map_daily(daily)?;
 
@@ -37,7 +72,7 @@ fn map_hourly(
 
     let mut hourly = vec![];
     for ((temp, code), time) in temperature_2m.into_iter().zip(weather_code).zip(time) {
-        let code = map_code(code);
+        let code = WeatherCode::from(code);
         let time = NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M")
             .context("invalid date format")?;
         if time > now {
@@ -73,7 +108,7 @@ fn map_daily(
         .zip(weather_code)
         .zip(time)
     {
-        let code = map_code(code);
+        let code = WeatherCode::from(code);
         let date = NaiveDate::parse_from_str(&time, "%Y-%m-%d").context("invalid date format")?;
         if date > today {
             daily.push(WeatherOnDay {
@@ -90,38 +125,4 @@ fn map_daily(
 
     assert_eq!(daily.len(), 6);
     Ok(daily)
-}
-
-fn map_code(value: u32) -> WeatherCode {
-    match value {
-        0 => WeatherCode::ClearSky,
-        1 => WeatherCode::MainlyClear,
-        2 => WeatherCode::PartlyCloudy,
-        3 => WeatherCode::Overcast,
-        45 => WeatherCode::FogNormal,
-        48 => WeatherCode::FogDepositingRime,
-        51 => WeatherCode::DrizzleLight,
-        53 => WeatherCode::DrizzleModerate,
-        55 => WeatherCode::DrizzleDense,
-        56 => WeatherCode::FreezingDrizzleLight,
-        57 => WeatherCode::FreezingDrizzleDense,
-        61 => WeatherCode::RainSlight,
-        63 => WeatherCode::RainModerate,
-        65 => WeatherCode::RainHeavy,
-        66 => WeatherCode::FreezingRainLight,
-        67 => WeatherCode::FreezingRainHeavy,
-        71 => WeatherCode::SnowFallSlight,
-        73 => WeatherCode::SnowFallModerate,
-        75 => WeatherCode::SnowFallHeavy,
-        77 => WeatherCode::SnowGrains,
-        80 => WeatherCode::RainShowersSlight,
-        81 => WeatherCode::RainShowersModerate,
-        82 => WeatherCode::RainShowersViolent,
-        85 => WeatherCode::SnowShowersSlight,
-        86 => WeatherCode::SnowShowersHeavy,
-        95 => WeatherCode::Thunderstorm,
-        96 => WeatherCode::ThunderstormWithHailSight,
-        99 => WeatherCode::ThunderstormWithHailHeavy,
-        _ => WeatherCode::Unknown,
-    }
 }

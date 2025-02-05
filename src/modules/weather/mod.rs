@@ -23,11 +23,9 @@ impl Actor for Weather {
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
         let res = client::get_weather()?;
 
-        let event = mapper::map_current(res.current);
-        event.emit();
-
-        let event = mapper::map_forecast(res.hourly, res.daily)?;
-        event.emit();
+        let (current, forecast) = mapper::map(res)?;
+        current.emit();
+        forecast.emit();
         Ok(ControlFlow::Continue(Duration::from_secs(120)))
     }
 

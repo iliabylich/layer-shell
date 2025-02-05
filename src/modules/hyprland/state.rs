@@ -1,5 +1,6 @@
 use crate::{hyprctl, modules::hyprland::raw_event::RawEvent, Event};
 use anyhow::{Context as _, Result};
+use nanoserde::DeJson;
 use std::collections::HashSet;
 
 #[derive(Debug)]
@@ -61,34 +62,34 @@ impl State {
     }
 }
 
-#[derive(miniserde::Deserialize)]
+#[derive(DeJson)]
 struct Devices {
     keyboards: Vec<Keyboard>,
 }
-#[derive(miniserde::Deserialize)]
+#[derive(DeJson)]
 struct Keyboard {
     main: bool,
     active_keymap: String,
 }
-#[derive(miniserde::Deserialize)]
+#[derive(DeJson)]
 struct Workspace {
     id: usize,
 }
 
 fn get_workspaces() -> Result<Vec<Workspace>> {
     let json = hyprctl::write("[[BATCH]]j/workspaces")?;
-    miniserde::json::from_str(&json).context("invalid response from hyprctl workspaces -j")
+    DeJson::deserialize_json(&json).context("invalid response from hyprctl workspaces -j")
 }
 
 fn get_active_workspace() -> Result<Workspace> {
     let json = hyprctl::write("[[BATCH]]j/activeworkspace")?;
-    miniserde::json::from_str(&json).context("invalid response from hyprctl activeworkspace -j")
+    DeJson::deserialize_json(&json).context("invalid response from hyprctl activeworkspace -j")
 }
 
 fn get_language() -> Result<String> {
     let json = hyprctl::write("[[BATCH]]j/devices")?;
     let devices: Devices =
-        miniserde::json::from_str(&json).context("invalid response from hyprctl devices -j")?;
+        DeJson::deserialize_json(&json).context("invalid response from hyprctl devices -j")?;
 
     let main_keyboard = devices
         .keyboards
