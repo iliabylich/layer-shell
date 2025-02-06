@@ -55,6 +55,7 @@ popover modelbutton:hover {
 .widget {
     border: 2px var(--theme-accent-color) solid;
     border-radius: 10px;
+    background-color: var(--solid-bg-color);
 }
 
 .widget.clickable:hover {
@@ -144,7 +145,6 @@ tooltip {
 }
 
 .widget-network-row {
-    background-color: var(--theme-solid-bg-color);
     padding: 10px;
     min-width: 500px;
 }
