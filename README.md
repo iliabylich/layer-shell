@@ -21,10 +21,10 @@ $ just install $PWD/installation-dir
 $ tree $PWD/installation-dir
 <PWD>/installation-dir
 └── usr
+    ├── lib
+    │   └── x86_64-linux-gnu
+    │       └── liblayer_shell_io.so
     └── local
-        ├── bin
-        │   └── layer-shell
-        └── lib
-            └── x86_64-linux-gnu
-                └── liblayer_shell_io.so
+        └── bin
+            └── layer-shell
 ```

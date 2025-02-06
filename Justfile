@@ -16,11 +16,7 @@ cargo-release out:
     cp target/release/liblayer_shell_io.so builddir/{{out}}
 
 setup build:
-    CXX=clang++ meson setup builddir --buildtype={{build}}
-setup-debug:
-    @just setup debug
-setup-release:
-    @just setup release
+    CXX=clang++ meson setup builddir --buildtype={{build}} --libdir /usr/lib/x86_64-linux-gnu
 
 install destdir:
     meson install -C builddir --destdir={{destdir}}

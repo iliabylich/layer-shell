@@ -15,16 +15,6 @@ vte = dependency('vte-2.91-gtk4', required: true)
 just = find_program('just', required: true)
 
 buildtype = get_option('buildtype')
-libdir = get_option('libdir')
-bindir = get_option('bindir')
-
-summary(
-  {
-    'libdir': libdir,
-    'bindir': bindir,
-  },
-  section: 'Directories',
-)
 
 sources = files(
   'utils/css.cpp',
@@ -57,7 +47,7 @@ rustlib = custom_target(
   build_always_stale: true,
   build_by_default: true,
   install: true,
-  install_dir: libdir,
+  install_dir: get_option('libdir'),
 )
 
 executable(
@@ -69,5 +59,5 @@ executable(
   link_depends: [rustlib],
   cpp_pch: 'pch/pch.hpp',
   install: true,
-  install_dir: bindir,
+  install_dir: get_option('bindir'),
 )
