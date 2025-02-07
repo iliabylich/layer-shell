@@ -9,8 +9,7 @@ Weather::Weather() : Gtk::Button() {
   set_css_classes({"widget", "weather", "padded", "clickable"});
   set_name("Weather");
 
-  label.set_label("--");
-  set_child(label);
+  set_label("--");
 }
 
 void Weather::activate() {
@@ -30,7 +29,7 @@ void Weather::on_io_event(const layer_shell_io::Event *event) {
     sprintf(buffer, "%.1f℃ %s", event->current_weather.temperature,
             utils::WeatherHelper::weather_code_to_description(
                 event->current_weather.code));
-    label.set_label(buffer);
+    set_label(buffer);
   }
 }
 

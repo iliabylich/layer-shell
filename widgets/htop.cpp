@@ -7,8 +7,7 @@ namespace widgets {
 HTop::HTop() : Gtk::Button() {
   set_css_classes({"widget", "terminal", "padded", "clickable"});
   set_name("HTop");
-  label.set_label("HTop");
-  set_child(label);
+  set_label("HTop");
 }
 
 void HTop::activate() {
