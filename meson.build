@@ -33,7 +33,6 @@ sources = files(
   'widgets/workspaces.cpp',
   'windows/htop.cpp',
   'windows/launcher.cpp',
-  'windows/network.cpp',
   'windows/session.cpp',
   'windows/top-bar.cpp',
   'windows/weather.cpp',

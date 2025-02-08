@@ -1,43 +1,33 @@
 #include "bindings.hpp"
+#include "glibmm/refptr.h"
+#include "gtkmm/application.h"
+#include "include/application.hpp"
 #include "include/utils/css.hpp"
 #include "include/utils/icons.hpp"
 #include "include/windows/htop.hpp"
 #include "include/windows/launcher.hpp"
-#include "include/windows/network.hpp"
 #include "include/windows/session.hpp"
 #include "include/windows/top-bar.hpp"
 #include "include/windows/weather.hpp"
 #include <gtkmm.h>
 #include <iostream>
 
-class App : public Gtk::Application {
-public:
-  static Glib::RefPtr<App> create() {
-    auto app = Glib::make_refptr_for_instance(new App());
-    app->hold();
-    return app;
-  }
+static Glib::RefPtr<Gtk::Application> app;
 
-protected:
-  App()
-      : Gtk::Application("org.me.LayerShell",
-                         Gio::Application::Flags::DEFAULT_FLAGS) {}
-
-private:
-  sigc::connection timeout_connection;
-};
+Glib::RefPtr<Gtk::Application> get_app() { return app; }
 
 int main(void) {
   layer_shell_io::layer_shell_io_init();
 
-  auto app = App::create();
+  app = Gtk::Application::create("org.me.LayerShell",
+                                 Gio::Application::Flags::DEFAULT_FLAGS);
+  app->hold();
 
-  app->signal_activate().connect([app]() {
+  app->signal_activate().connect([]() {
     utils::Icons::init();
 
     auto top_bar = windows::TopBar::instance();
     auto session = windows::Session::instance();
-    auto network = windows::Network::instance();
     auto htop = windows::HTop::instance();
     auto weather = windows::Weather::instance();
     auto launcher = windows::Launcher::instance();
@@ -51,7 +41,6 @@ int main(void) {
 
     top_bar->activate(app);
     session->activate(app);
-    network->activate(app);
     htop->activate(app);
     weather->activate(app);
     launcher->activate(app);

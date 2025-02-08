@@ -30,7 +30,7 @@ separator.horizontal {
 
 popover {
     border: 2px solid var(--theme-accent-color);
-    background-color: var(--theme-bg-color);
+    background-color: var(--solid-bg-color);
 }
 
 popover modelbutton {
@@ -64,6 +64,15 @@ popover modelbutton:hover {
 
 .widget.clickable:hover label {
     color: var(--theme-bg-color);
+}
+
+.widget.clickable:hover popover label {
+    color: var(--text-color);
+}
+
+.widget.clickable:hover popover modelbutton:disabled label {
+    text-decoration: line-through;
+    color: var(--theme-solid-bg-color);
 }
 
 .widget.clickable:hover image {
