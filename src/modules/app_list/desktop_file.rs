@@ -10,6 +10,11 @@ pub(crate) struct DesktopFile {
     pub(crate) icon: AppIcon,
 }
 
+// https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html
+const VARIABLES: &[&str] = &[
+    "%f", "%F", "%u", "%U", "%d", "%D", "%n", "%N", "%i", "%c", "%k", "%v", "%m",
+];
+
 impl DesktopFile {
     pub(crate) fn parse(path: &str) -> Result<DesktopFile> {
         let f = std::fs::File::open(path).with_context(|| format!("failed to open {path:?}"))?;
@@ -36,10 +41,10 @@ impl DesktopFile {
         }
 
         let name = name.context("failed to get Name")?;
-        let exec = exec
-            .context("failed to get Exec")?
-            .replace(" %u", "")
-            .replace(" %U", "");
+        let mut exec = exec.context("failed to get Exec")?;
+        for var in VARIABLES {
+            exec = exec.replace(var, "");
+        }
 
         let icon = icon.context("failed to get Icon")?;
         let icon = if icon.starts_with('/') {
