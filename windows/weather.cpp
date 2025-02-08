@@ -1,83 +1,123 @@
 #include "include/windows/weather.hpp"
 #include "bindings.hpp"
+#include "gtkmm/enums.h"
+#include "gtkmm/label.h"
+#include "include/utils/icons.hpp"
 #include "include/utils/weather-helper.hpp"
 
 namespace windows {
 
-Weather::Row::Row() : Gtk::Box() {
-  set_orientation(Gtk::Orientation::HORIZONTAL);
-  set_spacing(0);
-
-  label.set_label("...");
-  image.set_pixel_size(24);
-  append(label);
-  append(image);
+Weather::Grid::Grid(size_t cols_count, size_t rows_count)
+    : Gtk::Grid(), cols_count(cols_count), rows_count(rows_count) {
+  for (size_t col = 0; col < cols_count; col++) {
+    insert_column(col);
+  }
+  for (size_t row = 0; row < rows_count; row++) {
+    insert_row(row);
+  }
 }
 
-// ----
+Gtk::Label *Weather::Grid::label_at(size_t col, size_t row) {
+  return static_cast<Gtk::Label *>(get_child_at(col, row));
+}
+Gtk::Image *Weather::Grid::image_at(size_t col, size_t row) {
+  return static_cast<Gtk::Image *>(get_child_at(col, row));
+}
 
-void Weather::HourlyRow::update(layer_shell_io::WeatherOnHour weather) {
+void update_image(Gtk::Image *image, layer_shell_io::WeatherCode code) {
+  image->set(utils::WeatherHelper::weather_code_to_icon(code));
+  image->set_tooltip_text(
+      utils::WeatherHelper::weather_code_to_description(code));
+}
+
+std::string format_temperature(float temperature) {
   char buffer[100];
-  sprintf(buffer, "%s' %5.1f℃", weather.hour, weather.temperature);
-  label.set_label(buffer);
-  label.set_tooltip_text(
-      utils::WeatherHelper::weather_code_to_description(weather.code));
-
-  image.set(utils::WeatherHelper::weather_code_to_icon(weather.code));
+  sprintf(buffer, "%5.1f℃", temperature);
+  return buffer;
 }
 
 // ----
 
-void Weather::DailyRow::update(layer_shell_io::WeatherOnDay weather) {
-  char buffer[100];
-  sprintf(buffer, "%s: %5.1f℃ - %5.1f℃", weather.day, weather.temperature_min,
-          weather.temperature_max);
-  label.set_label(buffer);
-  label.set_tooltip_text(
-      utils::WeatherHelper::weather_code_to_description(weather.code));
+Weather::HourlyGrid::HourlyGrid() : Weather::Grid(3, 10) {
+  for (size_t row = 0; row < rows_count; row++) {
+    Gtk::Label hour("??");
+    // hour.set_xalign(0);
+    attach(hour, 0, row);
 
-  image.set(utils::WeatherHelper::weather_code_to_icon(weather.code));
+    Gtk::Label weather("??");
+    attach(weather, 1, row);
+
+    Gtk::Image image;
+    image.set(utils::Icons::question_mark_icon());
+    attach(image, 2, row);
+  }
+}
+
+void Weather::HourlyGrid::update(layer_shell_io::WeatherOnHour weather,
+                                 size_t row) {
+  label_at(0, row)->set_label(weather.hour);
+  label_at(1, row)->set_label(format_temperature(weather.temperature));
+  update_image(image_at(2, row), weather.code);
 }
 
 // ----
 
-#define HOURLY_ROWS_COUNT 10
+Weather::DailyGrid::DailyGrid() : Weather::Grid(4, 6) {
+  for (size_t row = 0; row < rows_count; row++) {
+    Gtk::Label day("??");
+    attach(day, 0, row);
+
+    Gtk::Label min_weather("??");
+    attach(min_weather, 1, row);
+
+    Gtk::Label max_weather("??");
+    attach(max_weather, 2, row);
+
+    Gtk::Image image;
+    image.set(utils::Icons::question_mark_icon());
+    attach(image, 3, row);
+  }
+}
+
+void Weather::DailyGrid::update(layer_shell_io::WeatherOnDay weather,
+                                size_t row) {
+  label_at(0, row)->set_label(weather.day);
+
+  label_at(1, row)->set_label(format_temperature(weather.temperature_min));
+  label_at(2, row)->set_label(format_temperature(weather.temperature_max));
+  update_image(image_at(3, row), weather.code);
+}
+
 #define DAILY_ROWS_COUNT 6
+#define DAILY_COL_DAY 0
+#define DAILY_COL_MIN_WEATHER 1
+#define DAILY_COL_MAX_WEATHER 2
+#define DAILY_COL_IMAGE 3
+#define DAILY_COLS_COUNT 4
 
 Weather::Weather() : Gtk::Window() {
   set_name("WeatherWindow");
   set_css_classes({"widget-weather"});
 
-  Gtk::Box layout(Gtk::Orientation::HORIZONTAL, 0);
+  Gtk::Box layout(Gtk::Orientation::HORIZONTAL, 50);
+
+  {
+    Gtk::Box side(Gtk::Orientation::VERTICAL, 0);
+    Gtk::Label label("Hourly");
+    side.append(label);
+    side.append(hourly);
+    layout.append(side);
+  }
+
+  {
+    Gtk::Box side(Gtk::Orientation::VERTICAL, 0);
+    Gtk::Label label("Daily");
+    side.append(label);
+    side.append(daily);
+    layout.append(side);
+  }
+
   set_child(layout);
-  {
-
-    Gtk::Box list(Gtk::Orientation::VERTICAL, 0);
-    list.add_css_class({"weather-left-side"});
-    layout.append(list);
-
-    Gtk::Label header("Hourly");
-    list.append(header);
-    for (size_t i = 0; i < HOURLY_ROWS_COUNT; i++) {
-      HourlyRow row;
-      list.append(row);
-      hourly_rows.push_back(std::move(row));
-    }
-  }
-
-  {
-    Gtk::Box list(Gtk::Orientation::VERTICAL, 0);
-    list.add_css_class({"weather-right-side"});
-    layout.append(list);
-
-    Gtk::Label header("Daily");
-    list.append(header);
-    for (size_t i = 0; i < DAILY_ROWS_COUNT; i++) {
-      DailyRow row;
-      list.append(row);
-      daily_rows.push_back(std::move(row));
-    }
-  }
 }
 
 void Weather::activate(const Glib::RefPtr<Gtk::Application> &app) {
@@ -95,12 +135,14 @@ void Weather::activate(const Glib::RefPtr<Gtk::Application> &app) {
 
 void Weather::on_io_event(const layer_shell_io::Event *event) {
   if (event->tag == layer_shell_io::Event::Tag::ForecastWeather) {
-    for (size_t i = 0; i < HOURLY_ROWS_COUNT; i++) {
-      hourly_rows[i].update(event->forecast_weather.hourly.ptr[i]);
+    for (size_t row = 0; row < hourly.rows_count; row++) {
+      auto weather = event->forecast_weather.hourly.ptr[row];
+      hourly.update(weather, row);
     }
 
-    for (size_t i = 0; i < DAILY_ROWS_COUNT; i++) {
-      daily_rows[i].update(event->forecast_weather.daily.ptr[i]);
+    for (size_t row = 0; row < daily.rows_count; row++) {
+      auto weather = event->forecast_weather.daily.ptr[row];
+      daily.update(weather, row);
     }
   }
 }

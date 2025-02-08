@@ -16,27 +16,27 @@ public:
   void on_io_event(const layer_shell_io::Event *event);
 
 private:
-  class Row : public Gtk::Box {
+  class Grid : public Gtk::Grid {
   public:
-    Row();
-
-  protected:
-    Gtk::Label label;
-    Gtk::Image image;
+    Grid(size_t cols_count, size_t rows_count);
+    size_t cols_count;
+    size_t rows_count;
+    Gtk::Label *label_at(size_t col, size_t row);
+    Gtk::Image *image_at(size_t col, size_t row);
+  };
+  class HourlyGrid : public Grid {
+  public:
+    HourlyGrid();
+    void update(layer_shell_io::WeatherOnHour weather, size_t row);
+  };
+  class DailyGrid : public Grid {
+  public:
+    DailyGrid();
+    void update(layer_shell_io::WeatherOnDay weather, size_t row);
   };
 
-  class HourlyRow : public Row {
-  public:
-    void update(layer_shell_io::WeatherOnHour weather);
-  };
-
-  class DailyRow : public Row {
-  public:
-    void update(layer_shell_io::WeatherOnDay weather);
-  };
-
-  std::vector<HourlyRow> hourly_rows;
-  std::vector<DailyRow> daily_rows;
+  HourlyGrid hourly;
+  DailyGrid daily;
 };
 
 } // namespace windows

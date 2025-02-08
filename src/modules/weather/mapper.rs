@@ -77,7 +77,7 @@ fn map_hourly(
             .context("invalid date format")?;
         if time > now {
             hourly.push(WeatherOnHour {
-                hour: time.format("%H").to_string().into(),
+                hour: time.format("%d:%H").to_string().into(),
                 temperature: temp,
                 code,
             });
@@ -112,7 +112,7 @@ fn map_daily(
         let date = NaiveDate::parse_from_str(&time, "%Y-%m-%d").context("invalid date format")?;
         if date > today {
             daily.push(WeatherOnDay {
-                day: date.format("%m-%d").to_string().into(),
+                day: date.format("%b-%d").to_string().into(),
                 temperature_min: min,
                 temperature_max: max,
                 code,
