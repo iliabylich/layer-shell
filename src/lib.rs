@@ -12,20 +12,32 @@ mod logger;
 mod macros;
 mod modules;
 mod scheduler;
-mod subscriptions;
 
 pub use command::*;
 pub use event::Event;
+use macros::{cast_ctx_mut, cast_ctx_ref};
 
-use subscriptions::Subscriptions;
+type Subscriptions = Vec<(
+    extern "C" fn(*const Event, *mut std::ffi::c_void),
+    *mut std::ffi::c_void,
+)>;
+
+#[repr(C)]
+pub struct Ctx {
+    subscriptions: *mut std::ffi::c_void,
+}
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_init() {
+pub extern "C" fn layer_shell_io_init() -> Ctx {
     let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
     if let Err(err) = log::set_logger(logger) {
         eprintln!("Failed to set logger: {:?}", err);
     } else {
         log::set_max_level(log::LevelFilter::Trace);
+    }
+
+    Ctx {
+        subscriptions: (Box::leak(Box::new(vec![])) as *mut Subscriptions).cast(),
     }
 }
 
@@ -33,8 +45,10 @@ pub extern "C" fn layer_shell_io_init() {
 pub extern "C" fn layer_shell_io_subscribe(
     f: extern "C" fn(*const Event, *mut std::ffi::c_void),
     data: *mut std::ffi::c_void,
+    subscriptions: *mut std::ffi::c_void,
 ) {
-    Subscriptions::add(f, data);
+    let subscriptions = cast_ctx_mut!(subscriptions, Subscriptions);
+    subscriptions.push((f, data));
 }
 
 #[no_mangle]
@@ -66,9 +80,13 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_poll_events() {
+pub extern "C" fn layer_shell_io_poll_events(subscriptions: *const std::ffi::c_void) {
     while let Some(event) = Event::try_recv() {
         log::info!("Received event {:?}", event);
-        Subscriptions::call_each(&event);
+        let subscriptions = cast_ctx_ref!(subscriptions, Subscriptions);
+
+        for (sub, data) in subscriptions.iter() {
+            sub(&event, *data);
+        }
     }
 }

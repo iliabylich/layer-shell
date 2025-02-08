@@ -9,7 +9,7 @@ namespace widgets {
 class Tray : public Gtk::Box, public utils::Subscription<Tray> {
 public:
   Tray();
-  void activate();
+  void activate(void *subscriptions);
   void on_io_event(const layer_shell_io::Event *event);
 
 private:

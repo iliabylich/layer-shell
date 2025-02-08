@@ -11,10 +11,10 @@ Weather::Weather() : Gtk::Button() {
   set_label("--");
 }
 
-void Weather::activate() {
+void Weather::activate(void *subscriptions) {
   signal_clicked().connect([]() { windows::Weather::toggle(); });
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Weather::on_io_event(const layer_shell_io::Event *event) {

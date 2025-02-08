@@ -13,7 +13,7 @@ Session::Session() : Gtk::Button() {
   set_child(image);
 }
 
-void Session::activate() {
+void Session::activate(void *) {
   signal_clicked().connect([]() { windows::Session::toggle(); });
 }
 

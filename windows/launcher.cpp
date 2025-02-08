@@ -83,7 +83,8 @@ void Launcher::toggle_and_reset() {
       0);
 }
 
-void Launcher::activate(const Glib::RefPtr<Gtk::Application> &app) {
+void Launcher::activate(const Glib::RefPtr<Gtk::Application> &app,
+                        void *subscriptions) {
   set_application(app);
 
   auto win = gobj();
@@ -120,7 +121,7 @@ void Launcher::activate(const Glib::RefPtr<Gtk::Application> &app) {
   ctrl->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
   add_controller(ctrl);
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Launcher::on_io_event(const layer_shell_io::Event *event) {

@@ -18,7 +18,7 @@ Workspaces::Workspaces() : Gtk::Box() {
   }
 }
 
-void Workspaces::activate() {
+void Workspaces::activate(void *subscriptions) {
   for (size_t idx = 0; idx < 10; idx++) {
     Gtk::Button &button = buttons.at(idx);
     button.signal_clicked().connect([idx]() {
@@ -26,7 +26,7 @@ void Workspaces::activate() {
     });
   }
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Workspaces::on_io_event(const layer_shell_io::Event *event) {

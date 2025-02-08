@@ -8,7 +8,7 @@ namespace widgets {
 class Workspaces : public Gtk::Box, public utils::Subscription<Workspaces> {
 public:
   Workspaces();
-  void activate();
+  void activate(void *subscriptions);
   void on_io_event(const layer_shell_io::Event *event);
 
 private:

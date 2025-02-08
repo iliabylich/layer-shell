@@ -20,7 +20,7 @@ class TopBar : public Gtk::Window, public utils::WindowHelper<TopBar> {
 public:
   TopBar();
 
-  void activate(const Glib::RefPtr<Gtk::Application> &app);
+  void activate(const Glib::RefPtr<Gtk::Application> &app, void *subscriptions);
 
 private:
   widgets::Workspaces workspaces;

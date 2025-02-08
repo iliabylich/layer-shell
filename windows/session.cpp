@@ -34,7 +34,8 @@ Session::Session() : Gtk::Window() {
   layout.append(logout);
 }
 
-void Session::activate(const Glib::RefPtr<Gtk::Application> &app) {
+void Session::activate(const Glib::RefPtr<Gtk::Application> &app,
+                       void *subscriptions) {
   set_application(app);
 
   auto window = gobj();
@@ -66,7 +67,7 @@ void Session::activate(const Glib::RefPtr<Gtk::Application> &app) {
 
   toggle_on_escape();
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Session::on_io_event(const layer_shell_io::Event *event) {

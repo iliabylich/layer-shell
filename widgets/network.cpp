@@ -95,10 +95,10 @@ Network::Network() : Gtk::Button() {
   insert_action_group("network", action_group);
 }
 
-void Network::activate() {
+void Network::activate(void *subscriptions) {
   signal_clicked().connect([this]() { this->popover.popup(); });
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Network::on_io_event(const layer_shell_io::Event *event) {

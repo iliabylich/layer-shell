@@ -120,7 +120,8 @@ Weather::Weather() : Gtk::Window() {
   set_child(layout);
 }
 
-void Weather::activate(const Glib::RefPtr<Gtk::Application> &app) {
+void Weather::activate(const Glib::RefPtr<Gtk::Application> &app,
+                       void *subscriptions) {
   set_application(app);
   toggle_on_escape();
 
@@ -130,7 +131,7 @@ void Weather::activate(const Glib::RefPtr<Gtk::Application> &app) {
   gtk_layer_set_namespace(win, "LayerShell/Weather");
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Weather::on_io_event(const layer_shell_io::Event *event) {

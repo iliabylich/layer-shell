@@ -9,7 +9,7 @@ namespace widgets {
 class Memory : public Gtk::Button, public utils::Subscription<Memory> {
 public:
   Memory();
-  void activate();
+  void activate(void *subscriptions);
   void on_io_event(const layer_shell_io::Event *event);
 };
 

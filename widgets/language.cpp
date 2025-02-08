@@ -10,7 +10,9 @@ Language::Language() : Gtk::Label() {
   set_label("--");
 }
 
-void Language::activate() { subscribe_to_io_events(); }
+void Language::activate(void *subscriptions) {
+  subscribe_to_io_events(subscriptions);
+}
 
 void Language::on_io_event(const layer_shell_io::Event *event) {
   if (event->tag == layer_shell_io::Event::Tag::Language) {

@@ -12,7 +12,7 @@ class Launcher : public Gtk::Window,
                  public utils::WindowHelper<Launcher> {
 public:
   Launcher();
-  void activate(const Glib::RefPtr<Gtk::Application> &app);
+  void activate(const Glib::RefPtr<Gtk::Application> &app, void *subscriptions);
   void on_io_event(const layer_shell_io::Event *event);
   void toggle_and_reset();
 

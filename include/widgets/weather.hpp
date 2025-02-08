@@ -8,7 +8,7 @@ namespace widgets {
 class Weather : public Gtk::Button, public utils::Subscription<Weather> {
 public:
   Weather();
-  void activate();
+  void activate(void *subscriptions);
   void on_io_event(const layer_shell_io::Event *event);
 };
 

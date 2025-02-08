@@ -7,7 +7,7 @@ namespace widgets {
 class HTop : public Gtk::Button {
 public:
   HTop();
-  void activate();
+  void activate(void *subscriptions);
 };
 
 } // namespace widgets

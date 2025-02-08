@@ -9,7 +9,7 @@ HTop::HTop() : Gtk::Button() {
   set_label("HTop");
 }
 
-void HTop::activate() {
+void HTop::activate(void *) {
   signal_clicked().connect([]() { windows::HTop::toggle(); });
 }
 

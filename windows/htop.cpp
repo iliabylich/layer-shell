@@ -17,7 +17,7 @@ char *s(const char *src) {
   return out;
 }
 
-void HTop::activate(const Glib::RefPtr<Gtk::Application> &app) {
+void HTop::activate(const Glib::RefPtr<Gtk::Application> &app, void *) {
   set_application(app);
   toggle_on_escape();
 

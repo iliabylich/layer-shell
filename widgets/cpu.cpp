@@ -17,7 +17,9 @@ CPU::CPU() : Gtk::Box() {
   }
 }
 
-void CPU::activate() { subscribe_to_io_events(); }
+void CPU::activate(void *subscriptions) {
+  subscribe_to_io_events(subscriptions);
+}
 
 void CPU::on_io_event(const layer_shell_io::Event *event) {
 #define INDICATORS_COUNT 8

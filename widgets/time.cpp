@@ -10,7 +10,9 @@ Time::Time() : Gtk::Label() {
   set_label("--");
 }
 
-void Time::activate() { subscribe_to_io_events(); }
+void Time::activate(void *subscriptions) {
+  subscribe_to_io_events(subscriptions);
+}
 
 void Time::on_io_event(const layer_shell_io::Event *event) {
   if (event->tag == layer_shell_io::Event::Tag::Time) {

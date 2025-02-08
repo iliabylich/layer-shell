@@ -8,11 +8,11 @@ Memory::Memory() : Gtk::Button() {
   set_name("Memory");
 }
 
-void Memory::activate() {
+void Memory::activate(void *subscriptions) {
   signal_clicked().connect(
       []() { layer_shell_io::layer_shell_io_spawn_system_monitor(); });
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Memory::on_io_event(const layer_shell_io::Event *event) {

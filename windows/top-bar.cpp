@@ -31,7 +31,8 @@ TopBar::TopBar() : Gtk::Window() {
   layout.set_end_widget(right);
 }
 
-void TopBar::activate(const Glib::RefPtr<Gtk::Application> &app) {
+void TopBar::activate(const Glib::RefPtr<Gtk::Application> &app,
+                      void *subscriptions) {
   set_application(app);
   auto window = gobj();
 
@@ -43,17 +44,17 @@ void TopBar::activate(const Glib::RefPtr<Gtk::Application> &app) {
   gtk_layer_set_margin(window, GTK_LAYER_SHELL_EDGE_TOP, 0);
   gtk_layer_set_namespace(window, "LayerShell/TopBar");
 
-  workspaces.activate();
-  tray.activate();
-  weather.activate();
-  htop.activate();
-  language.activate();
-  sound.activate();
-  cpu.activate();
-  memory.activate();
-  network.activate();
-  time.activate();
-  session.activate();
+  workspaces.activate(subscriptions);
+  tray.activate(subscriptions);
+  weather.activate(subscriptions);
+  htop.activate(subscriptions);
+  language.activate(subscriptions);
+  sound.activate(subscriptions);
+  cpu.activate(subscriptions);
+  memory.activate(subscriptions);
+  network.activate(subscriptions);
+  time.activate(subscriptions);
+  session.activate(subscriptions);
 
   present();
 }

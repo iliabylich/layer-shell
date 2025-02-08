@@ -18,7 +18,7 @@ Sound::Sound() : Gtk::Box() {
   append(scale);
 }
 
-void Sound::activate() {
+void Sound::activate(void *subscriptions) {
   auto ctrl = Gtk::GestureClick::create();
   ctrl->signal_released().connect([this](int, double, double) {
     auto adj = this->scale.get_adjustment();
@@ -28,7 +28,7 @@ void Sound::activate() {
   ctrl->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
   add_controller(ctrl);
 
-  subscribe_to_io_events();
+  subscribe_to_io_events(subscriptions);
 }
 
 void Sound::on_io_event(const layer_shell_io::Event *event) {

@@ -11,7 +11,7 @@ namespace widgets {
 class Network : public Gtk::Button, public utils::Subscription<Network> {
 public:
   Network();
-  void activate();
+  void activate(void *subscriptions);
   void on_io_event(const layer_shell_io::Event *event);
 
 private:

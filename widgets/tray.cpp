@@ -23,7 +23,9 @@ Tray::Tray() : Gtk::Box() {
   insert_action_group("tray", action_group);
 }
 
-void Tray::activate() { subscribe_to_io_events(); }
+void Tray::activate(void *subscriptions) {
+  subscribe_to_io_events(subscriptions);
+}
 
 void Tray::cleanup() {
   for (auto child : this->get_children()) {

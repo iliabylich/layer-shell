@@ -39,6 +39,10 @@ enum class WeatherCode {
   Unknown,
 };
 
+struct Ctx {
+  void *subscriptions;
+};
+
 template<typename T>
 struct CArray {
   T *ptr;
@@ -258,13 +262,13 @@ struct Event {
 
 extern "C" {
 
-void layer_shell_io_init();
+Ctx layer_shell_io_init();
 
-void layer_shell_io_subscribe(void (*f)(const Event*, void*), void *data);
+void layer_shell_io_subscribe(void (*f)(const Event*, void*), void *data, void *subscriptions);
 
 void layer_shell_io_spawn_thread();
 
-void layer_shell_io_poll_events();
+void layer_shell_io_poll_events(const void *subscriptions);
 
 void layer_shell_io_hyprland_go_to_workspace(size_t idx);
 
