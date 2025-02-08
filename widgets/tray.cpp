@@ -77,14 +77,9 @@ void Tray::add(layer_shell_io::TrayApp app) {
   popover_menu->set_parent(icon);
 
   auto gesture = Gtk::GestureClick::create();
-  gesture->set_button(3 /* right click */);
+  gesture->signal_pressed().connect(
+      [popover_menu](int, double, double) { popover_menu->popup(); });
   icon.add_controller(gesture);
-
-  gesture->signal_pressed().connect([popover_menu](int, double x, double y) {
-    Gdk::Rectangle rect(x, y, 1, 1);
-    popover_menu->set_pointing_to(rect);
-    popover_menu->popup();
-  });
 
   append(icon);
 }

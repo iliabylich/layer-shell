@@ -15,8 +15,6 @@ public:
     auto height = bounds->get_size().get_height();
     return Gdk::Graphene::Point(x + width, y + height);
   }
-
-  Gdk::Graphene::Rect bottom_center_point() const;
 };
 
 } // namespace utils
