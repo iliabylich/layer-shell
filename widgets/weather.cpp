@@ -1,6 +1,5 @@
 #include "include/widgets/weather.hpp"
 #include "include/utils/weather-helper.hpp"
-#include "include/windows/top-bar.hpp"
 #include "include/windows/weather.hpp"
 
 namespace widgets {
@@ -13,12 +12,7 @@ Weather::Weather() : Gtk::Button() {
 }
 
 void Weather::activate() {
-  signal_clicked().connect([this]() {
-    auto bottom_right = this->bottom_right_point(*windows::TopBar::instance());
-    windows::Weather::move(bottom_right.get_x() - windows::Weather::WIDTH,
-                           bottom_right.get_y());
-    windows::Weather::toggle();
-  });
+  signal_clicked().connect([]() { windows::Weather::toggle(); });
 
   subscribe_to_io_events();
 }

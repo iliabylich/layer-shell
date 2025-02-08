@@ -4,12 +4,10 @@
 
 namespace windows {
 
-int HTop::WIDTH = 1000;
-
 HTop::HTop() : Gtk::Window() {
   set_name("HtopWindow");
   set_css_classes({"widget-htop"});
-  property_width_request().set_value(WIDTH);
+  property_width_request().set_value(1000);
   property_height_request().set_value(700);
 }
 
@@ -26,8 +24,6 @@ void HTop::activate(const Glib::RefPtr<Gtk::Application> &app) {
   auto win = gobj();
   gtk_layer_init_for_window(win);
   gtk_layer_set_layer(win, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_anchor(win, GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(win, GTK_LAYER_SHELL_EDGE_TOP, true);
   gtk_layer_set_namespace(win, "LayerShell/Htop");
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 

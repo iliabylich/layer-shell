@@ -7,7 +7,6 @@ namespace windows {
 
 class HTop : public Gtk::Window, public utils::WindowHelper<HTop> {
 public:
-  static int WIDTH;
   HTop();
   void activate(const Glib::RefPtr<Gtk::Application> &app);
 

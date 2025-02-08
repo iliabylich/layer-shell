@@ -4,14 +4,11 @@
 #include "glibmm/refptr.h"
 #include "gtkmm/popovermenu.h"
 #include "include/utils/subscription.hpp"
-#include "include/utils/widget-helper.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Network : public Gtk::Button,
-                public utils::Subscription<Network>,
-                public utils::WidgetHelper<Network> {
+class Network : public Gtk::Button, public utils::Subscription<Network> {
 public:
   Network();
   void activate();

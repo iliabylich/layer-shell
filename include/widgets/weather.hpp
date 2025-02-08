@@ -1,14 +1,11 @@
 #pragma once
 
 #include "include/utils/subscription.hpp"
-#include "include/utils/widget-helper.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Weather : public Gtk::Button,
-                public utils::Subscription<Weather>,
-                public utils::WidgetHelper<Weather> {
+class Weather : public Gtk::Button, public utils::Subscription<Weather> {
 public:
   Weather();
   void activate();

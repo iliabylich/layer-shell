@@ -41,15 +41,12 @@ void Weather::DailyRow::update(layer_shell_io::WeatherOnDay weather) {
 
 // ----
 
-int Weather::WIDTH = 240;
 #define HOURLY_ROWS_COUNT 10
 #define DAILY_ROWS_COUNT 6
 
 Weather::Weather() : Gtk::Window() {
   set_name("WeatherWindow");
   set_css_classes({"widget-weather"});
-  property_width_request().set_value(WIDTH);
-  property_height_request().set_value(300);
 
   Gtk::Box layout(Gtk::Orientation::HORIZONTAL, 0);
   set_child(layout);
@@ -90,8 +87,6 @@ void Weather::activate(const Glib::RefPtr<Gtk::Application> &app) {
   auto win = gobj();
   gtk_layer_init_for_window(win);
   gtk_layer_set_layer(win, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_anchor(win, GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(win, GTK_LAYER_SHELL_EDGE_TOP, true);
   gtk_layer_set_namespace(win, "LayerShell/Weather");
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 

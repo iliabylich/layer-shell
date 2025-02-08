@@ -11,7 +11,6 @@ class Weather : public Gtk::Window,
                 public utils::Subscription<Weather>,
                 public utils::WindowHelper<Weather> {
 public:
-  static int WIDTH;
   Weather();
   void activate(const Glib::RefPtr<Gtk::Application> &app);
   void on_io_event(const layer_shell_io::Event *event);

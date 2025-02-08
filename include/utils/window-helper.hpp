@@ -18,8 +18,9 @@ public:
         [](guint keyval, guint, Gdk::ModifierType) {
           if (std::string("Escape") == gdk_keyval_name(keyval)) {
             T::toggle();
+            return true;
           }
-          return true;
+          return false;
         },
         true);
     ctrl->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
