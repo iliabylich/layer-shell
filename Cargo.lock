@@ -164,6 +164,7 @@ dependencies = [
  "inotify",
  "log",
  "min-max-heap",
+ "minreq",
  "nanoserde",
  "threadpool",
 ]
@@ -194,6 +195,15 @@ name = "min-max-heap"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2687e6cf9c00f48e9284cf9fd15f2ef341d03cc7743abf9df4c5f07fdee50b18"
+
+[[package]]
+name = "minreq"
+version = "2.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da0c420feb01b9fb5061f8c8f452534361dd783756dcf38ec45191ce55e7a161"
+dependencies = [
+ "log",
+]
 
 [[package]]
 name = "nanoserde"

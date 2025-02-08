@@ -19,6 +19,7 @@ nanoserde = { version = "0.2.0-beta.0", default-features = false, features = [
     "std",
     "json",
 ] }
+minreq = { version = "2.13", default-features = false }
 
 [profile.release]
 opt-level = "z"
