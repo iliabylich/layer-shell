@@ -7,11 +7,7 @@ use crate::{
         OrgKdeStatusNotifierItemNewTitle, OrgKdeStatusNotifierItemNewToolTip,
     },
     event::{TrayApp, TrayItem},
-    modules::tray::{
-        channel::{TrayCommand, CHANNEL},
-        item::Item,
-        watcher::Watcher,
-    },
+    modules::tray::{channel::TrayCommand, item::Item, watcher::Watcher},
     scheduler::Actor,
     Command, Event,
 };
@@ -22,7 +18,11 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
+use std::{
+    ops::ControlFlow,
+    sync::mpsc::{Receiver, Sender},
+    time::Duration,
+};
 
 mod channel;
 mod item;
@@ -32,6 +32,7 @@ mod watcher;
 pub(crate) struct Tray {
     conn: Connection,
     state: State,
+    rx: Receiver<TrayCommand>,
 }
 
 impl Actor for Tray {
@@ -43,30 +44,37 @@ impl Actor for Tray {
         let conn = Connection::new_session()?;
         let state = State::new(tx);
 
-        conn.add_match(
-            DBusNameOwnerChanged::match_rule(None, None),
-            |e: DBusNameOwnerChanged, _, _| {
-                if e.name == e.old_owner && e.new_owner.is_empty() {
-                    CHANNEL.emit(TrayCommand::Removed { service: e.name });
-                }
-                true
-            },
-        )
-        .context("failed to subscribe to NameOwnerChanged signal")?;
+        let (itx, irx) = std::sync::mpsc::channel::<TrayCommand>();
 
-        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewAttentionIcon>(&conn)?;
-        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewIcon>(&conn)?;
-        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewOverlayIcon>(&conn)?;
-        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewStatus>(&conn)?;
-        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewTitle>(&conn)?;
-        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewToolTip>(&conn)?;
+        {
+            let itx = itx.clone();
+            conn.add_match(
+                DBusNameOwnerChanged::match_rule(None, None),
+                move |e: DBusNameOwnerChanged, _, _| {
+                    if e.name == e.old_owner && e.new_owner.is_empty() {
+                        if let Err(err) = itx.send(TrayCommand::Removed { service: e.name }) {
+                            log::error!("failed to send TrayCommand: {:?}", err);
+                        }
+                    }
+                    true
+                },
+            )
+            .context("failed to subscribe to NameOwnerChanged signal")?;
+        }
+
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewAttentionIcon>(&conn, &itx)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewIcon>(&conn, &itx)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewOverlayIcon>(&conn, &itx)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewStatus>(&conn, &itx)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewTitle>(&conn, &itx)?;
+        subscribe_to_item_update::<OrgKdeStatusNotifierItemNewToolTip>(&conn, &itx)?;
 
         conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)?;
 
         let mut cr = Crossroads::new();
         let token = register_org_kde_status_notifier_watcher::<Watcher>(&mut cr);
 
-        cr.insert("/StatusNotifierWatcher", &[token], Watcher);
+        cr.insert("/StatusNotifierWatcher", &[token], Watcher { tx: itx });
 
         conn.start_receive(
             dbus::message::MatchRule::new_method_call(),
@@ -78,11 +86,15 @@ impl Actor for Tray {
             }),
         );
 
-        Ok(Box::new(Tray { conn, state }))
+        Ok(Box::new(Tray {
+            conn,
+            state,
+            rx: irx,
+        }))
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        while let Some(command) = CHANNEL.try_recv() {
+        while let Ok(command) = self.rx.try_recv() {
             if let Err(err) = handle_command(&self.conn, command, &mut self.state) {
                 log::error!("{:?}", err);
             }
@@ -111,15 +123,22 @@ impl std::fmt::Debug for Tray {
     }
 }
 
-fn subscribe_to_item_update<T: ReadAll + SignalArgs + 'static>(conn: &Connection) -> Result<()> {
+fn subscribe_to_item_update<T: ReadAll + SignalArgs + 'static>(
+    conn: &Connection,
+    tx: &Sender<TrayCommand>,
+) -> Result<()> {
+    let tx = tx.clone();
+
     let _token = conn
         .add_match(
             T::match_rule(None, None),
-            |_: T, _: &Connection, message: &Message| {
+            move |_: T, _: &Connection, message: &Message| {
                 if let Some(service) = message.sender() {
-                    CHANNEL.emit(TrayCommand::Updated {
+                    if let Err(err) = tx.send(TrayCommand::Updated {
                         service: service.to_string(),
-                    });
+                    }) {
+                        log::error!("failed to send TrayCommand::Update: {:?}", err);
+                    }
                 }
                 true
             },

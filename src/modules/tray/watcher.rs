@@ -1,10 +1,10 @@
-use crate::{
-    dbus::OrgKdeStatusNotifierWatcher,
-    modules::tray::channel::{TrayCommand, CHANNEL},
-};
+use crate::{dbus::OrgKdeStatusNotifierWatcher, modules::tray::channel::TrayCommand};
+use std::sync::mpsc::Sender;
 
 #[derive(Debug)]
-pub(crate) struct Watcher;
+pub(crate) struct Watcher {
+    pub(crate) tx: Sender<TrayCommand>,
+}
 
 impl OrgKdeStatusNotifierWatcher for Watcher {
     fn register_status_notifier_item(
@@ -13,7 +13,9 @@ impl OrgKdeStatusNotifierWatcher for Watcher {
         ctx: &dbus_crossroads::Context,
     ) -> Result<(), dbus::MethodErr> {
         if let Some(service) = ctx.message().sender().map(|s| s.to_string()) {
-            CHANNEL.emit(TrayCommand::Added { service, path });
+            if let Err(err) = self.tx.send(TrayCommand::Added { service, path }) {
+                log::error!("failed to send TrayCommand::Added event: {:?}", err);
+            }
         }
 
         Ok(())

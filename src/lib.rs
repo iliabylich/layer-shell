@@ -7,7 +7,6 @@ mod dbus;
 mod event;
 mod ffi;
 mod hyprctl;
-mod lock_channel;
 mod logger;
 mod macros;
 mod modules;
