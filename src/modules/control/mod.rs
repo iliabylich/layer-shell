@@ -41,7 +41,7 @@ impl Actor for Control {
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        while self.conn.process(Duration::from_millis(200))? {}
+        while self.conn.process(Duration::from_millis(0))? {}
         Ok(ControlFlow::Continue(Duration::from_millis(200)))
     }
 

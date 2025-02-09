@@ -45,7 +45,7 @@ impl Actor for Network {
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        while self.conn.process(Duration::from_millis(200))? {}
+        while self.conn.process(Duration::from_millis(0))? {}
         network_speed::update(&self.conn, &self.tx)?;
         Ok(ControlFlow::Continue(Duration::from_secs(1)))
     }

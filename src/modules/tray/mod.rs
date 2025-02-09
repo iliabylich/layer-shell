@@ -100,7 +100,7 @@ impl Actor for Tray {
             }
         }
 
-        while self.conn.process(Duration::from_millis(100))? {}
+        while self.conn.process(Duration::from_millis(0))? {}
 
         Ok(ControlFlow::Continue(Duration::from_millis(200)))
     }
