@@ -1,12 +1,11 @@
 #include "include/widgets/tray.hpp"
-#include "bindings.hpp"
 #include "include/utils/icons.hpp"
 
 namespace widgets {
 
 #define ICONS_COUNT 10
 
-Tray::Tray() : Gtk::Box() {
+Tray::Tray(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(10);
   set_css_classes({"widget", "tray", "padded"});
@@ -14,17 +13,13 @@ Tray::Tray() : Gtk::Box() {
 
   auto action_group = Gio::SimpleActionGroup::create();
   auto action = Gio::SimpleAction::create("clicked", Glib::VariantType("s"));
-  action->signal_activate().connect([](const Glib::VariantBase &parameter) {
+  action->signal_activate().connect([ctx](const Glib::VariantBase &parameter) {
     auto uuid =
         parameter.cast_dynamic<Glib::Variant<Glib::ustring>>(parameter).get();
-    layer_shell_io::layer_shell_io_trigger_tray(uuid.c_str());
+    layer_shell_io::layer_shell_io_trigger_tray(uuid.c_str(), ctx);
   });
   action_group->add_action(action);
   insert_action_group("tray", action_group);
-}
-
-void Tray::activate(void *subscriptions) {
-  subscribe_to_io_events(subscriptions);
 }
 
 void Tray::cleanup() {
@@ -86,15 +81,13 @@ void Tray::add(layer_shell_io::TrayApp app) {
   append(icon);
 }
 
-void Tray::on_io_event(const layer_shell_io::Event *event) {
-  if (event->tag == layer_shell_io::Event::Tag::Tray) {
-    cleanup();
+void Tray::on_tray_event(layer_shell_io::Event::Tray_Body data) {
+  cleanup();
 
-    auto apps = event->tray.list;
-    for (size_t i = 0; i < ICONS_COUNT; i++) {
-      if (i < apps.len) {
-        add(apps.ptr[i]);
-      }
+  auto apps = data.list;
+  for (size_t i = 0; i < ICONS_COUNT; i++) {
+    if (i < apps.len) {
+      add(apps.ptr[i]);
     }
   }
 }

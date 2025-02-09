@@ -4,27 +4,19 @@
 
 namespace widgets {
 
-Weather::Weather() : Gtk::Button() {
+Weather::Weather(void *ctx) : Gtk::Button(), utils::Subscriber(ctx) {
   set_css_classes({"widget", "weather", "padded", "clickable"});
   set_name("Weather");
-
   set_label("--");
+  signal_clicked().connect([]() { windows::Weather::get()->toggle(); });
 }
 
-void Weather::activate(void *subscriptions) {
-  signal_clicked().connect([]() { windows::Weather::toggle(); });
-
-  subscribe_to_io_events(subscriptions);
-}
-
-void Weather::on_io_event(const layer_shell_io::Event *event) {
-  if (event->tag == layer_shell_io::Event::Tag::CurrentWeather) {
-    char buffer[100];
-    sprintf(buffer, "%.1f℃ %s", event->current_weather.temperature,
-            utils::WeatherHelper::weather_code_to_description(
-                event->current_weather.code));
-    set_label(buffer);
-  }
+void Weather::on_current_weather_event(
+    layer_shell_io::Event::CurrentWeather_Body data) {
+  char buffer[100];
+  sprintf(buffer, "%.1f℃ %s", data.temperature,
+          utils::WeatherHelper::weather_code_to_description(data.code));
+  set_label(buffer);
 }
 
 } // namespace widgets

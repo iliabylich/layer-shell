@@ -1,6 +1,5 @@
 #include "include/windows/launcher.hpp"
-#include "bindings.hpp"
-#include "gtk4-layer-shell.h"
+#include <gtk4-layer-shell.h>
 
 namespace windows {
 
@@ -38,9 +37,11 @@ void Launcher::Row::update(layer_shell_io::App app) {
 
 // ----
 
-Launcher::Launcher() : Gtk::Window() {
+Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+    : utils::Subscriber(ctx) {
   set_name("LauncherWindow");
   property_width_request().set_value(700);
+  set_application(app);
 
   Gtk::Box layout(Gtk::Orientation::VERTICAL, 0);
   layout.set_css_classes({"widget-launcher-wrapper"});
@@ -70,22 +71,17 @@ void Launcher::toggle_and_reset() {
       [this]() {
         // Toggling immediately breaks something in gtkmm, so we
         // schedule it
-        if (this->is_visible()) {
-          this->hide();
+        if (is_visible()) {
+          hide();
         } else {
-          layer_shell_io::layer_shell_io_app_list_reset();
-          this->input.set_text("");
-          this->show();
+          layer_shell_io::layer_shell_io_app_list_reset(ctx);
+          input.set_text("");
+          show();
         }
 
         return false;
       },
       0);
-}
-
-void Launcher::activate(const Glib::RefPtr<Gtk::Application> &app,
-                        void *subscriptions) {
-  set_application(app);
 
   auto win = gobj();
   gtk_layer_init_for_window(win);
@@ -94,12 +90,12 @@ void Launcher::activate(const Glib::RefPtr<Gtk::Application> &app,
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
   input.signal_activate().connect([this]() {
-    layer_shell_io::layer_shell_io_app_list_exec_selected();
-    this->toggle_and_reset();
+    layer_shell_io::layer_shell_io_app_list_exec_selected(ctx);
+    toggle_and_reset();
   });
   input.signal_changed().connect([this]() {
-    auto search = this->input.get_text();
-    layer_shell_io::layer_shell_io_app_list_set_search(search.c_str());
+    auto search = input.get_text();
+    layer_shell_io::layer_shell_io_app_list_set_search(search.c_str(), ctx);
   });
 
   auto ctrl = Gtk::EventControllerKey::create();
@@ -108,11 +104,11 @@ void Launcher::activate(const Glib::RefPtr<Gtk::Application> &app,
         std::string key(gdk_keyval_name(keyval));
 
         if (key == "Escape") {
-          this->toggle_and_reset();
+          toggle_and_reset();
         } else if (key == "Up") {
-          layer_shell_io::layer_shell_io_app_list_go_up();
+          layer_shell_io::layer_shell_io_app_list_go_up(ctx);
         } else if (key == "Down") {
-          layer_shell_io::layer_shell_io_app_list_go_down();
+          layer_shell_io::layer_shell_io_app_list_go_down(ctx);
         }
 
         return false;
@@ -120,24 +116,19 @@ void Launcher::activate(const Glib::RefPtr<Gtk::Application> &app,
       false);
   ctrl->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
   add_controller(ctrl);
-
-  subscribe_to_io_events(subscriptions);
 }
 
-void Launcher::on_io_event(const layer_shell_io::Event *event) {
-  if (event->tag == layer_shell_io::Event::Tag::ToggleLauncher) {
-    toggle_and_reset();
-  } else if (event->tag == layer_shell_io::Event::Tag::AppList) {
-    auto apps = event->app_list.apps;
-    for (size_t i = 0; i < 5; i++) {
-      auto &row = rows.at(i);
-      if (i < apps.len) {
-        row.update(apps.ptr[i]);
-      } else {
-        row.hide();
-      }
+void Launcher::on_app_list_event(layer_shell_io::Event::AppList_Body data) {
+  auto apps = data.apps;
+  for (size_t i = 0; i < 5; i++) {
+    auto &row = rows.at(i);
+    if (i < apps.len) {
+      row.update(apps.ptr[i]);
+    } else {
+      row.hide();
     }
   }
 }
+void Launcher::on_toggle_launcher_event() { toggle_and_reset(); }
 
 } // namespace windows

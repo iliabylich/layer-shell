@@ -4,7 +4,10 @@ pub(crate) use config::{ActorConfig, Config};
 use queue::Queue;
 use std::{
     collections::HashMap,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc, Mutex,
+    },
     time::Duration,
 };
 
@@ -50,7 +53,7 @@ impl Scheduler {
         }
     }
 
-    pub(crate) fn run(self) {
+    pub(crate) fn run(self, rx: Receiver<Command>) {
         let Self {
             queue,
             txs,
@@ -85,7 +88,7 @@ impl Scheduler {
                 });
             }
 
-            while let Some(cmd) = Command::try_recv() {
+            while let Ok(cmd) = rx.try_recv() {
                 for (name, tx) in txs.iter() {
                     if tx.send(cmd.clone()).is_err() {
                         log::error!(

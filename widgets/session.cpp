@@ -4,17 +4,15 @@
 
 namespace widgets {
 
-Session::Session() : Gtk::Button() {
+Session::Session(void *) : Gtk::Button() {
   set_css_classes({"widget", "power", "padded", "clickable"});
   set_cursor("pointer");
   set_name("Session");
 
   image.set(utils::Icons::power_icon());
   set_child(image);
-}
 
-void Session::activate(void *) {
-  signal_clicked().connect([]() { windows::Session::toggle(); });
+  signal_clicked().connect([]() { windows::Session::get()->toggle(); });
 }
 
 } // namespace widgets

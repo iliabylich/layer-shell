@@ -1,15 +1,14 @@
 #pragma once
 
-#include "include/utils/subscription.hpp"
+#include "include/utils/subscriber.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Time : public Gtk::Label, public utils::Subscription<Time> {
+class Time : public Gtk::Label, public utils::Subscriber {
 public:
-  Time();
-  void activate(void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Time(void *ctx);
+  void on_time_event(layer_shell_io::Event::Time_Body data) override;
 };
 
 } // namespace widgets

@@ -1,9 +1,8 @@
 #include "include/widgets/cpu.hpp"
-#include "bindings.hpp"
 
 namespace widgets {
 
-CPU::CPU() : Gtk::Box() {
+CPU::CPU(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(3);
   set_css_classes({"widget", "cpu", "padded"});
@@ -17,11 +16,7 @@ CPU::CPU() : Gtk::Box() {
   }
 }
 
-void CPU::activate(void *subscriptions) {
-  subscribe_to_io_events(subscriptions);
-}
-
-void CPU::on_io_event(const layer_shell_io::Event *event) {
+void CPU::on_cpu_usage_event(layer_shell_io::Event::CpuUsage_Body data) {
 #define INDICATORS_COUNT 8
   static const char *INDICATORS[INDICATORS_COUNT] = {
       "<span color='#FFFFFF'>▁</span>", "<span color='#FFD5D5'>▂</span>",
@@ -30,20 +25,18 @@ void CPU::on_io_event(const layer_shell_io::Event *event) {
       "<span color='#FF0000'>▇</span>", "<span color='#E60000'>█</span>",
   };
 
-  if (event->tag == layer_shell_io::Event::Tag::CpuUsage) {
-    for (size_t idx = 0; idx < 12; idx++) {
-      Gtk::Label &label = labels.at(idx);
-      size_t load = event->cpu_usage.usage_per_core.ptr[idx];
-      size_t indicator_idx =
-          (size_t)((double)load / 100.0 * (double)INDICATORS_COUNT);
+  for (size_t idx = 0; idx < 12; idx++) {
+    Gtk::Label &label = labels.at(idx);
+    size_t load = data.usage_per_core.ptr[idx];
+    size_t indicator_idx =
+        (size_t)((double)load / 100.0 * (double)INDICATORS_COUNT);
 
-      if (indicator_idx == INDICATORS_COUNT) {
-        indicator_idx -= 1;
-      }
-
-      const char *markup = INDICATORS[indicator_idx];
-      label.set_label(markup);
+    if (indicator_idx == INDICATORS_COUNT) {
+      indicator_idx -= 1;
     }
+
+    const char *markup = INDICATORS[indicator_idx];
+    label.set_label(markup);
   }
 }
 

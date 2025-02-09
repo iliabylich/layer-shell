@@ -1,15 +1,15 @@
 #pragma once
 
-#include "include/utils/subscription.hpp"
+#include "include/utils/subscriber.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Sound : public Gtk::Box, public utils::Subscription<Sound> {
+class Sound : public Gtk::Box, public utils::Subscriber {
 public:
-  Sound();
-  void activate(void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Sound(void *ctx);
+
+  void on_volume_event(layer_shell_io::Event::Volume_Body data) override;
 
 private:
   Gtk::Image image;

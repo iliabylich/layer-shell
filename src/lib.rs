@@ -15,20 +15,29 @@ mod scheduler;
 
 pub use command::*;
 pub use event::Event;
-use macros::{cast_ctx_mut, cast_ctx_ref};
+use macros::fatal;
+use std::{
+    ffi::c_void,
+    sync::mpsc::{Receiver, Sender},
+};
 
-type Subscriptions = Vec<(
-    extern "C" fn(*const Event, *mut std::ffi::c_void),
-    *mut std::ffi::c_void,
-)>;
+type Subscriptions = Vec<(extern "C" fn(*const Event, *mut c_void), *mut c_void)>;
 
-#[repr(C)]
-pub struct Ctx {
-    subscriptions: *mut std::ffi::c_void,
+pub(crate) struct Ctx {
+    subscriptions: Subscriptions,
+    cmd_tx: Sender<Command>,
+    cmd_rx: Option<Receiver<Command>>,
 }
+macro_rules! cast_ctx {
+    ($ctx:ident) => {{
+        let $ctx = unsafe { $ctx.cast::<$crate::Ctx>().as_mut() };
+        $ctx.unwrap_or_else(|| $crate::macros::fatal!("Can't read NULL ctx"))
+    }};
+}
+pub(crate) use cast_ctx;
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_init() -> Ctx {
+pub extern "C" fn layer_shell_io_init() -> *mut c_void {
     let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
     if let Err(err) = log::set_logger(logger) {
         eprintln!("Failed to set logger: {:?}", err);
@@ -36,23 +45,31 @@ pub extern "C" fn layer_shell_io_init() -> Ctx {
         log::set_max_level(log::LevelFilter::Trace);
     }
 
-    Ctx {
-        subscriptions: (Box::leak(Box::new(vec![])) as *mut Subscriptions).cast(),
-    }
+    let (cmd_tx, cmd_rx) = std::sync::mpsc::channel::<Command>();
+
+    let ctx = Ctx {
+        subscriptions: vec![],
+        cmd_tx,
+        cmd_rx: Some(cmd_rx),
+    };
+    (Box::leak(Box::new(ctx)) as *mut Ctx).cast()
 }
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_subscribe(
-    f: extern "C" fn(*const Event, *mut std::ffi::c_void),
-    data: *mut std::ffi::c_void,
-    subscriptions: *mut std::ffi::c_void,
+    f: extern "C" fn(*const Event, *mut c_void),
+    data: *mut c_void,
+    ctx: *mut c_void,
 ) {
-    let subscriptions = cast_ctx_mut!(subscriptions, Subscriptions);
-    subscriptions.push((f, data));
+    cast_ctx!(ctx).subscriptions.push((f, data));
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_spawn_thread() {
+pub extern "C" fn layer_shell_io_spawn_thread(ctx: *mut c_void) {
+    let Some(cmd_rx) = cast_ctx!(ctx).cmd_rx.take() else {
+        fatal!("layer_shell_io_spawn_thread has been called twice");
+    };
+
     std::thread::spawn(move || {
         use crate::modules::{
             app_list::AppList, control::Control, cpu::CPU, hyprland::Hyprland, memory::Memory,
@@ -75,17 +92,16 @@ pub extern "C" fn layer_shell_io_spawn_thread() {
         config.add::<Session>();
 
         let scheduler = Scheduler::new(config);
-        scheduler.run();
+        scheduler.run(cmd_rx);
     });
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_poll_events(subscriptions: *const std::ffi::c_void) {
+pub extern "C" fn layer_shell_io_poll_events(ctx: *mut c_void) {
     while let Some(event) = Event::try_recv() {
         log::info!("Received event {:?}", event);
-        let subscriptions = cast_ctx_ref!(subscriptions, Subscriptions);
 
-        for (sub, data) in subscriptions.iter() {
+        for (sub, data) in cast_ctx!(ctx).subscriptions.iter() {
             sub(&event, *data);
         }
     }

@@ -1,20 +1,18 @@
 #pragma once
 
-#include "bindings.hpp"
-#include "include/utils/subscription.hpp"
-#include "include/utils/window-helper.hpp"
-#include <gtkmm.h>
+#include "include/utils/subscriber.hpp"
+#include "include/windows/base.hpp"
 
 namespace windows {
 
-class Launcher : public Gtk::Window,
-                 public utils::Subscription<Launcher>,
-                 public utils::WindowHelper<Launcher> {
+class Launcher : public Base, public utils::Subscriber {
 public:
-  Launcher();
-  void activate(const Glib::RefPtr<Gtk::Application> &app, void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx);
   void toggle_and_reset();
+  void on_app_list_event(layer_shell_io::Event::AppList_Body data) override;
+  void on_toggle_launcher_event() override;
+
+  static Launcher *get();
 
 private:
   class Row : public Gtk::Box {

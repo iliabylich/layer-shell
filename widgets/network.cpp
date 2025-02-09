@@ -1,5 +1,4 @@
 #include "include/widgets/network.hpp"
-#include "bindings.hpp"
 #include "include/application.hpp"
 #include "include/utils/icons.hpp"
 
@@ -36,7 +35,7 @@ void Network::Popover::add_settings() {
   model->append_item(item);
 }
 
-Network::Network() : Gtk::Button() {
+Network::Network(void *ctx) : Gtk::Button(), utils::Subscriber(ctx) {
   label.set_label("--");
 
   image.set(utils::Icons::wifi_icon());
@@ -71,8 +70,8 @@ Network::Network() : Gtk::Button() {
   auto action_group = Gio::SimpleActionGroup::create();
   {
     auto action = Gio::SimpleAction::create("settings");
-    action->signal_activate().connect([](const Glib::VariantBase &) {
-      layer_shell_io::layer_shell_io_spawn_network_editor();
+    action->signal_activate().connect([ctx](const Glib::VariantBase &) {
+      layer_shell_io::layer_shell_io_spawn_network_editor(ctx);
     });
     action_group->add_action(action);
   }
@@ -93,34 +92,32 @@ Network::Network() : Gtk::Button() {
     action_group->add_action(action);
   }
   insert_action_group("network", action_group);
-}
 
-void Network::activate(void *subscriptions) {
   signal_clicked().connect([this]() { this->popover.popup(); });
-
-  subscribe_to_io_events(subscriptions);
 }
 
-void Network::on_io_event(const layer_shell_io::Event *event) {
-  if (event->tag == layer_shell_io::Event::Tag::WifiStatus) {
-    if (event->wifi_status.wifi_status.tag ==
-        layer_shell_io::COption<layer_shell_io::WifiStatus>::Tag::None) {
-      image.hide();
-      label.set_label("Not connected");
-    } else {
-      image.show();
-      char buffer[100];
-      sprintf(buffer, "%s (%d)%% ", event->wifi_status.wifi_status.some._0.ssid,
-              event->wifi_status.wifi_status.some._0.strength);
-      label.set_label(buffer);
-    }
-  } else if (event->tag == layer_shell_io::Event::Tag::NetworkSpeed) {
-    download_speed_label.set_label(event->network_speed.download_speed);
-    upload_speed_label.set_label(event->network_speed.upload_speed);
-  } else if (event->tag == layer_shell_io::Event::Tag::NetworkList) {
-    auto networks = event->network_list.list;
-    popover.replace_networks(networks);
+void Network::on_wifi_status_event(
+    layer_shell_io::Event::WifiStatus_Body data) {
+  if (data.wifi_status.tag ==
+      layer_shell_io::COption<layer_shell_io::WifiStatus>::Tag::None) {
+    image.hide();
+    label.set_label("Not connected");
+  } else {
+    image.show();
+    char buffer[100];
+    sprintf(buffer, "%s (%d)%% ", data.wifi_status.some._0.ssid,
+            data.wifi_status.some._0.strength);
+    label.set_label(buffer);
   }
+}
+void Network::on_network_speed_event(
+    layer_shell_io::Event::NetworkSpeed_Body data) {
+  download_speed_label.set_label(data.download_speed);
+  upload_speed_label.set_label(data.upload_speed);
+}
+void Network::on_network_list_event(
+    layer_shell_io::Event::NetworkList_Body data) {
+  popover.replace_networks(data.list);
 }
 
 } // namespace widgets

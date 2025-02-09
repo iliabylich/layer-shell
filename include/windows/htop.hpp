@@ -1,14 +1,13 @@
 #pragma once
 
-#include "include/utils/window-helper.hpp"
-#include <gtkmm.h>
+#include "include/windows/base.hpp"
 
 namespace windows {
 
-class HTop : public Gtk::Window, public utils::WindowHelper<HTop> {
+class HTop : public Base {
 public:
-  HTop();
-  void activate(const Glib::RefPtr<Gtk::Application> &app, void *subscriptions);
+  HTop(const Glib::RefPtr<Gtk::Application> &app, void *ctx);
+  static HTop *get();
 
 private:
   Gtk::Widget *terminal;

@@ -1,24 +1,17 @@
 #include "include/widgets/time.hpp"
-#include "bindings.hpp"
 
 namespace widgets {
 
-Time::Time() : Gtk::Label() {
+Time::Time(void *ctx) : Gtk::Label(), utils::Subscriber(ctx) {
   set_css_classes({"widget", "clock", "padded"});
   set_name("Time");
 
   set_label("--");
 }
 
-void Time::activate(void *subscriptions) {
-  subscribe_to_io_events(subscriptions);
-}
-
-void Time::on_io_event(const layer_shell_io::Event *event) {
-  if (event->tag == layer_shell_io::Event::Tag::Time) {
-    set_label(event->time.time);
-    set_tooltip_text(event->time.date);
-  }
+void Time::on_time_event(layer_shell_io::Event::Time_Body data) {
+  set_label(data.time);
+  set_tooltip_text(data.date);
 }
 
 } // namespace widgets

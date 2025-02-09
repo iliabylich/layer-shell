@@ -1,15 +1,15 @@
 #pragma once
 
-#include "include/utils/subscription.hpp"
+#include "include/utils/subscriber.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Weather : public Gtk::Button, public utils::Subscription<Weather> {
+class Weather : public Gtk::Button, public utils::Subscriber {
 public:
-  Weather();
-  void activate(void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Weather(void *ctx);
+  void on_current_weather_event(
+      layer_shell_io::Event::CurrentWeather_Body data) override;
 };
 
 } // namespace widgets

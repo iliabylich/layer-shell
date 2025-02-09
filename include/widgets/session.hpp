@@ -6,8 +6,7 @@ namespace widgets {
 
 class Session : public Gtk::Button {
 public:
-  Session();
-  void activate(void *subscriptions);
+  Session(void *ctx);
 
 private:
   Gtk::Image image;

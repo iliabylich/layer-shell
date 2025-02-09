@@ -1,15 +1,15 @@
 #pragma once
 
-#include "include/utils/subscription.hpp"
+#include "include/utils/subscriber.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Workspaces : public Gtk::Box, public utils::Subscription<Workspaces> {
+class Workspaces : public Gtk::Box, public utils::Subscriber {
 public:
-  Workspaces();
-  void activate(void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Workspaces(void *ctx);
+  void
+  on_workspaces_event(layer_shell_io::Event::Workspaces_Body data) override;
 
 private:
   std::vector<Gtk::Button> buttons;

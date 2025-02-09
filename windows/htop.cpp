@@ -1,15 +1,8 @@
 #include "include/windows/htop.hpp"
-#include "vte/vte.h"
-#include <cstring>
+#include <gtk4-layer-shell.h>
+#include <vte/vte.h>
 
 namespace windows {
-
-HTop::HTop() : Gtk::Window() {
-  set_name("HtopWindow");
-  set_css_classes({"widget-htop"});
-  property_width_request().set_value(1000);
-  property_height_request().set_value(700);
-}
 
 char *s(const char *src) {
   char *out = (char *)malloc(strlen(src) + 1);
@@ -17,7 +10,11 @@ char *s(const char *src) {
   return out;
 }
 
-void HTop::activate(const Glib::RefPtr<Gtk::Application> &app, void *) {
+HTop::HTop(const Glib::RefPtr<Gtk::Application> &app, void *) {
+  set_name("HtopWindow");
+  set_css_classes({"widget-htop"});
+  property_width_request().set_value(1000);
+  property_height_request().set_value(700);
   set_application(app);
   toggle_on_escape();
 

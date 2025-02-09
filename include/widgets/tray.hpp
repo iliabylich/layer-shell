@@ -1,16 +1,14 @@
 #pragma once
 
-#include "bindings.hpp"
-#include "include/utils/subscription.hpp"
+#include "include/utils/subscriber.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Tray : public Gtk::Box, public utils::Subscription<Tray> {
+class Tray : public Gtk::Box, public utils::Subscriber {
 public:
-  Tray();
-  void activate(void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Tray(void *ctx);
+  void on_tray_event(layer_shell_io::Event::Tray_Body data) override;
 
 private:
   class TrayIcon {

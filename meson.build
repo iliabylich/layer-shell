@@ -19,6 +19,7 @@ buildtype = get_option('buildtype')
 sources = files(
   'utils/css.cpp',
   'utils/icons.cpp',
+  'utils/subscriber.cpp',
   'utils/weather-helper.cpp',
   'widgets/cpu.cpp',
   'widgets/htop.cpp',
@@ -31,6 +32,7 @@ sources = files(
   'widgets/tray.cpp',
   'widgets/weather.cpp',
   'widgets/workspaces.cpp',
+  'windows/base.cpp',
   'windows/htop.cpp',
   'windows/launcher.cpp',
   'windows/session.cpp',

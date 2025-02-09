@@ -39,10 +39,6 @@ enum class WeatherCode {
   Unknown,
 };
 
-struct Ctx {
-  void *subscriptions;
-};
-
 template<typename T>
 struct CArray {
   T *ptr;
@@ -262,43 +258,43 @@ struct Event {
 
 extern "C" {
 
-Ctx layer_shell_io_init();
+void *layer_shell_io_init();
 
-void layer_shell_io_subscribe(void (*f)(const Event*, void*), void *data, void *subscriptions);
+void layer_shell_io_subscribe(void (*f)(const Event*, void*), void *data, void *ctx);
 
-void layer_shell_io_spawn_thread();
+void layer_shell_io_spawn_thread(void *ctx);
 
-void layer_shell_io_poll_events(const void *subscriptions);
+void layer_shell_io_poll_events(void *ctx);
 
-void layer_shell_io_hyprland_go_to_workspace(size_t idx);
+void layer_shell_io_hyprland_go_to_workspace(size_t idx, void *ctx);
 
-void layer_shell_io_app_list_reset();
+void layer_shell_io_app_list_reset(void *ctx);
 
-void layer_shell_io_app_list_go_up();
+void layer_shell_io_app_list_go_up(void *ctx);
 
-void layer_shell_io_app_list_go_down();
+void layer_shell_io_app_list_go_down(void *ctx);
 
-void layer_shell_io_app_list_set_search(const char *search);
+void layer_shell_io_app_list_set_search(const char *search, void *ctx);
 
-void layer_shell_io_app_list_exec_selected();
+void layer_shell_io_app_list_exec_selected(void *ctx);
 
-void layer_shell_io_set_volume(float volume);
+void layer_shell_io_set_volume(float volume, void *ctx);
 
-void layer_shell_io_set_muted(bool muted);
+void layer_shell_io_set_muted(bool muted, void *ctx);
 
-void layer_shell_io_lock();
+void layer_shell_io_lock(void *ctx);
 
-void layer_shell_io_reboot();
+void layer_shell_io_reboot(void *ctx);
 
-void layer_shell_io_shutdown();
+void layer_shell_io_shutdown(void *ctx);
 
-void layer_shell_io_logout();
+void layer_shell_io_logout(void *ctx);
 
-void layer_shell_io_trigger_tray(const char *uuid);
+void layer_shell_io_trigger_tray(const char *uuid, void *ctx);
 
-void layer_shell_io_spawn_network_editor();
+void layer_shell_io_spawn_network_editor(void *ctx);
 
-void layer_shell_io_spawn_system_monitor();
+void layer_shell_io_spawn_system_monitor(void *ctx);
 
 }  // extern "C"
 

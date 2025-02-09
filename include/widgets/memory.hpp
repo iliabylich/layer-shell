@@ -1,16 +1,14 @@
 #pragma once
 
-#include "bindings.hpp"
-#include "include/utils/subscription.hpp"
+#include "include/utils/subscriber.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Memory : public Gtk::Button, public utils::Subscription<Memory> {
+class Memory : public Gtk::Button, public utils::Subscriber {
 public:
-  Memory();
-  void activate(void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Memory(void *ctx);
+  void on_memory_event(layer_shell_io::Event::Memory_Body data) override;
 };
 
 } // namespace widgets

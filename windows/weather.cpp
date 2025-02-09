@@ -1,9 +1,7 @@
 #include "include/windows/weather.hpp"
-#include "bindings.hpp"
-#include "gtkmm/enums.h"
-#include "gtkmm/label.h"
 #include "include/utils/icons.hpp"
 #include "include/utils/weather-helper.hpp"
+#include <gtk4-layer-shell.h>
 
 namespace windows {
 
@@ -95,9 +93,11 @@ void Weather::DailyGrid::update(layer_shell_io::WeatherOnDay weather,
 #define DAILY_COL_IMAGE 3
 #define DAILY_COLS_COUNT 4
 
-Weather::Weather() : Gtk::Window() {
+Weather::Weather(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+    : utils::Subscriber(ctx) {
   set_name("WeatherWindow");
   set_css_classes({"widget-weather"});
+  set_application(app);
 
   Gtk::Box layout(Gtk::Orientation::HORIZONTAL, 50);
 
@@ -118,11 +118,7 @@ Weather::Weather() : Gtk::Window() {
   }
 
   set_child(layout);
-}
 
-void Weather::activate(const Glib::RefPtr<Gtk::Application> &app,
-                       void *subscriptions) {
-  set_application(app);
   toggle_on_escape();
 
   auto win = gobj();
@@ -130,21 +126,18 @@ void Weather::activate(const Glib::RefPtr<Gtk::Application> &app,
   gtk_layer_set_layer(win, GTK_LAYER_SHELL_LAYER_OVERLAY);
   gtk_layer_set_namespace(win, "LayerShell/Weather");
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
-
-  subscribe_to_io_events(subscriptions);
 }
 
-void Weather::on_io_event(const layer_shell_io::Event *event) {
-  if (event->tag == layer_shell_io::Event::Tag::ForecastWeather) {
-    for (size_t row = 0; row < hourly.rows_count; row++) {
-      auto weather = event->forecast_weather.hourly.ptr[row];
-      hourly.update(weather, row);
-    }
+void Weather::on_forecast_weather_event(
+    layer_shell_io::Event::ForecastWeather_Body data) {
+  for (size_t row = 0; row < hourly.rows_count; row++) {
+    auto weather = data.hourly.ptr[row];
+    hourly.update(weather, row);
+  }
 
-    for (size_t row = 0; row < daily.rows_count; row++) {
-      auto weather = event->forecast_weather.daily.ptr[row];
-      daily.update(weather, row);
-    }
+  for (size_t row = 0; row < daily.rows_count; row++) {
+    auto weather = data.daily.ptr[row];
+    daily.update(weather, row);
   }
 }
 

@@ -1,18 +1,19 @@
 #pragma once
 
-#include "bindings.hpp"
-#include "glibmm/refptr.h"
-#include "gtkmm/popovermenu.h"
-#include "include/utils/subscription.hpp"
+#include "include/utils/subscriber.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
-class Network : public Gtk::Button, public utils::Subscription<Network> {
+class Network : public Gtk::Button, public utils::Subscriber {
 public:
-  Network();
-  void activate(void *subscriptions);
-  void on_io_event(const layer_shell_io::Event *event);
+  Network(void *ctx);
+  void
+  on_wifi_status_event(layer_shell_io::Event::WifiStatus_Body data) override;
+  void on_network_speed_event(
+      layer_shell_io::Event::NetworkSpeed_Body data) override;
+  void
+  on_network_list_event(layer_shell_io::Event::NetworkList_Body data) override;
 
 private:
   Gtk::Label label;

@@ -1,6 +1,5 @@
 #include "include/windows/session.hpp"
-#include "bindings.hpp"
-#include "gtk4-layer-shell.h"
+#include <gtk4-layer-shell.h>
 
 namespace windows {
 
@@ -12,9 +11,12 @@ Gtk::Button make_button(const char *text) {
   return button;
 }
 
-Session::Session() : Gtk::Window() {
+Session::Session(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+    : utils::Subscriber(ctx) {
   set_name("SessionWindow");
   set_css_classes({"session-window"});
+  set_application(app);
+  toggle_on_escape();
 
   Gtk::Box layout(Gtk::Orientation::HORIZONTAL, 200);
   layout.set_homogeneous(true);
@@ -32,11 +34,6 @@ Session::Session() : Gtk::Window() {
 
   logout = make_button("Logout");
   layout.append(logout);
-}
-
-void Session::activate(const Glib::RefPtr<Gtk::Application> &app,
-                       void *subscriptions) {
-  set_application(app);
 
   auto window = gobj();
   gtk_layer_init_for_window(window);
@@ -48,32 +45,24 @@ void Session::activate(const Glib::RefPtr<Gtk::Application> &app,
   gtk_layer_set_namespace(window, "LayerShell/SessionScreen");
   gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  lock.signal_clicked().connect([]() {
+  lock.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_lock();
+    layer_shell_io::layer_shell_io_lock(ctx);
   });
-  reboot.signal_clicked().connect([]() {
+  reboot.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_reboot();
+    layer_shell_io::layer_shell_io_reboot(ctx);
   });
-  shutdown.signal_clicked().connect([]() {
+  shutdown.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_shutdown();
+    layer_shell_io::layer_shell_io_shutdown(ctx);
   });
-  logout.signal_clicked().connect([]() {
+  logout.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_logout();
+    layer_shell_io::layer_shell_io_logout(ctx);
   });
-
-  toggle_on_escape();
-
-  subscribe_to_io_events(subscriptions);
 }
 
-void Session::on_io_event(const layer_shell_io::Event *event) {
-  if (event->tag == layer_shell_io::Event::Tag::ToggleSessionScreen) {
-    toggle();
-  }
-}
+void Session::on_toggle_session_screen_event() { toggle(); }
 
 } // namespace windows

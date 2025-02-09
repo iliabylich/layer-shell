@@ -11,42 +11,45 @@
 #include <iostream>
 
 static Glib::RefPtr<Gtk::Application> app;
-
 Glib::RefPtr<Gtk::Application> get_app() { return app; }
+
+windows::TopBar *top_bar;
+windows::TopBar *windows::TopBar::get() { return top_bar; }
+windows::Session *session;
+windows::Session *windows::Session::get() { return session; }
+windows::HTop *htop;
+windows::HTop *windows::HTop::get() { return htop; }
+windows::Weather *weather;
+windows::Weather *windows::Weather::get() { return weather; }
+windows::Launcher *launcher;
+windows::Launcher *windows::Launcher::get() { return launcher; }
 
 int main(void) {
   auto ctx = layer_shell_io::layer_shell_io_init();
-  auto subscriptions = ctx.subscriptions;
 
   app = Gtk::Application::create("org.me.LayerShell",
                                  Gio::Application::Flags::DEFAULT_FLAGS);
   app->hold();
 
-  app->signal_activate().connect([subscriptions]() {
+  app->signal_activate().connect([ctx]() {
     utils::Icons::init();
 
-    auto top_bar = windows::TopBar::instance();
-    auto session = windows::Session::instance();
-    auto htop = windows::HTop::instance();
-    auto weather = windows::Weather::instance();
-    auto launcher = windows::Launcher::instance();
+    top_bar = new windows::TopBar(app, ctx);
+    session = new windows::Session(app, ctx);
+    htop = new windows::HTop(app, ctx);
+    weather = new windows::Weather(app, ctx);
+    launcher = new windows::Launcher(app, ctx);
 
     Glib::signal_timeout().connect(
-        [subscriptions]() {
-          layer_shell_io::layer_shell_io_poll_events(subscriptions);
+        [ctx]() {
+          layer_shell_io::layer_shell_io_poll_events(ctx);
           return true;
         },
         50);
 
-    top_bar->activate(app, subscriptions);
-    session->activate(app, subscriptions);
-    htop->activate(app, subscriptions);
-    weather->activate(app, subscriptions);
-    launcher->activate(app, subscriptions);
-
     std::cout << "Finished building widgets...\n";
 
-    layer_shell_io::layer_shell_io_spawn_thread();
+    layer_shell_io::layer_shell_io_spawn_thread(ctx);
   });
 
   app->signal_startup().connect([]() { utils::Css::load(); });
