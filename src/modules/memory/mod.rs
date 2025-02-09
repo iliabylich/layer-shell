@@ -1,17 +1,19 @@
 use crate::{hyprctl, scheduler::Actor, Command, Event};
 use anyhow::{Context as _, Result};
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 #[derive(Debug)]
-pub(crate) struct Memory;
+pub(crate) struct Memory {
+    tx: Sender<Event>,
+}
 
 impl Actor for Memory {
     fn name() -> &'static str {
         "Memory"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
-        Ok(Box::new(Memory))
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
+        Ok(Box::new(Memory { tx }))
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
@@ -41,7 +43,7 @@ impl Actor for Memory {
             used: (used_kb as f64) / 1024.0 / 1024.0,
             total: (total_kb as f64) / 1024.0 / 1024.0,
         };
-        event.emit();
+        self.tx.send(event).context("failed to send Memory event")?;
         Ok(ControlFlow::Continue(Duration::from_secs(1)))
     }
 

@@ -1,17 +1,19 @@
 use crate::{scheduler::Actor, Event};
-use anyhow::Result;
-use std::{ops::ControlFlow, time::Duration};
+use anyhow::{Context as _, Result};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 #[derive(Debug)]
-pub(crate) struct Time;
+pub(crate) struct Time {
+    tx: Sender<Event>,
+}
 
 impl Actor for Time {
     fn name() -> &'static str {
         "Time"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
-        Ok(Box::new(Time))
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
+        Ok(Box::new(Time { tx }))
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
@@ -20,7 +22,7 @@ impl Actor for Time {
             time: now.format("%H:%M:%S").to_string().into(),
             date: now.format("%Y %B %e").to_string().into(),
         };
-        event.emit();
+        self.tx.send(event).context("failed to send event")?;
         Ok(ControlFlow::Continue(Duration::from_secs(1)))
     }
 

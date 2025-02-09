@@ -1,4 +1,4 @@
-use crate::{macros::fatal, Command};
+use crate::{macros::fatal, Command, Event};
 pub(crate) use actor::Actor;
 pub(crate) use config::{ActorConfig, Config};
 use queue::Queue;
@@ -20,10 +20,11 @@ pub(crate) struct Scheduler {
     queue: Arc<Mutex<Queue>>,
     txs: HashMap<&'static str, Sender<Command>>,
     thread_pool: threadpool::ThreadPool,
+    cmd_rx: Receiver<Command>,
 }
 
 impl Scheduler {
-    pub(crate) fn new(config: Config) -> Self {
+    pub(crate) fn new(config: Config, e_tx: Sender<Event>, cmd_rx: Receiver<Command>) -> Self {
         let mut queue = Queue::new();
         let mut txs = HashMap::new();
         let thread_pool = threadpool::ThreadPool::new(5);
@@ -35,7 +36,7 @@ impl Scheduler {
             let ActorConfig { name, start } = config;
 
             log::info!("Starting module {name}");
-            match start() {
+            match start(e_tx.clone()) {
                 Ok(module) => {
                     log::info!("Module {name} has successfully started");
                     queue.register(name, module, rx);
@@ -50,14 +51,16 @@ impl Scheduler {
             queue,
             txs,
             thread_pool,
+            cmd_rx,
         }
     }
 
-    pub(crate) fn run(self, rx: Receiver<Command>) {
+    pub(crate) fn run(self) {
         let Self {
             queue,
             txs,
             thread_pool,
+            cmd_rx,
         } = self;
 
         loop {
@@ -88,7 +91,7 @@ impl Scheduler {
                 });
             }
 
-            while let Ok(cmd) = rx.try_recv() {
+            while let Ok(cmd) = cmd_rx.try_recv() {
                 for (name, tx) in txs.iter() {
                     if tx.send(cmd.clone()).is_err() {
                         log::error!(

@@ -1,8 +1,9 @@
 use crate::{dbus::nm::NetworkManager, event::WifiStatus, ffi::COption, Event};
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use dbus::blocking::Connection;
+use std::sync::mpsc::Sender;
 
-pub(crate) fn reset(conn: &Connection) {
+pub(crate) fn reset(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
     let wifi_status = match get_status(conn) {
         Ok((ssid, strength)) => COption::Some(WifiStatus {
             ssid: ssid.into(),
@@ -15,7 +16,8 @@ pub(crate) fn reset(conn: &Connection) {
     };
 
     let event = Event::WifiStatus { wifi_status };
-    event.emit();
+    tx.send(event).context("failed to send WiFiStatus event")?;
+    Ok(())
 }
 fn get_status(conn: &Connection) -> Result<(String, u8)> {
     let device = NetworkManager::primary_wireless_device(conn)?;

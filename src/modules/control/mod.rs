@@ -6,7 +6,7 @@ use crate::{
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, channel::MatchingReceiver as _};
 use dbus_crossroads::Crossroads;
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 pub(crate) struct Control {
     conn: Connection,
@@ -17,7 +17,7 @@ impl Actor for Control {
         "Control"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
         let conn = Connection::new_session().context("failed to connect to DBus")?;
 
         conn.request_name("org.me.LayerShellControl", true, true, true)?;
@@ -25,7 +25,7 @@ impl Actor for Control {
         let mut cr = Crossroads::new();
         let token = register_org_me_layer_shell_control::<DBusService>(&mut cr);
 
-        cr.insert("/Control", &[token], DBusService);
+        cr.insert("/Control", &[token], DBusService { tx });
 
         conn.start_receive(
             dbus::message::MatchRule::new_method_call(),
@@ -56,16 +56,22 @@ impl std::fmt::Debug for Control {
     }
 }
 
-struct DBusService;
+struct DBusService {
+    tx: Sender<Event>,
+}
 
 impl OrgMeLayerShellControl for DBusService {
     fn toggle_launcher(&mut self) -> std::result::Result<(), dbus::MethodErr> {
-        Event::ToggleLauncher.emit();
+        if let Err(err) = self.tx.send(Event::ToggleLauncher) {
+            log::error!("failed to send ToggleLauncher event: {:?}", err);
+        }
         Ok(())
     }
 
     fn toggle_session_screen(&mut self) -> std::result::Result<(), dbus::MethodErr> {
-        Event::ToggleSessionScreen.emit();
+        if let Err(err) = self.tx.send(Event::ToggleSessionScreen) {
+            log::error!("failed to send ToggleSessionScreen event: {:?}", err);
+        }
         Ok(())
     }
 

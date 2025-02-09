@@ -1,6 +1,6 @@
-use crate::{hyprctl, scheduler::Actor, Command};
+use crate::{hyprctl, scheduler::Actor, Command, Event};
 use anyhow::Result;
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 #[derive(Debug)]
 pub(crate) struct Session;
@@ -10,7 +10,7 @@ impl Actor for Session {
         "Session"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
+    fn start(_: Sender<Event>) -> Result<Box<dyn Actor>> {
         Ok(Box::new(Self))
     }
 

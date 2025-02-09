@@ -1,7 +1,5 @@
 use crate::ffi::{CArray, COption, CString};
-use crate::lock_channel::LockChannel;
 use crate::modules::weather::WeatherCode;
-use std::sync::LazyLock;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -58,17 +56,7 @@ pub enum Event {
     ToggleSessionScreen,
 }
 
-static CHANNEL: LazyLock<LockChannel<Event>> = LazyLock::new(LockChannel::new);
-
-impl Event {
-    pub(crate) fn emit(self) {
-        CHANNEL.emit(self);
-    }
-
-    pub(crate) fn try_recv() -> Option<Self> {
-        CHANNEL.try_recv()
-    }
-}
+unsafe impl Sync for Event {}
 
 #[derive(Debug)]
 #[repr(C)]

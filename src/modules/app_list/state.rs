@@ -4,19 +4,20 @@ use crate::{
     Event,
 };
 use anyhow::Result;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::mpsc::Sender};
 
 #[derive(Debug)]
 pub(crate) struct State {
     selected_idx: usize,
     path_to_desktop_files: HashMap<String, DesktopFile>,
     pattern: String,
+    tx: Sender<Event>,
 }
 
 impl State {
     const MAX_ITEMS: usize = 5;
 
-    pub(crate) fn new(desktop_files: Vec<DesktopFile>) -> Self {
+    pub(crate) fn new(tx: Sender<Event>, desktop_files: Vec<DesktopFile>) -> Self {
         let mut path_to_desktop_files = HashMap::new();
         for desktop_file in desktop_files {
             path_to_desktop_files.insert(desktop_file.path.clone(), desktop_file);
@@ -26,6 +27,7 @@ impl State {
             selected_idx: 0,
             path_to_desktop_files,
             pattern: String::new(),
+            tx,
         };
         this.reset();
         this
@@ -87,7 +89,9 @@ impl State {
             .collect::<Vec<_>>();
 
         let event = Event::AppList { apps: apps.into() };
-        event.emit();
+        if let Err(err) = self.tx.send(event) {
+            log::error!("failed to send AppList event: {:?}", err);
+        }
     }
 
     fn visible(&self) -> Vec<DesktopFile> {

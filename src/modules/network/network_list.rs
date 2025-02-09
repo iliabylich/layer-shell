@@ -1,16 +1,18 @@
+use std::sync::mpsc::Sender;
+
 use crate::{
     dbus::nm::{Device, NetworkManager},
     event::Network,
     Event,
 };
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use dbus::blocking::Connection;
 
-pub(crate) fn reset(conn: &Connection) -> Result<()> {
+pub(crate) fn reset(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
     let event = Event::NetworkList {
         list: get_networks(conn)?.into(),
     };
-    event.emit();
+    tx.send(event).context("failed to send NetworkList event")?;
     Ok(())
 }
 

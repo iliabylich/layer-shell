@@ -1,6 +1,6 @@
-use crate::scheduler::Actor;
-use anyhow::Result;
-use std::{ops::ControlFlow, time::Duration};
+use crate::{scheduler::Actor, Event};
+use anyhow::{Context as _, Result};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 mod client;
 mod code;
@@ -9,23 +9,29 @@ mod mapper;
 pub use code::WeatherCode;
 
 #[derive(Debug)]
-pub(crate) struct Weather;
+pub(crate) struct Weather {
+    tx: Sender<Event>,
+}
 
 impl Actor for Weather {
     fn name() -> &'static str {
         "Weather"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
-        Ok(Box::new(Weather))
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
+        Ok(Box::new(Weather { tx }))
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
         let res = client::get_weather()?;
 
         let (current, forecast) = mapper::map(res)?;
-        current.emit();
-        forecast.emit();
+        self.tx
+            .send(current)
+            .context("failed to send current weather event")?;
+        self.tx
+            .send(forecast)
+            .context("failed to send current weather event")?;
         Ok(ControlFlow::Continue(Duration::from_secs(120)))
     }
 

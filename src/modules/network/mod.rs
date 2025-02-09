@@ -2,11 +2,11 @@ use crate::{
     dbus::{nm::NetworkManager, OrgFreedesktopNetworkManagerStateChanged},
     hyprctl,
     scheduler::Actor,
-    Command,
+    Command, Event,
 };
 use anyhow::{Context as _, Result};
 use dbus::{blocking::Connection, message::SignalArgs};
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 mod network_list;
 mod network_speed;
@@ -14,6 +14,7 @@ mod wifi_status;
 
 pub(crate) struct Network {
     conn: Connection,
+    tx: Sender<Event>,
 }
 
 impl Actor for Network {
@@ -21,28 +22,31 @@ impl Actor for Network {
         "Network"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
         let conn = Connection::new_system().context("Failed to connect to D-Bus")?;
 
-        full_reset(&conn)?;
+        full_reset(&conn, &tx)?;
 
-        conn.add_match(
-            OrgFreedesktopNetworkManagerStateChanged::match_rule(None, None),
-            |_: OrgFreedesktopNetworkManagerStateChanged, conn, _| {
-                if let Err(err) = full_reset(conn) {
-                    log::error!("{:?}", err);
-                }
-                true
-            },
-        )
-        .context("failed to add_match")?;
+        {
+            let tx = tx.clone();
+            conn.add_match(
+                OrgFreedesktopNetworkManagerStateChanged::match_rule(None, None),
+                move |_: OrgFreedesktopNetworkManagerStateChanged, conn, _| {
+                    if let Err(err) = full_reset(conn, &tx) {
+                        log::error!("{:?}", err);
+                    }
+                    true
+                },
+            )
+            .context("failed to add_match")?;
+        }
 
-        Ok(Box::new(Network { conn }))
+        Ok(Box::new(Network { conn, tx }))
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
         while self.conn.process(Duration::from_millis(200))? {}
-        network_speed::update(&self.conn)?;
+        network_speed::update(&self.conn, &self.tx)?;
         Ok(ControlFlow::Continue(Duration::from_secs(1)))
     }
 
@@ -55,11 +59,11 @@ impl Actor for Network {
     }
 }
 
-fn full_reset(conn: &Connection) -> Result<()> {
-    network_list::reset(conn)?;
-    wifi_status::reset(conn);
+fn full_reset(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
+    network_list::reset(conn, &tx)?;
+    wifi_status::reset(conn, &tx)?;
     network_speed::reset();
-    network_speed::update(conn)?;
+    network_speed::update(conn, &tx)?;
     NetworkManager::primary_wireless_device(conn)?.set_refresh_rate_in_ms(conn, 1_000)?;
     Ok(())
 }

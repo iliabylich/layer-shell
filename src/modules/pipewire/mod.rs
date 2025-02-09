@@ -1,4 +1,4 @@
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 use crate::{
     dbus::{
@@ -19,7 +19,7 @@ impl Actor for Pipewire {
         "Pipewire"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
         let conn = Connection::new_session().context("Failed to connect to D-Bus")?;
 
         let proxy = conn.with_proxy(
@@ -29,33 +29,44 @@ impl Actor for Pipewire {
         );
         let volume = proxy.get_volume().context("failed to call GetVolume")?;
         let muted = proxy.get_muted().context("failed to call GetMuted")?;
-        Event::Volume {
+        tx.send(Event::Volume {
             volume: volume as f32,
+        })
+        .context("failed to send Volume event")?;
+        tx.send(Event::Mute { muted })
+            .context("failed to send Mute event")?;
+
+        {
+            let tx = tx.clone();
+            conn.add_match(
+                OrgLocalPipewireDBusMutedUpdated::match_rule(None, None),
+                move |e: OrgLocalPipewireDBusMutedUpdated, _, _| {
+                    let event = Event::Mute { muted: e.muted };
+                    if let Err(err) = tx.send(event) {
+                        log::error!("failed to send Mute event: {:?}", err)
+                    }
+                    true
+                },
+            )
+            .context("failed to add_match")?;
         }
-        .emit();
-        Event::Mute { muted }.emit();
 
-        conn.add_match(
-            OrgLocalPipewireDBusMutedUpdated::match_rule(None, None),
-            |e: OrgLocalPipewireDBusMutedUpdated, _, _| {
-                Event::Mute { muted: e.muted }.emit();
-                true
-            },
-        )
-        .context("failed to add_match")?;
-
-        conn.add_match(
-            OrgLocalPipewireDBusVolumeUpdated::match_rule(None, None),
-            |e: OrgLocalPipewireDBusVolumeUpdated, _, _| {
-                Event::Volume {
-                    volume: e.volume as f32,
-                }
-                .emit();
-
-                true
-            },
-        )
-        .context("failed to add_match")?;
+        {
+            let tx = tx.clone();
+            conn.add_match(
+                OrgLocalPipewireDBusVolumeUpdated::match_rule(None, None),
+                move |e: OrgLocalPipewireDBusVolumeUpdated, _, _| {
+                    let event = Event::Volume {
+                        volume: e.volume as f32,
+                    };
+                    if let Err(err) = tx.send(event) {
+                        log::error!("failed to send Volume event: {:?}", err);
+                    }
+                    true
+                },
+            )
+            .context("failed to add_match")?;
+        }
 
         Ok(Box::new(Self { conn }))
     }

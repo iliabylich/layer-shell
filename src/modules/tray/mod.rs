@@ -13,7 +13,7 @@ use crate::{
         watcher::Watcher,
     },
     scheduler::Actor,
-    Command,
+    Command, Event,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
@@ -22,7 +22,7 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 mod channel;
 mod item;
@@ -39,9 +39,9 @@ impl Actor for Tray {
         "Tray"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
         let conn = Connection::new_session()?;
-        let state = State::new();
+        let state = State::new(tx);
 
         conn.add_match(
             DBusNameOwnerChanged::match_rule(None, None),

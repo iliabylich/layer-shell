@@ -27,6 +27,8 @@ pub(crate) struct Ctx {
     subscriptions: Subscriptions,
     cmd_tx: Sender<Command>,
     cmd_rx: Option<Receiver<Command>>,
+    e_tx: Option<Sender<Event>>,
+    e_rx: Receiver<Event>,
 }
 macro_rules! cast_ctx {
     ($ctx:ident) => {{
@@ -46,11 +48,14 @@ pub extern "C" fn layer_shell_io_init() -> *mut c_void {
     }
 
     let (cmd_tx, cmd_rx) = std::sync::mpsc::channel::<Command>();
+    let (e_tx, e_rx) = std::sync::mpsc::channel::<Event>();
 
     let ctx = Ctx {
         subscriptions: vec![],
         cmd_tx,
         cmd_rx: Some(cmd_rx),
+        e_tx: Some(e_tx),
+        e_rx,
     };
     (Box::leak(Box::new(ctx)) as *mut Ctx).cast()
 }
@@ -67,6 +72,9 @@ pub extern "C" fn layer_shell_io_subscribe(
 #[no_mangle]
 pub extern "C" fn layer_shell_io_spawn_thread(ctx: *mut c_void) {
     let Some(cmd_rx) = cast_ctx!(ctx).cmd_rx.take() else {
+        fatal!("layer_shell_io_spawn_thread has been called twice");
+    };
+    let Some(e_tx) = cast_ctx!(ctx).e_tx.take() else {
         fatal!("layer_shell_io_spawn_thread has been called twice");
     };
 
@@ -91,14 +99,14 @@ pub extern "C" fn layer_shell_io_spawn_thread(ctx: *mut c_void) {
         config.add::<AppList>();
         config.add::<Session>();
 
-        let scheduler = Scheduler::new(config);
-        scheduler.run(cmd_rx);
+        let scheduler = Scheduler::new(config, e_tx, cmd_rx);
+        scheduler.run();
     });
 }
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_poll_events(ctx: *mut c_void) {
-    while let Some(event) = Event::try_recv() {
+    while let Ok(event) = cast_ctx!(ctx).e_rx.try_recv() {
         log::info!("Received event {:?}", event);
 
         for (sub, data) in cast_ctx!(ctx).subscriptions.iter() {

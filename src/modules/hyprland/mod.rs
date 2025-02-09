@@ -1,4 +1,4 @@
-use crate::{hyprctl, scheduler::Actor, Command};
+use crate::{hyprctl, scheduler::Actor, Command, Event};
 use anyhow::{bail, Context, Result};
 use raw_event::RawEvent;
 use state::State;
@@ -6,6 +6,7 @@ use std::{
     io::{BufRead as _, BufReader, ErrorKind, Lines},
     ops::ControlFlow,
     os::unix::net::UnixStream,
+    sync::mpsc::Sender,
     time::Duration,
 };
 
@@ -16,6 +17,7 @@ mod state;
 pub(crate) struct Hyprland {
     state: State,
     reader: Lines<BufReader<UnixStream>>,
+    tx: Sender<Event>,
 }
 
 impl Actor for Hyprland {
@@ -23,16 +25,18 @@ impl Actor for Hyprland {
         "Hyprland"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
         let reader = connection::reader()?;
 
         let state = State::new()?;
-        state.as_language_changed_event().emit();
-        state.as_workspaces_changed_event().emit();
+        tx.send(state.as_language_changed_event())
+            .context("failed to send Language event")?;
+        tx.send(state.as_workspaces_changed_event())
+            .context("failed to send Workspaces event")?;
 
         let reader = BufReader::new(reader).lines();
 
-        Ok(Box::new(Hyprland { state, reader }))
+        Ok(Box::new(Hyprland { state, reader, tx }))
     }
 
     fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
@@ -42,7 +46,9 @@ impl Actor for Hyprland {
                 Ok(line) => {
                     if let Some(event) = RawEvent::parse(&line) {
                         let event = self.state.apply(event);
-                        event.emit();
+                        self.tx
+                            .send(event)
+                            .context("failed to send Hyprland event")?;
                     }
                 }
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {

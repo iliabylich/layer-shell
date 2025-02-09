@@ -1,7 +1,7 @@
-use crate::Command;
+use crate::{Command, Event};
 pub(crate) use action::Action;
 use anyhow::Result;
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
 mod action;
 
@@ -9,7 +9,7 @@ pub(crate) trait Actor: Send + std::fmt::Debug {
     fn name() -> &'static str
     where
         Self: Sized;
-    fn start() -> Result<Box<dyn Actor>>
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>>
     where
         Self: Sized;
 

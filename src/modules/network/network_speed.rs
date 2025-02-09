@@ -1,7 +1,10 @@
 use crate::{dbus::nm::NetworkManager, ffi::CString, Event};
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use dbus::blocking::Connection;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    mpsc::Sender,
+};
 
 static TRANSMITTED_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
 static RECEIVED_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
@@ -23,7 +26,7 @@ pub(crate) fn reset() {
     RECEIVED_BYTES.store(u64::MAX, Ordering::Relaxed);
 }
 
-pub(crate) fn update(conn: &Connection) -> Result<()> {
+pub(crate) fn update(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
     let device = NetworkManager::primary_wireless_device(conn)?;
 
     let tx_bytes = device
@@ -42,7 +45,8 @@ pub(crate) fn update(conn: &Connection) -> Result<()> {
         upload_speed: format_speed(upload_speed),
         download_speed: format_speed(download_speed),
     };
-    event.emit();
+    tx.send(event)
+        .context("failed to send NetworkSpeed event")?;
 
     Ok(())
 }

@@ -1,8 +1,8 @@
-use crate::{scheduler::Actor, Command};
+use crate::{scheduler::Actor, Command, Event};
 use anyhow::{Context, Result};
 use desktop_file::DesktopFile;
 use state::State;
-use std::{ops::ControlFlow, time::Duration};
+use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 use watcher::{Watcher, WatcherUpdate};
 
 mod desktop_file;
@@ -21,7 +21,7 @@ impl Actor for AppList {
         "AppList"
     }
 
-    fn start() -> Result<Box<dyn Actor>> {
+    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
         let dirlist = dirs::dirlist();
 
         let mut watchers = vec![];
@@ -36,7 +36,7 @@ impl Actor for AppList {
         let desktop_apps = DesktopFile::parse_many(filelist.iter());
 
         Ok(Box::new(Self {
-            state: State::new(desktop_apps),
+            state: State::new(tx, desktop_apps),
             watchers,
         }))
     }

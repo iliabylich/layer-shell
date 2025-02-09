@@ -1,9 +1,11 @@
-use crate::scheduler::Actor;
+use std::sync::mpsc::Sender;
+
+use crate::{scheduler::Actor, Event};
 use anyhow::Result;
 
 pub(crate) struct ActorConfig {
     pub(crate) name: &'static str,
-    pub(crate) start: fn() -> Result<Box<dyn Actor>>,
+    pub(crate) start: fn(Sender<Event>) -> Result<Box<dyn Actor>>,
 }
 
 pub(crate) struct Config {
