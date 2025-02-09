@@ -8,8 +8,7 @@ namespace windows {
 class Weather : public Base, utils::Subscriber {
 public:
   Weather(const Glib::RefPtr<Gtk::Application> &app, void *ctx);
-  void on_forecast_weather_event(
-      layer_shell_io::Event::ForecastWeather_Body data) override;
+  void on_io_event(layer_shell_io::Event::ForecastWeather_Body data) override;
   static Weather *get();
 
 private:

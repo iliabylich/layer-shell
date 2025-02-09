@@ -8,7 +8,7 @@ namespace widgets {
 class Tray : public Gtk::Box, public utils::Subscriber {
 public:
   Tray(void *ctx);
-  void on_tray_event(layer_shell_io::Event::Tray_Body data) override;
+  void on_io_event(layer_shell_io::Event::Tray_Body data) override;
 
 private:
   class TrayIcon {

@@ -16,7 +16,7 @@ CPU::CPU(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   }
 }
 
-void CPU::on_cpu_usage_event(layer_shell_io::Event::CpuUsage_Body data) {
+void CPU::on_io_event(layer_shell_io::Event::CpuUsage_Body data) {
 #define INDICATORS_COUNT 8
   static const char *INDICATORS[INDICATORS_COUNT] = {
       "<span color='#FFFFFF'>▁</span>", "<span color='#FFD5D5'>▂</span>",

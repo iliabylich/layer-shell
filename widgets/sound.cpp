@@ -26,7 +26,7 @@ Sound::Sound(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   add_controller(ctrl);
 }
 
-void Sound::on_volume_event(layer_shell_io::Event::Volume_Body data) {
+void Sound::on_io_event(layer_shell_io::Event::Volume_Body data) {
   float volume = data.volume;
   scale.set_value(volume);
   const char *icon_name = NULL;

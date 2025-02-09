@@ -96,8 +96,7 @@ Network::Network(void *ctx) : Gtk::Button(), utils::Subscriber(ctx) {
   signal_clicked().connect([this]() { this->popover.popup(); });
 }
 
-void Network::on_wifi_status_event(
-    layer_shell_io::Event::WifiStatus_Body data) {
+void Network::on_io_event(layer_shell_io::Event::WifiStatus_Body data) {
   if (data.wifi_status.tag ==
       layer_shell_io::COption<layer_shell_io::WifiStatus>::Tag::None) {
     image.hide();
@@ -110,13 +109,11 @@ void Network::on_wifi_status_event(
     label.set_label(buffer);
   }
 }
-void Network::on_network_speed_event(
-    layer_shell_io::Event::NetworkSpeed_Body data) {
+void Network::on_io_event(layer_shell_io::Event::NetworkSpeed_Body data) {
   download_speed_label.set_label(data.download_speed);
   upload_speed_label.set_label(data.upload_speed);
 }
-void Network::on_network_list_event(
-    layer_shell_io::Event::NetworkList_Body data) {
+void Network::on_io_event(layer_shell_io::Event::NetworkList_Body data) {
   popover.replace_networks(data.list);
 }
 

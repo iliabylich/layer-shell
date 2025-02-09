@@ -22,8 +22,7 @@ Workspaces::Workspaces(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   }
 }
 
-void Workspaces::on_workspaces_event(
-    layer_shell_io::Event::Workspaces_Body data) {
+void Workspaces::on_io_event(layer_shell_io::Event::Workspaces_Body data) {
   for (size_t idx = 1; idx <= 10; idx++) {
     Gtk::Button &button = buttons.at(idx - 1);
     bool visible = false;

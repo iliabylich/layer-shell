@@ -8,7 +8,7 @@ namespace widgets {
 class Memory : public Gtk::Button, public utils::Subscriber {
 public:
   Memory(void *ctx);
-  void on_memory_event(layer_shell_io::Event::Memory_Body data) override;
+  void on_io_event(layer_shell_io::Event::Memory_Body data) override;
 };
 
 } // namespace widgets

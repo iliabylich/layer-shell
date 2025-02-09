@@ -81,7 +81,7 @@ void Tray::add(layer_shell_io::TrayApp app) {
   append(icon);
 }
 
-void Tray::on_tray_event(layer_shell_io::Event::Tray_Body data) {
+void Tray::on_io_event(layer_shell_io::Event::Tray_Body data) {
   cleanup();
 
   auto apps = data.list;

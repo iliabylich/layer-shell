@@ -128,8 +128,7 @@ Weather::Weather(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 }
 
-void Weather::on_forecast_weather_event(
-    layer_shell_io::Event::ForecastWeather_Body data) {
+void Weather::on_io_event(layer_shell_io::Event::ForecastWeather_Body data) {
   for (size_t row = 0; row < hourly.rows_count; row++) {
     auto weather = data.hourly.ptr[row];
     hourly.update(weather, row);

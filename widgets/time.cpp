@@ -9,7 +9,7 @@ Time::Time(void *ctx) : Gtk::Label(), utils::Subscriber(ctx) {
   set_label("--");
 }
 
-void Time::on_time_event(layer_shell_io::Event::Time_Body data) {
+void Time::on_io_event(layer_shell_io::Event::Time_Body data) {
   set_label(data.time);
   set_tooltip_text(data.date);
 }

@@ -118,7 +118,7 @@ void Launcher::toggle_and_reset() {
   add_controller(ctrl);
 }
 
-void Launcher::on_app_list_event(layer_shell_io::Event::AppList_Body data) {
+void Launcher::on_io_event(layer_shell_io::Event::AppList_Body data) {
   auto apps = data.apps;
   for (size_t i = 0; i < 5; i++) {
     auto &row = rows.at(i);
