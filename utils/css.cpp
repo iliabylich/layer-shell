@@ -31,8 +31,7 @@ std::string Css::main_css() {
 }
 
 std::string Css::theme_css() {
-  std::string path(getenv("HOME"));
-  path.append("/.theme.css");
+  auto path = std::format("{}/.theme.css", getenv("HOME"));
   std::ifstream f(path);
   if (!f) {
     return "";

@@ -86,13 +86,6 @@ void Weather::DailyGrid::update(layer_shell_io::WeatherOnDay weather,
   update_image(image_at(3, row), weather.code);
 }
 
-#define DAILY_ROWS_COUNT 6
-#define DAILY_COL_DAY 0
-#define DAILY_COL_MIN_WEATHER 1
-#define DAILY_COL_MAX_WEATHER 2
-#define DAILY_COL_IMAGE 3
-#define DAILY_COLS_COUNT 4
-
 Weather::Weather(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
     : utils::Subscriber(ctx) {
   set_name("WeatherWindow");

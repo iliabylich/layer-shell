@@ -3,7 +3,7 @@
 
 namespace widgets {
 
-#define ICONS_COUNT 10
+size_t max_icons_count = 10;
 
 Tray::Tray(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
@@ -85,7 +85,7 @@ void Tray::on_io_event(layer_shell_io::Event::Tray_Body data) {
   cleanup();
 
   auto apps = data.list;
-  for (size_t i = 0; i < ICONS_COUNT; i++) {
+  for (size_t i = 0; i < max_icons_count; i++) {
     if (i < apps.len) {
       add(apps.ptr[i]);
     }

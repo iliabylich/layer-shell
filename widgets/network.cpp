@@ -86,7 +86,7 @@ Network::Network(void *ctx) : Gtk::Button(), utils::Subscriber(ctx) {
       clipboard->set_text(ip);
 
       auto notification =
-          Gio::Notification::create(std::string("Copied ") + ip);
+          Gio::Notification::create(std::format("Copied {}", ip.c_str()));
       get_app()->send_notification(notification);
     });
     action_group->add_action(action);

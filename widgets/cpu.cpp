@@ -2,13 +2,15 @@
 
 namespace widgets {
 
+size_t cpu_count = 12;
+
 CPU::CPU(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(3);
   set_css_classes({"widget", "cpu", "padded"});
   set_name("CPU");
 
-  for (size_t i = 0; i < 12; i++) {
+  for (size_t i = 0; i < cpu_count; i++) {
     Gtk::Label label;
     label.set_use_markup(true);
     append(label);
@@ -25,7 +27,7 @@ void CPU::on_io_event(layer_shell_io::Event::CpuUsage_Body data) {
       "<span color='#FF0000'>▇</span>", "<span color='#E60000'>█</span>",
   };
 
-  for (size_t idx = 0; idx < 12; idx++) {
+  for (size_t idx = 0; idx < cpu_count; idx++) {
     Gtk::Label &label = labels.at(idx);
     size_t load = data.usage_per_core.ptr[idx];
     size_t indicator_idx =
