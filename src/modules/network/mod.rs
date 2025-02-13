@@ -1,12 +1,17 @@
 use crate::{
-    dbus::{nm::NetworkManager, OrgFreedesktopNetworkManagerStateChanged},
-    hyprctl,
-    scheduler::Actor,
-    Command, Event,
+    dbus::{
+        nm::{Device, NetworkManager},
+        OrgFreedesktopNetworkManagerStateChanged,
+    },
+    hyprctl, Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
-use dbus::{blocking::Connection, message::SignalArgs};
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
+use dbus::{
+    blocking::Connection,
+    channel::{BusType, Channel},
+    message::SignalArgs,
+};
+use std::{os::fd::AsRawFd, time::Duration};
 
 mod network_list;
 mod network_speed;
@@ -14,62 +19,85 @@ mod wifi_status;
 
 pub(crate) struct Network {
     conn: Connection,
-    tx: Sender<Event>,
+    fd: i32,
+    tx: VerboseSender<Event>,
+    primary_device: Option<Device>,
+    transmitted_bytes: Option<u64>,
+    received_bytes: Option<u64>,
 }
 
-impl Actor for Network {
-    fn name() -> &'static str {
-        "Network"
+impl Network {
+    pub(crate) const INTERVAL: u64 = 1;
+
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
+        let mut channel = Channel::get_private(BusType::System).unwrap();
+        channel.set_watch_enabled(true);
+        let fd = channel.watch().fd;
+        let conn = Connection::from(channel);
+
+        conn.add_match(
+            OrgFreedesktopNetworkManagerStateChanged::match_rule(None, None),
+            |_: OrgFreedesktopNetworkManagerStateChanged, _, _| true,
+        )
+        .context("failed to add_match")?;
+
+        let mut this = Self {
+            conn,
+            fd,
+            tx,
+            primary_device: None,
+            transmitted_bytes: None,
+            received_bytes: None,
+        };
+        this.full_reset();
+        Ok(this)
     }
 
-    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
-        let conn = Connection::new_system().context("Failed to connect to D-Bus")?;
+    pub(crate) fn tick(&mut self) {
+        self.update_network_speed();
+    }
 
-        full_reset(&conn, &tx)?;
-
+    pub(crate) fn read(&mut self) {
+        while let Ok(Some(message)) = self
+            .conn
+            .channel()
+            .blocking_pop_message(Duration::from_secs(0))
         {
-            let tx = tx.clone();
-            conn.add_match(
-                OrgFreedesktopNetworkManagerStateChanged::match_rule(None, None),
-                move |_: OrgFreedesktopNetworkManagerStateChanged, conn, _| {
-                    if let Err(err) = full_reset(conn, &tx) {
-                        log::error!("{:?}", err);
-                    }
-                    true
-                },
-            )
-            .context("failed to add_match")?;
+            if OrgFreedesktopNetworkManagerStateChanged::from_message(&message).is_some() {
+                self.full_reset();
+            }
         }
-
-        Ok(Box::new(Network { conn, tx }))
     }
 
-    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        while self.conn.process(Duration::from_millis(0))? {}
-        network_speed::update(&self.conn, &self.tx)?;
-        Ok(ControlFlow::Continue(Duration::from_secs(1)))
+    fn full_reset(&mut self) {
+        match NetworkManager::primary_wireless_device(&self.conn) {
+            Ok(primary_device) => {
+                if let Err(err) = primary_device.set_refresh_rate_in_ms(&self.conn, 1_000) {
+                    log::error!("failed to set refresh rate on primary device: {:?}", err);
+                }
+                self.primary_device = Some(primary_device);
+
+                self.reset_network_list();
+                self.reset_wifi_status();
+                self.reset_network_speed();
+                self.update_network_speed();
+            }
+
+            Err(err) => {
+                log::error!("No primary network device: {:?}", err)
+            }
+        }
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
-        if let Command::SpawnNetworkEditor = cmd {
-            hyprctl::dispatch("exec kitty --name nmtui nmtui")?;
+    pub(crate) fn spawn_network_editor(&self) {
+        if let Err(err) = hyprctl::dispatch("exec kitty --name nmtui nmtui") {
+            log::error!("{:?}", err);
         }
-
-        Ok(ControlFlow::Continue(()))
     }
 }
 
-fn full_reset(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
-    network_list::reset(conn, &tx)?;
-    wifi_status::reset(conn, &tx)?;
-    network_speed::reset();
-    network_speed::update(conn, &tx)?;
-    NetworkManager::primary_wireless_device(conn)?.set_refresh_rate_in_ms(conn, 1_000)?;
-    Ok(())
-}
-
-impl std::fmt::Debug for Network {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Network").field("conn", &"<conn>").finish()
+impl AsRawFd for Network {
+    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
+        self.fd
     }
 }

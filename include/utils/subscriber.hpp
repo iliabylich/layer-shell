@@ -21,7 +21,7 @@ private:
   virtual void on_io_event(layer_shell_io::Event::Time_Body);
   virtual void on_io_event(layer_shell_io::Event::Workspaces_Body);
   virtual void on_io_event(layer_shell_io::Event::Language_Body);
-  virtual void on_io_event(layer_shell_io::Event::AppList_Body);
+  virtual void on_io_event(layer_shell_io::Event::Launcher_Body);
   virtual void on_io_event(layer_shell_io::Event::Volume_Body);
   virtual void on_io_event(layer_shell_io::Event::Mute_Body);
   virtual void on_io_event(layer_shell_io::Event::CurrentWeather_Body);

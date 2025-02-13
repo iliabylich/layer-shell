@@ -1,7 +1,7 @@
 use anyhow::{Context as _, Result};
 use std::os::unix::net::UnixStream;
 
-pub(crate) fn reader() -> Result<UnixStream> {
+pub(crate) fn connect_to_socket() -> Result<UnixStream> {
     let path = format!(
         "{}/hypr/{}/.socket2.sock",
         xdg_runtime_dir()?,

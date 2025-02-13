@@ -1,54 +1,48 @@
-use crate::{dbus::nm::NetworkManager, ffi::CString, Event};
-use anyhow::{Context as _, Result};
-use dbus::blocking::Connection;
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    mpsc::Sender,
-};
+use crate::{ffi::CString, modules::network::Network, Event};
 
-static TRANSMITTED_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
-static RECEIVED_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
-
-fn update_stat_and_return_delta(stat: &AtomicU64, value: u64) -> u64 {
-    let prev = stat.load(Ordering::Relaxed);
-    if prev == u64::MAX {
-        stat.store(value, Ordering::Relaxed);
-        0
-    } else {
-        let delta = value - prev;
-        stat.store(value, Ordering::Relaxed);
-        delta
+fn update_stat_and_return_delta(stat: &mut Option<u64>, value: u64) -> u64 {
+    match *stat {
+        Some(prev) => {
+            let delta = value - prev;
+            *stat = Some(value);
+            delta
+        }
+        None => {
+            *stat = Some(value);
+            0
+        }
     }
 }
 
-pub(crate) fn reset() {
-    TRANSMITTED_BYTES.store(u64::MAX, Ordering::Relaxed);
-    RECEIVED_BYTES.store(u64::MAX, Ordering::Relaxed);
-}
+impl Network {
+    pub(crate) fn reset_network_speed(&mut self) {
+        self.transmitted_bytes = None;
+        self.received_bytes = None;
+    }
 
-pub(crate) fn update(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
-    let device = NetworkManager::primary_wireless_device(conn)?;
+    pub(crate) fn update_network_speed(&mut self) {
+        let Some(device) = self.primary_device.as_ref() else {
+            return;
+        };
 
-    let tx_bytes = device
-        .tx_bytes(conn)
-        .inspect_err(|err| log::error!("{:?}", err))
-        .unwrap_or(0);
-    let upload_speed = update_stat_and_return_delta(&TRANSMITTED_BYTES, tx_bytes);
+        let tx_bytes = device
+            .tx_bytes(&self.conn)
+            .inspect_err(|err| log::error!("{:?}", err))
+            .unwrap_or(0);
+        let upload_speed = update_stat_and_return_delta(&mut self.transmitted_bytes, tx_bytes);
 
-    let rx_bytes = device
-        .rx_bytes(conn)
-        .inspect_err(|err| log::error!("{:?}", err))
-        .unwrap_or(0);
-    let download_speed = update_stat_and_return_delta(&RECEIVED_BYTES, rx_bytes);
+        let rx_bytes = device
+            .rx_bytes(&self.conn)
+            .inspect_err(|err| log::error!("{:?}", err))
+            .unwrap_or(0);
+        let download_speed = update_stat_and_return_delta(&mut self.received_bytes, rx_bytes);
 
-    let event = Event::NetworkSpeed {
-        upload_speed: format_speed(upload_speed),
-        download_speed: format_speed(download_speed),
-    };
-    tx.send(event)
-        .context("failed to send NetworkSpeed event")?;
-
-    Ok(())
+        let event = Event::NetworkSpeed {
+            upload_speed: format_speed(upload_speed),
+            download_speed: format_speed(download_speed),
+        };
+        self.tx.send(event);
+    }
 }
 
 fn format_speed(mut speed: u64) -> CString {

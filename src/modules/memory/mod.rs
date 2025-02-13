@@ -1,57 +1,66 @@
-use crate::{hyprctl, scheduler::Actor, Command, Event};
+use crate::{channel::VerboseSender, hyprctl, Event};
 use anyhow::{Context as _, Result};
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
+use std::io::Read;
 
-#[derive(Debug)]
 pub(crate) struct Memory {
-    tx: Sender<Event>,
+    tx: VerboseSender<Event>,
+    buf: Vec<u8>,
 }
 
-impl Actor for Memory {
-    fn name() -> &'static str {
-        "Memory"
+impl Memory {
+    pub(crate) const INTERVAL: u64 = 1;
+
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        Self {
+            tx,
+            buf: vec![0; 1_000],
+        }
     }
 
-    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
-        Ok(Box::new(Memory { tx }))
+    pub(crate) fn tick(&mut self) {
+        if let Err(err) = self.try_tick() {
+            log::error!("{:?}", err);
+        }
     }
 
-    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        let contents =
-            std::fs::read_to_string("/proc/meminfo").context("failed to read /proc/meminfo")?;
-
+    fn try_tick(&mut self) -> Result<()> {
+        let mut file = std::fs::File::open("/proc/meminfo").context("failed to open")?;
+        let len = file.read(&mut self.buf).context("failed to read")?;
+        let contents = std::str::from_utf8(&self.buf[..len]).context("non-utf8 content")?;
         let mut lines = contents.lines();
-        let line_total = lines.next().context("failed to get the 1st line")?;
-        let _ = lines.next().context("failed to get the 2nd line")?;
-        let line_available = lines.next().context("failed to get the 3rd line")?;
 
         let parse_mem = |line: &str, prefix: &str| {
-            line.strip_prefix(prefix)
+            line.trim_ascii_end()
+                .strip_prefix(prefix)
                 .with_context(|| format!("no {prefix} prefix"))?
                 .strip_suffix("kB")
-                .context("no 'kB' sufix")?
-                .trim()
+                .context("no 'kB' suffix")?
+                .trim_ascii()
                 .parse::<usize>()
                 .with_context(|| format!("not an int on {prefix} line"))
         };
 
-        let total_kb = parse_mem(line_total, "MemTotal:")?;
-        let available_kb = parse_mem(line_available, "MemAvailable:")?;
+        let line1 = lines.next().context("no line 1")?;
+        let total_kb = parse_mem(line1, "MemTotal:")?;
+
+        let _line2 = lines.next().context("no line 2")?;
+
+        let line3 = lines.next().context("no line 3")?;
+        let available_kb = parse_mem(line3, "MemAvailable:")?;
+
         let used_kb = total_kb - available_kb;
 
         let event = Event::Memory {
             used: (used_kb as f64) / 1024.0 / 1024.0,
             total: (total_kb as f64) / 1024.0 / 1024.0,
         };
-        self.tx.send(event).context("failed to send Memory event")?;
-        Ok(ControlFlow::Continue(Duration::from_secs(1)))
+        self.tx.send(event);
+        Ok(())
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
-        if let Command::SpawnSystemMonitor = cmd {
-            hyprctl::dispatch("exec gnome-system-monitor")?;
+    pub(crate) fn spawn_system_monitor(&self) {
+        if let Err(err) = hyprctl::dispatch("exec gnome-system-monitor") {
+            log::error!("Failed to open system monitor: {:?}", err);
         }
-
-        Ok(ControlFlow::Continue(()))
     }
 }

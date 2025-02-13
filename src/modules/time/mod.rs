@@ -1,32 +1,22 @@
-use crate::{scheduler::Actor, Event};
-use anyhow::{Context as _, Result};
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
+use crate::{channel::VerboseSender, Event};
 
-#[derive(Debug)]
 pub(crate) struct Time {
-    tx: Sender<Event>,
+    tx: VerboseSender<Event>,
 }
 
-impl Actor for Time {
-    fn name() -> &'static str {
-        "Time"
+impl Time {
+    pub(crate) const INTERVAL: u64 = 1;
+
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        Self { tx }
     }
 
-    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
-        Ok(Box::new(Time { tx }))
-    }
-
-    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
+    pub(crate) fn tick(&self) {
         let now = chrono::Local::now();
         let event = Event::Time {
             time: now.format("%H:%M:%S").to_string().into(),
             date: now.format("%Y %B %e").to_string().into(),
         };
-        self.tx.send(event).context("failed to send event")?;
-        Ok(ControlFlow::Continue(Duration::from_secs(1)))
-    }
-
-    fn exec(&mut self, _: &crate::Command) -> Result<ControlFlow<()>> {
-        Ok(ControlFlow::Break(()))
+        self.tx.send(event)
     }
 }

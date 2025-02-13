@@ -1,14 +1,13 @@
-use crate::{event::TrayApp, modules::tray::item::Item, Event};
-use std::{collections::HashMap, sync::mpsc::Sender};
+use crate::{event::TrayApp, modules::tray::item::Item, Event, VerboseSender};
+use std::collections::HashMap;
 
-#[derive(Debug)]
 pub(crate) struct State {
     map: HashMap<Item, TrayApp>,
-    tx: Sender<Event>,
+    tx: VerboseSender<Event>,
 }
 
 impl State {
-    pub(crate) fn new(tx: Sender<Event>) -> Self {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
         Self {
             map: HashMap::new(),
             tx,
@@ -49,9 +48,7 @@ impl State {
         let event = Event::Tray {
             list: self.map.values().cloned().collect::<Vec<_>>().into(),
         };
-        if let Err(err) = self.tx.send(event) {
-            log::error!("failed to send Tray event: {:?}", err);
-        }
+        self.tx.send(event);
     }
 
     pub(crate) fn find(&self, service: &str) -> Option<Item> {

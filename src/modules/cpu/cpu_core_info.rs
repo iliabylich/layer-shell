@@ -1,3 +1,5 @@
+use std::io::Read as _;
+
 use anyhow::{Context as _, Result};
 
 #[derive(Debug, Clone)]
@@ -33,12 +35,13 @@ impl CpuCoreInfo {
         Ok(Self { id, idle, total })
     }
 
-    fn parse_current() -> Result<Vec<Self>> {
-        let contents =
-            std::fs::read_to_string("/proc/stat").context("failed to read /proc/stat")?;
+    fn parse_current(buf: &mut [u8]) -> Result<Vec<Self>> {
+        let mut file = std::fs::File::open("/proc/stat").context("failed to open")?;
+        let len = file.read(buf).context("failed to read")?;
+        let contents = std::str::from_utf8(&buf[..len]).context("non-utf8 content")?;
 
         contents
-            .split("\n")
+            .lines()
             .filter(|line| line.starts_with("cpu") && line.as_bytes()[3].is_ascii_digit())
             .map(|line| {
                 CpuCoreInfo::parse_line(line)
@@ -49,8 +52,9 @@ impl CpuCoreInfo {
 
     pub(crate) fn parse_current_comparing_to(
         previous: Option<&Vec<CpuCoreInfo>>,
+        buf: &mut [u8],
     ) -> Result<(Vec<usize>, Vec<CpuCoreInfo>)> {
-        let current = Self::parse_current()?;
+        let current = Self::parse_current(buf)?;
         let count = current.len();
 
         let usage = if let Some(previous) = previous {

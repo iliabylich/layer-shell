@@ -1,33 +1,30 @@
-use crate::{hyprctl, scheduler::Actor, Command, Event};
-use anyhow::Result;
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
+use crate::hyprctl;
 
-#[derive(Debug)]
 pub(crate) struct Session;
 
-impl Actor for Session {
-    fn name() -> &'static str {
-        "Session"
+impl Session {
+    pub(crate) fn new() -> Self {
+        Self
     }
 
-    fn start(_: Sender<Event>) -> Result<Box<dyn Actor>> {
-        Ok(Box::new(Self))
-    }
-
-    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        Ok(ControlFlow::Break(()))
-    }
-
-    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
-        match cmd {
-            Command::Lock => hyprctl::dispatch("exec hyprlock")?,
-            Command::Reboot => hyprctl::dispatch("exec systemctl reboot")?,
-            Command::Shutdown => hyprctl::dispatch("exec systemctl poweroff")?,
-            Command::Logout => hyprctl::dispatch("exit")?,
-
-            _ => {}
+    pub(crate) fn lock(&mut self) {
+        if let Err(err) = hyprctl::dispatch("exec hyprlock") {
+            log::error!("failed to lock: {:?}", err);
         }
-
-        Ok(ControlFlow::Continue(()))
+    }
+    pub(crate) fn reboot(&mut self) {
+        if let Err(err) = hyprctl::dispatch("exec systemctl reboot") {
+            log::error!("failed to reboot: {:?}", err);
+        }
+    }
+    pub(crate) fn shutdown(&mut self) {
+        if let Err(err) = hyprctl::dispatch("exec systemctl poweroff") {
+            log::error!("failed to shutdown: {:?}", err);
+        }
+    }
+    pub(crate) fn logout(&mut self) {
+        if let Err(err) = hyprctl::dispatch("exit") {
+            log::error!("failed to logout: {:?}", err);
+        }
     }
 }

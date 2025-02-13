@@ -162,7 +162,7 @@ struct Event {
     Time,
     Workspaces,
     Language,
-    AppList,
+    Launcher,
     Volume,
     Mute,
     CurrentWeather,
@@ -198,12 +198,12 @@ struct Event {
     CString lang;
   };
 
-  struct AppList_Body {
+  struct Launcher_Body {
     CArray<App> apps;
   };
 
   struct Volume_Body {
-    float volume;
+    double volume;
   };
 
   struct Mute_Body {
@@ -244,7 +244,7 @@ struct Event {
     Time_Body time;
     Workspaces_Body workspaces;
     Language_Body language;
-    AppList_Body app_list;
+    Launcher_Body launcher;
     Volume_Body volume;
     Mute_Body mute;
     CurrentWeather_Body current_weather;
@@ -268,17 +268,17 @@ void layer_shell_io_poll_events(void *ctx);
 
 void layer_shell_io_hyprland_go_to_workspace(size_t idx, void *ctx);
 
-void layer_shell_io_app_list_reset(void *ctx);
+void layer_shell_io_launcher_reset(void *ctx);
 
-void layer_shell_io_app_list_go_up(void *ctx);
+void layer_shell_io_launcher_go_up(void *ctx);
 
-void layer_shell_io_app_list_go_down(void *ctx);
+void layer_shell_io_launcher_go_down(void *ctx);
 
-void layer_shell_io_app_list_set_search(const char *search, void *ctx);
+void layer_shell_io_launcher_set_search(const char *search, void *ctx);
 
-void layer_shell_io_app_list_exec_selected(void *ctx);
+void layer_shell_io_launcher_exec_selected(void *ctx);
 
-void layer_shell_io_set_volume(float volume, void *ctx);
+void layer_shell_io_set_volume(double volume, void *ctx);
 
 void layer_shell_io_set_muted(bool muted, void *ctx);
 

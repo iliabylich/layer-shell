@@ -22,11 +22,11 @@ pub enum Event {
     Language {
         lang: CString,
     },
-    AppList {
+    Launcher {
         apps: CArray<App>,
     },
     Volume {
-        volume: f32,
+        volume: f64,
     },
     Mute {
         muted: bool,

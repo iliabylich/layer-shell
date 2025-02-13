@@ -1,6 +1,5 @@
-use crate::{scheduler::Actor, Event};
-use anyhow::{Context as _, Result};
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
+use crate::{Event, VerboseSender};
+use anyhow::Result;
 
 mod client;
 mod code;
@@ -8,34 +7,29 @@ mod mapper;
 
 pub use code::WeatherCode;
 
-#[derive(Debug)]
 pub(crate) struct Weather {
-    tx: Sender<Event>,
+    tx: VerboseSender<Event>,
 }
 
-impl Actor for Weather {
-    fn name() -> &'static str {
-        "Weather"
+impl Weather {
+    pub(crate) const INTERVAL: u64 = 120;
+
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        Self { tx }
     }
 
-    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
-        Ok(Box::new(Weather { tx }))
+    pub(crate) fn tick(&self) {
+        if let Err(err) = self.try_tick() {
+            log::error!("failed to get weather: {:?}", err);
+        }
     }
 
-    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
+    pub(crate) fn try_tick(&self) -> Result<()> {
         let res = client::get_weather()?;
 
         let (current, forecast) = mapper::map(res)?;
-        self.tx
-            .send(current)
-            .context("failed to send current weather event")?;
-        self.tx
-            .send(forecast)
-            .context("failed to send current weather event")?;
-        Ok(ControlFlow::Continue(Duration::from_secs(120)))
-    }
-
-    fn exec(&mut self, _: &crate::Command) -> Result<ControlFlow<()>> {
-        Ok(ControlFlow::Break(()))
+        self.tx.send(current);
+        self.tx.send(forecast);
+        Ok(())
     }
 }

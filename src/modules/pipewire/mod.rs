@@ -1,107 +1,96 @@
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
-
 use crate::{
     dbus::{
         OrgLocalPipewireDBus, OrgLocalPipewireDBusMutedUpdated, OrgLocalPipewireDBusVolumeUpdated,
     },
-    scheduler::Actor,
-    Command, Event,
+    Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
-use dbus::{blocking::Connection, message::SignalArgs as _};
+use dbus::{
+    blocking::Connection,
+    channel::{BusType, Channel},
+    message::SignalArgs as _,
+};
+use std::{os::fd::AsRawFd, time::Duration};
 
 pub(crate) struct Pipewire {
+    tx: VerboseSender<Event>,
     conn: Connection,
+    fd: i32,
 }
 
-impl Actor for Pipewire {
-    fn name() -> &'static str {
-        "Pipewire"
-    }
-
-    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
-        let conn = Connection::new_session().context("Failed to connect to D-Bus")?;
+impl Pipewire {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
+        let mut channel = Channel::get_private(BusType::Session).unwrap();
+        channel.set_watch_enabled(true);
+        let fd = channel.watch().fd;
+        let conn = Connection::from(channel);
 
         let proxy = conn.with_proxy(
             "org.local.PipewireDBus",
             "/org/local/PipewireDBus",
-            Duration::from_millis(5000),
+            Duration::from_millis(1000),
         );
         let volume = proxy.get_volume().context("failed to call GetVolume")?;
         let muted = proxy.get_muted().context("failed to call GetMuted")?;
-        tx.send(Event::Volume {
-            volume: volume as f32,
-        })
-        .context("failed to send Volume event")?;
-        tx.send(Event::Mute { muted })
-            .context("failed to send Mute event")?;
+        tx.send(Event::Volume { volume });
+        tx.send(Event::Mute { muted });
 
-        {
-            let tx = tx.clone();
-            conn.add_match(
-                OrgLocalPipewireDBusMutedUpdated::match_rule(None, None),
-                move |e: OrgLocalPipewireDBusMutedUpdated, _, _| {
-                    let event = Event::Mute { muted: e.muted };
-                    if let Err(err) = tx.send(event) {
-                        log::error!("failed to send Mute event: {:?}", err)
-                    }
-                    true
-                },
-            )
-            .context("failed to add_match")?;
-        }
+        conn.add_match(
+            OrgLocalPipewireDBusMutedUpdated::match_rule(None, None),
+            |_: OrgLocalPipewireDBusMutedUpdated, _, _| true,
+        )
+        .context("failed to add_match")?;
 
-        {
-            let tx = tx.clone();
-            conn.add_match(
-                OrgLocalPipewireDBusVolumeUpdated::match_rule(None, None),
-                move |e: OrgLocalPipewireDBusVolumeUpdated, _, _| {
-                    let event = Event::Volume {
-                        volume: e.volume as f32,
-                    };
-                    if let Err(err) = tx.send(event) {
-                        log::error!("failed to send Volume event: {:?}", err);
-                    }
-                    true
-                },
-            )
-            .context("failed to add_match")?;
-        }
+        conn.add_match(
+            OrgLocalPipewireDBusVolumeUpdated::match_rule(None, None),
+            |_: OrgLocalPipewireDBusVolumeUpdated, _, _| true,
+        )
+        .context("failed to add_match")?;
 
-        Ok(Box::new(Self { conn }))
+        Ok(Self { tx, conn, fd })
     }
 
-    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        while self.conn.process(Duration::from_millis(0))? {}
-        Ok(ControlFlow::Continue(Duration::from_millis(100)))
+    pub(crate) fn read(&mut self) {
+        while let Ok(Some(message)) = self
+            .conn
+            .channel()
+            .blocking_pop_message(Duration::from_secs(0))
+        {
+            if let Some(e) = OrgLocalPipewireDBusMutedUpdated::from_message(&message) {
+                self.tx.send(Event::Mute { muted: e.muted });
+            } else if let Some(e) = OrgLocalPipewireDBusVolumeUpdated::from_message(&message) {
+                self.tx.send(Event::Volume { volume: e.volume });
+            }
+        }
     }
 
-    fn exec(&mut self, cmd: &Command) -> Result<ControlFlow<()>> {
+    pub(crate) fn set_muted(&mut self, muted: bool) {
         let proxy = self.conn.with_proxy(
             "org.local.PipewireDBus",
             "/org/local/PipewireDBus",
             Duration::from_millis(5000),
         );
 
-        match cmd {
-            Command::SetVolume { volume } => {
-                proxy
-                    .set_volume(*volume as f64)
-                    .context("failed to call SetVolume")?;
-            }
-            Command::SetMuted { muted } => {
-                proxy.set_muted(*muted).context("failed to call SetMuted")?;
-            }
-
-            _ => {}
+        if let Err(err) = proxy.set_muted(muted) {
+            log::error!("failed to call SetMuted: {:?}", err);
         }
+    }
 
-        Ok(ControlFlow::Continue(()))
+    pub(crate) fn set_volume(&mut self, volume: f64) {
+        let proxy = self.conn.with_proxy(
+            "org.local.PipewireDBus",
+            "/org/local/PipewireDBus",
+            Duration::from_millis(5000),
+        );
+
+        if let Err(err) = proxy.set_volume(volume) {
+            log::error!("failed to call SetVolume: {:?}", err);
+        }
     }
 }
 
-impl std::fmt::Debug for Pipewire {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Pipewire").field("conn", &"<conn>").finish()
+impl AsRawFd for Pipewire {
+    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
+        self.fd
     }
 }

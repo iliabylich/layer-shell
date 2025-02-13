@@ -1,39 +1,40 @@
 mod cpu_core_info;
 
-use crate::{scheduler::Actor, Event};
-use anyhow::{Context as _, Result};
+use crate::{channel::VerboseSender, Event};
+use anyhow::Result;
 use cpu_core_info::CpuCoreInfo;
-use std::{ops::ControlFlow, sync::mpsc::Sender, time::Duration};
 
-#[derive(Debug)]
 pub(crate) struct CPU {
     state: Option<Vec<CpuCoreInfo>>,
-    tx: Sender<Event>,
+    tx: VerboseSender<Event>,
+    buf: Vec<u8>,
 }
 
-impl Actor for CPU {
-    fn name() -> &'static str {
-        "CPU"
+impl CPU {
+    pub(crate) const INTERVAL: u64 = 1;
+
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        Self {
+            tx,
+            state: None,
+            buf: vec![0; 1_000],
+        }
     }
 
-    fn start(tx: Sender<Event>) -> Result<Box<dyn Actor>> {
-        Ok(Box::new(CPU { state: None, tx }))
+    pub(crate) fn tick(&mut self) {
+        if let Err(err) = self.try_tick() {
+            log::error!("failed to tick CPU: {:?}", err);
+        }
     }
 
-    fn tick(&mut self) -> Result<ControlFlow<(), Duration>> {
-        let (usage, new_state) = CpuCoreInfo::parse_current_comparing_to(self.state.as_ref())?;
+    fn try_tick(&mut self) -> Result<()> {
+        let (usage, new_state) =
+            CpuCoreInfo::parse_current_comparing_to(self.state.as_ref(), &mut self.buf)?;
         let event = Event::CpuUsage {
             usage_per_core: usage.into(),
         };
-        self.tx
-            .send(event)
-            .context("failed to send CpuUsage event")?;
-
+        self.tx.send(event);
         self.state = Some(new_state);
-        Ok(ControlFlow::Continue(Duration::from_secs(1)))
-    }
-
-    fn exec(&mut self, _: &crate::Command) -> Result<ControlFlow<()>> {
-        Ok(ControlFlow::Break(()))
+        Ok(())
     }
 }

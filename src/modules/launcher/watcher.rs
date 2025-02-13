@@ -1,12 +1,11 @@
 use anyhow::{Context as _, Result};
 use inotify::{EventMask, Inotify, WatchMask};
-use std::{collections::HashSet, io::ErrorKind};
+use std::{collections::HashSet, io::ErrorKind, os::fd::AsRawFd};
 
 #[derive(Debug)]
 pub(crate) struct Watcher {
     dir: String,
     inotify: Inotify,
-    enabled: bool,
 }
 
 impl Watcher {
@@ -24,18 +23,13 @@ impl Watcher {
         Ok(Self {
             dir: dir.to_string(),
             inotify,
-            enabled: true,
         })
     }
 
     pub(crate) fn poll(&mut self) -> Option<WatcherUpdate> {
-        if !self.enabled {
-            return None;
-        }
-
         let mut buffer = [0; 1024];
-        let mut created_or_updated_paths = HashSet::new();
-        let mut removed_paths = HashSet::new();
+        let mut created_or_updated = HashSet::new();
+        let mut removed = HashSet::new();
 
         match self.inotify.read_events(&mut buffer) {
             Ok(events) => {
@@ -43,9 +37,9 @@ impl Watcher {
                     if let Some(name) = event.name.and_then(|name| name.to_str()) {
                         let path = format!("{}/{}", self.dir, name);
                         if event.mask.intersects(EventMask::CREATE | EventMask::MODIFY) {
-                            created_or_updated_paths.insert(path);
+                            created_or_updated.insert(path);
                         } else if event.mask.intersects(EventMask::DELETE) {
-                            removed_paths.insert(path);
+                            removed.insert(path);
                         }
                     }
                 }
@@ -53,44 +47,24 @@ impl Watcher {
 
             Err(err) if err.kind() == ErrorKind::WouldBlock => return None,
             Err(err) => {
-                log::error!("failed to read events of {:?}: {:?}, disabling", self, err);
-                self.enabled = false;
+                log::error!("failed to read events of {:?}: {:?}", self, err);
                 return None;
             }
         }
 
         Some(WatcherUpdate {
-            created_or_updated_paths,
-            removed_paths,
+            created_or_updated,
+            removed,
         })
     }
 
-    pub(crate) fn is_enabled(&self) -> bool {
-        self.enabled
+    pub(crate) fn fd(&self) -> i32 {
+        self.inotify.as_raw_fd()
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct WatcherUpdate {
-    pub(crate) created_or_updated_paths: HashSet<String>,
-    pub(crate) removed_paths: HashSet<String>,
-}
-
-impl WatcherUpdate {
-    pub(crate) fn new_empty() -> Self {
-        Self {
-            created_or_updated_paths: HashSet::new(),
-            removed_paths: HashSet::new(),
-        }
-    }
-
-    pub(crate) fn merge(&mut self, other: Self) {
-        self.created_or_updated_paths
-            .extend(other.created_or_updated_paths);
-        self.removed_paths.extend(other.removed_paths);
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.created_or_updated_paths.is_empty() && self.removed_paths.is_empty()
-    }
+    pub(crate) created_or_updated: HashSet<String>,
+    pub(crate) removed: HashSet<String>,
 }

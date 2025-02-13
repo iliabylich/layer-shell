@@ -27,8 +27,8 @@ void Subscriber::on_io_event(const layer_shell_io::Event *event) {
   case layer_shell_io::Event::Tag::Language:
     on_io_event(event->language);
     break;
-  case layer_shell_io::Event::Tag::AppList:
-    on_io_event(event->app_list);
+  case layer_shell_io::Event::Tag::Launcher:
+    on_io_event(event->launcher);
     break;
   case layer_shell_io::Event::Tag::Volume:
     on_io_event(event->volume);
@@ -68,7 +68,7 @@ void Subscriber::on_io_event(layer_shell_io::Event::CpuUsage_Body) {}
 void Subscriber::on_io_event(layer_shell_io::Event::Time_Body) {}
 void Subscriber::on_io_event(layer_shell_io::Event::Workspaces_Body) {}
 void Subscriber::on_io_event(layer_shell_io::Event::Language_Body) {}
-void Subscriber::on_io_event(layer_shell_io::Event::AppList_Body) {}
+void Subscriber::on_io_event(layer_shell_io::Event::Launcher_Body) {}
 void Subscriber::on_io_event(layer_shell_io::Event::Volume_Body) {}
 void Subscriber::on_io_event(layer_shell_io::Event::Mute_Body) {}
 void Subscriber::on_io_event(layer_shell_io::Event::CurrentWeather_Body) {}

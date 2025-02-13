@@ -64,6 +64,40 @@ Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
     content.append(row);
     rows.push_back(std::move(row));
   }
+
+  auto win = gobj();
+  gtk_layer_init_for_window(win);
+  gtk_layer_set_layer(win, GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_namespace(win, "LayerShell/Launcher");
+  gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+
+  input.signal_activate().connect([this, ctx]() {
+    layer_shell_io::layer_shell_io_launcher_exec_selected(ctx);
+    toggle_and_reset();
+  });
+  input.signal_changed().connect([this, ctx]() {
+    auto search = input.get_text();
+    layer_shell_io::layer_shell_io_launcher_set_search(search.c_str(), ctx);
+  });
+
+  auto ctrl = Gtk::EventControllerKey::create();
+  ctrl->signal_key_pressed().connect(
+      [this, ctx](guint keyval, guint, Gdk::ModifierType) {
+        std::string key(gdk_keyval_name(keyval));
+
+        if (key == "Escape") {
+          toggle_and_reset();
+        } else if (key == "Up") {
+          layer_shell_io::layer_shell_io_launcher_go_up(ctx);
+        } else if (key == "Down") {
+          layer_shell_io::layer_shell_io_launcher_go_down(ctx);
+        }
+
+        return false;
+      },
+      false);
+  ctrl->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+  add_controller(ctrl);
 }
 
 void Launcher::toggle_and_reset() {
@@ -74,7 +108,7 @@ void Launcher::toggle_and_reset() {
         if (is_visible()) {
           hide();
         } else {
-          layer_shell_io::layer_shell_io_app_list_reset(ctx);
+          layer_shell_io::layer_shell_io_launcher_reset(ctx);
           input.set_text("");
           show();
         }
@@ -82,43 +116,9 @@ void Launcher::toggle_and_reset() {
         return false;
       },
       0);
-
-  auto win = gobj();
-  gtk_layer_init_for_window(win);
-  gtk_layer_set_layer(win, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(win, "LayerShell/Launcher");
-  gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
-
-  input.signal_activate().connect([this]() {
-    layer_shell_io::layer_shell_io_app_list_exec_selected(ctx);
-    toggle_and_reset();
-  });
-  input.signal_changed().connect([this]() {
-    auto search = input.get_text();
-    layer_shell_io::layer_shell_io_app_list_set_search(search.c_str(), ctx);
-  });
-
-  auto ctrl = Gtk::EventControllerKey::create();
-  ctrl->signal_key_pressed().connect(
-      [this](guint keyval, guint, Gdk::ModifierType) {
-        std::string key(gdk_keyval_name(keyval));
-
-        if (key == "Escape") {
-          toggle_and_reset();
-        } else if (key == "Up") {
-          layer_shell_io::layer_shell_io_app_list_go_up(ctx);
-        } else if (key == "Down") {
-          layer_shell_io::layer_shell_io_app_list_go_down(ctx);
-        }
-
-        return false;
-      },
-      false);
-  ctrl->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
-  add_controller(ctrl);
 }
 
-void Launcher::on_io_event(layer_shell_io::Event::AppList_Body data) {
+void Launcher::on_io_event(layer_shell_io::Event::Launcher_Body data) {
   auto apps = data.apps;
   for (size_t i = 0; i < 5; i++) {
     auto &row = rows.at(i);

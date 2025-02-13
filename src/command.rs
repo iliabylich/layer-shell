@@ -1,17 +1,17 @@
-use crate::macros::fatal;
+use crate::{macros::fatal, Ctx};
 use std::ffi::c_void;
 
 #[derive(Debug, Clone)]
-pub(crate) enum Command {
+pub enum Command {
     HyprlandGoToWorkspace { idx: usize },
 
-    AppListReset,
-    AppListGoUp,
-    AppListGoDown,
-    AppListSetSearch { search: String },
-    AppListExecSelected,
+    LauncherReset,
+    LauncherGoUp,
+    LauncherGoDown,
+    LauncherSetSearch { search: String },
+    LauncherExecSelected,
 
-    SetVolume { volume: f32 },
+    SetVolume { volume: f64 },
     SetMuted { muted: bool },
 
     Lock,
@@ -23,80 +23,103 @@ pub(crate) enum Command {
 
     SpawnNetworkEditor,
     SpawnSystemMonitor,
-
-    Probe,
-}
-
-macro_rules! send {
-    ($ctx:ident, $cmd:expr) => {
-        if let Err(err) = $crate::cast_ctx!($ctx).cmd_tx.send($cmd) {
-            log::error!("Failed to send command: {:?}", err)
-        }
-    };
 }
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_hyprland_go_to_workspace(idx: usize, ctx: *mut c_void) {
-    send!(ctx, Command::HyprlandGoToWorkspace { idx });
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::HyprlandGoToWorkspace { idx });
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_app_list_reset(ctx: *mut c_void) {
-    send!(ctx, Command::AppListReset);
+pub extern "C" fn layer_shell_io_launcher_reset(ctx: *mut c_void) {
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::LauncherReset);
 }
 #[no_mangle]
-pub extern "C" fn layer_shell_io_app_list_go_up(ctx: *mut c_void) {
-    send!(ctx, Command::AppListGoUp);
+pub extern "C" fn layer_shell_io_launcher_go_up(ctx: *mut c_void) {
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::LauncherGoUp);
 }
 #[no_mangle]
-pub extern "C" fn layer_shell_io_app_list_go_down(ctx: *mut c_void) {
-    send!(ctx, Command::AppListGoDown);
+pub extern "C" fn layer_shell_io_launcher_go_down(ctx: *mut c_void) {
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::LauncherGoDown);
 }
 #[no_mangle]
-pub unsafe extern "C" fn layer_shell_io_app_list_set_search(
+pub unsafe extern "C" fn layer_shell_io_launcher_set_search(
     search: *const std::ffi::c_char,
     ctx: *mut c_void,
 ) {
     let cstr = unsafe { std::ffi::CStr::from_ptr(search) };
     let s = cstr
         .to_str()
-        .unwrap_or_else(|_| fatal!("non-utf8 AppList search"));
-    send!(
-        ctx,
-        Command::AppListSetSearch {
+        .unwrap_or_else(|_| fatal!("non-utf8 Launcher search"));
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::LauncherSetSearch {
             search: s.to_string(),
-        }
-    );
+        });
 }
 #[no_mangle]
-pub extern "C" fn layer_shell_io_app_list_exec_selected(ctx: *mut c_void) {
-    send!(ctx, Command::AppListExecSelected);
+pub extern "C" fn layer_shell_io_launcher_exec_selected(ctx: *mut c_void) {
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::LauncherExecSelected);
 }
 
 #[no_mangle]
-pub extern "C" fn layer_shell_io_set_volume(volume: f32, ctx: *mut c_void) {
-    send!(ctx, Command::SetVolume { volume });
+pub extern "C" fn layer_shell_io_set_volume(volume: f64, ctx: *mut c_void) {
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::SetVolume { volume });
 }
 #[no_mangle]
 pub extern "C" fn layer_shell_io_set_muted(muted: bool, ctx: *mut c_void) {
-    send!(ctx, Command::SetMuted { muted });
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::SetMuted { muted });
 }
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_lock(ctx: *mut c_void) {
-    send!(ctx, Command::Lock);
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::Lock);
 }
 #[no_mangle]
 pub extern "C" fn layer_shell_io_reboot(ctx: *mut c_void) {
-    send!(ctx, Command::Reboot);
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::Reboot);
 }
 #[no_mangle]
 pub extern "C" fn layer_shell_io_shutdown(ctx: *mut c_void) {
-    send!(ctx, Command::Shutdown);
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::Shutdown);
 }
 #[no_mangle]
 pub extern "C" fn layer_shell_io_logout(ctx: *mut c_void) {
-    send!(ctx, Command::Logout);
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::Logout);
 }
 
 #[no_mangle]
@@ -107,20 +130,26 @@ pub unsafe extern "C" fn layer_shell_io_trigger_tray(
     let cstr = unsafe { std::ffi::CStr::from_ptr(uuid) };
     let s = cstr
         .to_str()
-        .unwrap_or_else(|_| fatal!("non-utf8 AppList search"));
-    send!(
-        ctx,
-        Command::TriggerTray {
+        .unwrap_or_else(|_| fatal!("non-utf8 Launcher search"));
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::TriggerTray {
             uuid: s.to_string(),
-        }
-    );
+        });
 }
 
 #[no_mangle]
 pub extern "C" fn layer_shell_io_spawn_network_editor(ctx: *mut c_void) {
-    send!(ctx, Command::SpawnNetworkEditor);
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::SpawnNetworkEditor);
 }
 #[no_mangle]
 pub extern "C" fn layer_shell_io_spawn_system_monitor(ctx: *mut c_void) {
-    send!(ctx, Command::SpawnSystemMonitor);
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::SpawnSystemMonitor);
 }

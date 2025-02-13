@@ -1,43 +1,42 @@
-use std::sync::mpsc::Sender;
-
 use crate::{
     dbus::nm::{Device, NetworkManager},
-    event::Network,
+    event::Network as NetworkData,
+    modules::network::Network,
     Event,
 };
-use anyhow::{Context as _, Result};
-use dbus::blocking::Connection;
+use anyhow::Result;
 
-pub(crate) fn reset(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
-    let event = Event::NetworkList {
-        list: get_networks(conn)?.into(),
-    };
-    tx.send(event).context("failed to send NetworkList event")?;
-    Ok(())
-}
-
-fn get_networks(conn: &Connection) -> Result<Vec<Network>> {
-    let mut ifaces = vec![];
-
-    let devices = NetworkManager::get_devices(conn)?;
-
-    for device in devices {
-        match get_device(conn, &device) {
-            Ok(network) => ifaces.push(network),
-            Err(_) => log::warn!("Failed to get data for Device {device:?} (not connected?)"),
-        }
+impl Network {
+    pub(crate) fn reset_network_list(&self) {
+        let event = Event::NetworkList {
+            list: self.get_network_list().unwrap_or_default().into(),
+        };
+        self.tx.send(event);
     }
 
-    Ok(ifaces)
-}
+    fn get_network_list(&self) -> Result<Vec<NetworkData>> {
+        let mut ifaces = vec![];
 
-fn get_device(conn: &Connection, device: &Device) -> Result<Network> {
-    let iface = device.interface(conn)?;
-    let ip4_config = device.ip4_config(conn)?;
-    let address = ip4_config.address(conn)?;
+        let devices = NetworkManager::get_devices(&self.conn)?;
 
-    Ok(Network {
-        iface: iface.into(),
-        address: address.into(),
-    })
+        for device in devices {
+            match self.get_network_for_device(&device) {
+                Ok(network) => ifaces.push(network),
+                Err(_) => log::warn!("Failed to get data for Device {device:?} (not connected?)"),
+            }
+        }
+
+        Ok(ifaces)
+    }
+
+    fn get_network_for_device(&self, device: &Device) -> Result<NetworkData> {
+        let iface = device.interface(&self.conn)?;
+        let ip4_config = device.ip4_config(&self.conn)?;
+        let address = ip4_config.address(&self.conn)?;
+
+        Ok(NetworkData {
+            iface: iface.into(),
+            address: address.into(),
+        })
+    }
 }

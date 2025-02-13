@@ -1,35 +1,34 @@
 use crate::{
     event::App,
-    modules::app_list::{desktop_file::DesktopFile, watcher::WatcherUpdate},
-    Event,
+    modules::launcher::{desktop_file::DesktopFile, watcher::WatcherUpdate},
+    Event, VerboseSender,
 };
 use anyhow::Result;
-use std::{collections::HashMap, sync::mpsc::Sender};
+use std::collections::HashMap;
 
-#[derive(Debug)]
 pub(crate) struct State {
     selected_idx: usize,
     path_to_desktop_files: HashMap<String, DesktopFile>,
     pattern: String,
-    tx: Sender<Event>,
+    tx: VerboseSender<Event>,
 }
 
 impl State {
     const MAX_ITEMS: usize = 5;
 
-    pub(crate) fn new(tx: Sender<Event>, desktop_files: Vec<DesktopFile>) -> Self {
+    pub(crate) fn new(tx: VerboseSender<Event>, desktop_files: Vec<DesktopFile>) -> Self {
         let mut path_to_desktop_files = HashMap::new();
         for desktop_file in desktop_files {
             path_to_desktop_files.insert(desktop_file.path.clone(), desktop_file);
         }
 
-        let mut this = Self {
+        let this = Self {
             selected_idx: 0,
             path_to_desktop_files,
             pattern: String::new(),
             tx,
         };
-        this.reset();
+        this.emit();
         this
     }
 
@@ -60,11 +59,11 @@ impl State {
     }
 
     pub(crate) fn process_watcher_update(&mut self, update: WatcherUpdate) {
-        for desktop_file in DesktopFile::parse_many(update.created_or_updated_paths.into_iter()) {
+        for desktop_file in DesktopFile::parse_many(update.created_or_updated.into_iter()) {
             self.path_to_desktop_files
                 .insert(desktop_file.path.clone(), desktop_file);
         }
-        for path in update.removed_paths {
+        for path in update.removed {
             self.path_to_desktop_files.remove(&path);
         }
         self.reset();
@@ -88,10 +87,8 @@ impl State {
             })
             .collect::<Vec<_>>();
 
-        let event = Event::AppList { apps: apps.into() };
-        if let Err(err) = self.tx.send(event) {
-            log::error!("failed to send AppList event: {:?}", err);
-        }
+        let event = Event::Launcher { apps: apps.into() };
+        self.tx.send(event);
     }
 
     fn visible(&self) -> Vec<DesktopFile> {

@@ -1,29 +1,31 @@
-use crate::{dbus::nm::NetworkManager, event::WifiStatus, ffi::COption, Event};
-use anyhow::{Context as _, Result};
-use dbus::blocking::Connection;
-use std::sync::mpsc::Sender;
+use crate::{event::WifiStatus, ffi::COption, modules::network::Network, Event};
+use anyhow::{bail, Result};
 
-pub(crate) fn reset(conn: &Connection, tx: &Sender<Event>) -> Result<()> {
-    let wifi_status = match get_status(conn) {
-        Ok((ssid, strength)) => COption::Some(WifiStatus {
-            ssid: ssid.into(),
-            strength,
-        }),
-        Err(err) => {
-            log::warn!("WiFiStatus error: {:?}", err);
-            COption::None
-        }
-    };
+impl Network {
+    pub(crate) fn reset_wifi_status(&self) {
+        let wifi_status = match self.get_wifi_status() {
+            Ok((ssid, strength)) => COption::Some(WifiStatus {
+                ssid: ssid.into(),
+                strength,
+            }),
+            Err(err) => {
+                log::warn!("WiFiStatus error: {:?}", err);
+                COption::None
+            }
+        };
 
-    let event = Event::WifiStatus { wifi_status };
-    tx.send(event).context("failed to send WiFiStatus event")?;
-    Ok(())
-}
-fn get_status(conn: &Connection) -> Result<(String, u8)> {
-    let device = NetworkManager::primary_wireless_device(conn)?;
-    let access_point = device.active_access_point(conn)?;
-    let ssid = access_point.ssid(conn)?;
-    let strength = access_point.strength(conn)?;
+        let event = Event::WifiStatus { wifi_status };
+        self.tx.send(event);
+    }
 
-    Ok((ssid, strength))
+    fn get_wifi_status(&self) -> Result<(String, u8)> {
+        let Some(device) = self.primary_device.as_ref() else {
+            bail!("no primary device");
+        };
+        let access_point = device.active_access_point(&self.conn)?;
+        let ssid = access_point.ssid(&self.conn)?;
+        let strength = access_point.strength(&self.conn)?;
+
+        Ok((ssid, strength))
+    }
 }
