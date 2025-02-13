@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub(crate) trait OrgLocalPipewireDBus {
+pub trait OrgLocalPipewireDBus {
     fn get_volume(&self) -> Result<f64, dbus::Error>;
     fn set_volume(&self, volume: f64) -> Result<(), dbus::Error>;
     fn get_muted(&self) -> Result<bool, dbus::Error>;
@@ -12,8 +12,8 @@ pub(crate) trait OrgLocalPipewireDBus {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgLocalPipewireDBusVolumeUpdated {
-    pub(crate) volume: f64,
+pub struct OrgLocalPipewireDBusVolumeUpdated {
+    pub volume: f64,
 }
 
 impl arg::AppendAll for OrgLocalPipewireDBusVolumeUpdated {
@@ -36,8 +36,8 @@ impl dbus::message::SignalArgs for OrgLocalPipewireDBusVolumeUpdated {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgLocalPipewireDBusMutedUpdated {
-    pub(crate) muted: bool,
+pub struct OrgLocalPipewireDBusMutedUpdated {
+    pub muted: bool,
 }
 
 impl arg::AppendAll for OrgLocalPipewireDBusMutedUpdated {

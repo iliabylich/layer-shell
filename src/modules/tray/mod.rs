@@ -71,6 +71,8 @@ impl Tray {
     }
 
     fn process_message(&mut self, message: Message) -> Result<()> {
+        let sender = message.sender().map(|s| s.into_static());
+
         if let Some(e) = DBusNameOwnerChanged::from_message(&message) {
             if e.name == e.old_owner && e.new_owner.is_empty() {
                 let removed_service = e.name;
@@ -98,9 +100,9 @@ impl Tray {
                     .ok()
                     .context("invalid path")?,
             ) {
-                if let Some(new_item) = watcher.pop_new_item() {
-                    let service = new_item.service;
-                    let mut path = new_item.path;
+                if let Some(mut path) = watcher.pop_new_item() {
+                    let service = sender.context("failed to get sender")?.to_string();
+
                     let menu_path = if service == path {
                         path = String::from("/StatusNotifierItem");
                         String::from("/com/canonical/dbusmenu")

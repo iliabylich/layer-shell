@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub(crate) trait OrgFreedesktopNetworkManagerAccessPoint {
+pub trait OrgFreedesktopNetworkManagerAccessPoint {
     fn flags(&self) -> Result<u32, dbus::Error>;
     fn wpa_flags(&self) -> Result<u32, dbus::Error>;
     fn rsn_flags(&self) -> Result<u32, dbus::Error>;

@@ -4,8 +4,8 @@ use dbus as dbus;
 use dbus::arg;
 use dbus_crossroads as crossroads;
 
-pub(crate) trait OrgKdeStatusNotifierWatcher {
-    fn register_status_notifier_item(&mut self, service: String, ctx: &dbus_crossroads::Context) -> Result<(), dbus::MethodErr>;
+pub trait OrgKdeStatusNotifierWatcher {
+    fn register_status_notifier_item(&mut self, service: String) -> Result<(), dbus::MethodErr>;
     fn register_status_notifier_host(&mut self, service: String) -> Result<(), dbus::MethodErr>;
     fn registered_status_notifier_items(&self) -> Result<Vec<String>, dbus::MethodErr>;
     fn is_status_notifier_host_registered(&self) -> Result<bool, dbus::MethodErr>;
@@ -13,8 +13,8 @@ pub(crate) trait OrgKdeStatusNotifierWatcher {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierWatcherStatusNotifierItemRegistered {
-    pub(crate) service: String,
+pub struct OrgKdeStatusNotifierWatcherStatusNotifierItemRegistered {
+    pub service: String,
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierWatcherStatusNotifierItemRegistered {
@@ -37,8 +37,8 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierWatcherStatusNotifierItem
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierWatcherStatusNotifierItemUnregistered {
-    pub(crate) service: String,
+pub struct OrgKdeStatusNotifierWatcherStatusNotifierItemUnregistered {
+    pub service: String,
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierWatcherStatusNotifierItemUnregistered {
@@ -61,7 +61,7 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierWatcherStatusNotifierItem
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierWatcherStatusNotifierHostRegistered {
+pub struct OrgKdeStatusNotifierWatcherStatusNotifierHostRegistered {
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierWatcherStatusNotifierHostRegistered {
@@ -81,24 +81,24 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierWatcherStatusNotifierHost
     const INTERFACE: &'static str = "org.kde.StatusNotifierWatcher";
 }
 
-pub(crate) fn register_org_kde_status_notifier_watcher<T>(cr: &mut crossroads::Crossroads) -> crossroads::IfaceToken<T>
+pub fn register_org_kde_status_notifier_watcher<T>(cr: &mut crossroads::Crossroads) -> crossroads::IfaceToken<T>
 where T: OrgKdeStatusNotifierWatcher + Send + 'static
 {
     cr.register("org.kde.StatusNotifierWatcher", |b| {
         b.signal::<(String,), _>("StatusNotifierItemRegistered", ("service",));
         b.signal::<(String,), _>("StatusNotifierItemUnregistered", ("service",));
         b.signal::<(), _>("StatusNotifierHostRegistered", ());
-        b.method("RegisterStatusNotifierItem", ("service",), (), |ctx, t: &mut T, (service,)| {
-            t.register_status_notifier_item(service, ctx,)
+        b.method("RegisterStatusNotifierItem", ("service",), (), |_, t: &mut T, (service,)| {
+            t.register_status_notifier_item(service,)
         });
-        b.method("RegisterStatusNotifierHost", ("service",), (), |ctx, t: &mut T, (service,)| {
+        b.method("RegisterStatusNotifierHost", ("service",), (), |_, t: &mut T, (service,)| {
             t.register_status_notifier_host(service,)
         });
         b.property::<Vec<String>, _>("RegisteredStatusNotifierItems")
-            .get(|ctx, t: &mut T| t.registered_status_notifier_items());
+            .get(|_, t: &mut T| t.registered_status_notifier_items());
         b.property::<bool, _>("IsStatusNotifierHostRegistered")
-            .get(|ctx, t: &mut T| t.is_status_notifier_host_registered());
+            .get(|_, t: &mut T| t.is_status_notifier_host_registered());
         b.property::<i32, _>("ProtocolVersion")
-            .get(|ctx, t: &mut T| t.protocol_version());
+            .get(|_, t: &mut T| t.protocol_version());
     })
 }

@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub(crate) trait OrgFreedesktopNetworkManagerDeviceStatistics {
+pub trait OrgFreedesktopNetworkManagerDeviceStatistics {
     fn refresh_rate_ms(&self) -> Result<u32, dbus::Error>;
     fn set_refresh_rate_ms(&self, value: u32) -> Result<(), dbus::Error>;
     fn tx_bytes(&self) -> Result<u64, dbus::Error>;

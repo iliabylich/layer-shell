@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub(crate) trait OrgFreedesktopNetworkManagerConnectionActive {
+pub trait OrgFreedesktopNetworkManagerConnectionActive {
     fn connection(&self) -> Result<dbus::Path<'static>, dbus::Error>;
     fn specific_object(&self) -> Result<dbus::Path<'static>, dbus::Error>;
     fn id(&self) -> Result<String, dbus::Error>;
@@ -25,9 +25,9 @@ pub(crate) trait OrgFreedesktopNetworkManagerConnectionActive {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgFreedesktopNetworkManagerConnectionActiveStateChanged {
-    pub(crate) state: u32,
-    pub(crate) reason: u32,
+pub struct OrgFreedesktopNetworkManagerConnectionActiveStateChanged {
+    pub state: u32,
+    pub reason: u32,
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerConnectionActiveStateChanged {

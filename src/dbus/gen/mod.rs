@@ -21,7 +21,6 @@ pub(crate) mod nm_active_connection;
 #[expect(dead_code)]
 pub(crate) mod nm_device_statistics;
 
-#[expect(unused_variables)]
 pub(crate) mod status_notifier_watcher;
 
 #[expect(dead_code)]

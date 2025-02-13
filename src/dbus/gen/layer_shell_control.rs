@@ -4,13 +4,13 @@ use dbus as dbus;
 use dbus::arg;
 use dbus_crossroads as crossroads;
 
-pub(crate) trait OrgMeLayerShellControl {
+pub trait OrgMeLayerShellControl {
     fn toggle_launcher(&mut self) -> Result<(), dbus::MethodErr>;
     fn toggle_session_screen(&mut self) -> Result<(), dbus::MethodErr>;
     fn exit(&mut self) -> Result<(), dbus::MethodErr>;
 }
 
-pub(crate) fn register_org_me_layer_shell_control<T>(cr: &mut crossroads::Crossroads) -> crossroads::IfaceToken<T>
+pub fn register_org_me_layer_shell_control<T>(cr: &mut crossroads::Crossroads) -> crossroads::IfaceToken<T>
 where T: OrgMeLayerShellControl + Send + 'static
 {
     cr.register("org.me.LayerShellControl", |b| {

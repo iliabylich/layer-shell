@@ -1,13 +1,7 @@
 use crate::dbus::OrgKdeStatusNotifierWatcher;
 
 pub(crate) struct Watcher {
-    pub(crate) new_item: Option<NewItem>,
-}
-
-#[derive(Debug)]
-pub(crate) struct NewItem {
-    pub(crate) service: String,
-    pub(crate) path: String,
+    pub(crate) new_item: Option<String>,
 }
 
 impl Watcher {
@@ -15,20 +9,14 @@ impl Watcher {
         Self { new_item: None }
     }
 
-    pub(crate) fn pop_new_item(&mut self) -> Option<NewItem> {
+    pub(crate) fn pop_new_item(&mut self) -> Option<String> {
         self.new_item.take()
     }
 }
 
 impl OrgKdeStatusNotifierWatcher for Watcher {
-    fn register_status_notifier_item(
-        &mut self,
-        path: String,
-        ctx: &dbus_crossroads::Context,
-    ) -> Result<(), dbus::MethodErr> {
-        if let Some(service) = ctx.message().sender().map(|s| s.to_string()) {
-            self.new_item = Some(NewItem { service, path });
-        }
+    fn register_status_notifier_item(&mut self, path: String) -> Result<(), dbus::MethodErr> {
+        self.new_item = Some(path);
 
         Ok(())
     }

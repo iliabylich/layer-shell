@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub(crate) trait OrgKdeStatusNotifierItem {
+pub trait OrgKdeStatusNotifierItem {
     fn context_menu(&self, x_: i32, y_: i32) -> Result<(), dbus::Error>;
     fn activate(&self, x_: i32, y_: i32) -> Result<(), dbus::Error>;
     fn secondary_activate(&self, x_: i32, y_: i32) -> Result<(), dbus::Error>;
@@ -28,7 +28,7 @@ pub(crate) trait OrgKdeStatusNotifierItem {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierItemNewTitle {
+pub struct OrgKdeStatusNotifierItemNewTitle {
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierItemNewTitle {
@@ -49,7 +49,7 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierItemNewTitle {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierItemNewIcon {
+pub struct OrgKdeStatusNotifierItemNewIcon {
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierItemNewIcon {
@@ -70,7 +70,7 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierItemNewIcon {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierItemNewAttentionIcon {
+pub struct OrgKdeStatusNotifierItemNewAttentionIcon {
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierItemNewAttentionIcon {
@@ -91,7 +91,7 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierItemNewAttentionIcon {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierItemNewOverlayIcon {
+pub struct OrgKdeStatusNotifierItemNewOverlayIcon {
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierItemNewOverlayIcon {
@@ -112,7 +112,7 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierItemNewOverlayIcon {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierItemNewToolTip {
+pub struct OrgKdeStatusNotifierItemNewToolTip {
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierItemNewToolTip {
@@ -133,8 +133,8 @@ impl dbus::message::SignalArgs for OrgKdeStatusNotifierItemNewToolTip {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgKdeStatusNotifierItemNewStatus {
-    pub(crate) status: String,
+pub struct OrgKdeStatusNotifierItemNewStatus {
+    pub status: String,
 }
 
 impl arg::AppendAll for OrgKdeStatusNotifierItemNewStatus {

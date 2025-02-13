@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub(crate) trait ComCanonicalDbusmenu {
+pub trait ComCanonicalDbusmenu {
     fn get_layout(&self, parent_id: i32, recursion_depth: i32, property_names: Vec<&str>) -> Result<(u32, (i32, arg::PropMap, Vec<arg::Variant<Box<dyn arg::RefArg + 'static>>>,)), dbus::Error>;
     fn get_group_properties(&self, ids: Vec<i32>, property_names: Vec<&str>) -> Result<Vec<(i32, arg::PropMap,)>, dbus::Error>;
     fn get_property(&self, id: i32, name: &str) -> Result<arg::Variant<Box<dyn arg::RefArg + 'static>>, dbus::Error>;
@@ -19,9 +19,9 @@ pub(crate) trait ComCanonicalDbusmenu {
 }
 
 #[derive(Debug)]
-pub(crate) struct ComCanonicalDbusmenuItemsPropertiesUpdated {
-    pub(crate) updated_props: Vec<(i32, arg::PropMap,)>,
-    pub(crate) removed_props: Vec<(i32, Vec<String>,)>,
+pub struct ComCanonicalDbusmenuItemsPropertiesUpdated {
+    pub updated_props: Vec<(i32, arg::PropMap,)>,
+    pub removed_props: Vec<(i32, Vec<String>,)>,
 }
 
 impl arg::AppendAll for ComCanonicalDbusmenuItemsPropertiesUpdated {
@@ -46,9 +46,9 @@ impl dbus::message::SignalArgs for ComCanonicalDbusmenuItemsPropertiesUpdated {
 }
 
 #[derive(Debug)]
-pub(crate) struct ComCanonicalDbusmenuLayoutUpdated {
-    pub(crate) revision: u32,
-    pub(crate) parent: i32,
+pub struct ComCanonicalDbusmenuLayoutUpdated {
+    pub revision: u32,
+    pub parent: i32,
 }
 
 impl arg::AppendAll for ComCanonicalDbusmenuLayoutUpdated {
@@ -73,9 +73,9 @@ impl dbus::message::SignalArgs for ComCanonicalDbusmenuLayoutUpdated {
 }
 
 #[derive(Debug)]
-pub(crate) struct ComCanonicalDbusmenuItemActivationRequested {
-    pub(crate) id: i32,
-    pub(crate) timestamp: u32,
+pub struct ComCanonicalDbusmenuItemActivationRequested {
+    pub id: i32,
+    pub timestamp: u32,
 }
 
 impl arg::AppendAll for ComCanonicalDbusmenuItemActivationRequested {

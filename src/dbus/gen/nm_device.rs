@@ -4,7 +4,7 @@ use dbus as dbus;
 use dbus::arg;
 use dbus::blocking;
 
-pub(crate) trait OrgFreedesktopNetworkManagerDevice {
+pub trait OrgFreedesktopNetworkManagerDevice {
     fn reapply(&self, connection: ::std::collections::HashMap<&str, arg::PropMap>, version_id: u64, flags: u32) -> Result<(), dbus::Error>;
     fn get_applied_connection(&self, flags: u32) -> Result<(::std::collections::HashMap<String, arg::PropMap>, u64), dbus::Error>;
     fn disconnect(&self) -> Result<(), dbus::Error>;
@@ -46,10 +46,10 @@ pub(crate) trait OrgFreedesktopNetworkManagerDevice {
 }
 
 #[derive(Debug)]
-pub(crate) struct OrgFreedesktopNetworkManagerDeviceStateChanged {
-    pub(crate) new_state: u32,
-    pub(crate) old_state: u32,
-    pub(crate) reason: u32,
+pub struct OrgFreedesktopNetworkManagerDeviceStateChanged {
+    pub new_state: u32,
+    pub old_state: u32,
+    pub reason: u32,
 }
 
 impl arg::AppendAll for OrgFreedesktopNetworkManagerDeviceStateChanged {
