@@ -6,7 +6,7 @@ use crate::dbus::{
     },
     nm::{AccessPoint, Ip4Config},
 };
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use dbus::{
     blocking::{Connection, Proxy},
     Path,

@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context as _, Result};
 
 pub(crate) fn get_weather() -> Result<String> {
     get_weather_response().context("failed to get weather")

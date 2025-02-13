@@ -19,7 +19,6 @@ mod wifi_status;
 
 pub(crate) struct Network {
     conn: Connection,
-    fd: i32,
     tx: VerboseSender<Event>,
     primary_device: Option<Device>,
     transmitted_bytes: Option<u64>,
@@ -30,9 +29,9 @@ impl Network {
     pub(crate) const INTERVAL: u64 = 1;
 
     pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
-        let mut channel = Channel::get_private(BusType::System).unwrap();
+        let mut channel =
+            Channel::get_private(BusType::System).context("failed to connecto to DBus")?;
         channel.set_watch_enabled(true);
-        let fd = channel.watch().fd;
         let conn = Connection::from(channel);
 
         conn.add_match(
@@ -43,7 +42,6 @@ impl Network {
 
         let mut this = Self {
             conn,
-            fd,
             tx,
             primary_device: None,
             transmitted_bytes: None,
@@ -98,6 +96,6 @@ impl Network {
 
 impl AsRawFd for Network {
     fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.fd
+        self.conn.channel().watch().fd
     }
 }

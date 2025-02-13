@@ -1,5 +1,5 @@
 use crate::{hyprctl, Event, VerboseSender};
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use raw_event::RawEvent;
 use state::State;
 use std::{

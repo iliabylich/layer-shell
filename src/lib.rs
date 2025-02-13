@@ -33,7 +33,7 @@ pub(crate) struct Ctx {
 impl Ctx {
     pub(crate) fn from_raw(ctx: *mut std::ffi::c_void) -> &'static mut Self {
         let ctx = unsafe { ctx.cast::<Self>().as_mut() };
-        ctx.unwrap_or_else(|| crate::macros::fatal!("Can't read NULL ctx"))
+        ctx.unwrap_or_else(|| fatal!("Can't read NULL ctx"))
     }
 }
 
@@ -134,7 +134,7 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
     let mut session = Session::new();
 
     loop {
-        let events = epoll.poll().unwrap();
+        let events = epoll.poll()?;
         for event in events {
             let id = FdId::try_from(event.u64)?;
             match id {

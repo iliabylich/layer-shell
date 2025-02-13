@@ -2,7 +2,7 @@ use crate::dbus::{
     gen::nm::OrgFreedesktopNetworkManager,
     nm::{ActiveConnection, Device},
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use dbus::blocking::{Connection, Proxy};
 use std::time::Duration;
 

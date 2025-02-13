@@ -1,5 +1,5 @@
 use crate::dbus::gen::nm_access_point::OrgFreedesktopNetworkManagerAccessPoint;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use dbus::{
     blocking::{Connection, Proxy},
     Path,

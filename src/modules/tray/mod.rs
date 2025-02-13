@@ -28,16 +28,15 @@ mod watcher;
 
 pub(crate) struct Tray {
     conn: Connection,
-    fd: i32,
     state: State,
     cr: Crossroads,
 }
 
 impl Tray {
     pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
-        let mut channel = Channel::get_private(BusType::Session).unwrap();
+        let mut channel =
+            Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
-        let fd = channel.watch().fd;
         let conn = Connection::from(channel);
         conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)
             .context("failed to acquire DBus name")?;
@@ -56,12 +55,7 @@ impl Tray {
         let token = register_org_kde_status_notifier_watcher::<Watcher>(&mut cr);
         cr.insert("/StatusNotifierWatcher", &[token], Watcher::new());
 
-        Ok(Self {
-            conn,
-            fd,
-            state,
-            cr,
-        })
+        Ok(Self { conn, state, cr })
     }
 
     pub(crate) fn read(&mut self) {
@@ -99,10 +93,11 @@ impl Tray {
                 .context("failed to find service")?;
             self.reload_tray_app(updated_item)?;
         } else if self.cr.handle_message(message, &self.conn).is_ok() {
-            if let Some(watcher) = self
-                .cr
-                .data_mut::<Watcher>(&Path::new("/StatusNotifierWatcher").unwrap())
-            {
+            if let Some(watcher) = self.cr.data_mut::<Watcher>(
+                &Path::new("/StatusNotifierWatcher")
+                    .ok()
+                    .context("invalid path")?,
+            ) {
                 if let Some(new_item) = watcher.pop_new_item() {
                     let service = new_item.service;
                     let mut path = new_item.path;
@@ -165,7 +160,7 @@ impl Tray {
 
 impl AsRawFd for Tray {
     fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.fd
+        self.conn.channel().watch().fd
     }
 }
 

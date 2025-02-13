@@ -3,7 +3,7 @@ use crate::{
     dbus::{register_org_me_layer_shell_control, OrgMeLayerShellControl},
     Event,
 };
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use dbus::{
     blocking::Connection,
     channel::{BusType, Channel},
@@ -13,16 +13,15 @@ use dbus_crossroads::Crossroads;
 use std::{os::fd::AsRawFd, time::Duration};
 
 pub(crate) struct Control {
-    fd: i32,
     conn: Connection,
     cr: Crossroads,
 }
 
 impl Control {
     pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
-        let mut channel = Channel::get_private(BusType::Session).unwrap();
+        let mut channel =
+            Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
-        let fd = channel.watch().fd;
         let conn = Connection::from(channel);
 
         conn.request_name("org.me.LayerShellControl", true, true, true)?;
@@ -31,7 +30,7 @@ impl Control {
         let token = register_org_me_layer_shell_control::<DBusService>(&mut cr);
         cr.insert("/Control", &[token], DBusService { tx });
 
-        Ok(Self { conn, fd, cr })
+        Ok(Self { conn, cr })
     }
 
     pub(crate) fn read(&mut self) {
@@ -72,6 +71,6 @@ impl OrgMeLayerShellControl for DBusService {
 
 impl AsRawFd for Control {
     fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.fd
+        self.conn.channel().watch().fd
     }
 }

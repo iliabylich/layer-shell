@@ -1,5 +1,5 @@
 use crate::dbus::gen::nm_ip4_config::OrgFreedesktopNetworkManagerIP4Config;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use dbus::{
     arg::{RefArg, Variant},
     blocking::{Connection, Proxy},

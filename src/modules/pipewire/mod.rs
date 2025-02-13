@@ -15,14 +15,13 @@ use std::{os::fd::AsRawFd, time::Duration};
 pub(crate) struct Pipewire {
     tx: VerboseSender<Event>,
     conn: Connection,
-    fd: i32,
 }
 
 impl Pipewire {
     pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
-        let mut channel = Channel::get_private(BusType::Session).unwrap();
+        let mut channel =
+            Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
-        let fd = channel.watch().fd;
         let conn = Connection::from(channel);
 
         let proxy = conn.with_proxy(
@@ -47,7 +46,7 @@ impl Pipewire {
         )
         .context("failed to add_match")?;
 
-        Ok(Self { tx, conn, fd })
+        Ok(Self { tx, conn })
     }
 
     pub(crate) fn read(&mut self) {
@@ -91,6 +90,6 @@ impl Pipewire {
 
 impl AsRawFd for Pipewire {
     fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.fd
+        self.conn.channel().watch().fd
     }
 }

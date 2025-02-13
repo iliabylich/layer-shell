@@ -1,5 +1,5 @@
 use crate::{event::AppIcon, hyprctl};
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use std::io::{BufRead as _, BufReader};
 
 #[derive(Debug, Clone)]
