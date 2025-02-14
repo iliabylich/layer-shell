@@ -1,6 +1,5 @@
-use std::io::Read as _;
-
 use anyhow::{Context as _, Result};
+use std::io::Read as _;
 
 #[derive(Debug, Clone)]
 pub(crate) struct CpuCoreInfo {
@@ -20,18 +19,24 @@ impl CpuCoreInfo {
     }
 
     fn parse_line(line: &str) -> Result<Self> {
-        let parts = line.split(" ").collect::<Vec<_>>();
-        let id = parts[0]
-            .strip_prefix("cpu")
-            .context("no 'cpu' prefix")?
-            .parse()
-            .context("non-int cpu")?;
-        let times = parts[1..]
-            .iter()
-            .map(|n| n.parse::<usize>())
-            .collect::<Result<Vec<_>, _>>()?;
-        let idle = times[3] + times[4];
-        let total = times.iter().sum();
+        let mut id = 0;
+        let mut idle = 0;
+        let mut total = 0;
+        for (idx, part) in line.split(" ").enumerate() {
+            if idx == 0 {
+                id = part
+                    .strip_prefix("cpu")
+                    .context("no 'cpu' prefix")?
+                    .parse()
+                    .context("non-int cpu")?;
+                continue;
+            }
+            let num = part.parse::<usize>()?;
+            total += num;
+            if idx == 4 || idx == 5 {
+                idle += num;
+            }
+        }
         Ok(Self { id, idle, total })
     }
 
