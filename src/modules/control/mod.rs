@@ -10,15 +10,15 @@ use dbus::{
     MessageType,
 };
 use dbus_crossroads::Crossroads;
-use std::{os::fd::AsRawFd, time::Duration};
+use std::time::Duration;
 
-pub(crate) struct Control {
+pub(crate) struct ConnectedControl {
     conn: Connection,
     cr: Crossroads,
 }
 
-impl Control {
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
+impl ConnectedControl {
+    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -33,7 +33,7 @@ impl Control {
         Ok(Self { conn, cr })
     }
 
-    pub(crate) fn read(&mut self) {
+    fn read(&mut self) {
         while let Ok(Some(message)) = self
             .conn
             .channel()
@@ -45,6 +45,38 @@ impl Control {
             {
                 log::error!("failed to process {dbg_message}");
             }
+        }
+    }
+
+    fn fd(&self) -> i32 {
+        self.conn.channel().watch().fd
+    }
+}
+
+pub(crate) enum Control {
+    Connected(ConnectedControl),
+    Disconnected,
+}
+
+impl Control {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        ConnectedControl::try_new(tx)
+            .map(Self::Connected)
+            .inspect_err(|err| log::error!("{:?}", err))
+            .unwrap_or(Self::Disconnected)
+    }
+
+    pub(crate) fn read(&mut self) {
+        if let Self::Connected(control) = self {
+            control.read();
+        }
+    }
+
+    pub(crate) fn fd(&self) -> Option<i32> {
+        if let Self::Connected(control) = self {
+            Some(control.fd())
+        } else {
+            None
         }
     }
 }
@@ -66,11 +98,5 @@ impl OrgMeLayerShellControl for DBusService {
 
     fn exit(&mut self) -> std::result::Result<(), dbus::MethodErr> {
         std::process::exit(0);
-    }
-}
-
-impl AsRawFd for Control {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.conn.channel().watch().fd
     }
 }

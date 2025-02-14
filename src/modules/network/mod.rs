@@ -11,24 +11,22 @@ use dbus::{
     channel::{BusType, Channel},
     message::SignalArgs,
 };
-use std::{os::fd::AsRawFd, time::Duration};
+use network_speed::NetworkSpeed;
+use std::time::Duration;
 
 mod network_list;
 mod network_speed;
 mod wifi_status;
 
-pub(crate) struct Network {
+pub(crate) struct ConnectedNetwork {
     conn: Connection,
     tx: VerboseSender<Event>,
     primary_device: Option<Device>,
-    transmitted_bytes: Option<u64>,
-    received_bytes: Option<u64>,
+    network_speed: NetworkSpeed,
 }
 
-impl Network {
-    pub(crate) const INTERVAL: u64 = 1;
-
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
+impl ConnectedNetwork {
+    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::System).context("failed to connecto to DBus")?;
         channel.set_watch_enabled(true);
@@ -44,18 +42,20 @@ impl Network {
             conn,
             tx,
             primary_device: None,
-            transmitted_bytes: None,
-            received_bytes: None,
+            network_speed: NetworkSpeed::new(),
         };
         this.full_reset();
         Ok(this)
     }
 
-    pub(crate) fn tick(&mut self) {
-        self.update_network_speed();
+    fn tick(&mut self) {
+        if let Some(device) = self.primary_device.as_ref() {
+            let event = self.network_speed.update(device, &self.conn);
+            self.tx.send(event);
+        }
     }
 
-    pub(crate) fn read(&mut self) {
+    fn read(&mut self) {
         while let Ok(Some(message)) = self
             .conn
             .channel()
@@ -73,12 +73,18 @@ impl Network {
                 if let Err(err) = primary_device.set_refresh_rate_in_ms(&self.conn, 1_000) {
                     log::error!("failed to set refresh rate on primary device: {:?}", err);
                 }
-                self.primary_device = Some(primary_device);
 
-                self.reset_network_list();
-                self.reset_wifi_status();
-                self.reset_network_speed();
-                self.update_network_speed();
+                let event = network_list::load(&self.conn);
+                self.tx.send(event);
+
+                let event = wifi_status::load(&primary_device, &self.conn);
+                self.tx.send(event);
+
+                self.network_speed.reset();
+                let event = self.network_speed.update(&primary_device, &self.conn);
+                self.tx.send(event);
+
+                self.primary_device = Some(primary_device);
             }
 
             Err(err) => {
@@ -87,15 +93,49 @@ impl Network {
         }
     }
 
+    fn fd(&self) -> i32 {
+        self.conn.channel().watch().fd
+    }
+}
+
+pub(crate) enum Network {
+    Connected(ConnectedNetwork),
+    Disconnected,
+}
+
+impl Network {
+    pub(crate) const INTERVAL: u64 = 1;
+
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        ConnectedNetwork::try_new(tx)
+            .inspect_err(|err| log::error!("{:?}", err))
+            .map(Self::Connected)
+            .unwrap_or(Self::Disconnected)
+    }
+
+    pub(crate) fn tick(&mut self) {
+        if let Self::Connected(network) = self {
+            network.tick();
+        }
+    }
+
+    pub(crate) fn read(&mut self) {
+        if let Self::Connected(network) = self {
+            network.read();
+        }
+    }
+
     pub(crate) fn spawn_network_editor(&self) {
         if let Err(err) = hyprctl::dispatch("exec kitty --name nmtui nmtui") {
             log::error!("{:?}", err);
         }
     }
-}
 
-impl AsRawFd for Network {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.conn.channel().watch().fd
+    pub(crate) fn fd(&mut self) -> Option<i32> {
+        if let Self::Connected(network) = self {
+            Some(network.fd())
+        } else {
+            None
+        }
     }
 }

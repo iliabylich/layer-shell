@@ -18,7 +18,7 @@ impl Weather {
         Self { tx }
     }
 
-    pub(crate) fn tick(&self) {
+    pub(crate) fn tick(&mut self) {
         if let Err(err) = self.try_tick() {
             log::error!("failed to get weather: {:?}", err);
         }

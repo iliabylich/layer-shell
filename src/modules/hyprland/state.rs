@@ -48,7 +48,7 @@ impl State {
             ids: self
                 .workspace_ids
                 .iter()
-                .cloned()
+                .copied()
                 .collect::<Vec<_>>()
                 .into(),
             active_id: self.active_workspace_id,

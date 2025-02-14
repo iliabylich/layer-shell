@@ -10,15 +10,15 @@ use dbus::{
     channel::{BusType, Channel},
     message::SignalArgs as _,
 };
-use std::{os::fd::AsRawFd, time::Duration};
+use std::time::Duration;
 
-pub(crate) struct Pipewire {
+pub(crate) struct ConnectedPipewire {
     tx: VerboseSender<Event>,
     conn: Connection,
 }
 
-impl Pipewire {
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
+impl ConnectedPipewire {
+    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -49,7 +49,7 @@ impl Pipewire {
         Ok(Self { tx, conn })
     }
 
-    pub(crate) fn read(&mut self) {
+    fn read(&mut self) {
         while let Ok(Some(message)) = self
             .conn
             .channel()
@@ -63,7 +63,7 @@ impl Pipewire {
         }
     }
 
-    pub(crate) fn set_muted(&mut self, muted: bool) {
+    fn set_muted(&mut self, muted: bool) {
         let proxy = self.conn.with_proxy(
             "org.local.PipewireDBus",
             "/org/local/PipewireDBus",
@@ -75,7 +75,7 @@ impl Pipewire {
         }
     }
 
-    pub(crate) fn set_volume(&mut self, volume: f64) {
+    fn set_volume(&mut self, volume: f64) {
         let proxy = self.conn.with_proxy(
             "org.local.PipewireDBus",
             "/org/local/PipewireDBus",
@@ -86,10 +86,48 @@ impl Pipewire {
             log::error!("failed to call SetVolume: {:?}", err);
         }
     }
+
+    fn fd(&self) -> i32 {
+        self.conn.channel().watch().fd
+    }
 }
 
-impl AsRawFd for Pipewire {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.conn.channel().watch().fd
+pub(crate) enum Pipewire {
+    Connected(ConnectedPipewire),
+    Disconnected,
+}
+
+impl Pipewire {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        ConnectedPipewire::try_new(tx)
+            .inspect_err(|err| log::error!("{:?}", err))
+            .map(Self::Connected)
+            .unwrap_or(Self::Disconnected)
+    }
+
+    pub(crate) fn read(&mut self) {
+        if let Self::Connected(pipewire) = self {
+            pipewire.read();
+        }
+    }
+
+    pub(crate) fn set_muted(&mut self, muted: bool) {
+        if let Self::Connected(pipewire) = self {
+            pipewire.set_muted(muted);
+        }
+    }
+
+    pub(crate) fn set_volume(&mut self, volume: f64) {
+        if let Self::Connected(pipewire) = self {
+            pipewire.set_volume(volume);
+        }
+    }
+
+    pub(crate) fn fd(&self) -> Option<i32> {
+        if let Self::Connected(pipewire) = self {
+            Some(pipewire.fd())
+        } else {
+            None
+        }
     }
 }

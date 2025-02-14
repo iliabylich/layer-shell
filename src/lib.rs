@@ -80,7 +80,7 @@ pub extern "C" fn layer_shell_io_spawn_thread(ctx: *mut std::ffi::c_void) {
         let ctx: *mut std::ffi::c_void = ctx.get();
 
         if let Err(err) = layer_shell_io_run_in_place(ctx) {
-            log::error!("Error in IO thread: {:?}", err);
+            log::error!("IO thread has crashed: {:?}", err);
         }
     });
 }
@@ -99,24 +99,34 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
     let mut rx = ctx.commands.take_rx();
 
     let mut epoll = Epoll::new()?;
-    epoll.add_reader(&rx, FdId::Command)?;
+    epoll.add_reader_fd(rx.fd(), FdId::Command)?;
 
-    let mut hyprland = Hyprland::new(tx.clone())?;
-    epoll.add_reader(&hyprland, FdId::HyprlandSocket)?;
+    let mut hyprland = Hyprland::new(tx.clone());
+    if let Some(fd) = hyprland.fd() {
+        epoll.add_reader_fd(fd, FdId::HyprlandSocket)?;
+    }
 
-    let mut timer = Timer::new(1)?;
-    epoll.add_reader(&timer, FdId::Timer)?;
+    let mut timer = Timer::new(1);
+    if let Some(fd) = timer.fd() {
+        epoll.add_reader_fd(fd, FdId::Timer)?;
+    }
 
-    let mut control = Control::new(tx.clone())?;
-    epoll.add_reader(&control, FdId::ControlDBus)?;
+    let mut control = Control::new(tx.clone());
+    if let Some(fd) = control.fd() {
+        epoll.add_reader_fd(fd, FdId::ControlDBus)?;
+    }
 
-    let mut pipewire = Pipewire::new(tx.clone())?;
-    epoll.add_reader(&pipewire, FdId::PipewireDBus)?;
+    let mut pipewire = Pipewire::new(tx.clone());
+    if let Some(fd) = pipewire.fd() {
+        epoll.add_reader_fd(fd, FdId::PipewireDBus)?;
+    }
 
-    let mut network = Network::new(tx.clone())?;
-    epoll.add_reader(&network, FdId::NetworkDBus)?;
+    let mut network = Network::new(tx.clone());
+    if let Some(fd) = network.fd() {
+        epoll.add_reader_fd(fd, FdId::NetworkDBus)?;
+    }
 
-    let mut launcher = Launcher::new(tx.clone())?;
+    let mut launcher = Launcher::new(tx.clone());
     if let Some(global_inotify_fd) = launcher.global_inotify_fd() {
         epoll.add_reader_fd(global_inotify_fd, FdId::LauncherGlobalDirInotify)?;
     }
@@ -124,12 +134,14 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
         epoll.add_reader_fd(user_inotify_fd, FdId::LauncherUserDirInotify)?;
     }
 
-    let mut tray = Tray::new(tx.clone())?;
-    epoll.add_reader(&tray, FdId::TrayDBus)?;
+    let mut tray = Tray::new(tx.clone());
+    if let Some(fd) = tray.fd() {
+        epoll.add_reader_fd(fd, FdId::TrayDBus)?;
+    }
 
-    let weather = Weather::new(tx.clone());
+    let mut weather = Weather::new(tx.clone());
     let mut memory = Memory::new(tx.clone());
-    let time = Time::new(tx.clone());
+    let mut time = Time::new(tx.clone());
     let mut cpu = CPU::new(tx.clone());
     let mut session = Session::new();
 
@@ -139,7 +151,7 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
             let id = FdId::try_from(event.u64)?;
             match id {
                 FdId::Timer => {
-                    timer.read()?;
+                    timer.read();
                     if timer.is_multiple_of(Time::INTERVAL) {
                         time.tick();
                     }

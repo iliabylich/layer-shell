@@ -20,20 +20,20 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::{os::fd::AsRawFd, time::Duration};
+use std::time::Duration;
 
 mod item;
 mod state;
 mod watcher;
 
-pub(crate) struct Tray {
+pub(crate) struct ConnectedTray {
     conn: Connection,
     state: State,
     cr: Crossroads,
 }
 
-impl Tray {
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
+impl ConnectedTray {
+    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -41,33 +41,44 @@ impl Tray {
         conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)
             .context("failed to acquire DBus name")?;
 
-        subscribe::<DBusNameOwnerChanged>(&conn);
-        subscribe::<OrgKdeStatusNotifierItemNewAttentionIcon>(&conn);
-        subscribe::<OrgKdeStatusNotifierItemNewIcon>(&conn);
-        subscribe::<OrgKdeStatusNotifierItemNewOverlayIcon>(&conn);
-        subscribe::<OrgKdeStatusNotifierItemNewStatus>(&conn);
-        subscribe::<OrgKdeStatusNotifierItemNewTitle>(&conn);
-        subscribe::<OrgKdeStatusNotifierItemNewToolTip>(&conn);
-
         let state = State::new(tx);
 
         let mut cr = Crossroads::new();
         let token = register_org_kde_status_notifier_watcher::<Watcher>(&mut cr);
         cr.insert("/StatusNotifierWatcher", &[token], Watcher::new());
 
-        Ok(Self { conn, state, cr })
+        let this = Self { conn, state, cr };
+
+        this.subscribe::<DBusNameOwnerChanged>();
+        this.subscribe::<OrgKdeStatusNotifierItemNewAttentionIcon>();
+        this.subscribe::<OrgKdeStatusNotifierItemNewIcon>();
+        this.subscribe::<OrgKdeStatusNotifierItemNewOverlayIcon>();
+        this.subscribe::<OrgKdeStatusNotifierItemNewStatus>();
+        this.subscribe::<OrgKdeStatusNotifierItemNewTitle>();
+        this.subscribe::<OrgKdeStatusNotifierItemNewToolTip>();
+
+        Ok(this)
     }
 
-    pub(crate) fn read(&mut self) {
+    fn subscribe<T: SignalArgs + ReadAll>(&self) {
+        if let Err(err) = self
+            .conn
+            .add_match(T::match_rule(None, None), |_: T, _, _| true)
+        {
+            log::error!("Failed to subscribe to signal: {:?}", err);
+        }
+    }
+
+    fn read(&mut self) -> Result<()> {
         while let Ok(Some(message)) = self
             .conn
             .channel()
             .blocking_pop_message(Duration::from_secs(0))
         {
-            if let Err(err) = self.process_message(message) {
-                log::error!("Failed to process message: {:?}", err);
-            }
+            self.process_message(message)?;
         }
+
+        Ok(())
     }
 
     fn process_message(&mut self, message: Message) -> Result<()> {
@@ -148,26 +159,46 @@ impl Tray {
         Ok(())
     }
 
-    pub(crate) fn trigger(&mut self, uuid: String) {
-        match UUID::decode(uuid) {
-            Ok((service, path, id)) => {
-                if let Err(err) = DBusMenu::new(service, path).event(&self.conn, id) {
-                    log::error!("{:?}", err);
-                }
+    fn trigger(&mut self, uuid: String) -> Result<()> {
+        let (service, path, id) = UUID::decode(uuid)?;
+        DBusMenu::new(service, path).event(&self.conn, id)?;
+        Ok(())
+    }
+}
+
+pub(crate) enum Tray {
+    Connected(ConnectedTray),
+    Disconnected,
+}
+
+impl Tray {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
+        ConnectedTray::try_new(tx)
+            .inspect_err(|err| log::error!("{:?}", err))
+            .map(Self::Connected)
+            .unwrap_or(Self::Disconnected)
+    }
+
+    pub(crate) fn read(&mut self) {
+        if let Self::Connected(inner) = self {
+            if let Err(err) = inner.read() {
+                log::error!("{:?}", err);
             }
-            Err(err) => log::error!("{:?}", err),
         }
     }
-}
 
-impl AsRawFd for Tray {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.conn.channel().watch().fd
+    pub(crate) fn trigger(&mut self, uuid: String) {
+        if let Self::Connected(inner) = self {
+            if let Err(err) = inner.trigger(uuid) {
+                log::error!("{:?}", err);
+            }
+        }
     }
-}
 
-fn subscribe<T: SignalArgs + ReadAll>(conn: &Connection) {
-    if let Err(err) = conn.add_match(T::match_rule(None, None), |_: T, _, _| true) {
-        log::error!("Failed to subscribe to signal: {:?}", err);
+    pub(crate) fn fd(&self) -> Option<i32> {
+        match self {
+            Self::Connected(ConnectedTray { conn, .. }) => Some(conn.channel().watch().fd),
+            Self::Disconnected => None,
+        }
     }
 }

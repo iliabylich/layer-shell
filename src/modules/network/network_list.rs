@@ -1,42 +1,39 @@
 use crate::{
     dbus::nm::{Device, NetworkManager},
     event::Network as NetworkData,
-    modules::network::Network,
     Event,
 };
 use anyhow::Result;
+use dbus::blocking::Connection;
 
-impl Network {
-    pub(crate) fn reset_network_list(&self) {
-        let event = Event::NetworkList {
-            list: self.get_network_list().unwrap_or_default().into(),
-        };
-        self.tx.send(event);
+pub(crate) fn load(conn: &Connection) -> Event {
+    Event::NetworkList {
+        list: get_network_list(conn).unwrap_or_default().into(),
     }
+}
 
-    fn get_network_list(&self) -> Result<Vec<NetworkData>> {
-        let mut ifaces = vec![];
+fn get_network_list(conn: &Connection) -> Result<Vec<NetworkData>> {
+    let mut ifaces = vec![];
 
-        let devices = NetworkManager::get_devices(&self.conn)?;
+    let devices = NetworkManager::get_devices(conn)?;
 
-        for device in devices {
-            match self.get_network_for_device(&device) {
-                Ok(network) => ifaces.push(network),
-                Err(_) => log::warn!("Failed to get data for Device {device:?} (not connected?)"),
-            }
+    for device in devices {
+        match get_network_for_device(&device, conn) {
+            Ok(network) => ifaces.push(network),
+            Err(_) => log::warn!("Failed to get data for Device {device:?} (not connected?)"),
         }
-
-        Ok(ifaces)
     }
 
-    fn get_network_for_device(&self, device: &Device) -> Result<NetworkData> {
-        let iface = device.interface(&self.conn)?;
-        let ip4_config = device.ip4_config(&self.conn)?;
-        let address = ip4_config.address(&self.conn)?;
+    Ok(ifaces)
+}
 
-        Ok(NetworkData {
-            iface: iface.into(),
-            address: address.into(),
-        })
-    }
+fn get_network_for_device(device: &Device, conn: &Connection) -> Result<NetworkData> {
+    let iface = device.interface(conn)?;
+    let ip4_config = device.ip4_config(conn)?;
+    let address = ip4_config.address(conn)?;
+
+    Ok(NetworkData {
+        iface: iface.into(),
+        address: address.into(),
+    })
 }

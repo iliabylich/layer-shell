@@ -1,4 +1,4 @@
-use crate::{macros::fatal, Ctx};
+use crate::Ctx;
 use std::ffi::c_void;
 
 #[derive(Debug, Clone)]
@@ -60,15 +60,14 @@ pub unsafe extern "C" fn layer_shell_io_launcher_set_search(
     ctx: *mut c_void,
 ) {
     let cstr = unsafe { std::ffi::CStr::from_ptr(search) };
-    let s = cstr
-        .to_str()
-        .unwrap_or_else(|_| fatal!("non-utf8 Launcher search"));
-    Ctx::from_raw(ctx)
-        .commands
-        .tx
-        .signal_and_send(Command::LauncherSetSearch {
-            search: s.to_string(),
-        });
+    if let Ok(s) = cstr.to_str() {
+        Ctx::from_raw(ctx)
+            .commands
+            .tx
+            .signal_and_send(Command::LauncherSetSearch {
+                search: s.to_string(),
+            });
+    }
 }
 #[no_mangle]
 pub extern "C" fn layer_shell_io_launcher_exec_selected(ctx: *mut c_void) {
@@ -128,15 +127,14 @@ pub unsafe extern "C" fn layer_shell_io_trigger_tray(
     ctx: *mut c_void,
 ) {
     let cstr = unsafe { std::ffi::CStr::from_ptr(uuid) };
-    let s = cstr
-        .to_str()
-        .unwrap_or_else(|_| fatal!("non-utf8 Launcher search"));
-    Ctx::from_raw(ctx)
-        .commands
-        .tx
-        .signal_and_send(Command::TriggerTray {
-            uuid: s.to_string(),
-        });
+    if let Ok(s) = cstr.to_str() {
+        Ctx::from_raw(ctx)
+            .commands
+            .tx
+            .signal_and_send(Command::TriggerTray {
+                uuid: s.to_string(),
+            });
+    }
 }
 
 #[no_mangle]

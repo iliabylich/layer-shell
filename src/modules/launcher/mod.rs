@@ -1,5 +1,4 @@
 use crate::{Event, VerboseSender};
-use anyhow::Result;
 use desktop_file::DesktopFile;
 use state::State;
 use watcher::Watcher;
@@ -16,7 +15,7 @@ pub(crate) struct Launcher {
 }
 
 impl Launcher {
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Result<Self> {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
         let mut filelist = vec![];
 
         let global_dir_watcher =
@@ -27,11 +26,11 @@ impl Launcher {
 
         let desktop_apps = DesktopFile::parse_many(filelist.iter());
 
-        Ok(Self {
+        Self {
             state: State::new(tx, desktop_apps),
             global_dir_watcher,
             user_dir_watcher,
-        })
+        }
     }
 
     pub(crate) fn global_inotify_fd(&self) -> Option<i32> {

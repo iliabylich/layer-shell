@@ -11,7 +11,7 @@ impl Time {
         Self { tx }
     }
 
-    pub(crate) fn tick(&self) {
+    pub(crate) fn tick(&mut self) {
         let now = chrono::Local::now();
         let event = Event::Time {
             time: now.format("%H:%M:%S").to_string().into(),

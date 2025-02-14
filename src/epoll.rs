@@ -2,7 +2,6 @@ use anyhow::{bail, Result};
 use libc::{
     c_int, close, epoll_create, epoll_ctl, epoll_event, epoll_wait, EPOLLIN, EPOLL_CTL_ADD,
 };
-use std::os::fd::AsRawFd;
 
 pub(crate) struct Epoll {
     epfd: i32,
@@ -20,10 +19,6 @@ impl Epoll {
                 buffer: Vec::with_capacity(1024),
             })
         }
-    }
-
-    pub(crate) fn add_reader(&mut self, reader: &impl AsRawFd, id: FdId) -> Result<()> {
-        self.add_reader_fd(reader.as_raw_fd(), id)
     }
 
     pub(crate) fn add_reader_fd(&mut self, fd: i32, id: FdId) -> Result<()> {

@@ -105,6 +105,9 @@ impl<T> SignalingReceiver<T> {
     pub(crate) fn recv(&mut self) -> Option<T> {
         self.rx.recv()
     }
+    pub(crate) fn fd(&self) -> i32 {
+        self.fd
+    }
 }
 
 impl<T> Drop for SignalingReceiver<T> {
