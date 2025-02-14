@@ -31,6 +31,7 @@ private:
   private:
     Glib::RefPtr<Gio::Menu> model;
     void add_settings();
+    void add_ping();
   };
 
   Popover popover;

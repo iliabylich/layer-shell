@@ -1,12 +1,14 @@
 #include "include/widgets/network.hpp"
 #include "include/application.hpp"
 #include "include/utils/icons.hpp"
+#include "include/windows/ping.hpp"
 
 namespace widgets {
 
 Network::Popover::Popover() : Gtk::PopoverMenu() {
   model = Gio::Menu::create();
   add_settings();
+  add_ping();
 
   set_menu_model(model);
   set_has_arrow(false);
@@ -27,11 +29,18 @@ void Network::Popover::replace_networks(
     model->append_item(item);
   }
   add_settings();
+  add_ping();
 }
 
 void Network::Popover::add_settings() {
   auto item = Gio::MenuItem::create("Settings (nmtui)", "");
   item->set_action("network.settings");
+  model->append_item(item);
+}
+
+void Network::Popover::add_ping() {
+  auto item = Gio::MenuItem::create("Ping", "");
+  item->set_action("network.ping");
   model->append_item(item);
 }
 
@@ -73,6 +82,12 @@ Network::Network(void *ctx) : Gtk::Button(), utils::Subscriber(ctx) {
     action->signal_activate().connect([ctx](const Glib::VariantBase &) {
       layer_shell_io::layer_shell_io_spawn_network_editor(ctx);
     });
+    action_group->add_action(action);
+  }
+  {
+    auto action = Gio::SimpleAction::create("ping");
+    action->signal_activate().connect(
+        [](const Glib::VariantBase &) { windows::Ping::get()->toggle(); });
     action_group->add_action(action);
   }
   {

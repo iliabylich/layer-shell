@@ -4,6 +4,7 @@
 #include "include/utils/icons.hpp"
 #include "include/windows/htop.hpp"
 #include "include/windows/launcher.hpp"
+#include "include/windows/ping.hpp"
 #include "include/windows/session.hpp"
 #include "include/windows/top-bar.hpp"
 #include "include/windows/weather.hpp"
@@ -23,6 +24,8 @@ windows::Weather *weather;
 windows::Weather *windows::Weather::get() { return weather; }
 windows::Launcher *launcher;
 windows::Launcher *windows::Launcher::get() { return launcher; }
+windows::Ping *ping;
+windows::Ping *windows::Ping::get() { return ping; }
 
 int main(void) {
   auto ctx = layer_shell_io::layer_shell_io_init();
@@ -39,6 +42,7 @@ int main(void) {
     htop = new windows::HTop(app, ctx);
     weather = new windows::Weather(app, ctx);
     launcher = new windows::Launcher(app, ctx);
+    ping = new windows::Ping(app, ctx);
 
     Glib::signal_timeout().connect(
         [ctx]() {

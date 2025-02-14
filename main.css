@@ -227,7 +227,7 @@ tooltip {
 }
 
 /* terminal */
-.widget-htop {
+.terminal-window {
     border: 5px solid var(--theme-accent-color);
     border-radius: 10px;
 }
