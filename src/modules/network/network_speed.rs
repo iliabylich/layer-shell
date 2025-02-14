@@ -1,60 +1,72 @@
-use dbus::blocking::Connection;
+use crate::Event;
 
-use crate::{dbus::nm::Device, Event};
+#[derive(Debug)]
+enum OneWaySpeed {
+    Uninitialized,
+    Initialized { prev: u64 },
+    InitializedWithError { prev: u64, err: u64 },
+}
+
+impl OneWaySpeed {
+    fn update(&mut self, current: u64) -> u64 {
+        match self {
+            Self::Uninitialized => {
+                *self = Self::Initialized { prev: current };
+                0
+            }
+            Self::Initialized { prev } => {
+                let d = current - *prev;
+                *self = Self::InitializedWithError {
+                    prev: current,
+                    err: d,
+                };
+                d
+            }
+            Self::InitializedWithError { prev, err } => {
+                let mut d = current - *prev;
+                if d < *err && d != 0 {
+                    *err = d;
+                }
+                d -= *err;
+                *prev = current;
+                d
+            }
+        }
+    }
+}
 
 pub(crate) struct NetworkSpeed {
-    transmitted: Option<u64>,
-    received: Option<u64>,
+    // transmitted
+    tx: OneWaySpeed,
+    // received
+    rx: OneWaySpeed,
 }
 
 impl NetworkSpeed {
     pub(crate) fn new() -> Self {
         Self {
-            transmitted: None,
-            received: None,
+            tx: OneWaySpeed::Uninitialized,
+            rx: OneWaySpeed::Uninitialized,
         }
     }
 
     pub(crate) fn reset(&mut self) {
-        self.transmitted = None;
-        self.received = None;
+        self.tx = OneWaySpeed::Uninitialized;
+        self.rx = OneWaySpeed::Uninitialized;
     }
 
-    pub(crate) fn update(&mut self, device: &Device, conn: &Connection) -> Event {
-        fn update_stat_and_return_delta(stat: &mut Option<u64>, value: u64) -> u64 {
-            match *stat {
-                Some(prev) => {
-                    let delta = value - prev;
-                    *stat = Some(value);
-                    delta
-                }
-                None => {
-                    *stat = Some(value);
-                    0
-                }
-            }
-        }
-
-        let tx_bytes = device
-            .tx_bytes(conn)
-            .inspect_err(|err| log::error!("{:?}", err))
-            .unwrap_or(0);
-        let upload_speed = update_stat_and_return_delta(&mut self.transmitted, tx_bytes);
-
-        let rx_bytes = device
-            .rx_bytes(conn)
-            .inspect_err(|err| log::error!("{:?}", err))
-            .unwrap_or(0);
-        let download_speed = update_stat_and_return_delta(&mut self.received, rx_bytes);
+    pub(crate) fn update(&mut self, tx: u64, rx: u64) -> Event {
+        let upload_speed = self.tx.update(tx);
+        let download_speed = self.rx.update(rx);
 
         Event::NetworkSpeed {
-            upload_speed: format_network_speed(upload_speed).into(),
-            download_speed: format_network_speed(download_speed).into(),
+            upload_speed: fmt(upload_speed).into(),
+            download_speed: fmt(download_speed).into(),
         }
     }
 }
 
-fn format_network_speed(mut speed: u64) -> String {
+fn fmt(mut speed: u64) -> String {
     enum Unit {
         B,
         KB,

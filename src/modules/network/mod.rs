@@ -7,7 +7,8 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use dbus::{
-    blocking::Connection,
+    arg::RefArg,
+    blocking::{stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged, Connection},
     channel::{BusType, Channel},
     message::SignalArgs,
 };
@@ -48,13 +49,6 @@ impl ConnectedNetwork {
         Ok(this)
     }
 
-    fn tick(&mut self) {
-        if let Some(device) = self.primary_device.as_ref() {
-            let event = self.network_speed.update(device, &self.conn);
-            self.tx.send(event);
-        }
-    }
-
     fn read(&mut self) {
         while let Ok(Some(message)) = self
             .conn
@@ -63,6 +57,16 @@ impl ConnectedNetwork {
         {
             if OrgFreedesktopNetworkManagerStateChanged::from_message(&message).is_some() {
                 self.full_reset();
+            } else if let Some(e) = PropertiesPropertiesChanged::from_message(&message) {
+                if e.interface_name == "org.freedesktop.NetworkManager.Device.Statistics" {
+                    let tx = e.changed_properties.get("TxBytes").and_then(|v| v.as_u64());
+                    let rx = e.changed_properties.get("RxBytes").and_then(|v| v.as_u64());
+
+                    if let Some((tx, rx)) = tx.zip(rx) {
+                        let event = self.network_speed.update(tx, rx);
+                        self.tx.send(event);
+                    }
+                }
             }
         }
     }
@@ -80,9 +84,14 @@ impl ConnectedNetwork {
                 let event = wifi_status::load(&primary_device, &self.conn);
                 self.tx.send(event);
 
+                self.conn
+                    .add_match_no_cb(
+                        &PropertiesPropertiesChanged::match_rule(None, Some(&primary_device.path))
+                            .match_str(),
+                    )
+                    .unwrap();
+
                 self.network_speed.reset();
-                let event = self.network_speed.update(&primary_device, &self.conn);
-                self.tx.send(event);
 
                 self.primary_device = Some(primary_device);
             }
@@ -104,19 +113,11 @@ pub(crate) enum Network {
 }
 
 impl Network {
-    pub(crate) const INTERVAL: u64 = 1;
-
     pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
         ConnectedNetwork::try_new(tx)
             .inspect_err(|err| log::error!("{:?}", err))
             .map(Self::Connected)
             .unwrap_or(Self::Disconnected)
-    }
-
-    pub(crate) fn tick(&mut self) {
-        if let Self::Connected(network) = self {
-            network.tick();
-        }
     }
 
     pub(crate) fn read(&mut self) {

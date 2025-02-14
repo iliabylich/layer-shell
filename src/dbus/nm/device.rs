@@ -61,12 +61,4 @@ impl Device {
             .set_refresh_rate_ms(refresh_rate_in_ms)
             .context("failed to update RefreshRateMs")
     }
-
-    pub(crate) fn tx_bytes(&self, conn: &Connection) -> Result<u64> {
-        self.proxy(conn).tx_bytes().context("failed to get TxBytes")
-    }
-
-    pub(crate) fn rx_bytes(&self, conn: &Connection) -> Result<u64> {
-        self.proxy(conn).rx_bytes().context("failed to get RxBytes")
-    }
 }

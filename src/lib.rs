@@ -164,9 +164,6 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
                     if timer.is_multiple_of(Weather::INTERVAL) {
                         weather.tick();
                     }
-                    if timer.is_multiple_of(Network::INTERVAL) {
-                        network.tick();
-                    }
                 }
                 FdId::HyprlandSocket => {
                     hyprland.read();
