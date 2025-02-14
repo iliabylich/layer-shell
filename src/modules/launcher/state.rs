@@ -1,7 +1,7 @@
 use crate::{
     event::App,
     modules::launcher::{desktop_file::DesktopFile, watcher::WatcherUpdate},
-    Event, VerboseSender,
+    Event,
 };
 use anyhow::Result;
 use std::collections::HashMap;
@@ -10,13 +10,12 @@ pub(crate) struct State {
     selected_idx: usize,
     path_to_desktop_files: HashMap<String, DesktopFile>,
     pattern: String,
-    tx: VerboseSender<Event>,
 }
 
 impl State {
     const MAX_ITEMS: usize = 5;
 
-    pub(crate) fn new(tx: VerboseSender<Event>, desktop_files: Vec<DesktopFile>) -> Self {
+    pub(crate) fn new(desktop_files: Vec<DesktopFile>) -> (Self, Event) {
         let mut path_to_desktop_files = HashMap::new();
         for desktop_file in desktop_files {
             path_to_desktop_files.insert(desktop_file.path.clone(), desktop_file);
@@ -26,29 +25,25 @@ impl State {
             selected_idx: 0,
             path_to_desktop_files,
             pattern: String::new(),
-            tx,
         };
-        this.emit();
-        this
+        let event = this.as_event();
+        (this, event)
     }
 
-    pub(crate) fn go_up(&mut self) {
-        if self.selected_idx == 0 {
-            return;
-        }
-        self.selected_idx = std::cmp::max(0, self.selected_idx - 1);
-        self.emit();
+    pub(crate) fn go_up(&mut self) -> Event {
+        self.selected_idx = self.selected_idx.saturating_sub(1);
+        self.as_event()
     }
 
-    pub(crate) fn go_down(&mut self) {
+    pub(crate) fn go_down(&mut self) -> Event {
         self.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, self.selected_idx + 1);
-        self.emit();
+        self.as_event()
     }
 
-    pub(crate) fn set_search(&mut self, pattern: String) {
+    pub(crate) fn set_search(&mut self, pattern: String) -> Event {
         self.selected_idx = 0;
         self.pattern = pattern;
-        self.emit();
+        self.as_event()
     }
 
     pub(crate) fn exec_selected(&self) -> Result<()> {
@@ -58,7 +53,7 @@ impl State {
         Ok(())
     }
 
-    pub(crate) fn process_watcher_update(&mut self, update: WatcherUpdate) {
+    pub(crate) fn process_watcher_update(&mut self, update: WatcherUpdate) -> Event {
         for desktop_file in DesktopFile::parse_many(update.created_or_updated.into_iter()) {
             self.path_to_desktop_files
                 .insert(desktop_file.path.clone(), desktop_file);
@@ -66,16 +61,16 @@ impl State {
         for path in update.removed {
             self.path_to_desktop_files.remove(&path);
         }
-        self.reset();
+        self.reset()
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) -> Event {
         self.pattern = String::new();
         self.selected_idx = 0;
-        self.emit();
+        self.as_event()
     }
 
-    fn emit(&self) {
+    fn as_event(&self) -> Event {
         let apps = self
             .visible()
             .into_iter()
@@ -87,8 +82,7 @@ impl State {
             })
             .collect::<Vec<_>>();
 
-        let event = Event::Launcher { apps: apps.into() };
-        self.tx.send(event);
+        Event::Launcher { apps: apps.into() }
     }
 
     fn visible(&self) -> Vec<DesktopFile> {

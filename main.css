@@ -30,7 +30,7 @@ separator.horizontal {
 
 popover {
     border: 2px solid var(--theme-accent-color);
-    background-color: var(--solid-bg-color);
+    background-color: black;
 }
 
 popover modelbutton {

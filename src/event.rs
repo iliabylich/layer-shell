@@ -3,6 +3,7 @@ use crate::modules::weather::WeatherCode;
 
 #[derive(Debug)]
 #[repr(C)]
+#[must_use]
 pub enum Event {
     Memory {
         used: f64,

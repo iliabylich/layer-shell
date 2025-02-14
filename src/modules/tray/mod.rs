@@ -30,6 +30,7 @@ pub(crate) struct ConnectedTray {
     conn: Connection,
     state: State,
     cr: Crossroads,
+    tx: VerboseSender<Event>,
 }
 
 impl ConnectedTray {
@@ -41,13 +42,18 @@ impl ConnectedTray {
         conn.request_name("org.kde.StatusNotifierWatcher", true, true, true)
             .context("failed to acquire DBus name")?;
 
-        let state = State::new(tx);
+        let state = State::new();
 
         let mut cr = Crossroads::new();
         let token = register_org_kde_status_notifier_watcher::<Watcher>(&mut cr);
         cr.insert("/StatusNotifierWatcher", &[token], Watcher::new());
 
-        let this = Self { conn, state, cr };
+        let this = Self {
+            conn,
+            state,
+            cr,
+            tx,
+        };
 
         this.subscribe::<DBusNameOwnerChanged>();
         this.subscribe::<OrgKdeStatusNotifierItemNewAttentionIcon>();
@@ -87,7 +93,8 @@ impl ConnectedTray {
         if let Some(e) = DBusNameOwnerChanged::from_message(&message) {
             if e.name == e.old_owner && e.new_owner.is_empty() {
                 let removed_service = e.name;
-                self.state.app_removed(removed_service);
+                let event = self.state.app_removed(removed_service);
+                self.tx.send(event);
             }
         } else if OrgKdeStatusNotifierItemNewAttentionIcon::from_message(&message).is_some()
             || OrgKdeStatusNotifierItemNewIcon::from_message(&message).is_some()
@@ -154,7 +161,8 @@ impl ConnectedTray {
             icon: status_notifier_item.any_icon(&self.conn),
         };
 
-        self.state.app_added(item, app);
+        let event = self.state.app_added(item, app);
+        self.tx.send(event);
 
         Ok(())
     }

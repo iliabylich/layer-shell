@@ -12,6 +12,7 @@ pub(crate) struct Launcher {
     state: State,
     global_dir_watcher: Option<Watcher>,
     user_dir_watcher: Option<Watcher>,
+    tx: VerboseSender<Event>,
 }
 
 impl Launcher {
@@ -25,11 +26,14 @@ impl Launcher {
             dirs::user_dir().and_then(|dir| make_watcher_and_parse_filelist(dir, &mut filelist));
 
         let desktop_apps = DesktopFile::parse_many(filelist.iter());
+        let (state, event) = State::new(desktop_apps);
+        tx.send(event);
 
         Self {
-            state: State::new(tx, desktop_apps),
+            state,
             global_dir_watcher,
             user_dir_watcher,
+            tx,
         }
     }
 
@@ -43,42 +47,46 @@ impl Launcher {
 
     pub(crate) fn read_global(&mut self) {
         if let Some(watcher) = self.global_dir_watcher.as_mut() {
-            read(watcher, &mut self.state);
+            if let Some(update) = watcher.poll() {
+                let event = self.state.process_watcher_update(update);
+                self.tx.send(event);
+            }
         }
     }
 
     pub(crate) fn read_user(&mut self) {
         if let Some(watcher) = self.user_dir_watcher.as_mut() {
-            read(watcher, &mut self.state);
+            if let Some(update) = watcher.poll() {
+                let event = self.state.process_watcher_update(update);
+                self.tx.send(event);
+            }
         }
     }
 
     pub(crate) fn reset(&mut self) {
-        self.state.reset();
+        let event = self.state.reset();
+        self.tx.send(event);
     }
 
     pub(crate) fn go_up(&mut self) {
-        self.state.go_up();
+        let event = self.state.go_up();
+        self.tx.send(event);
     }
 
     pub(crate) fn go_down(&mut self) {
-        self.state.go_down();
+        let event = self.state.go_down();
+        self.tx.send(event);
     }
 
     pub(crate) fn set_search(&mut self, search: String) {
-        self.state.set_search(search);
+        let event = self.state.set_search(search);
+        self.tx.send(event);
     }
 
     pub(crate) fn exec_selected(&mut self) {
         if let Err(err) = self.state.exec_selected() {
             log::error!("{:?}", err);
         }
-    }
-}
-
-fn read(watcher: &mut Watcher, state: &mut State) {
-    if let Some(update) = watcher.poll() {
-        state.process_watcher_update(update);
     }
 }
 

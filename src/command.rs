@@ -2,6 +2,7 @@ use crate::Ctx;
 use std::ffi::c_void;
 
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Command {
     HyprlandGoToWorkspace { idx: usize },
 
