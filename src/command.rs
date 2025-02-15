@@ -12,9 +12,6 @@ pub enum Command {
     LauncherSetSearch { search: String },
     LauncherExecSelected,
 
-    SetVolume { volume: f64 },
-    SetMuted { muted: bool },
-
     Lock,
     Reboot,
     Shutdown,
@@ -76,21 +73,6 @@ pub extern "C" fn layer_shell_io_launcher_exec_selected(ctx: *mut c_void) {
         .commands
         .tx
         .signal_and_send(Command::LauncherExecSelected);
-}
-
-#[no_mangle]
-pub extern "C" fn layer_shell_io_set_volume(volume: f64, ctx: *mut c_void) {
-    Ctx::from_raw(ctx)
-        .commands
-        .tx
-        .signal_and_send(Command::SetVolume { volume });
-}
-#[no_mangle]
-pub extern "C" fn layer_shell_io_set_muted(muted: bool, ctx: *mut c_void) {
-    Ctx::from_raw(ctx)
-        .commands
-        .tx
-        .signal_and_send(Command::SetMuted { muted });
 }
 
 #[no_mangle]

@@ -5,77 +5,39 @@ use dbus::arg;
 use dbus::blocking;
 
 pub trait OrgLocalPipewireDBus {
-    fn get_volume(&self) -> Result<f64, dbus::Error>;
-    fn set_volume(&self, volume: f64) -> Result<(), dbus::Error>;
-    fn get_muted(&self) -> Result<bool, dbus::Error>;
-    fn set_muted(&self, muted: bool) -> Result<(), dbus::Error>;
+    fn data(&self) -> Result<(u32, bool,), dbus::Error>;
 }
 
 #[derive(Debug)]
-pub struct OrgLocalPipewireDBusVolumeUpdated {
-    pub volume: f64,
-}
-
-impl arg::AppendAll for OrgLocalPipewireDBusVolumeUpdated {
-    fn append(&self, i: &mut arg::IterAppend) {
-        arg::RefArg::append(&self.volume, i);
-    }
-}
-
-impl arg::ReadAll for OrgLocalPipewireDBusVolumeUpdated {
-    fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgLocalPipewireDBusVolumeUpdated {
-            volume: i.read()?,
-        })
-    }
-}
-
-impl dbus::message::SignalArgs for OrgLocalPipewireDBusVolumeUpdated {
-    const NAME: &'static str = "VolumeUpdated";
-    const INTERFACE: &'static str = "org.local.PipewireDBus";
-}
-
-#[derive(Debug)]
-pub struct OrgLocalPipewireDBusMutedUpdated {
+pub struct OrgLocalPipewireDBusDataChanged {
+    pub volume: u32,
     pub muted: bool,
 }
 
-impl arg::AppendAll for OrgLocalPipewireDBusMutedUpdated {
+impl arg::AppendAll for OrgLocalPipewireDBusDataChanged {
     fn append(&self, i: &mut arg::IterAppend) {
+        arg::RefArg::append(&self.volume, i);
         arg::RefArg::append(&self.muted, i);
     }
 }
 
-impl arg::ReadAll for OrgLocalPipewireDBusMutedUpdated {
+impl arg::ReadAll for OrgLocalPipewireDBusDataChanged {
     fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgLocalPipewireDBusMutedUpdated {
+        Ok(OrgLocalPipewireDBusDataChanged {
+            volume: i.read()?,
             muted: i.read()?,
         })
     }
 }
 
-impl dbus::message::SignalArgs for OrgLocalPipewireDBusMutedUpdated {
-    const NAME: &'static str = "MutedUpdated";
+impl dbus::message::SignalArgs for OrgLocalPipewireDBusDataChanged {
+    const NAME: &'static str = "DataChanged";
     const INTERFACE: &'static str = "org.local.PipewireDBus";
 }
 
 impl<'a, T: blocking::BlockingSender, C: ::std::ops::Deref<Target=T>> OrgLocalPipewireDBus for blocking::Proxy<'a, C> {
 
-    fn get_volume(&self) -> Result<f64, dbus::Error> {
-        self.method_call("org.local.PipewireDBus", "GetVolume", ())
-            .and_then(|r: (f64, )| Ok(r.0, ))
-    }
-
-    fn set_volume(&self, volume: f64) -> Result<(), dbus::Error> {
-        self.method_call("org.local.PipewireDBus", "SetVolume", (volume, ))
-    }
-
-    fn get_muted(&self) -> Result<bool, dbus::Error> {
-        self.method_call("org.local.PipewireDBus", "GetMuted", ())
-            .and_then(|r: (bool, )| Ok(r.0, ))
-    }
-
-    fn set_muted(&self, muted: bool) -> Result<(), dbus::Error> {
-        self.method_call("org.local.PipewireDBus", "SetMuted", (muted, ))
+    fn data(&self) -> Result<(u32, bool,), dbus::Error> {
+        <Self as blocking::stdintf::org_freedesktop_dbus::Properties>::get(self, "org.local.PipewireDBus", "Data")
     }
 }

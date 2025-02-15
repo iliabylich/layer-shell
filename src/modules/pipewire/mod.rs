@@ -1,7 +1,5 @@
 use crate::{
-    dbus::{
-        OrgLocalPipewireDBus, OrgLocalPipewireDBusMutedUpdated, OrgLocalPipewireDBusVolumeUpdated,
-    },
+    dbus::{OrgLocalPipewireDBus, OrgLocalPipewireDBusDataChanged},
     Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
@@ -29,20 +27,12 @@ impl ConnectedPipewire {
             "/org/local/PipewireDBus",
             Duration::from_millis(1000),
         );
-        let volume = proxy.get_volume().context("failed to call GetVolume")?;
-        let muted = proxy.get_muted().context("failed to call GetMuted")?;
-        tx.send(Event::Volume { volume });
-        tx.send(Event::Mute { muted });
+        let (volume, muted) = proxy.data().context("failed to get .Data")?;
+        tx.send(Event::Volume { volume, muted });
 
         conn.add_match(
-            OrgLocalPipewireDBusMutedUpdated::match_rule(None, None),
-            |_: OrgLocalPipewireDBusMutedUpdated, _, _| true,
-        )
-        .context("failed to add_match")?;
-
-        conn.add_match(
-            OrgLocalPipewireDBusVolumeUpdated::match_rule(None, None),
-            |_: OrgLocalPipewireDBusVolumeUpdated, _, _| true,
+            OrgLocalPipewireDBusDataChanged::match_rule(None, None),
+            |_: OrgLocalPipewireDBusDataChanged, _, _| true,
         )
         .context("failed to add_match")?;
 
@@ -55,35 +45,13 @@ impl ConnectedPipewire {
             .channel()
             .blocking_pop_message(Duration::from_secs(0))
         {
-            if let Some(e) = OrgLocalPipewireDBusMutedUpdated::from_message(&message) {
-                self.tx.send(Event::Mute { muted: e.muted });
-            } else if let Some(e) = OrgLocalPipewireDBusVolumeUpdated::from_message(&message) {
-                self.tx.send(Event::Volume { volume: e.volume });
+            if let Some(e) = OrgLocalPipewireDBusDataChanged::from_message(&message) {
+                let event = Event::Volume {
+                    volume: e.volume,
+                    muted: e.muted,
+                };
+                self.tx.send(event);
             }
-        }
-    }
-
-    fn set_muted(&mut self, muted: bool) {
-        let proxy = self.conn.with_proxy(
-            "org.local.PipewireDBus",
-            "/org/local/PipewireDBus",
-            Duration::from_millis(5000),
-        );
-
-        if let Err(err) = proxy.set_muted(muted) {
-            log::error!("failed to call SetMuted: {:?}", err);
-        }
-    }
-
-    fn set_volume(&mut self, volume: f64) {
-        let proxy = self.conn.with_proxy(
-            "org.local.PipewireDBus",
-            "/org/local/PipewireDBus",
-            Duration::from_millis(5000),
-        );
-
-        if let Err(err) = proxy.set_volume(volume) {
-            log::error!("failed to call SetVolume: {:?}", err);
         }
     }
 
@@ -108,18 +76,6 @@ impl Pipewire {
     pub(crate) fn read(&mut self) {
         if let Self::Connected(pipewire) = self {
             pipewire.read();
-        }
-    }
-
-    pub(crate) fn set_muted(&mut self, muted: bool) {
-        if let Self::Connected(pipewire) = self {
-            pipewire.set_muted(muted);
-        }
-    }
-
-    pub(crate) fn set_volume(&mut self, volume: f64) {
-        if let Self::Connected(pipewire) = self {
-            pipewire.set_volume(volume);
         }
     }
 

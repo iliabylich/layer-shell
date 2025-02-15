@@ -13,7 +13,6 @@ public:
 
 private:
   Gtk::Image image;
-  Gtk::Scale scale;
 };
 
 } // namespace widgets

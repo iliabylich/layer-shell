@@ -203,7 +203,8 @@ struct Event {
   };
 
   struct Volume_Body {
-    double volume;
+    uint32_t volume;
+    bool muted;
   };
 
   struct Mute_Body {
@@ -277,10 +278,6 @@ void layer_shell_io_launcher_go_down(void *ctx);
 void layer_shell_io_launcher_set_search(const char *search, void *ctx);
 
 void layer_shell_io_launcher_exec_selected(void *ctx);
-
-void layer_shell_io_set_volume(double volume, void *ctx);
-
-void layer_shell_io_set_muted(bool muted, void *ctx);
 
 void layer_shell_io_lock(void *ctx);
 

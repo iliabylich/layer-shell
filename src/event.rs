@@ -27,7 +27,8 @@ pub enum Event {
         apps: CArray<App>,
     },
     Volume {
-        volume: f64,
+        volume: u32,
+        muted: bool,
     },
     Mute {
         muted: bool,

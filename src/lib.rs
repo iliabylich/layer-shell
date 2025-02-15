@@ -196,8 +196,6 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
                             Command::LauncherGoDown => launcher.go_down(),
                             Command::LauncherSetSearch { search } => launcher.set_search(search),
                             Command::LauncherExecSelected => launcher.exec_selected(),
-                            Command::SetVolume { volume } => pipewire.set_volume(volume),
-                            Command::SetMuted { muted } => pipewire.set_muted(muted),
                             Command::Lock => session.lock(),
                             Command::Reboot => session.reboot(),
                             Command::Shutdown => session.shutdown(),

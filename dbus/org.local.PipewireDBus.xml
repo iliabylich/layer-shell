@@ -2,24 +2,10 @@
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
 <interface name="org.local.PipewireDBus">
-    <method name="GetVolume">
-        <arg type="d" name="volume" direction="out" />
-    </method>
-    <method name="SetVolume">
-        <arg type="d" name="volume" direction="in" />
-    </method>
-    <signal name="VolumeUpdated">
-        <arg type="d" name="volume" direction="out" />
-    </signal>
-
-    <method name="GetMuted">
-        <arg type="b" name="muted" direction="out" />
-    </method>
-    <method name="SetMuted">
-        <arg type="b" name="muted" direction="in" />
-    </method>
-    <signal name="MutedUpdated">
-        <arg type="b" name="muted" direction="out" />
+    <property name="Data" type="(ub)" access="read"/>
+    <signal name="DataChanged">
+      <arg name="volume" type="u"/>
+      <arg name="muted" type="b"/>
     </signal>
 </interface>
 </node>

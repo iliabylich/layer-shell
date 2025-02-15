@@ -10,33 +10,19 @@ Sound::Sound(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
 
   image.set_from_icon_name("dialog-question");
   append(image);
-
-  scale.set_orientation(Gtk::Orientation::HORIZONTAL);
-  scale.set_adjustment(Gtk::Adjustment::create(0.0, 0.0, 1.0));
-  scale.set_css_classes({"sound-slider"});
-  append(scale);
-
-  auto ctrl = Gtk::GestureClick::create();
-  ctrl->signal_released().connect([this, ctx](int, double, double) {
-    auto adj = this->scale.get_adjustment();
-    double volume = CLAMP(adj->get_value(), 0.0, 1.0);
-    layer_shell_io::layer_shell_io_set_volume(volume, ctx);
-  });
-  ctrl->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
-  add_controller(ctrl);
 }
 
 void Sound::on_io_event(layer_shell_io::Event::Volume_Body data) {
-  double volume = data.volume;
-  scale.set_value(volume);
+  uint32_t volume = data.volume;
+  bool muted = data.muted;
   const char *icon_name = NULL;
-  if (volume == 0.0) {
+  if (volume == 0 || muted) {
     icon_name = "audio-volume-muted-symbolic";
-  } else if (volume > 0.01 && volume < 0.34) {
+  } else if (volume >= 1 && volume < 34) {
     icon_name = "audio-volume-low-symbolic";
-  } else if (volume > 0.34 && volume < 0.67) {
+  } else if (volume >= 34 && volume < 67) {
     icon_name = "audio-volume-medium-symbolic";
-  } else if (volume > 0.67 && volume < 1.0) {
+  } else if (volume >= 67 && volume < 95) {
     icon_name = "audio-volume-high-symbolic";
   } else {
     icon_name = "audio-volume-overamplified-symbolic";
