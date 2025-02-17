@@ -14,6 +14,9 @@ Tray::Tray(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
 
 void Tray::cleanup() {
   for (auto child : this->get_children()) {
+    for (auto grandchild : child->get_children()) {
+      grandchild->unparent();
+    }
     this->remove(*child);
   }
 }

@@ -47,6 +47,32 @@ popover modelbutton:hover {
     background-color: var(--theme-solid-bg-color-hover);
 }
 
+popover check {
+    background-image: -gtk-icontheme('checkbox-symbolic');
+    margin-right: 5px;
+}
+
+popover check:checked {
+    background-image: -gtk-icontheme('checkbox-checked-symbolic');
+}
+
+popover radio {
+    background-image: -gtk-icontheme('radio-symbolic');
+    margin-right: 5px;
+}
+
+popover radio:checked {
+    background-image: -gtk-icontheme('radio-checked-symbolic');
+}
+
+popover arrow.right {
+    background-image: -gtk-icontheme('go-next-symbolic');
+}
+
+popover arrow.left {
+    background-image: -gtk-icontheme('go-previous-symbolic');
+}
+
 .main-wrapper {
     padding: 10px;
     min-height: 36px;
