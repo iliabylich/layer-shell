@@ -10,22 +10,80 @@ Tray::Tray(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   set_spacing(10);
   set_css_classes({"widget", "tray", "padded"});
   set_name("Tray");
-
-  auto action_group = Gio::SimpleActionGroup::create();
-  auto action = Gio::SimpleAction::create("clicked", Glib::VariantType("s"));
-  action->signal_activate().connect([ctx](const Glib::VariantBase &parameter) {
-    auto uuid =
-        parameter.cast_dynamic<Glib::Variant<Glib::ustring>>(parameter).get();
-    layer_shell_io::layer_shell_io_trigger_tray(uuid.c_str(), ctx);
-  });
-  action_group->add_action(action);
-  insert_action_group("tray", action_group);
 }
 
 void Tray::cleanup() {
   for (auto child : this->get_children()) {
     this->remove(*child);
   }
+}
+
+Glib::RefPtr<Gio::Menu>
+new_menu_for_tray_item(layer_shell_io::TrayItem data,
+                       Glib::RefPtr<Gio::SimpleActionGroup> &action_group,
+                       void *ctx) {
+  auto menu = Gio::Menu::create();
+
+  for (size_t i = 0; i < data.children.len; i++) {
+    auto child = data.children.ptr[i];
+    if (!child.visible) {
+      continue;
+    }
+
+    auto menu_item = Gio::MenuItem::create(child.label, "");
+
+    std::string children_display(child.children_display);
+    std::string uuid(child.uuid);
+    std::string toggle_type(child.toggle_type);
+    std::string action_name = std::format("{}", i);
+
+    auto cb = [ctx, uuid](const Glib::VariantBase &) {
+      layer_shell_io::layer_shell_io_trigger_tray(uuid.c_str(), ctx);
+    };
+
+    if (children_display == "submenu") {
+      // nested menu
+      auto submenu = new_menu_for_tray_item(child, action_group, ctx);
+      menu_item->set_submenu(submenu);
+    } else {
+      // element
+      if (child.enabled) {
+        if (toggle_type == "checkmark") {
+          // checkbox
+          auto action = Gio::SimpleAction::create(
+              action_name, Glib::create_variant<bool>(child.toggle_state == 1));
+
+          action->signal_activate().connect(cb);
+          action_group->add_action(action);
+
+          menu_item->set_action(std::string("tray.") + action_name);
+        } else if (toggle_type == "radio") {
+          // radio
+          auto action = Gio::SimpleAction::create(
+              action_name, Glib::VariantType("b"),
+              Glib::create_variant<bool>(child.toggle_state == 1));
+
+          action->signal_activate().connect(cb);
+          action_group->add_action(action);
+
+          menu_item->set_action_and_target(std::string("tray.") + action_name,
+                                           Glib::create_variant<bool>(true));
+        } else {
+          auto action = Gio::SimpleAction::create(action_name);
+          action->signal_activate().connect(cb);
+          action_group->add_action(action);
+
+          menu_item->set_action(std::string("tray.") + action_name);
+        }
+      } else {
+        menu_item->set_action("tray.noop");
+      }
+    }
+
+    menu->append_item(menu_item);
+  }
+
+  return menu;
 }
 
 void Tray::add(layer_shell_io::TrayApp app) {
@@ -56,18 +114,8 @@ void Tray::add(layer_shell_io::TrayApp app) {
   }
   }
 
-  auto menu = Gio::Menu::create();
-
-  for (size_t i = 0; i < app.items.len; i++) {
-    auto item = Gio::MenuItem::create(app.items.ptr[i].label, "");
-    const char *action = "tray.clicked";
-    if (app.items.ptr[i].disabled) {
-      action = "tray.noop";
-    }
-    item->set_action_and_target(
-        action, Glib::create_variant<Glib::ustring>(app.items.ptr[i].uuid));
-    menu->append_item(item);
-  }
+  auto action_group = Gio::SimpleActionGroup::create();
+  auto menu = new_menu_for_tray_item(app.root_item, action_group, ctx);
 
   auto popover_menu = new Gtk::PopoverMenu(menu);
   popover_menu->set_has_arrow(false);
@@ -79,6 +127,8 @@ void Tray::add(layer_shell_io::TrayApp app) {
   icon.add_controller(gesture);
 
   append(icon);
+
+  icon.insert_action_group("tray", action_group);
 }
 
 void Tray::on_io_event(layer_shell_io::Event::Tray_Body data) {

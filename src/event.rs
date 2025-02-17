@@ -109,16 +109,25 @@ pub struct WifiStatus {
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
 pub struct TrayApp {
-    pub items: CArray<TrayItem>,
+    pub root_item: TrayItem,
     pub icon: TrayIcon,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
 pub struct TrayItem {
-    pub label: CString,
-    pub disabled: bool,
+    pub id: i32,
     pub uuid: CString,
+    pub type_: CString,
+    pub label: CString,
+    pub enabled: bool,
+    pub visible: bool,
+    pub icon_name: CString,
+    pub icon_data: CString,
+    pub toggle_type: CString,
+    pub toggle_state: i64,
+    pub children_display: CString,
+    pub children: CArray<TrayItem>,
 }
 
 #[derive(Clone, PartialEq)]

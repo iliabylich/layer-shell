@@ -1,7 +1,10 @@
-use crate::dbus::{gen::dbus_menu::ComCanonicalDbusmenu, tray::UUID};
-use anyhow::{bail, ensure, Context as _, Result};
+use crate::{
+    dbus::{gen::dbus_menu::ComCanonicalDbusmenu, tray::UUID},
+    event::TrayItem,
+};
+use anyhow::{bail, Context as _, Result};
 use dbus::{
-    arg::{cast, RefArg, Variant},
+    arg::{RefArg, Variant},
     blocking::{Connection, Proxy},
 };
 use std::time::Duration;
@@ -9,12 +12,6 @@ use std::time::Duration;
 pub(crate) struct DBusMenu {
     service: String,
     path: String,
-}
-
-pub(crate) struct DBusMenuItem {
-    pub(crate) label: String,
-    pub(crate) disabled: bool,
-    pub(crate) uuid: String,
 }
 
 impl DBusMenu {
@@ -29,17 +26,43 @@ impl DBusMenu {
         Proxy::new(&self.service, &self.path, Duration::from_millis(5000), conn)
     }
 
-    pub(crate) fn get_layout(&self, conn: &Connection) -> Result<Vec<DBusMenuItem>> {
-        let (_, raw_tree) = self
+    pub(crate) fn get_layout(&self, conn: &Connection) -> Result<TrayItem> {
+        let (_, (_, _, items)) = self
             .proxy(conn)
-            .get_layout(0, 10, vec!["label", "enabled", "visible"])
+            .get_layout(
+                0,
+                10,
+                vec![
+                    "type",
+                    "label",
+                    "enabled",
+                    "visible",
+                    "icon-name",
+                    "icon-data",
+                    "shortcut",
+                    "toggle-type",
+                    "toggle-state",
+                    "children-display",
+                ],
+            )
             .context("Failed to call GetLayout")?;
 
-        let mut items = vec![];
+        let children = self.visit_list(items)?;
 
-        visit_root(raw_tree, &mut items, &self.service, &self.path)?;
-
-        Ok(items)
+        Ok(TrayItem {
+            id: 0,
+            uuid: String::new().into(),
+            type_: String::new().into(),
+            label: String::new().into(),
+            enabled: true,
+            visible: true,
+            icon_name: String::new().into(),
+            icon_data: String::new().into(),
+            toggle_type: String::new().into(),
+            toggle_state: 0,
+            children_display: String::new().into(),
+            children: children.into(),
+        })
     }
 
     pub(crate) fn event(&self, conn: &Connection, id: i32) -> Result<()> {
@@ -52,140 +75,113 @@ impl DBusMenu {
             )
             .context("failed to call Event")
     }
-}
 
-type DBusInternalTree = (
-    i32,
-    dbus::arg::PropMap,
-    Vec<dbus::arg::Variant<Box<dyn dbus::arg::RefArg + 'static>>>,
-);
-
-fn visit_root(
-    root: DBusInternalTree,
-    out: &mut Vec<DBusMenuItem>,
-    service: &str,
-    path: &str,
-) -> Result<()> {
-    let (_root_id, _props, children) = root;
-
-    visit_children(children, out, service, path)?;
-    Ok(())
-}
-
-fn visit_children(
-    children: Vec<Variant<Box<dyn RefArg>>>,
-    out: &mut Vec<DBusMenuItem>,
-    service: &str,
-    path: &str,
-) -> Result<()> {
-    for child in children {
-        visit_child(child, out, service, path)?;
-    }
-    Ok(())
-}
-
-fn visit_child(
-    child: Variant<Box<dyn RefArg>>,
-    out: &mut Vec<DBusMenuItem>,
-    service: &str,
-    path: &str,
-) -> Result<()> {
-    if let Some(mut iter) = child.as_iter() {
-        if let Some(child) = iter.next() {
-            if let Some(mut iter) = child.as_iter() {
-                let triplet = iter.next().zip(iter.next()).zip(iter.next());
-                if let Some(((v1, v2), v3)) = triplet {
-                    visit_triplet(
-                        v1.box_clone(),
-                        v2.box_clone(),
-                        v3.box_clone(),
-                        out,
-                        service,
-                        path,
-                    )?;
-                }
-            }
-        }
+    fn visit_list(&self, items: Vec<V>) -> Result<Vec<TrayItem>> {
+        items
+            .into_iter()
+            .map(|v| self.visit_node(v.0))
+            .collect::<Result<Vec<_>, _>>()
     }
 
-    Ok(())
-}
-
-fn visit_triplet(
-    v1: Box<dyn RefArg>,
-    v2: Box<dyn RefArg>,
-    v3: Box<dyn RefArg>,
-    out: &mut Vec<DBusMenuItem>,
-    service: &str,
-    path: &str,
-) -> Result<()> {
-    if let Some(id) = cast::<i32>(&v1).copied() {
-        if let Some(props) = Props::parse(v2)? {
-            out.push(DBusMenuItem {
-                label: props.label,
-                disabled: !props.enabled,
-                uuid: UUID::encode(service, path, id),
-            });
-
-            if let Some(mut iter) = v3.as_iter() {
-                ensure!(iter.next().is_none());
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[derive(Debug)]
-struct Props {
-    label: String,
-    enabled: bool,
-}
-
-impl Props {
-    fn parse(props: Box<dyn RefArg>) -> Result<Option<Self>> {
-        let mut label = None;
+    fn visit_node(&self, node: Box<dyn RefArg>) -> Result<TrayItem> {
+        let mut id = None;
+        let mut type_ = "standard".to_string();
+        let mut label = "".to_string();
         let mut enabled = true;
         let mut visible = true;
+        let mut icon_name = "".to_string();
+        let mut icon_data = "".to_string();
+        let mut toggle_type = "".to_string();
+        let mut toggle_state = -1;
+        let mut children_display = "".to_string();
+        let mut children = vec![];
 
-        let mut iter = props.as_iter().context("Props are not iterable")?;
+        for (idx, item) in node
+            .as_iter()
+            .context("inner node is not an iter")?
+            .enumerate()
+        {
+            let item = item.box_clone();
+            if idx == 0 {
+                id = Some(*dbus::arg::cast::<i32>(&item).context("id is not an int")?);
+            } else if idx == 1 {
+                let mut iter = item.as_iter().context("properties are not an iter")?;
 
-        while let Some(key) = iter.next() {
-            let value = iter
-                .next()
-                .context("Odd number of elements in the DBus Hash")?;
+                while let Some(key) = iter.next() {
+                    let value = iter
+                        .next()
+                        .context("expected even number of elements in the properties hash")?;
 
-            if let Some(key) = key.as_str() {
-                match key {
-                    "label" => {
-                        label = Some(
-                            value
-                                .as_str()
-                                .context("DBus menu item has no name, skipping")?
-                                .to_string(),
-                        )
-                    }
-                    "visible" => {
-                        visible = value.as_i64().map(|v| v != 0).unwrap_or(true);
-                    }
-                    "enabled" => {
-                        enabled = value.as_i64().map(|v| v != 0).unwrap_or(true);
-                    }
-                    _ => {
-                        bail!("Unsupported key: {key}")
+                    let key = key.as_str().context("key is not a string")?.to_string();
+
+                    match &key[..] {
+                        "type" => type_ = visit_str_property("type", value)?,
+                        "label" => label = visit_str_property("label", value)?,
+                        "enabled" => enabled = visit_bool_property("enabled", value)?,
+                        "visible" => visible = visit_bool_property("visible", value)?,
+                        "icon-name" => icon_name = visit_str_property("icon-name", value)?,
+                        "icon-data" => icon_data = visit_str_property("icon-data", value)?,
+                        "toggle-type" => toggle_type = visit_str_property("toggle-type", value)?,
+                        "toggle-state" => toggle_state = visit_int_property("toggle-state", value)?,
+                        "children-display" => {
+                            children_display = visit_str_property("children-display", value)?
+                        }
+                        "shortcut" => {
+                            // ignore
+                        }
+                        _ => bail!("unsupported property {key}"),
                     }
                 }
+            } else if idx == 2 {
+                for child in item.as_iter().context("not an iter(4)")? {
+                    for child in child.as_iter().context("child is not an iter")? {
+                        let child = child.box_clone();
+                        let child = self.visit_node(child).context("invalid child")?;
+                        children.push(child);
+                    }
+                }
+            } else {
+                bail!("expected 3 elements in each layout node")
             }
         }
 
-        if !visible {
-            return Ok(None);
-        }
+        let id = id.context("no id found")?;
 
-        if let Some(label) = label {
-            Ok(Some(Self { label, enabled }))
-        } else {
-            Ok(None)
-        }
+        Ok(TrayItem {
+            id,
+            uuid: UUID::encode(&self.service, &self.path, id).into(),
+            type_: type_.into(),
+            label: label.into(),
+            enabled,
+            visible,
+            icon_name: icon_name.into(),
+            icon_data: icon_data.into(),
+            toggle_type: toggle_type.into(),
+            toggle_state,
+            children_display: children_display.into(),
+            children: children.into(),
+        })
     }
 }
+
+fn visit_str_property(key: &str, value: &dyn RefArg) -> Result<String> {
+    Ok(value
+        .as_str()
+        .with_context(|| format!("{key} property is not a string"))?
+        .to_string())
+}
+
+fn visit_bool_property(key: &str, value: &dyn RefArg) -> Result<bool> {
+    let n = value
+        .as_i64()
+        .with_context(|| format!("{key} property is not a bool"))?;
+    Ok(n != 0)
+}
+
+fn visit_int_property(key: &str, value: &dyn RefArg) -> Result<i64> {
+    value
+        .as_i64()
+        .with_context(|| format!("{key} property is not a bool"))
+}
+
+type V = Variant<Box<dyn RefArg + 'static>>;

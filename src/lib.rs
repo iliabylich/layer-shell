@@ -14,7 +14,7 @@ mod macros;
 mod modules;
 mod timer;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context as _, Result};
 use channel::{CommandsChannel, EventsChannel, VerboseSender};
 pub use command::*;
 pub use event::Event;
@@ -98,45 +98,63 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
     let tx = ctx.events.take_tx();
     let mut rx = ctx.commands.take_rx();
 
-    let mut epoll = Epoll::new()?;
-    epoll.add_reader_fd(rx.fd(), FdId::Command)?;
+    let mut epoll = Epoll::new().context("failed to init epoll")?;
+    epoll
+        .add_reader_fd(rx.fd(), FdId::Command)
+        .context("failed to register command handler")?;
 
     let mut hyprland = Hyprland::new(tx.clone());
     if let Some(fd) = hyprland.fd() {
-        epoll.add_reader_fd(fd, FdId::HyprlandSocket)?;
+        epoll
+            .add_reader_fd(fd, FdId::HyprlandSocket)
+            .context("failed to add hyprland fd to epoll")?;
     }
 
     let mut timer = Timer::new(1);
     if let Some(fd) = timer.fd() {
-        epoll.add_reader_fd(fd, FdId::Timer)?;
+        epoll
+            .add_reader_fd(fd, FdId::Timer)
+            .context("failed to add timer fd to epoll")?;
     }
 
     let mut control = Control::new(tx.clone());
     if let Some(fd) = control.fd() {
-        epoll.add_reader_fd(fd, FdId::ControlDBus)?;
+        epoll
+            .add_reader_fd(fd, FdId::ControlDBus)
+            .context("failed to add control dbus fd to epoll")?;
     }
 
     let mut pipewire = Pipewire::new(tx.clone());
     if let Some(fd) = pipewire.fd() {
-        epoll.add_reader_fd(fd, FdId::PipewireDBus)?;
+        epoll
+            .add_reader_fd(fd, FdId::PipewireDBus)
+            .context("failed to add pipewire dbus fd to epoll")?;
     }
 
     let mut network = Network::new(tx.clone());
     if let Some(fd) = network.fd() {
-        epoll.add_reader_fd(fd, FdId::NetworkDBus)?;
+        epoll
+            .add_reader_fd(fd, FdId::NetworkDBus)
+            .context("failed to add network dbus fd to epoll")?;
     }
 
     let mut launcher = Launcher::new(tx.clone());
     if let Some(global_inotify_fd) = launcher.global_inotify_fd() {
-        epoll.add_reader_fd(global_inotify_fd, FdId::LauncherGlobalDirInotify)?;
+        epoll
+            .add_reader_fd(global_inotify_fd, FdId::LauncherGlobalDirInotify)
+            .context("failed to add launcher->global_inotify_fd to epoll")?;
     }
     if let Some(user_inotify_fd) = launcher.user_inotify_fd() {
-        epoll.add_reader_fd(user_inotify_fd, FdId::LauncherUserDirInotify)?;
+        epoll
+            .add_reader_fd(user_inotify_fd, FdId::LauncherUserDirInotify)
+            .context("failed to add launcher->local_inotify_fd to epoll")?;
     }
 
     let mut tray = Tray::new(tx.clone());
     if let Some(fd) = tray.fd() {
-        epoll.add_reader_fd(fd, FdId::TrayDBus)?;
+        epoll
+            .add_reader_fd(fd, FdId::TrayDBus)
+            .context("failed to add tray dbus fd to epoll")?;
     }
 
     let mut weather = Weather::new(tx.clone());
@@ -164,6 +182,7 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
                     if timer.is_multiple_of(Weather::INTERVAL) {
                         weather.tick();
                     }
+                    tray.read();
                 }
                 FdId::HyprlandSocket => {
                     hyprland.read();

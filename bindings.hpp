@@ -115,9 +115,18 @@ struct Network {
 };
 
 struct TrayItem {
-  CString label;
-  bool disabled;
+  int32_t id;
   CString uuid;
+  CString type_;
+  CString label;
+  bool enabled;
+  bool visible;
+  CString icon_name;
+  CString icon_data;
+  CString toggle_type;
+  int64_t toggle_state;
+  CString children_display;
+  CArray<TrayItem> children;
 };
 
 struct TrayIcon {
@@ -151,7 +160,7 @@ struct TrayIcon {
 };
 
 struct TrayApp {
-  CArray<TrayItem> items;
+  TrayItem root_item;
   TrayIcon icon;
 };
 

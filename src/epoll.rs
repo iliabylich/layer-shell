@@ -59,6 +59,7 @@ impl Drop for Epoll {
     }
 }
 
+#[derive(Debug)]
 #[repr(u64)]
 pub(crate) enum FdId {
     Timer,

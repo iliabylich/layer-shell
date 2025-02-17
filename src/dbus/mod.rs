@@ -16,6 +16,10 @@ pub(crate) use gen::status_notifier_item::{
     OrgKdeStatusNotifierItemNewTitle, OrgKdeStatusNotifierItemNewToolTip,
 };
 
+pub(crate) use gen::dbus_menu::{
+    ComCanonicalDbusmenuItemsPropertiesUpdated, ComCanonicalDbusmenuLayoutUpdated,
+};
+
 pub(crate) use gen::layer_shell_control::{
     register_org_me_layer_shell_control, OrgMeLayerShellControl,
 };

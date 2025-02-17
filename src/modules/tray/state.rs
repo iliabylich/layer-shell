@@ -31,6 +31,9 @@ impl State {
     }
 
     pub(crate) fn find(&self, service: &str) -> Option<Item> {
-        self.map.keys().find(|k| k.service == service).cloned()
+        self.map
+            .keys()
+            .find(|k| k.service == service || k.service_id == service)
+            .cloned()
     }
 }
