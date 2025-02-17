@@ -162,6 +162,7 @@ impl ConnectedTray {
     fn trigger(&mut self, uuid: String) -> Result<()> {
         let (service, path, id) = UUID::decode(uuid)?;
         DBusMenu::new(service, path).event(&self.conn, id)?;
+        self.read()?;
         Ok(())
     }
 }
