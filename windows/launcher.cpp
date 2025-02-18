@@ -6,7 +6,7 @@ namespace windows {
 Launcher::Row::Row() : Gtk::Box() {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(0);
-  set_css_classes({"widget-launcher-row"});
+  set_css_classes({"row"});
 
   image.set_icon_size(Gtk::IconSize::LARGE);
 
@@ -41,18 +41,19 @@ Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
     : utils::Subscriber(ctx) {
   set_name("LauncherWindow");
   property_width_request().set_value(700);
+  set_css_classes({"launcher-window"});
   set_application(app);
 
   Gtk::Box layout(Gtk::Orientation::VERTICAL, 0);
-  layout.set_css_classes({"widget-launcher-wrapper"});
+  layout.set_css_classes({"wrapper"});
   set_child(layout);
 
-  input.set_css_classes({"widget-launcher-search-box"});
+  input.set_css_classes({"search-box"});
   input.set_hexpand(true);
   layout.append(input);
 
   Gtk::ScrolledWindow scroll;
-  scroll.set_css_classes({"widget-launcher-scroll-list"});
+  scroll.set_css_classes({"scroll-list"});
   scroll.set_can_focus(false);
   layout.append(scroll);
 

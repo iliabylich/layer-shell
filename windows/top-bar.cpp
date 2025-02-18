@@ -5,12 +5,12 @@ namespace windows {
 
 TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx) {
   set_name("TopBarWindow");
-  set_css_classes({"window"});
+  set_css_classes({"top-bar-window"});
   set_application(app);
 
   Gtk::CenterBox layout;
 
-  layout.add_css_class("main-wrapper");
+  layout.add_css_class("wrapper");
   set_child(layout);
 
   Gtk::Box left = Gtk::Box(Gtk::Orientation::HORIZONTAL, 8);

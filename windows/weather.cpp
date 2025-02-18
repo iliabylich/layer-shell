@@ -89,7 +89,7 @@ void Weather::DailyGrid::update(layer_shell_io::WeatherOnDay weather,
 Weather::Weather(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
     : utils::Subscriber(ctx) {
   set_name("WeatherWindow");
-  set_css_classes({"widget-weather"});
+  set_css_classes({"weather-window"});
   set_application(app);
 
   Gtk::Box layout(Gtk::Orientation::HORIZONTAL, 50);

@@ -1,12 +1,16 @@
 dbus-generate:
     ./dbus/generate.sh
 
+css:
+    sassc main.scss main.css
+
 bindgen:
     cbindgen --output bindings.hpp
 
 clean:
     cargo clean
     rm -rf builddir
+    rm -f main.css
 
 cargo-debug out:
     cargo build
@@ -22,6 +26,7 @@ install destdir:
     meson install -C builddir --destdir={{destdir}}
 
 dev:
+    @just css
     ninja -C builddir
     ./builddir/layer-shell
 

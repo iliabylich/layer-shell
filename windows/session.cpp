@@ -5,7 +5,6 @@ namespace windows {
 
 Gtk::Button make_button(const char *text) {
   Gtk::Button button;
-  button.set_css_classes({"session-window-button"});
   Gtk::Label label(text);
   button.set_child(label);
   return button;
@@ -20,7 +19,7 @@ Session::Session(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
 
   Gtk::Box layout(Gtk::Orientation::HORIZONTAL, 200);
   layout.set_homogeneous(true);
-  layout.set_css_classes({"session-window-wrapper"});
+  layout.set_css_classes({"wrapper"});
   set_child(layout);
 
   lock = make_button("Lock");
