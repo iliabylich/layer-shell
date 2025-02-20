@@ -2,6 +2,7 @@ pub(crate) mod control;
 pub(crate) mod cpu;
 pub(crate) mod hyprland;
 pub(crate) mod launcher;
+pub(crate) mod maybe_connected;
 pub(crate) mod memory;
 pub(crate) mod network;
 pub(crate) mod pipewire;

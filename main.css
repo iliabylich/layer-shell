@@ -6,7 +6,6 @@
   --theme-solid-bg-color: var(--solid-bg-color, black);
   --theme-solid-bg-color-hover: var(--solid-bg-color-hover, gray); }
 
-/* reset */
 * {
   all: unset; }
 
@@ -67,6 +66,12 @@ popover {
     padding: 0 10px; }
   .top-bar-window .widget.workspaces button {
     min-width: 35px; }
+    .top-bar-window .widget.workspaces button:first-child {
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px; }
+    .top-bar-window .widget.workspaces button:last-child {
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px; }
     .top-bar-window .widget.workspaces button.active {
       background-color: var(--theme-accent-color); }
   .top-bar-window .widget.clock {

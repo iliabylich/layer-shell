@@ -96,66 +96,33 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
 
     let ctx = Ctx::from_raw(ctx);
     let tx = ctx.events.take_tx();
-    let mut rx = ctx.commands.take_rx();
 
     let mut epoll = Epoll::new().context("failed to init epoll")?;
-    epoll
-        .add_reader_fd(rx.fd(), FdId::Command)
-        .context("failed to register command handler")?;
+
+    let mut rx = ctx.commands.take_rx();
+    epoll.add_reader(&rx)?;
 
     let mut hyprland = Hyprland::new(tx.clone());
-    if let Some(fd) = hyprland.fd() {
-        epoll
-            .add_reader_fd(fd, FdId::HyprlandSocket)
-            .context("failed to add hyprland fd to epoll")?;
-    }
+    epoll.add_reader(&hyprland)?;
 
     let mut timer = Timer::new(1);
-    if let Some(fd) = timer.fd() {
-        epoll
-            .add_reader_fd(fd, FdId::Timer)
-            .context("failed to add timer fd to epoll")?;
-    }
+    epoll.add_reader(&timer)?;
 
     let mut control = Control::new(tx.clone());
-    if let Some(fd) = control.fd() {
-        epoll
-            .add_reader_fd(fd, FdId::ControlDBus)
-            .context("failed to add control dbus fd to epoll")?;
-    }
+    epoll.add_reader(&control)?;
 
     let mut pipewire = Pipewire::new(tx.clone());
-    if let Some(fd) = pipewire.fd() {
-        epoll
-            .add_reader_fd(fd, FdId::PipewireDBus)
-            .context("failed to add pipewire dbus fd to epoll")?;
-    }
+    epoll.add_reader(&pipewire)?;
 
     let mut network = Network::new(tx.clone());
-    if let Some(fd) = network.fd() {
-        epoll
-            .add_reader_fd(fd, FdId::NetworkDBus)
-            .context("failed to add network dbus fd to epoll")?;
-    }
+    epoll.add_reader(&network)?;
 
-    let mut launcher = Launcher::new(tx.clone());
-    if let Some(global_inotify_fd) = launcher.global_inotify_fd() {
-        epoll
-            .add_reader_fd(global_inotify_fd, FdId::LauncherGlobalDirInotify)
-            .context("failed to add launcher->global_inotify_fd to epoll")?;
-    }
-    if let Some(user_inotify_fd) = launcher.user_inotify_fd() {
-        epoll
-            .add_reader_fd(user_inotify_fd, FdId::LauncherUserDirInotify)
-            .context("failed to add launcher->local_inotify_fd to epoll")?;
-    }
+    let (mut launcher, mut global_dir_inotify, mut user_dir_inotify) = Launcher::new(tx.clone());
+    epoll.add_reader(&global_dir_inotify)?;
+    epoll.add_reader(&user_dir_inotify)?;
 
     let mut tray = Tray::new(tx.clone());
-    if let Some(fd) = tray.fd() {
-        epoll
-            .add_reader_fd(fd, FdId::TrayDBus)
-            .context("failed to add tray dbus fd to epoll")?;
-    }
+    epoll.add_reader(&tray)?;
 
     let mut weather = Weather::new(tx.clone());
     let mut memory = Memory::new(tx.clone());
@@ -163,52 +130,58 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
     let mut cpu = CPU::new(tx.clone());
     let mut session = Session::new();
 
+    let mut events = Vec::with_capacity(100);
+
     loop {
-        let events = epoll.poll()?;
-        for event in events {
+        epoll.poll(&mut events)?;
+        for event in events.iter() {
             let id = FdId::try_from(event.u64)?;
             match id {
                 FdId::Timer => {
-                    timer.read();
-                    if timer.is_multiple_of(Time::INTERVAL) {
+                    let Some(ticks) = epoll.read_from_or_disable(&mut timer) else {
+                        continue;
+                    };
+                    if ticks.is_multiple_of(Time::INTERVAL) {
                         time.tick();
                     }
-                    if timer.is_multiple_of(Memory::INTERVAL) {
+                    if ticks.is_multiple_of(Memory::INTERVAL) {
                         memory.tick();
                     }
-                    if timer.is_multiple_of(CPU::INTERVAL) {
+                    if ticks.is_multiple_of(CPU::INTERVAL) {
                         cpu.tick();
                     }
-                    if timer.is_multiple_of(Weather::INTERVAL) {
+                    if ticks.is_multiple_of(Weather::INTERVAL) {
                         weather.tick();
                     }
                 }
                 FdId::HyprlandSocket => {
-                    hyprland.read();
+                    epoll.read_from_or_disable(&mut hyprland);
                 }
                 FdId::ControlDBus => {
-                    control.read();
+                    epoll.read_from_or_disable(&mut control);
                 }
                 FdId::PipewireDBus => {
-                    pipewire.read();
+                    epoll.read_from_or_disable(&mut pipewire);
                 }
                 FdId::LauncherGlobalDirInotify => {
-                    launcher.read_global();
+                    epoll.read_from_or_disable(&mut global_dir_inotify);
                 }
                 FdId::LauncherUserDirInotify => {
-                    launcher.read_user();
+                    epoll.read_from_or_disable(&mut user_dir_inotify);
                 }
                 FdId::NetworkDBus => {
-                    network.read();
+                    epoll.read_from_or_disable(&mut network);
                 }
                 FdId::TrayDBus => {
-                    tray.read();
+                    epoll.read_from_or_disable(&mut tray);
                 }
                 FdId::Command => {
                     rx.consume_signal();
                     while let Some(cmd) = rx.recv() {
                         match cmd {
-                            Command::HyprlandGoToWorkspace { idx } => hyprland.go_to_workspace(idx),
+                            Command::HyprlandGoToWorkspace { idx } => {
+                                hyprland.with(|hyprland| hyprland.go_to_workspace(idx))
+                            }
                             Command::LauncherReset => launcher.reset(),
                             Command::LauncherGoUp => launcher.go_up(),
                             Command::LauncherGoDown => launcher.go_down(),
@@ -218,13 +191,15 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
                             Command::Reboot => session.reboot(),
                             Command::Shutdown => session.shutdown(),
                             Command::Logout => session.logout(),
-                            Command::TriggerTray { uuid } => tray.trigger(uuid),
-                            Command::SpawnNetworkEditor => network.spawn_network_editor(),
+                            Command::TriggerTray { uuid } => tray.with(|tray| tray.trigger(uuid)),
+                            Command::SpawnNetworkEditor => {
+                                network.with(|network| network.spawn_network_editor())
+                            }
                             Command::SpawnSystemMonitor => memory.spawn_system_monitor(),
                         }
                     }
                 }
-                FdId::Last => bail!("got fd id = Last (bug?)"),
+                FdId::Disconnected => bail!("got fd id = Last (bug?)"),
             }
         }
     }

@@ -1,5 +1,7 @@
 use crate::{
     dbus::{OrgLocalPipewireDBus, OrgLocalPipewireDBusDataChanged},
+    epoll::{FdId, Reader},
+    modules::maybe_connected::MaybeConnected,
     Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
@@ -10,12 +12,12 @@ use dbus::{
 };
 use std::time::Duration;
 
-pub(crate) struct ConnectedPipewire {
+pub(crate) struct Pipewire {
     tx: VerboseSender<Event>,
     conn: Connection,
 }
 
-impl ConnectedPipewire {
+impl Pipewire {
     fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
@@ -39,7 +41,17 @@ impl ConnectedPipewire {
         Ok(Self { tx, conn })
     }
 
-    fn read(&mut self) {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
+        MaybeConnected::new(Self::try_new(tx))
+    }
+}
+
+impl Reader for Pipewire {
+    type Output = ();
+
+    const NAME: &str = "Pipewire";
+
+    fn read(&mut self) -> Result<Self::Output> {
         while let Ok(Some(message)) = self
             .conn
             .channel()
@@ -53,37 +65,14 @@ impl ConnectedPipewire {
                 self.tx.send(event);
             }
         }
+        Ok(())
     }
 
     fn fd(&self) -> i32 {
         self.conn.channel().watch().fd
     }
-}
 
-pub(crate) enum Pipewire {
-    Connected(ConnectedPipewire),
-    Disconnected,
-}
-
-impl Pipewire {
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
-        ConnectedPipewire::try_new(tx)
-            .inspect_err(|err| log::error!("{:?}", err))
-            .map(Self::Connected)
-            .unwrap_or(Self::Disconnected)
-    }
-
-    pub(crate) fn read(&mut self) {
-        if let Self::Connected(pipewire) = self {
-            pipewire.read();
-        }
-    }
-
-    pub(crate) fn fd(&self) -> Option<i32> {
-        if let Self::Connected(pipewire) = self {
-            Some(pipewire.fd())
-        } else {
-            None
-        }
+    fn fd_id(&self) -> FdId {
+        FdId::PipewireDBus
     }
 }

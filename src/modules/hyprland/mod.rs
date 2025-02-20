@@ -1,5 +1,10 @@
-use crate::{hyprctl, Event, VerboseSender};
-use anyhow::Result;
+use crate::{
+    epoll::{FdId, Reader},
+    hyprctl,
+    modules::maybe_connected::MaybeConnected,
+    Event, VerboseSender,
+};
+use anyhow::{Context as _, Result};
 use raw_event::RawEvent;
 use state::State;
 use std::{
@@ -11,14 +16,14 @@ mod connection;
 mod raw_event;
 mod state;
 
-pub(crate) struct ConnectedHyprland {
+pub(crate) struct Hyprland {
     fd: i32,
     reader: Lines<BufReader<UnixStream>>,
     state: State,
     tx: VerboseSender<Event>,
 }
 
-impl ConnectedHyprland {
+impl Hyprland {
     fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
         let socket = connection::connect_to_socket()?;
         let fd = socket.as_raw_fd();
@@ -36,45 +41,35 @@ impl ConnectedHyprland {
         })
     }
 
-    fn read(&mut self) {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
+        MaybeConnected::new(Self::try_new(tx))
+    }
+
+    pub(crate) fn go_to_workspace(&self, idx: usize) -> Result<()> {
+        hyprctl::dispatch(format!("workspace {}", idx + 1)).context("failed to go to workspace")
+    }
+}
+
+impl Reader for Hyprland {
+    type Output = ();
+
+    const NAME: &str = "Hyprland";
+
+    fn read(&mut self) -> Result<Self::Output> {
         while let Some(Ok(line)) = self.reader.next() {
             if let Some(event) = RawEvent::parse(&line) {
                 let event = self.state.apply(event);
                 self.tx.send(event);
             }
         }
-    }
-}
-
-pub(crate) enum Hyprland {
-    Connected(ConnectedHyprland),
-    Disconnected,
-}
-
-impl Hyprland {
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
-        ConnectedHyprland::try_new(tx)
-            .map(Self::Connected)
-            .inspect_err(|err| log::error!("{:?}", err))
-            .unwrap_or(Self::Disconnected)
+        Ok(())
     }
 
-    pub(crate) fn read(&mut self) {
-        if let Self::Connected(inner) = self {
-            inner.read();
-        }
+    fn fd(&self) -> i32 {
+        self.fd
     }
 
-    pub(crate) fn go_to_workspace(&self, idx: usize) {
-        if let Err(err) = hyprctl::dispatch(format!("workspace {}", idx + 1)) {
-            log::error!("{:?}", err)
-        }
-    }
-
-    pub(crate) fn fd(&self) -> Option<i32> {
-        match self {
-            Self::Connected(ConnectedHyprland { fd, .. }) => Some(*fd),
-            Self::Disconnected => None,
-        }
+    fn fd_id(&self) -> FdId {
+        FdId::HyprlandSocket
     }
 }

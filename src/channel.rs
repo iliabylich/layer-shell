@@ -1,4 +1,7 @@
-use crate::{fatal, Command, Event};
+use crate::{
+    epoll::{FdId, Reader},
+    fatal, Command, Event,
+};
 use libc::{close, read, socketpair, write, PF_LOCAL, SOCK_STREAM};
 use std::{
     os::fd::AsRawFd,
@@ -92,31 +95,46 @@ impl<T> Drop for SignalingSender<T> {
     }
 }
 
-pub(crate) struct SignalingReceiver<T> {
-    rx: VerboseReceiver<T>,
+pub(crate) struct SignalingCommandReceiver {
+    rx: VerboseReceiver<Command>,
     fd: i32,
 }
 
-impl<T> SignalingReceiver<T> {
+impl Reader for SignalingCommandReceiver {
+    type Output = Vec<Command>;
+
+    const NAME: &str = "Commands channel";
+
+    fn read(&mut self) -> anyhow::Result<Self::Output> {
+        unreachable!("use direct API instead")
+    }
+
+    fn fd(&self) -> i32 {
+        self.fd
+    }
+
+    fn fd_id(&self) -> FdId {
+        FdId::Command
+    }
+}
+
+impl SignalingCommandReceiver {
     pub(crate) fn consume_signal(&mut self) {
         let mut signal = 0;
         unsafe { read(self.fd, (&mut signal as *mut i32).cast(), 1) };
     }
-    pub(crate) fn recv(&mut self) -> Option<T> {
+    pub(crate) fn recv(&mut self) -> Option<Command> {
         self.rx.recv()
-    }
-    pub(crate) fn fd(&self) -> i32 {
-        self.fd
     }
 }
 
-impl<T> Drop for SignalingReceiver<T> {
+impl Drop for SignalingCommandReceiver {
     fn drop(&mut self) {
         unsafe { close(self.fd) };
     }
 }
 
-impl<T> AsRawFd for SignalingReceiver<T> {
+impl AsRawFd for SignalingCommandReceiver {
     fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
         self.fd
     }
@@ -124,7 +142,7 @@ impl<T> AsRawFd for SignalingReceiver<T> {
 
 pub(crate) struct CommandsChannel {
     pub(crate) tx: SignalingSender<Command>,
-    pub(crate) rx: Option<SignalingReceiver<Command>>,
+    pub(crate) rx: Option<SignalingCommandReceiver>,
 }
 
 impl CommandsChannel {
@@ -145,14 +163,14 @@ impl CommandsChannel {
                 tx: VerboseSender { tx },
                 fd: writerfd,
             },
-            rx: Some(SignalingReceiver {
+            rx: Some(SignalingCommandReceiver {
                 rx: VerboseReceiver { rx },
                 fd: readerfd,
             }),
         }
     }
 
-    pub(crate) fn take_rx(&mut self) -> SignalingReceiver<Command> {
+    pub(crate) fn take_rx(&mut self) -> SignalingCommandReceiver {
         self.rx
             .take()
             .unwrap_or_else(|| fatal!("can't take receiver twice"))

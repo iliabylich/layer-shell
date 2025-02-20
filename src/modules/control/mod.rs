@@ -1,6 +1,8 @@
 use crate::{
     channel::VerboseSender,
     dbus::{register_org_me_layer_shell_control, OrgMeLayerShellControl},
+    epoll::{FdId, Reader},
+    modules::maybe_connected::MaybeConnected,
     Event,
 };
 use anyhow::{Context as _, Result};
@@ -12,12 +14,12 @@ use dbus::{
 use dbus_crossroads::Crossroads;
 use std::time::Duration;
 
-pub(crate) struct ConnectedControl {
+pub(crate) struct Control {
     conn: Connection,
     cr: Crossroads,
 }
 
-impl ConnectedControl {
+impl Control {
     fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
@@ -33,7 +35,17 @@ impl ConnectedControl {
         Ok(Self { conn, cr })
     }
 
-    fn read(&mut self) {
+    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
+        MaybeConnected::new(Self::try_new(tx))
+    }
+}
+
+impl Reader for Control {
+    type Output = ();
+
+    const NAME: &str = "Control";
+
+    fn read(&mut self) -> Result<Self::Output> {
         while let Ok(Some(message)) = self
             .conn
             .channel()
@@ -46,38 +58,15 @@ impl ConnectedControl {
                 log::error!("failed to process {dbg_message}");
             }
         }
+        Ok(())
     }
 
     fn fd(&self) -> i32 {
         self.conn.channel().watch().fd
     }
-}
 
-pub(crate) enum Control {
-    Connected(ConnectedControl),
-    Disconnected,
-}
-
-impl Control {
-    pub(crate) fn new(tx: VerboseSender<Event>) -> Self {
-        ConnectedControl::try_new(tx)
-            .map(Self::Connected)
-            .inspect_err(|err| log::error!("{:?}", err))
-            .unwrap_or(Self::Disconnected)
-    }
-
-    pub(crate) fn read(&mut self) {
-        if let Self::Connected(control) = self {
-            control.read();
-        }
-    }
-
-    pub(crate) fn fd(&self) -> Option<i32> {
-        if let Self::Connected(control) = self {
-            Some(control.fd())
-        } else {
-            None
-        }
+    fn fd_id(&self) -> FdId {
+        FdId::ControlDBus
     }
 }
 

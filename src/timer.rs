@@ -1,12 +1,16 @@
+use crate::{
+    epoll::{FdId, Reader},
+    modules::maybe_connected::MaybeConnected,
+};
 use anyhow::Result;
 use libc::{close, itimerspec, timerfd_create, timerfd_settime, timespec, CLOCK_MONOTONIC};
 
-pub(crate) struct ConnectedTimer {
+pub(crate) struct Timer {
     fd: i32,
     ticks_count: u64,
 }
 
-impl ConnectedTimer {
+impl Timer {
     fn try_new(interval_in_sec: i64) -> Result<Self> {
         let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
         if fd == -1 {
@@ -34,7 +38,17 @@ impl ConnectedTimer {
         Ok(timer)
     }
 
-    fn read(&mut self) {
+    pub(crate) fn new(interval_in_sec: i64) -> MaybeConnected<Self> {
+        MaybeConnected::new(Self::try_new(interval_in_sec))
+    }
+}
+
+impl Reader for Timer {
+    type Output = Ticks;
+
+    const NAME: &str = "Timer";
+
+    fn read(&mut self) -> Result<Self::Output> {
         let mut time = 0_u64;
         let len = unsafe {
             libc::read(
@@ -43,16 +57,23 @@ impl ConnectedTimer {
                 std::mem::size_of::<u64>(),
             )
         };
-        assert_eq!(len, std::mem::size_of::<u64>() as isize);
+        anyhow::ensure!(len == std::mem::size_of::<u64>() as isize);
         self.ticks_count += 1;
+        Ok(Ticks {
+            ticks_count: self.ticks_count,
+        })
     }
 
-    pub(crate) fn is_multiple_of(&self, n: u64) -> bool {
-        self.ticks_count.wrapping_sub(1) % n == 0
+    fn fd(&self) -> i32 {
+        self.fd
+    }
+
+    fn fd_id(&self) -> FdId {
+        FdId::Timer
     }
 }
 
-impl Drop for ConnectedTimer {
+impl Drop for Timer {
     fn drop(&mut self) {
         unsafe {
             close(self.fd);
@@ -60,38 +81,12 @@ impl Drop for ConnectedTimer {
     }
 }
 
-pub(crate) enum Timer {
-    Connected(ConnectedTimer),
-    Disconnected,
+pub(crate) struct Ticks {
+    ticks_count: u64,
 }
 
-impl Timer {
-    pub(crate) fn new(interval_in_sec: i64) -> Self {
-        ConnectedTimer::try_new(interval_in_sec)
-            .map(Self::Connected)
-            .inspect_err(|err| log::error!("{:?}", err))
-            .unwrap_or(Self::Disconnected)
-    }
-
-    pub(crate) fn read(&mut self) {
-        if let Self::Connected(timer) = self {
-            timer.read();
-        }
-    }
-
+impl Ticks {
     pub(crate) fn is_multiple_of(&self, n: u64) -> bool {
-        if let Self::Connected(timer) = self {
-            timer.is_multiple_of(n)
-        } else {
-            false
-        }
-    }
-
-    pub(crate) fn fd(&self) -> Option<i32> {
-        if let Self::Connected(timer) = self {
-            Some(timer.fd)
-        } else {
-            None
-        }
+        self.ticks_count.wrapping_sub(1) % n == 0
     }
 }
