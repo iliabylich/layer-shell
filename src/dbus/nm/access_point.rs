@@ -1,8 +1,8 @@
-use crate::dbus::gen::nm_access_point::OrgFreedesktopNetworkManagerAccessPoint;
+use crate::dbus::generated::nm_access_point::OrgFreedesktopNetworkManagerAccessPoint;
 use anyhow::{Context as _, Result};
 use dbus::{
-    blocking::{Connection, Proxy},
     Path,
+    blocking::{Connection, Proxy},
 };
 use std::time::Duration;
 

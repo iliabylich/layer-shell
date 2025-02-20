@@ -1,5 +1,5 @@
 use crate::dbus::{
-    gen::{
+    generated::{
         nm_device::OrgFreedesktopNetworkManagerDevice,
         nm_device_statistics::OrgFreedesktopNetworkManagerDeviceStatistics,
         nm_device_wireless::OrgFreedesktopNetworkManagerDeviceWireless,
@@ -8,8 +8,8 @@ use crate::dbus::{
 };
 use anyhow::{Context as _, Result};
 use dbus::{
-    blocking::{Connection, Proxy},
     Path,
+    blocking::{Connection, Proxy},
 };
 use std::time::Duration;
 

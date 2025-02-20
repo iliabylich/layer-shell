@@ -1,8 +1,8 @@
 use crate::dbus::{
-    gen::nm::OrgFreedesktopNetworkManager,
+    generated::nm::OrgFreedesktopNetworkManager,
     nm::{ActiveConnection, Device},
 };
-use anyhow::{ensure, Context as _, Result};
+use anyhow::{Context as _, Result, ensure};
 use dbus::blocking::{Connection, Proxy};
 use std::time::Duration;
 

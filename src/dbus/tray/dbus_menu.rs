@@ -1,8 +1,8 @@
 use crate::{
-    dbus::{gen::dbus_menu::ComCanonicalDbusmenu, tray::UUID},
+    dbus::{generated::dbus_menu::ComCanonicalDbusmenu, tray::UUID},
     event::TrayItem,
 };
-use anyhow::{bail, Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use dbus::{
     arg::{RefArg, Variant},
     blocking::{Connection, Proxy},

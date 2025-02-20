@@ -1,4 +1,4 @@
-use crate::{dbus::gen::status_notifier_item::OrgKdeStatusNotifierItem, event::TrayIcon};
+use crate::{dbus::generated::status_notifier_item::OrgKdeStatusNotifierItem, event::TrayIcon};
 use anyhow::{Context as _, Result};
 use dbus::blocking::{Connection, Proxy};
 use std::time::Duration;

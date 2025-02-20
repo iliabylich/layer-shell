@@ -1,10 +1,10 @@
 use crate::dbus::{
-    gen::nm_active_connection::OrgFreedesktopNetworkManagerConnectionActive as _, nm::Device,
+    generated::nm_active_connection::OrgFreedesktopNetworkManagerConnectionActive as _, nm::Device,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
-    blocking::{Connection, Proxy},
     Path,
+    blocking::{Connection, Proxy},
 };
 use std::time::Duration;
 

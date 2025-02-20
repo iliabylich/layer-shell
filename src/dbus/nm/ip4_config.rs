@@ -1,9 +1,9 @@
-use crate::dbus::gen::nm_ip4_config::OrgFreedesktopNetworkManagerIP4Config;
+use crate::dbus::generated::nm_ip4_config::OrgFreedesktopNetworkManagerIP4Config;
 use anyhow::{Context as _, Result};
 use dbus::{
+    Path,
     arg::{RefArg, Variant},
     blocking::{Connection, Proxy},
-    Path,
 };
 use std::{collections::HashMap, time::Duration};
 
