@@ -11,7 +11,6 @@ Time::Time(void *ctx) : Gtk::Label(), utils::Subscriber(ctx) {
 
 void Time::on_io_event(layer_shell_io::Event::Time_Body data) {
   set_label(data.time);
-  set_tooltip_text(data.date);
 }
 
 } // namespace widgets

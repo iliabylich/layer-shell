@@ -194,7 +194,6 @@ struct Event {
   };
 
   struct Time_Body {
-    CString date;
     CString time;
   };
 

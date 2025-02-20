@@ -61,7 +61,7 @@ Network::Network(void *ctx) : Gtk::Button(), utils::Subscriber(ctx) {
   network_wrapper.append(label);
   network_wrapper.append(image);
 
-  Gtk::Separator sep(Gtk::Orientation::HORIZONTAL);
+  Gtk::Separator sep(Gtk::Orientation::VERTICAL);
   network_wrapper.append(sep);
 
   network_wrapper.append(download_speed_label);

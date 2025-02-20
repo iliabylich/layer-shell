@@ -14,8 +14,7 @@ impl Time {
     pub(crate) fn tick(&mut self) {
         let now = chrono::Local::now();
         let event = Event::Time {
-            time: now.format("%H:%M:%S").to_string().into(),
-            date: now.format("%Y %B %e").to_string().into(),
+            time: now.format("%H:%M:%S | %Y %b %e").to_string().into(),
         };
         self.tx.send(event)
     }

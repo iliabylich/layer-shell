@@ -75,12 +75,12 @@ popover {
     .top-bar-window .widget.workspaces button.active {
       background-color: var(--theme-accent-color); }
   .top-bar-window .widget.clock {
-    min-width: 60px; }
+    min-width: 150px; }
   .top-bar-window .widget.memory label {
     min-width: 100px; }
   .top-bar-window .widget.network .network-speed-label {
     min-width: 50px; }
-  .top-bar-window .widget.network separator.horizontal {
+  .top-bar-window .widget.network separator.vertical {
     border-left: 1px solid var(--accent-color);
     margin-left: 10px;
     margin-right: 10px; }

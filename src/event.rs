@@ -13,7 +13,6 @@ pub enum Event {
         usage_per_core: CArray<usize>,
     },
     Time {
-        date: CString,
         time: CString,
     },
     Workspaces {
