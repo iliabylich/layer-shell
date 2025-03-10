@@ -1,8 +1,8 @@
 use crate::{
+    Event, VerboseSender,
     epoll::{FdId, Reader},
     hyprctl,
     modules::maybe_connected::MaybeConnected,
-    Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
 use raw_event::RawEvent;

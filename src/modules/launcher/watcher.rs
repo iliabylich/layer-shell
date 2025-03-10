@@ -1,12 +1,12 @@
 use crate::{
+    Event, VerboseSender,
     epoll::{FdId, Reader},
     modules::{
         launcher::{dir::WatcherDir, state::State},
         maybe_connected::MaybeConnected,
     },
-    Event, VerboseSender,
 };
-use anyhow::{bail, Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use inotify::{EventMask, Inotify, WatchMask};
 use std::{cell::RefCell, collections::HashSet, io::ErrorKind, os::fd::AsRawFd, rc::Rc};
 

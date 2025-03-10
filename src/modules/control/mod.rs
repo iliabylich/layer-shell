@@ -1,15 +1,15 @@
 use crate::{
+    Event,
     channel::VerboseSender,
-    dbus::{register_org_me_layer_shell_control, OrgMeLayerShellControl},
+    dbus::{OrgMeLayerShellControl, register_org_me_layer_shell_control},
     epoll::{FdId, Reader},
     modules::maybe_connected::MaybeConnected,
-    Event,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
+    MessageType,
     blocking::Connection,
     channel::{BusType, Channel},
-    MessageType,
 };
 use dbus_crossroads::Crossroads;
 use std::time::Duration;

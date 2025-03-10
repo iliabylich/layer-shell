@@ -1,4 +1,4 @@
-use crate::{channel::VerboseSender, hyprctl, Event};
+use crate::{Event, channel::VerboseSender, hyprctl};
 use anyhow::{Context as _, Result};
 use std::io::Read;
 

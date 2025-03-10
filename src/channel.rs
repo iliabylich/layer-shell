@@ -1,8 +1,9 @@
 use crate::{
+    Command, Event,
     epoll::{FdId, Reader},
-    fatal, Command, Event,
+    fatal,
 };
-use libc::{close, read, socketpair, write, PF_LOCAL, SOCK_STREAM};
+use libc::{PF_LOCAL, SOCK_STREAM, close, read, socketpair, write};
 use std::{
     os::fd::AsRawFd,
     sync::mpsc::{Receiver, Sender, TryRecvError},

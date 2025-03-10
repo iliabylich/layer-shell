@@ -3,7 +3,7 @@ use crate::{
     modules::maybe_connected::MaybeConnected,
 };
 use anyhow::Result;
-use libc::{close, itimerspec, timerfd_create, timerfd_settime, timespec, CLOCK_MONOTONIC};
+use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
 
 pub(crate) struct Timer {
     fd: i32,

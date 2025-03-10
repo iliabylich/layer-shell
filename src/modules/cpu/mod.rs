@@ -1,6 +1,6 @@
 mod cpu_core_info;
 
-use crate::{channel::VerboseSender, Event};
+use crate::{Event, channel::VerboseSender};
 use anyhow::Result;
 use cpu_core_info::CpuCoreInfo;
 

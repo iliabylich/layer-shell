@@ -1,4 +1,4 @@
-use crate::{hyprctl, modules::hyprland::raw_event::RawEvent, Event};
+use crate::{Event, hyprctl, modules::hyprland::raw_event::RawEvent};
 use anyhow::{Context as _, Result};
 use nanoserde::DeJson;
 use std::collections::HashSet;

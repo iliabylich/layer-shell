@@ -1,4 +1,4 @@
-use crate::{event::TrayApp, modules::tray::item::Item, Event};
+use crate::{Event, event::TrayApp, modules::tray::item::Item};
 use std::collections::HashMap;
 
 pub(crate) struct State {

@@ -1,17 +1,17 @@
 use crate::{
+    Event, VerboseSender,
     dbus::{
-        nm::{Device, NetworkManager},
         OrgFreedesktopNetworkManagerStateChanged,
+        nm::{Device, NetworkManager},
     },
     epoll::{FdId, Reader},
     hyprctl,
     modules::maybe_connected::MaybeConnected,
-    Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
     arg::RefArg,
-    blocking::{stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged, Connection},
+    blocking::{Connection, stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged},
     channel::{BusType, Channel},
     message::SignalArgs,
 };

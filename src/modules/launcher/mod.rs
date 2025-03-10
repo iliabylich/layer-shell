@@ -1,4 +1,4 @@
-use crate::{modules::maybe_connected::MaybeConnected, Event, VerboseSender};
+use crate::{Event, VerboseSender, modules::maybe_connected::MaybeConnected};
 use desktop_file::DesktopFile;
 use dir::{GlobalDir, UserDir, WatcherDir as _};
 use state::State;

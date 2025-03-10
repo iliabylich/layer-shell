@@ -1,4 +1,4 @@
-use crate::{dbus::nm::Device, event::WifiStatus, ffi::COption, Event};
+use crate::{Event, dbus::nm::Device, event::WifiStatus, ffi::COption};
 use anyhow::Result;
 use dbus::blocking::Connection;
 

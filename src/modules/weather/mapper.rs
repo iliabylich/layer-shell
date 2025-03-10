@@ -1,7 +1,7 @@
 use crate::{
+    Event,
     event::{WeatherOnDay, WeatherOnHour},
     modules::weather::WeatherCode,
-    Event,
 };
 use anyhow::{Context as _, Result};
 use chrono::{NaiveDate, NaiveDateTime};
@@ -75,9 +75,10 @@ fn map_hourly(
         let code = WeatherCode::from(code);
         let time = NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M")
             .context("invalid date format")?;
+
         if time > now {
             hourly.push(WeatherOnHour {
-                hour: time.format("%d:%H").to_string().into(),
+                hour: time.format("%H:%M").to_string().into(),
                 temperature: temp,
                 code,
             });

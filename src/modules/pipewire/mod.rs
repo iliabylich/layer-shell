@@ -1,8 +1,8 @@
 use crate::{
+    Event, VerboseSender,
     dbus::{OrgLocalPipewireDBus, OrgLocalPipewireDBusDataChanged},
     epoll::{FdId, Reader},
     modules::maybe_connected::MaybeConnected,
-    Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
 use dbus::{

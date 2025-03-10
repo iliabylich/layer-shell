@@ -1,11 +1,12 @@
 use crate::{
+    Event, VerboseSender,
     dbus::{
-        register_org_kde_status_notifier_watcher,
-        tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem, UUID},
         ComCanonicalDbusmenuItemsPropertiesUpdated, ComCanonicalDbusmenuLayoutUpdated,
         OrgKdeStatusNotifierItemNewAttentionIcon, OrgKdeStatusNotifierItemNewIcon,
         OrgKdeStatusNotifierItemNewOverlayIcon, OrgKdeStatusNotifierItemNewStatus,
         OrgKdeStatusNotifierItemNewTitle, OrgKdeStatusNotifierItemNewToolTip,
+        register_org_kde_status_notifier_watcher,
+        tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem, UUID},
     },
     epoll::{FdId, Reader},
     event::TrayApp,
@@ -13,15 +14,14 @@ use crate::{
         maybe_connected::MaybeConnected,
         tray::{item::Item, watcher::Watcher},
     },
-    Event, VerboseSender,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
+    Message, Path,
     arg::ReadAll,
     blocking::Connection,
     channel::{BusType, Channel},
     message::SignalArgs,
-    Message, Path,
 };
 use dbus_crossroads::Crossroads;
 use state::State;

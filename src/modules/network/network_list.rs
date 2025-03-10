@@ -1,7 +1,7 @@
 use crate::{
+    Event,
     dbus::nm::{Device, NetworkManager},
     event::Network as NetworkData,
-    Event,
 };
 use anyhow::Result;
 use dbus::blocking::Connection;

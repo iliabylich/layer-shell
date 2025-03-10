@@ -1,7 +1,7 @@
 use crate::{
+    Event,
     event::App,
     modules::launcher::{desktop_file::DesktopFile, watcher::WatcherUpdate},
-    Event,
 };
 use anyhow::Result;
 use std::collections::HashMap;

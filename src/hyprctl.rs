@@ -3,7 +3,7 @@ use std::{
     os::unix::net::UnixStream,
 };
 
-use anyhow::{bail, Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 
 pub(crate) fn write(cmd: impl AsRef<str>) -> Result<String> {
     let path = format!(

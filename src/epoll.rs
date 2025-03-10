@@ -1,7 +1,7 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use libc::{
-    c_int, close, epoll_create, epoll_ctl, epoll_event, epoll_wait, EPOLLIN, EPOLL_CTL_ADD,
-    EPOLL_CTL_DEL,
+    EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLLIN, c_int, close, epoll_create, epoll_ctl, epoll_event,
+    epoll_wait,
 };
 
 pub(crate) trait Reader {
