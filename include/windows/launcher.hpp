@@ -1,6 +1,7 @@
 #pragma once
 
 #include "include/utils/subscriber.hpp"
+#include "include/widgets/launcher/row.hpp"
 #include "include/windows/base.hpp"
 
 namespace windows {
@@ -15,17 +16,7 @@ public:
   static Launcher *get();
 
 private:
-  class Row : public Gtk::Box {
-  public:
-    Row();
-    void update(layer_shell_io::App app);
-
-  private:
-    Gtk::Image image;
-    Gtk::Label label;
-  };
-
-  std::vector<Row> rows;
+  std::vector<widgets::launcher::Row> rows;
   Gtk::SearchEntry input;
 };
 

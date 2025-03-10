@@ -3,42 +3,8 @@
 
 namespace windows {
 
-Launcher::Row::Row() : Gtk::Box() {
-  set_orientation(Gtk::Orientation::HORIZONTAL);
-  set_spacing(0);
-  set_css_classes({"row"});
-
-  image.set_icon_size(Gtk::IconSize::LARGE);
-
-  label.set_label("...");
-  label.set_xalign(0.0);
-  label.set_valign(Gtk::Align::CENTER);
-  label.set_ellipsize(Pango::EllipsizeMode::END);
-
-  append(image);
-  append(label);
-}
-
-void Launcher::Row::update(layer_shell_io::App app) {
-  show();
-  if (app.selected) {
-    add_css_class("active");
-  } else {
-    remove_css_class("active");
-  }
-
-  if (app.icon.tag == layer_shell_io::AppIcon::Tag::IconName) {
-    image.set_from_icon_name(app.icon.icon_name._0);
-  } else {
-    image.set_from_resource(app.icon.icon_path._0);
-  }
-  label.set_label(app.name);
-}
-
-// ----
-
 Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
-    : utils::Subscriber(ctx) {
+    : utils::Subscriber(ctx), rows(5) {
   set_name("LauncherWindow");
   property_width_request().set_value(700);
   set_css_classes({"launcher-window"});
@@ -60,10 +26,8 @@ Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
   Gtk::Box content(Gtk::Orientation::VERTICAL, 0);
   scroll.set_child(content);
 
-  for (size_t i = 0; i < 5; i++) {
-    Row row;
+  for (auto &row : rows) {
     content.append(row);
-    rows.push_back(std::move(row));
   }
 
   auto win = gobj();

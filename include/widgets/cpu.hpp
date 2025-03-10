@@ -1,6 +1,7 @@
 #pragma once
 
 #include "include/utils/subscriber.hpp"
+#include "include/widgets/cpu/label.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
@@ -11,7 +12,7 @@ public:
   void on_io_event(layer_shell_io::Event::CpuUsage_Body data) override;
 
 private:
-  std::vector<Gtk::Label> labels;
+  std::vector<cpu::Label> labels;
 };
 
 } // namespace widgets

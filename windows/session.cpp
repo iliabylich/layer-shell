@@ -3,15 +3,9 @@
 
 namespace windows {
 
-Gtk::Button make_button(const char *text) {
-  Gtk::Button button;
-  Gtk::Label label(text);
-  button.set_child(label);
-  return button;
-}
-
 Session::Session(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
-    : utils::Subscriber(ctx) {
+    : utils::Subscriber(ctx), lock("Lock"), reboot("Reboot"),
+      shutdown("Shutdown"), logout("Logout") {
   set_name("SessionWindow");
   set_css_classes({"session-window"});
   set_application(app);
@@ -22,16 +16,9 @@ Session::Session(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
   layout.set_css_classes({"wrapper"});
   set_child(layout);
 
-  lock = make_button("Lock");
   layout.append(lock);
-
-  reboot = make_button("Reboot");
   layout.append(reboot);
-
-  shutdown = make_button("Shutdown");
   layout.append(shutdown);
-
-  logout = make_button("Logout");
   layout.append(logout);
 
   auto window = gobj();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "include/utils/subscriber.hpp"
+#include "include/widgets/network/popover.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
@@ -22,19 +23,7 @@ private:
   Gtk::Label upload_speed_label;
   Gtk::Image upload_speed_icon;
 
-  class Popover : public Gtk::PopoverMenu {
-  public:
-    Popover();
-    void
-    replace_networks(layer_shell_io::CArray<layer_shell_io::Network> networks);
-
-  private:
-    Glib::RefPtr<Gio::Menu> model;
-    void add_settings();
-    void add_ping();
-  };
-
-  Popover popover;
+  network::Popover popover;
 };
 
 } // namespace widgets
