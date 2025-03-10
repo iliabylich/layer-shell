@@ -21,17 +21,17 @@ public:
   static TopBar *get();
 
 private:
-  widgets::Workspaces *workspaces;
-  widgets::Tray *tray;
-  widgets::Weather *weather;
-  widgets::HTop *htop;
-  widgets::Language *language;
-  widgets::Sound *sound;
-  widgets::CPU *cpu;
-  widgets::Memory *memory;
-  widgets::Network *network;
-  widgets::Time *time;
-  widgets::Session *session;
+  widgets::Workspaces workspaces;
+  widgets::Tray tray;
+  widgets::Weather weather;
+  widgets::HTop htop;
+  widgets::Language language;
+  widgets::Sound sound;
+  widgets::CPU cpu;
+  widgets::Memory memory;
+  widgets::Network network;
+  widgets::Time time;
+  widgets::Session session;
 };
 
 } // namespace windows

@@ -3,7 +3,9 @@
 
 namespace windows {
 
-TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx) {
+TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+    : workspaces(ctx), tray(ctx), weather(ctx), htop(ctx), language(ctx),
+      sound(ctx), cpu(ctx), memory(ctx), network(ctx), time(ctx), session(ctx) {
   set_name("TopBarWindow");
   set_css_classes({"top-bar-window"});
   set_application(app);
@@ -13,32 +15,20 @@ TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx) {
   layout.add_css_class("wrapper");
   set_child(layout);
 
-  Gtk::Box left = Gtk::Box(Gtk::Orientation::HORIZONTAL, 8);
-  Gtk::Box right = Gtk::Box(Gtk::Orientation::HORIZONTAL, 4);
+  Gtk::Box left(Gtk::Orientation::HORIZONTAL, 8);
+  Gtk::Box right(Gtk::Orientation::HORIZONTAL, 4);
 
-  workspaces = new widgets::Workspaces(ctx);
-  tray = new widgets::Tray(ctx);
-  weather = new widgets::Weather(ctx);
-  htop = new widgets::HTop(ctx);
-  language = new widgets::Language(ctx);
-  sound = new widgets::Sound(ctx);
-  cpu = new widgets::CPU(ctx);
-  memory = new widgets::Memory(ctx);
-  network = new widgets::Network(ctx);
-  time = new widgets::Time(ctx);
-  session = new widgets::Session(ctx);
-
-  left.append(*workspaces);
-  right.append(*tray);
-  right.append(*weather);
-  right.append(*htop);
-  right.append(*language);
-  right.append(*sound);
-  right.append(*cpu);
-  right.append(*memory);
-  right.append(*network);
-  right.append(*time);
-  right.append(*session);
+  left.append(workspaces);
+  right.append(tray);
+  right.append(weather);
+  right.append(htop);
+  right.append(language);
+  right.append(sound);
+  right.append(cpu);
+  right.append(memory);
+  right.append(network);
+  right.append(time);
+  right.append(session);
 
   layout.set_start_widget(left);
   layout.set_end_widget(right);
