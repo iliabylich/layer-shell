@@ -94,7 +94,7 @@ void Tray::add(layer_shell_io::TrayApp app) {
 
   switch (app.icon.tag) {
   case layer_shell_io::TrayIcon::Tag::Path: {
-    icon.set_from_resource(app.icon.path.path);
+    icon.set(app.icon.path.path);
     break;
   }
   case layer_shell_io::TrayIcon::Tag::Name: {

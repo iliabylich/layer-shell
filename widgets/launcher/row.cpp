@@ -30,7 +30,7 @@ void Row::update(layer_shell_io::App app) {
   if (app.icon.tag == layer_shell_io::AppIcon::Tag::IconName) {
     image.set_from_icon_name(app.icon.icon_name._0);
   } else {
-    image.set_from_resource(app.icon.icon_path._0);
+    image.set(app.icon.icon_path._0);
   }
   label.set_label(app.name);
 }

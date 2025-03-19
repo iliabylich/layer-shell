@@ -82,7 +82,10 @@ impl Tray {
     }
 
     fn process_message(&mut self, message: Message) -> Result<()> {
-        let service_id = message.sender().map(|b| b.to_string());
+        let sender = message
+            .sender()
+            .map(|b| b.to_string())
+            .context("message has no sender")?;
 
         if let Some(e) = DBusNameOwnerChanged::from_message(&message) {
             if e.name == e.old_owner && e.new_owner.is_empty() {
@@ -99,14 +102,10 @@ impl Tray {
             || ComCanonicalDbusmenuItemsPropertiesUpdated::from_message(&message).is_some()
             || ComCanonicalDbusmenuLayoutUpdated::from_message(&message).is_some()
         {
-            let service = message
-                .sender()
-                .context("failed to get sender")?
-                .to_string();
             let updated_item = self
                 .state
-                .find(&service)
-                .with_context(|| format!("failed to find service {service}"))?;
+                .find(&sender)
+                .with_context(|| format!("failed to find service {sender}"))?;
             self.reload_tray_app(updated_item)?;
         } else if self.cr.handle_message(message, &self.conn).is_ok() {
             if let Some(watcher) = self.cr.data_mut::<Watcher>(
@@ -114,15 +113,18 @@ impl Tray {
                     .ok()
                     .context("invalid path")?,
             ) {
-                if let Some(service) = watcher.pop_new_item() {
-                    let path = String::from("/StatusNotifierItem");
-                    let menu_path = StatusNotifierItem::new(&service, &path).menu(&self.conn)?;
+                if let Some(maybe_path) = watcher.pop_new_item() {
+                    let path = if maybe_path.starts_with('/') {
+                        maybe_path
+                    } else {
+                        String::from("/StatusNotifierItem")
+                    };
+                    let menu_path = StatusNotifierItem::new(&sender, &path).menu(&self.conn)?;
 
                     let item = Item {
-                        service,
+                        id: sender,
                         path,
                         menu_path,
-                        service_id: service_id.unwrap_or_else(|| "unknown".to_string()),
                     };
 
                     self.reload_tray_app(item)?;
@@ -134,10 +136,10 @@ impl Tray {
     }
 
     fn reload_tray_app(&mut self, item: Item) -> Result<()> {
-        let dbus_menu = DBusMenu::new(&item.service, &item.menu_path);
+        let dbus_menu = DBusMenu::new(&item.id, &item.menu_path);
 
         let root_item = dbus_menu.get_layout(&self.conn)?;
-        let status_notifier_item = StatusNotifierItem::new(&item.service, &item.path);
+        let status_notifier_item = StatusNotifierItem::new(&item.id, &item.path);
 
         let app = TrayApp {
             root_item,

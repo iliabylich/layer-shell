@@ -18,8 +18,8 @@ impl State {
         self.as_event()
     }
 
-    pub(crate) fn app_removed(&mut self, service: String) -> Event {
-        self.map.retain(|k, _| k.service != service);
+    pub(crate) fn app_removed(&mut self, id: String) -> Event {
+        self.map.retain(|k, _| k.id != id);
 
         self.as_event()
     }
@@ -30,10 +30,7 @@ impl State {
         }
     }
 
-    pub(crate) fn find(&self, service: &str) -> Option<Item> {
-        self.map
-            .keys()
-            .find(|k| k.service == service || k.service_id == service)
-            .cloned()
+    pub(crate) fn find(&self, id: &str) -> Option<Item> {
+        self.map.keys().find(|k| k.id == id).cloned()
     }
 }

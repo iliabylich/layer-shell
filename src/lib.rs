@@ -173,7 +173,7 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
                     epoll.read_from_or_disable(&mut network);
                 }
                 FdId::TrayDBus => {
-                    epoll.read_from_or_disable(&mut tray);
+                    epoll.read_from_or_ignore(&mut tray);
                 }
                 FdId::Command => {
                     rx.consume_signal();

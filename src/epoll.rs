@@ -113,6 +113,18 @@ impl Epoll {
             }
         }
     }
+
+    pub(crate) fn read_from_or_ignore<T>(&mut self, reader: &mut T)
+    where
+        T: Reader,
+    {
+        match reader.read() {
+            Ok(_) => {}
+            Err(err) => {
+                log::error!("error in module {}: {err}", reader.name());
+            }
+        }
+    }
 }
 impl Drop for Epoll {
     fn drop(&mut self) {
