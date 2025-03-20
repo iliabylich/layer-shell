@@ -27,4 +27,9 @@ impl Session {
             log::error!("failed to logout: {:?}", err);
         }
     }
+    pub(crate) fn change_theme(&mut self) {
+        if let Err(err) = hyprctl::dispatch("exec ~/.config/hypr/wallpaper-change.sh") {
+            log::error!("failed to change theme: {:?}", err);
+        }
+    }
 }

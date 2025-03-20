@@ -21,6 +21,7 @@ pub enum Command {
 
     SpawnNetworkEditor,
     SpawnSystemMonitor,
+    ChangeTheme,
 }
 
 #[unsafe(no_mangle)]
@@ -133,4 +134,11 @@ pub extern "C" fn layer_shell_io_spawn_system_monitor(ctx: *mut c_void) {
         .commands
         .tx
         .signal_and_send(Command::SpawnSystemMonitor);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn layer_shell_io_change_theme(ctx: *mut c_void) {
+    Ctx::from_raw(ctx)
+        .commands
+        .tx
+        .signal_and_send(Command::ChangeTheme);
 }

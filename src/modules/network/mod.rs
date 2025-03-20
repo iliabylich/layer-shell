@@ -57,7 +57,8 @@ impl Network {
     }
 
     pub(crate) fn spawn_network_editor(&self) -> Result<()> {
-        hyprctl::dispatch("exec kitty --name nmtui nmtui").context("failed to spawn network editor")
+        hyprctl::dispatch("exec wezterm start --always-new-process --class org.me.nmtui -e nmtui")
+            .context("failed to spawn network editor")
     }
 
     fn full_reset(&mut self) {

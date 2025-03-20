@@ -191,6 +191,7 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
                             Command::Reboot => session.reboot(),
                             Command::Shutdown => session.shutdown(),
                             Command::Logout => session.logout(),
+                            Command::ChangeTheme => session.change_theme(),
                             Command::TriggerTray { uuid } => tray.with(|tray| tray.trigger(uuid)),
                             Command::SpawnNetworkEditor => {
                                 network.with(|network| network.spawn_network_editor())

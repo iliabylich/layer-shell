@@ -1,5 +1,6 @@
 #pragma once
 
+#include "include/widgets/change_theme.hpp"
 #include "include/widgets/cpu.hpp"
 #include "include/widgets/htop.hpp"
 #include "include/widgets/language.hpp"
@@ -22,6 +23,8 @@ public:
 
 private:
   widgets::Workspaces workspaces;
+  widgets::ChangeTheme change_theme;
+
   widgets::Tray tray;
   widgets::Weather weather;
   widgets::HTop htop;

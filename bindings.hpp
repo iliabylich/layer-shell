@@ -302,6 +302,8 @@ void layer_shell_io_spawn_network_editor(void *ctx);
 
 void layer_shell_io_spawn_system_monitor(void *ctx);
 
+void layer_shell_io_change_theme(void *ctx);
+
 }  // extern "C"
 
 }  // namespace layer_shell_io

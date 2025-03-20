@@ -52,6 +52,10 @@ static const char UPLOAD_SPEED[] = {
 #embed "../icons/upload.png" if_empty('-')
     , 0};
 
+static const char CHANGE_THEME[] = {
+#embed "../icons/change_theme.png" if_empty('-')
+    , 0};
+
 namespace utils {
 
 using IconPtrT = Glib::RefPtr<const Gio::Icon>;
@@ -68,6 +72,7 @@ void Icons::init() {
   wifi = init_icon(WIFI, sizeof(WIFI));
   download_speed = init_icon(DOWNLOAD_SPEED, sizeof(DOWNLOAD_SPEED));
   upload_speed = init_icon(UPLOAD_SPEED, sizeof(UPLOAD_SPEED));
+  change_theme = init_icon(CHANGE_THEME, sizeof(CHANGE_THEME));
 }
 
 IconPtrT Icons::foggy;
@@ -102,5 +107,8 @@ IconPtrT &Icons::download_speed_icon() { return download_speed; }
 
 IconPtrT Icons::upload_speed;
 IconPtrT &Icons::upload_speed_icon() { return upload_speed; }
+
+IconPtrT Icons::change_theme;
+IconPtrT &Icons::change_theme_icon() { return change_theme; }
 
 } // namespace utils

@@ -22,6 +22,7 @@ sources = files(
   'utils/strings.cpp',
   'utils/subscriber.cpp',
   'utils/weather-helper.cpp',
+  'widgets/change_theme.cpp',
   'widgets/cpu.cpp',
   'widgets/cpu/label.cpp',
   'widgets/htop.cpp',

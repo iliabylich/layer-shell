@@ -1,11 +1,13 @@
 #include "include/windows/top-bar.hpp"
+#include "include/widgets/change_theme.hpp"
 #include <gtk4-layer-shell.h>
 
 namespace windows {
 
 TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
-    : workspaces(ctx), tray(ctx), weather(ctx), htop(ctx), language(ctx),
-      sound(ctx), cpu(ctx), memory(ctx), network(ctx), time(ctx), session(ctx) {
+    : workspaces(ctx), change_theme(ctx), tray(ctx), weather(ctx), htop(ctx),
+      language(ctx), sound(ctx), cpu(ctx), memory(ctx), network(ctx), time(ctx),
+      session(ctx) {
   set_name("TopBarWindow");
   set_css_classes({"top-bar-window"});
   set_application(app);
@@ -19,6 +21,8 @@ TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
   Gtk::Box right(Gtk::Orientation::HORIZONTAL, 4);
 
   left.append(workspaces);
+  left.append(change_theme);
+
   right.append(tray);
   right.append(weather);
   right.append(htop);
