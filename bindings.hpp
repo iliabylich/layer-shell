@@ -182,6 +182,7 @@ struct Event {
     Tray,
     ToggleLauncher,
     ToggleSessionScreen,
+    ReloadStyles,
   };
 
   struct Memory_Body {

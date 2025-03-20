@@ -32,6 +32,7 @@ private:
   virtual void on_io_event(layer_shell_io::Event::Tray_Body);
   virtual void on_toggle_launcher_event();
   virtual void on_toggle_session_screen_event();
+  virtual void on_reload_styles();
 };
 
 } // namespace utils

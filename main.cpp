@@ -56,7 +56,10 @@ int main(void) {
     layer_shell_io::layer_shell_io_spawn_thread(ctx);
   });
 
-  app->signal_startup().connect([]() { utils::Css::load(); });
+  app->signal_startup().connect([ctx]() {
+    auto css = new utils::Css(ctx);
+    css->load();
+  });
 
   return app->run();
 }

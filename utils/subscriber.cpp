@@ -60,6 +60,9 @@ void Subscriber::on_io_event(const layer_shell_io::Event *event) {
   case layer_shell_io::Event::Tag::ToggleSessionScreen:
     on_toggle_session_screen_event();
     break;
+  case layer_shell_io::Event::Tag::ReloadStyles:
+    on_reload_styles();
+    break;
   }
 }
 
@@ -79,5 +82,6 @@ void Subscriber::on_io_event(layer_shell_io::Event::NetworkList_Body) {}
 void Subscriber::on_io_event(layer_shell_io::Event::Tray_Body) {}
 void Subscriber::on_toggle_launcher_event() {}
 void Subscriber::on_toggle_session_screen_event() {}
+void Subscriber::on_reload_styles() {}
 
 } // namespace utils

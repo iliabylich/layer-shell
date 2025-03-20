@@ -4,6 +4,7 @@
 <interface name="org.me.LayerShellControl">
     <method name="ToggleLauncher" />
     <method name="ToggleSessionScreen" />
+    <method name="ReloadStyles" />
     <method name="Exit" />
 </interface>
 </node>

@@ -1,16 +1,21 @@
 #pragma once
 
-#include <string>
+#include "include/utils/subscriber.hpp"
+#include <gtkmm.h>
 
 namespace utils {
 
-class Css {
+class Css : public Subscriber {
 public:
-  static void load();
+  Css(void *ctx);
+  void load();
+  void on_reload_styles() override;
 
 protected:
-  static std::string main_css();
-  static std::string theme_css();
+  std::string main_css();
+  std::string theme_css();
+
+  Glib::RefPtr<Gtk::CssProvider> provider;
 };
 
 } // namespace utils

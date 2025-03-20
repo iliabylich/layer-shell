@@ -55,6 +55,7 @@ pub enum Event {
     },
     ToggleLauncher,
     ToggleSessionScreen,
+    ReloadStyles,
 }
 
 unsafe impl Sync for Event {}

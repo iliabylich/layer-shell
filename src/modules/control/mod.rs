@@ -85,6 +85,11 @@ impl OrgMeLayerShellControl for DBusService {
         Ok(())
     }
 
+    fn reload_styles(&mut self) -> std::result::Result<(), dbus::MethodErr> {
+        self.tx.send(Event::ReloadStyles);
+        Ok(())
+    }
+
     fn exit(&mut self) -> std::result::Result<(), dbus::MethodErr> {
         std::process::exit(0);
     }

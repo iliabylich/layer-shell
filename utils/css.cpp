@@ -5,10 +5,14 @@
 
 namespace utils {
 
+Css::Css(void *ctx) : Subscriber(ctx) {
+  provider = std::shared_ptr<Gtk::CssProvider>(nullptr);
+}
+
 void Css::load() {
   auto full_css = theme_css() + "\n" + main_css();
 
-  auto provider = Gtk::CssProvider::create();
+  provider = Gtk::CssProvider::create();
   provider->signal_parsing_error().connect(
       [](const Glib::RefPtr<const Gtk::CssSection> &section,
          const Glib::Error &error) {
@@ -23,6 +27,13 @@ void Css::load() {
   std::cout << "Finished loading CSS...\n";
 }
 
+void Css::on_reload_styles() {
+  std::cout << "Reloading styles...\n";
+  auto display = Gdk::Display::get_default();
+  Gtk::StyleContext::remove_provider_for_display(display, provider);
+  load();
+}
+
 std::string Css::main_css() {
   const char main_css_ptr[] = {
 #embed "../main.css" if_empty('-')
@@ -31,7 +42,7 @@ std::string Css::main_css() {
 }
 
 std::string Css::theme_css() {
-  auto path = std::format("{}/.theme.css", getenv("HOME"));
+  auto path = std::format("{}/.config/layer-shell/theme.css", getenv("HOME"));
   std::ifstream f(path);
   if (!f) {
     return "";
