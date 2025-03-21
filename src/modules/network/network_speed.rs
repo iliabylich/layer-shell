@@ -3,32 +3,24 @@ use crate::Event;
 #[derive(Debug)]
 enum OneWaySpeed {
     Uninitialized,
-    Initialized { prev: u64 },
-    InitializedWithError { prev: u64, err: u64 },
+    Initialized(u64),
 }
+
+const THREASHOLD: u64 = 5_000;
 
 impl OneWaySpeed {
     fn update(&mut self, current: u64) -> u64 {
         match self {
             Self::Uninitialized => {
-                *self = Self::Initialized { prev: current };
+                *self = Self::Initialized(current);
                 0
             }
-            Self::Initialized { prev } => {
-                let d = current - *prev;
-                *self = Self::InitializedWithError {
-                    prev: current,
-                    err: d,
-                };
-                d
-            }
-            Self::InitializedWithError { prev, err } => {
+            Self::Initialized(prev) => {
                 let mut d = current - *prev;
-                if d < *err && d != 0 {
-                    *err = d;
+                *self = Self::Initialized(current);
+                if d < THREASHOLD {
+                    d = 0;
                 }
-                d -= *err;
-                *prev = current;
                 d
             }
         }
