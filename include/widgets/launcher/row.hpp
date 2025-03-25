@@ -9,7 +9,7 @@ namespace launcher {
 class Row : public Gtk::Box {
 public:
   Row();
-  void update(layer_shell_io::App app);
+  void update(io::App app);
 
 private:
   Gtk::Image image;

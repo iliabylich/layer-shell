@@ -10,7 +10,7 @@ Weather::Weather(void *ctx) : Gtk::Button("--"), utils::Subscriber(ctx) {
   signal_clicked().connect([]() { windows::Weather::get()->toggle(); });
 }
 
-void Weather::on_io_event(layer_shell_io::Event::CurrentWeather_Body data) {
+void Weather::on_io_event(io::Event::CurrentWeather_Body data) {
   char buffer[100];
   sprintf(buffer, "%.1f℃ %s", data.temperature,
           utils::WeatherHelper::weather_code_to_description(data.code));

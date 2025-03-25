@@ -12,8 +12,7 @@ ChangeTheme::ChangeTheme(void *ctx) : Gtk::Button() {
   image.set(utils::Icons::change_theme_icon());
   set_child(image);
 
-  signal_clicked().connect(
-      [ctx]() { layer_shell_io::layer_shell_io_change_theme(ctx); });
+  signal_clicked().connect([ctx]() { io::io_change_theme(ctx); });
 }
 
 } // namespace widgets

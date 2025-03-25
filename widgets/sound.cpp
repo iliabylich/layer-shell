@@ -12,7 +12,7 @@ Sound::Sound(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   append(image);
 }
 
-void Sound::on_io_event(layer_shell_io::Event::Volume_Body data) {
+void Sound::on_io_event(io::Event::Volume_Body data) {
   uint32_t volume = data.volume;
   bool muted = data.muted;
   const char *icon_name = NULL;

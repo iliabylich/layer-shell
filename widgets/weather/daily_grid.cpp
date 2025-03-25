@@ -21,7 +21,7 @@ DailyGrid::DailyGrid() : Grid(4, 6) {
   }
 }
 
-void DailyGrid::update(layer_shell_io::WeatherOnDay weather, size_t row) {
+void DailyGrid::update(io::WeatherOnDay weather, size_t row) {
   label_at(0, row)->set_label(weather.day);
   label_at(1, row)->set_label(format_temperature(weather.temperature_min));
   label_at(2, row)->set_label(format_temperature(weather.temperature_max));

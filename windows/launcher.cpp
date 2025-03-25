@@ -37,12 +37,12 @@ Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
   input.signal_activate().connect([this, ctx]() {
-    layer_shell_io::layer_shell_io_launcher_exec_selected(ctx);
+    io::io_launcher_exec_selected(ctx);
     toggle_and_reset();
   });
   input.signal_changed().connect([this, ctx]() {
     auto search = input.get_text();
-    layer_shell_io::layer_shell_io_launcher_set_search(search.c_str(), ctx);
+    io::io_launcher_set_search(search.c_str(), ctx);
   });
 
   auto ctrl = Gtk::EventControllerKey::create();
@@ -53,9 +53,9 @@ Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
         if (key == "Escape") {
           toggle_and_reset();
         } else if (key == "Up") {
-          layer_shell_io::layer_shell_io_launcher_go_up(ctx);
+          io::io_launcher_go_up(ctx);
         } else if (key == "Down") {
-          layer_shell_io::layer_shell_io_launcher_go_down(ctx);
+          io::io_launcher_go_down(ctx);
         }
 
         return false;
@@ -73,7 +73,7 @@ void Launcher::toggle_and_reset() {
         if (is_visible()) {
           hide();
         } else {
-          layer_shell_io::layer_shell_io_launcher_reset(ctx);
+          io::io_launcher_reset(ctx);
           input.set_text("");
           show();
         }
@@ -83,7 +83,7 @@ void Launcher::toggle_and_reset() {
       0);
 }
 
-void Launcher::on_io_event(layer_shell_io::Event::Launcher_Body data) {
+void Launcher::on_io_event(io::Event::Launcher_Body data) {
   auto apps = data.apps;
   for (size_t i = 0; i < 5; i++) {
     auto &row = rows.at(i);

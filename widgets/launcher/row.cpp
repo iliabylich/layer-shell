@@ -19,7 +19,7 @@ Row::Row() : Gtk::Box() {
   append(label);
 }
 
-void Row::update(layer_shell_io::App app) {
+void Row::update(io::App app) {
   show();
   if (app.selected) {
     add_css_class("active");
@@ -27,7 +27,7 @@ void Row::update(layer_shell_io::App app) {
     remove_css_class("active");
   }
 
-  if (app.icon.tag == layer_shell_io::AppIcon::Tag::IconName) {
+  if (app.icon.tag == io::AppIcon::Tag::IconName) {
     image.set_from_icon_name(app.icon.icon_name._0);
   } else {
     image.set(app.icon.icon_path._0);

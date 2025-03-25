@@ -14,7 +14,7 @@ public:
   Gtk::Label *label_at(size_t col, size_t row);
   Gtk::Image *image_at(size_t col, size_t row);
 
-  static void update_image(Gtk::Image *image, layer_shell_io::WeatherCode code);
+  static void update_image(Gtk::Image *image, io::WeatherCode code);
   static std::string format_temperature(float temperature);
 };
 

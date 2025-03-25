@@ -28,7 +28,7 @@ windows::Ping *ping;
 windows::Ping *windows::Ping::get() { return ping; }
 
 int main(void) {
-  auto ctx = layer_shell_io::layer_shell_io_init();
+  auto ctx = io::io_init();
 
   app = Gtk::Application::create("org.me.LayerShell",
                                  Gio::Application::Flags::DEFAULT_FLAGS);
@@ -46,14 +46,14 @@ int main(void) {
 
     Glib::signal_timeout().connect(
         [ctx]() {
-          layer_shell_io::layer_shell_io_poll_events(ctx);
+          io::io_poll_events(ctx);
           return true;
         },
         50);
 
     std::cout << "Finished building widgets...\n";
 
-    layer_shell_io::layer_shell_io_spawn_thread(ctx);
+    io::io_spawn_thread(ctx);
   });
 
   app->signal_startup().connect([ctx]() {

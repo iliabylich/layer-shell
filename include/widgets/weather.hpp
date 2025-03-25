@@ -8,7 +8,7 @@ namespace widgets {
 class Weather : public Gtk::Button, public utils::Subscriber {
 public:
   Weather(void *ctx);
-  void on_io_event(layer_shell_io::Event::CurrentWeather_Body data) override;
+  void on_io_event(io::Event::CurrentWeather_Body data) override;
 };
 
 } // namespace widgets

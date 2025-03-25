@@ -22,7 +22,7 @@ void Tray::cleanup() {
 }
 
 Glib::RefPtr<Gio::Menu>
-new_menu_for_tray_item(layer_shell_io::TrayItem data,
+new_menu_for_tray_item(io::TrayItem data,
                        Glib::RefPtr<Gio::SimpleActionGroup> &action_group,
                        void *ctx) {
   auto menu = Gio::Menu::create();
@@ -41,7 +41,7 @@ new_menu_for_tray_item(layer_shell_io::TrayItem data,
     std::string action_name = std::format("{}", i);
 
     auto cb = [ctx, uuid](const Glib::VariantBase &) {
-      layer_shell_io::layer_shell_io_trigger_tray(uuid.c_str(), ctx);
+      io::io_trigger_tray(uuid.c_str(), ctx);
     };
 
     if (children_display == "submenu") {
@@ -89,19 +89,19 @@ new_menu_for_tray_item(layer_shell_io::TrayItem data,
   return menu;
 }
 
-void Tray::add(layer_shell_io::TrayApp app) {
+void Tray::add(io::TrayApp app) {
   Gtk::Image icon;
 
   switch (app.icon.tag) {
-  case layer_shell_io::TrayIcon::Tag::Path: {
+  case io::TrayIcon::Tag::Path: {
     icon.set(app.icon.path.path);
     break;
   }
-  case layer_shell_io::TrayIcon::Tag::Name: {
+  case io::TrayIcon::Tag::Name: {
     icon.set_from_icon_name(app.icon.name.name);
     break;
   }
-  case layer_shell_io::TrayIcon::Tag::PixmapVariant: {
+  case io::TrayIcon::Tag::PixmapVariant: {
     GBytes *bytes = g_bytes_new(app.icon.pixmap_variant.bytes.ptr,
                                 app.icon.pixmap_variant.bytes.len);
     auto pixbuf = Glib::wrap(gdk_pixbuf_new_from_bytes(
@@ -111,7 +111,7 @@ void Tray::add(layer_shell_io::TrayApp app) {
     icon.set(texture);
     break;
   }
-  case layer_shell_io::TrayIcon::Tag::None: {
+  case io::TrayIcon::Tag::None: {
     icon.set(utils::Icons::question_mark_icon());
     break;
   }
@@ -134,7 +134,7 @@ void Tray::add(layer_shell_io::TrayApp app) {
   icon.insert_action_group("tray", action_group);
 }
 
-void Tray::on_io_event(layer_shell_io::Event::Tray_Body data) {
+void Tray::on_io_event(io::Event::Tray_Body data) {
   cleanup();
 
   auto apps = data.list;

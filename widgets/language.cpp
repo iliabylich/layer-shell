@@ -7,7 +7,7 @@ Language::Language(void *ctx) : Gtk::Label("--"), utils::Subscriber(ctx) {
   set_name("Language");
 }
 
-void Language::on_io_event(layer_shell_io::Event::Language_Body data) {
+void Language::on_io_event(io::Event::Language_Body data) {
   std::string lang(data.lang);
 
   if (lang == "English (US)") {

@@ -2,6 +2,6 @@ language = "Cpp"
 pragma_once = true
 usize_is_size_t = true
 style = "type"
-namespaces = ["layer_shell_io"]
+namespaces = ["io"]
 no_includes = true
 sys_includes = ["cstdarg", "cstddef", "cstdint", "cstdlib"]

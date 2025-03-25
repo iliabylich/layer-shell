@@ -33,19 +33,19 @@ Session::Session(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
 
   lock.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_lock(ctx);
+    io::io_lock(ctx);
   });
   reboot.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_reboot(ctx);
+    io::io_reboot(ctx);
   });
   shutdown.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_shutdown(ctx);
+    io::io_shutdown(ctx);
   });
   logout.signal_clicked().connect([this, ctx]() {
     toggle();
-    layer_shell_io::layer_shell_io_logout(ctx);
+    io::io_logout(ctx);
   });
 }
 

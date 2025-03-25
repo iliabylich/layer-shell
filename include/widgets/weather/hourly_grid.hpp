@@ -9,7 +9,7 @@ namespace weather {
 class HourlyGrid : public Grid {
 public:
   HourlyGrid();
-  void update(layer_shell_io::WeatherOnHour weather, size_t row);
+  void update(io::WeatherOnHour weather, size_t row);
 };
 
 } // namespace weather

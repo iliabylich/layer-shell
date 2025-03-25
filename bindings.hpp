@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 
-namespace layer_shell_io {
+namespace io {
 
 enum class WeatherCode {
   ClearSky,
@@ -268,42 +268,42 @@ struct Event {
 
 extern "C" {
 
-void *layer_shell_io_init();
+void *io_init();
 
-void layer_shell_io_subscribe(void (*f)(const Event*, void*), void *data, void *ctx);
+void io_subscribe(void (*f)(const Event*, void*), void *data, void *ctx);
 
-void layer_shell_io_spawn_thread(void *ctx);
+void io_spawn_thread(void *ctx);
 
-void layer_shell_io_poll_events(void *ctx);
+void io_poll_events(void *ctx);
 
-void layer_shell_io_hyprland_go_to_workspace(size_t idx, void *ctx);
+void io_hyprland_go_to_workspace(size_t idx, void *ctx);
 
-void layer_shell_io_launcher_reset(void *ctx);
+void io_launcher_reset(void *ctx);
 
-void layer_shell_io_launcher_go_up(void *ctx);
+void io_launcher_go_up(void *ctx);
 
-void layer_shell_io_launcher_go_down(void *ctx);
+void io_launcher_go_down(void *ctx);
 
-void layer_shell_io_launcher_set_search(const char *search, void *ctx);
+void io_launcher_set_search(const char *search, void *ctx);
 
-void layer_shell_io_launcher_exec_selected(void *ctx);
+void io_launcher_exec_selected(void *ctx);
 
-void layer_shell_io_lock(void *ctx);
+void io_lock(void *ctx);
 
-void layer_shell_io_reboot(void *ctx);
+void io_reboot(void *ctx);
 
-void layer_shell_io_shutdown(void *ctx);
+void io_shutdown(void *ctx);
 
-void layer_shell_io_logout(void *ctx);
+void io_logout(void *ctx);
 
-void layer_shell_io_trigger_tray(const char *uuid, void *ctx);
+void io_trigger_tray(const char *uuid, void *ctx);
 
-void layer_shell_io_spawn_network_editor(void *ctx);
+void io_spawn_network_editor(void *ctx);
 
-void layer_shell_io_spawn_system_monitor(void *ctx);
+void io_spawn_system_monitor(void *ctx);
 
-void layer_shell_io_change_theme(void *ctx);
+void io_change_theme(void *ctx);
 
 }  // extern "C"
 
-}  // namespace layer_shell_io
+}  // namespace io

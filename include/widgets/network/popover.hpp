@@ -9,7 +9,7 @@ namespace network {
 class Popover : public Gtk::PopoverMenu {
 public:
   Popover(void *ctx);
-  void update(layer_shell_io::CArray<layer_shell_io::Network> networks);
+  void update(io::CArray<io::Network> networks);
 
 private:
   Glib::RefPtr<Gio::Menu> model;

@@ -21,7 +21,7 @@ Gtk::Image *Grid::image_at(size_t col, size_t row) {
   return static_cast<Gtk::Image *>(get_child_at(col, row));
 }
 
-void Grid::update_image(Gtk::Image *image, layer_shell_io::WeatherCode code) {
+void Grid::update_image(Gtk::Image *image, io::WeatherCode code) {
   image->set(utils::WeatherHelper::weather_code_to_icon(code));
   image->set_tooltip_text(
       utils::WeatherHelper::weather_code_to_description(code));

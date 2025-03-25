@@ -19,7 +19,7 @@ HourlyGrid::HourlyGrid() : Grid(3, 10) {
   }
 }
 
-void HourlyGrid::update(layer_shell_io::WeatherOnHour weather, size_t row) {
+void HourlyGrid::update(io::WeatherOnHour weather, size_t row) {
   label_at(0, row)->set_label(weather.hour);
   label_at(1, row)->set_label(format_temperature(weather.temperature));
   update_image(image_at(2, row), weather.code);

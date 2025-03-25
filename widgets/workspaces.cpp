@@ -16,13 +16,12 @@ Workspaces::Workspaces(void *ctx)
     button.set_label(std::to_string(idx + 1));
     append(button);
 
-    button.signal_clicked().connect([ctx, idx]() {
-      layer_shell_io::layer_shell_io_hyprland_go_to_workspace(idx, ctx);
-    });
+    button.signal_clicked().connect(
+        [ctx, idx]() { io::io_hyprland_go_to_workspace(idx, ctx); });
   }
 }
 
-void Workspaces::on_io_event(layer_shell_io::Event::Workspaces_Body data) {
+void Workspaces::on_io_event(io::Event::Workspaces_Body data) {
   for (size_t idx = 1; idx <= workspaces_count; idx++) {
     auto &button = buttons.at(idx - 1);
     auto visible = false;

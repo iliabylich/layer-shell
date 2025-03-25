@@ -38,7 +38,7 @@ impl Ctx {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn layer_shell_io_init() -> *mut std::ffi::c_void {
+pub extern "C" fn io_init() -> *mut std::ffi::c_void {
     let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
     if let Err(err) = log::set_logger(logger) {
         eprintln!("Failed to set logger: {:?}", err);
@@ -55,7 +55,7 @@ pub extern "C" fn layer_shell_io_init() -> *mut std::ffi::c_void {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn layer_shell_io_subscribe(
+pub extern "C" fn io_subscribe(
     f: extern "C" fn(*const Event, *mut std::ffi::c_void),
     data: *mut std::ffi::c_void,
     ctx: *mut std::ffi::c_void,
@@ -64,7 +64,7 @@ pub extern "C" fn layer_shell_io_subscribe(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn layer_shell_io_spawn_thread(ctx: *mut std::ffi::c_void) {
+pub extern "C" fn io_spawn_thread(ctx: *mut std::ffi::c_void) {
     struct SendPtr {
         ptr: *mut std::ffi::c_void,
     }
@@ -79,13 +79,13 @@ pub extern "C" fn layer_shell_io_spawn_thread(ctx: *mut std::ffi::c_void) {
     std::thread::spawn(move || {
         let ctx: *mut std::ffi::c_void = ctx.get();
 
-        if let Err(err) = layer_shell_io_run_in_place(ctx) {
+        if let Err(err) = io_run_in_place(ctx) {
             log::error!("IO thread has crashed: {:?}", err);
         }
     });
 }
 
-pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
+pub fn io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
     use crate::epoll::{Epoll, FdId};
     use crate::modules::{
         control::Control, cpu::CPU, hyprland::Hyprland, launcher::Launcher, memory::Memory,
@@ -207,7 +207,7 @@ pub fn layer_shell_io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn layer_shell_io_poll_events(ctx: *mut std::ffi::c_void) {
+pub extern "C" fn io_poll_events(ctx: *mut std::ffi::c_void) {
     let ctx = Ctx::from_raw(ctx);
     while let Some(event) = ctx.events.rx.recv() {
         log::info!("Received event {:?}", event);

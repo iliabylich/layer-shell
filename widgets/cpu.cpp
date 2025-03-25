@@ -15,7 +15,7 @@ CPU::CPU(void *ctx) : Gtk::Box(), utils::Subscriber(ctx), labels(cpu_count) {
   }
 }
 
-void CPU::on_io_event(layer_shell_io::Event::CpuUsage_Body data) {
+void CPU::on_io_event(io::Event::CpuUsage_Body data) {
   for (size_t idx = 0; idx < cpu_count; idx++) {
     auto &label = labels.at(idx);
     auto load = data.usage_per_core.ptr[idx];

@@ -37,7 +37,7 @@ Popover::Popover(void *ctx) : Gtk::PopoverMenu(), ctx(ctx) {
   insert_action_group("network", action_group);
 }
 
-void Popover::update(layer_shell_io::CArray<layer_shell_io::Network> networks) {
+void Popover::update(io::CArray<io::Network> networks) {
   model->remove_all();
   for (size_t i = 0; i < networks.len; i++) {
     auto network = networks.ptr[i];
@@ -66,9 +66,7 @@ void Popover::add_ping_row() {
   model->append_item(item);
 }
 
-void Popover::on_settings_row_clicked() {
-  layer_shell_io::layer_shell_io_spawn_network_editor(ctx);
-}
+void Popover::on_settings_row_clicked() { io::io_spawn_network_editor(ctx); }
 void Popover::on_ping_row_clicked() { windows::Ping::get()->toggle(); }
 void Popover::on_network_row_clicked(const Glib::VariantBase &parameter) {
   auto ip =

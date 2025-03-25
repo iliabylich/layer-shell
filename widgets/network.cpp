@@ -39,9 +39,8 @@ Network::Network(void *ctx)
   signal_clicked().connect([this]() { this->popover.popup(); });
 }
 
-void Network::on_io_event(layer_shell_io::Event::WifiStatus_Body data) {
-  if (data.wifi_status.tag ==
-      layer_shell_io::COption<layer_shell_io::WifiStatus>::Tag::None) {
+void Network::on_io_event(io::Event::WifiStatus_Body data) {
+  if (data.wifi_status.tag == io::COption<io::WifiStatus>::Tag::None) {
     image.hide();
     label.set_label("Not connected");
   } else {
@@ -52,11 +51,11 @@ void Network::on_io_event(layer_shell_io::Event::WifiStatus_Body data) {
     label.set_label(buffer);
   }
 }
-void Network::on_io_event(layer_shell_io::Event::NetworkSpeed_Body data) {
+void Network::on_io_event(io::Event::NetworkSpeed_Body data) {
   download_speed_label.set_label(data.download_speed);
   upload_speed_label.set_label(data.upload_speed);
 }
-void Network::on_io_event(layer_shell_io::Event::NetworkList_Body data) {
+void Network::on_io_event(io::Event::NetworkList_Body data) {
   popover.update(data.list);
 }
 
