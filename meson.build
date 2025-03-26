@@ -13,8 +13,21 @@ gtkmm = dependency('gtkmm-4.0', required: true)
 gtk4_layer_shell = dependency('gtk4-layer-shell-0', required: true)
 vte = dependency('vte-2.91-gtk4', required: true)
 just = find_program('just', required: true)
+xxd = find_program('xxd', required: true)
+cat = find_program('cat', required: true)
+sassc = find_program('sassc', required: true)
 
 buildtype = get_option('buildtype')
+
+rustlib = custom_target(
+  'liblayer_shell_io.so',
+  command: [just, f'cargo-@buildtype@', '@OUTPUT@'],
+  output: 'liblayer_shell_io.so',
+  build_always_stale: true,
+  build_by_default: true,
+  install: true,
+  install_dir: get_option('libdir'),
+)
 
 sources = files(
   'utils/css.cpp',
@@ -50,15 +63,44 @@ sources = files(
   'main.cpp',
 )
 
-rustlib = custom_target(
-  'liblayer_shell_io.so',
-  command: [just, f'cargo-@buildtype@', '@OUTPUT@'],
-  output: 'liblayer_shell_io.so',
-  build_always_stale: true,
-  build_by_default: true,
-  install: true,
-  install_dir: get_option('libdir'),
+icons = files(
+  'icons/change_theme.png',
+  'icons/download.png',
+  'icons/foggy.png',
+  'icons/partly_cloudy.png',
+  'icons/power.png',
+  'icons/question_mark.png',
+  'icons/rainy.png',
+  'icons/snowy.png',
+  'icons/sunny.png',
+  'icons/thunderstorm.png',
+  'icons/upload.png',
+  'icons/wifi.png',
 )
+
+xxd_gen = generator(
+  xxd,
+  output: '@PLAINNAME@.xxd',
+  arguments: ['-i', '@INPUT@', '@OUTPUT@'],
+)
+embedded_icons = xxd_gen.process(icons)
+all_icons_embedded = custom_target(
+  'all-icons-embedded',
+  command: [cat, '@INPUT@'],
+  capture: true,
+  input: embedded_icons,
+  output: 'all-icons-embedded.hpp',
+)
+sources += all_icons_embedded
+
+sassc_gen = generator(
+  sassc,
+  output: '@PLAINNAME@',
+  arguments: ['@INPUT@', '@OUTPUT@'],
+)
+main_css = sassc_gen.process('main.scss')
+main_css_embedded = xxd_gen.process(main_css)
+sources += main_css_embedded
 
 executable(
   meson.project_name(),

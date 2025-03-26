@@ -9,7 +9,7 @@ ChangeTheme::ChangeTheme(io::Ctx *ctx) : Gtk::Button() {
   set_cursor("pointer");
   set_name("ChangeTheme");
 
-  image.set(utils::Icons::change_theme_icon());
+  image.set(utils::Icons::change_theme);
   set_child(image);
 
   signal_clicked().connect([ctx]() { io::io_change_theme(ctx); });

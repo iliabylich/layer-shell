@@ -7,15 +7,15 @@ Network::Network(io::Ctx *ctx)
     : Gtk::Button(), utils::Subscriber(ctx), popover(ctx) {
   label.set_label("--");
 
-  image.set(utils::Icons::wifi_icon());
+  image.set(utils::Icons::wifi);
 
   download_speed_label.set_label("??");
   download_speed_label.set_css_classes({"network-speed-label"});
-  download_speed_icon.set(utils::Icons::download_speed_icon());
+  download_speed_icon.set(utils::Icons::download);
 
   upload_speed_label.set_label("??");
   upload_speed_label.set_css_classes({"network-speed-label"});
-  upload_speed_icon.set(utils::Icons::upload_speed_icon());
+  upload_speed_icon.set(utils::Icons::upload);
 
   Gtk::Box network_wrapper(Gtk::Orientation::HORIZONTAL, 0);
   network_wrapper.append(label);

@@ -16,7 +16,7 @@ DailyGrid::DailyGrid() : Grid(4, 6) {
     attach(max_weather, 2, row);
 
     Gtk::Image image;
-    image.set(utils::Icons::question_mark_icon());
+    image.set(utils::Icons::question_mark);
     attach(image, 3, row);
   }
 }

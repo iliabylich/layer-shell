@@ -71,13 +71,13 @@ WeatherHelper::weather_code_to_icon(io::WeatherCode code) {
   switch (code) {
   case io::WeatherCode::ClearSky:
   case io::WeatherCode::MainlyClear:
-    return Icons::sunny_icon();
+    return Icons::sunny;
   case io::WeatherCode::PartlyCloudy:
   case io::WeatherCode::Overcast:
-    return Icons::partly_cloudy_icon();
+    return Icons::partly_cloudy;
   case io::WeatherCode::FogDepositingRime:
   case io::WeatherCode::FogNormal:
-    return Icons::foggy_icon();
+    return Icons::foggy;
   case io::WeatherCode::DrizzleDense:
   case io::WeatherCode::DrizzleLight:
   case io::WeatherCode::DrizzleModerate:
@@ -91,20 +91,20 @@ WeatherHelper::weather_code_to_icon(io::WeatherCode code) {
   case io::WeatherCode::RainShowersSlight:
   case io::WeatherCode::RainShowersModerate:
   case io::WeatherCode::RainShowersViolent:
-    return Icons::rainy_icon();
+    return Icons::rainy;
   case io::WeatherCode::SnowFallSlight:
   case io::WeatherCode::SnowFallModerate:
   case io::WeatherCode::SnowFallHeavy:
   case io::WeatherCode::SnowGrains:
   case io::WeatherCode::SnowShowersSlight:
   case io::WeatherCode::SnowShowersHeavy:
-    return Icons::snowy_icon();
+    return Icons::snowy;
   case io::WeatherCode::Thunderstorm:
   case io::WeatherCode::ThunderstormWithHailSight:
   case io::WeatherCode::ThunderstormWithHailHeavy:
-    return Icons::thunderstorm_icon();
+    return Icons::thunderstorm;
   case io::WeatherCode::Unknown:
-    return Icons::question_mark_icon();
+    return Icons::question_mark;
   }
 }
 

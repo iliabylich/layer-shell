@@ -112,7 +112,7 @@ void Tray::add(io::TrayApp app) {
     break;
   }
   case io::TrayIcon::Tag::None: {
-    icon.set(utils::Icons::question_mark_icon());
+    icon.set(utils::Icons::question_mark);
     break;
   }
   }

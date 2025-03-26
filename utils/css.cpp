@@ -1,4 +1,5 @@
 #include "include/utils/css.hpp"
+#include "main.scss.xxd"
 #include <fstream>
 #include <gtkmm.h>
 #include <iostream>
@@ -35,10 +36,8 @@ void Css::on_reload_styles() {
 }
 
 std::string Css::main_css() {
-  const char main_css_ptr[] = {
-#embed "../main.css" if_empty('-')
-      , 0};
-  return main_css_ptr;
+  return std::string((char *)layer_shell_p_main_scss,
+                     layer_shell_p_main_scss_len);
 }
 
 std::string Css::theme_css() {

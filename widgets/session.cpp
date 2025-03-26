@@ -9,7 +9,7 @@ Session::Session(io::Ctx *) : Gtk::Button() {
   set_cursor("pointer");
   set_name("Session");
 
-  image.set(utils::Icons::power_icon());
+  image.set(utils::Icons::power);
   set_child(image);
 
   signal_clicked().connect([]() { windows::Session::get()->toggle(); });

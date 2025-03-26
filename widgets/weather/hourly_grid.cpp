@@ -14,7 +14,7 @@ HourlyGrid::HourlyGrid() : Grid(3, 10) {
     attach(weather, 1, row);
 
     Gtk::Image image;
-    image.set(utils::Icons::question_mark_icon());
+    image.set(utils::Icons::question_mark);
     attach(image, 2, row);
   }
 }
