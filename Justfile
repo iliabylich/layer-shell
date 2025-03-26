@@ -1,16 +1,9 @@
 dbus-generate:
     ./dbus/generate.sh
 
-css:
-    sassc main.scss main.css
-
-bindgen:
-    cbindgen --output bindings.hpp
-
 clean:
     cargo clean
     rm -rf builddir
-    rm -f main.css
 
 cargo-debug out:
     cargo build
@@ -20,14 +13,13 @@ cargo-release out:
     cp target/release/liblayer_shell_io.so builddir/{{out}}
 
 setup build:
-    CXX=clang++ meson setup builddir --buildtype={{build}} --libdir /usr/lib/x86_64-linux-gnu
+    meson setup builddir --buildtype={{build}}
 
 install destdir:
     meson install -C builddir --destdir={{destdir}}
 
 dev:
-    @just css
-    ninja -C builddir
+    meson compile -C builddir
     ./builddir/layer-shell
 
 perf-io:

@@ -1,6 +1,6 @@
 #include "include/widgets/change_theme.hpp"
-#include "bindings.hpp"
 #include "include/utils/icons.hpp"
+#include "src/bindings.hpp"
 
 namespace widgets {
 

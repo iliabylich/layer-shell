@@ -1,7 +1,7 @@
 #pragma once
 
-#include "bindings.hpp"
 #include "include/windows/base.hpp"
+#include "src/bindings.hpp"
 
 namespace windows {
 
