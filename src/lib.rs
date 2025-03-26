@@ -1,6 +1,6 @@
 #![expect(clippy::type_complexity)]
 #![expect(clippy::upper_case_acronyms)]
-#![expect(clippy::missing_safety_doc)]
+#![expect(clippy::not_unsafe_ptr_arg_deref)]
 
 mod channel;
 mod command;
@@ -14,7 +14,7 @@ mod macros;
 mod modules;
 mod timer;
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{bail, Context as _, Result};
 use channel::{CommandsChannel, EventsChannel, VerboseSender};
 pub use command::*;
 pub use event::Event;
@@ -37,7 +37,7 @@ impl Ctx {
     }
 }
 
-#[unsafe(no_mangle)]
+#[no_mangle]
 pub extern "C" fn io_init() -> *mut Ctx {
     let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
     if let Err(err) = log::set_logger(logger) {
@@ -54,7 +54,7 @@ pub extern "C" fn io_init() -> *mut Ctx {
     Box::leak(Box::new(ctx))
 }
 
-#[unsafe(no_mangle)]
+#[no_mangle]
 pub extern "C" fn io_subscribe(
     f: extern "C" fn(*const Event, *mut std::ffi::c_void),
     data: *mut std::ffi::c_void,
@@ -63,7 +63,7 @@ pub extern "C" fn io_subscribe(
     Ctx::from_raw(ctx).subscriptions.push((f, data));
 }
 
-#[unsafe(no_mangle)]
+#[no_mangle]
 pub extern "C" fn io_spawn_thread(ctx: *mut Ctx) {
     struct SendPtr {
         ptr: *mut Ctx,
@@ -206,7 +206,7 @@ pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
     }
 }
 
-#[unsafe(no_mangle)]
+#[no_mangle]
 pub extern "C" fn io_poll_events(ctx: *mut Ctx) {
     let ctx = Ctx::from_raw(ctx);
     while let Some(event) = ctx.events.rx.recv() {
