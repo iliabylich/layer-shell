@@ -8,7 +8,7 @@ namespace widgets {
 
 class Network : public Gtk::Button, public utils::Subscriber {
 public:
-  Network(void *ctx);
+  Network(io::Ctx *ctx);
   void on_io_event(io::Event::WifiStatus_Body data) override;
   void on_io_event(io::Event::NetworkSpeed_Body data) override;
   void on_io_event(io::Event::NetworkList_Body data) override;

@@ -5,7 +5,7 @@
 
 namespace windows {
 
-Ping::Ping(const Glib::RefPtr<Gtk::Application> &app, void *) {
+Ping::Ping(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
   set_name("PingWindow");
   set_css_classes({"terminal-window"});
   property_width_request().set_value(1000);

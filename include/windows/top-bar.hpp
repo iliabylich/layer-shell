@@ -18,7 +18,7 @@ namespace windows {
 
 class TopBar : public Base {
 public:
-  TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx);
+  TopBar(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
   static TopBar *get();
 
 private:

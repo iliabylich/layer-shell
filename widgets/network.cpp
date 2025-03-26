@@ -3,7 +3,7 @@
 
 namespace widgets {
 
-Network::Network(void *ctx)
+Network::Network(io::Ctx *ctx)
     : Gtk::Button(), utils::Subscriber(ctx), popover(ctx) {
   label.set_label("--");
 

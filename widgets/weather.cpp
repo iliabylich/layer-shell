@@ -4,7 +4,7 @@
 
 namespace widgets {
 
-Weather::Weather(void *ctx) : Gtk::Button("--"), utils::Subscriber(ctx) {
+Weather::Weather(io::Ctx *ctx) : Gtk::Button("--"), utils::Subscriber(ctx) {
   set_css_classes({"widget", "weather", "padded", "clickable"});
   set_name("Weather");
   signal_clicked().connect([]() { windows::Weather::get()->toggle(); });

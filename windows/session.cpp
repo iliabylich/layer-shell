@@ -3,7 +3,7 @@
 
 namespace windows {
 
-Session::Session(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
     : utils::Subscriber(ctx), lock("Lock"), reboot("Reboot"),
       shutdown("Shutdown"), logout("Logout") {
   set_name("SessionWindow");

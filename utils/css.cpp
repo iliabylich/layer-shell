@@ -5,7 +5,7 @@
 
 namespace utils {
 
-Css::Css(void *ctx) : Subscriber(ctx) {
+Css::Css(io::Ctx *ctx) : Subscriber(ctx) {
   provider = std::shared_ptr<Gtk::CssProvider>(nullptr);
 }
 

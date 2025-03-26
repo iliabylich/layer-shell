@@ -5,7 +5,7 @@
 
 namespace windows {
 
-HTop::HTop(const Glib::RefPtr<Gtk::Application> &app, void *) {
+HTop::HTop(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
   set_name("HtopWindow");
   set_css_classes({"terminal-window"});
   property_width_request().set_value(1000);

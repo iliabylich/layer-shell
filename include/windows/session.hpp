@@ -7,7 +7,7 @@ namespace windows {
 
 class Session : public Base, public utils::Subscriber {
 public:
-  Session(const Glib::RefPtr<Gtk::Application> &app, void *ctx);
+  Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
   void on_toggle_session_screen_event() override;
   static Session *get();
 

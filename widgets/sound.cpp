@@ -2,7 +2,7 @@
 
 namespace widgets {
 
-Sound::Sound(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
+Sound::Sound(io::Ctx *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(5);
   set_css_classes({"widget", "sound", "padded"});

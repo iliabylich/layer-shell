@@ -4,7 +4,7 @@
 
 namespace widgets {
 
-ChangeTheme::ChangeTheme(void *ctx) : Gtk::Button() {
+ChangeTheme::ChangeTheme(io::Ctx *ctx) : Gtk::Button() {
   set_css_classes({"widget", "power", "padded", "clickable"});
   set_cursor("pointer");
   set_name("ChangeTheme");

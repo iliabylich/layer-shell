@@ -3,7 +3,7 @@
 
 namespace windows {
 
-Weather::Weather(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+Weather::Weather(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
     : utils::Subscriber(ctx) {
   set_name("WeatherWindow");
   set_css_classes({"weather-window"});

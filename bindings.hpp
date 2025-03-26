@@ -39,6 +39,8 @@ enum class WeatherCode {
   Unknown,
 };
 
+struct Ctx;
+
 template<typename T>
 struct CArray {
   T *ptr;
@@ -268,41 +270,41 @@ struct Event {
 
 extern "C" {
 
-void *io_init();
+Ctx *io_init();
 
-void io_subscribe(void (*f)(const Event*, void*), void *data, void *ctx);
+void io_subscribe(void (*f)(const Event*, void*), void *data, Ctx *ctx);
 
-void io_spawn_thread(void *ctx);
+void io_spawn_thread(Ctx *ctx);
 
-void io_poll_events(void *ctx);
+void io_poll_events(Ctx *ctx);
 
-void io_hyprland_go_to_workspace(size_t idx, void *ctx);
+void io_hyprland_go_to_workspace(size_t idx, Ctx *ctx);
 
-void io_launcher_reset(void *ctx);
+void io_launcher_reset(Ctx *ctx);
 
-void io_launcher_go_up(void *ctx);
+void io_launcher_go_up(Ctx *ctx);
 
-void io_launcher_go_down(void *ctx);
+void io_launcher_go_down(Ctx *ctx);
 
-void io_launcher_set_search(const char *search, void *ctx);
+void io_launcher_set_search(const char *search, Ctx *ctx);
 
-void io_launcher_exec_selected(void *ctx);
+void io_launcher_exec_selected(Ctx *ctx);
 
-void io_lock(void *ctx);
+void io_lock(Ctx *ctx);
 
-void io_reboot(void *ctx);
+void io_reboot(Ctx *ctx);
 
-void io_shutdown(void *ctx);
+void io_shutdown(Ctx *ctx);
 
-void io_logout(void *ctx);
+void io_logout(Ctx *ctx);
 
-void io_trigger_tray(const char *uuid, void *ctx);
+void io_trigger_tray(const char *uuid, Ctx *ctx);
 
-void io_spawn_network_editor(void *ctx);
+void io_spawn_network_editor(Ctx *ctx);
 
-void io_spawn_system_monitor(void *ctx);
+void io_spawn_system_monitor(Ctx *ctx);
 
-void io_change_theme(void *ctx);
+void io_change_theme(Ctx *ctx);
 
 }  // extern "C"
 

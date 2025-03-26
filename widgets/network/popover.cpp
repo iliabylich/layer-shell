@@ -5,7 +5,7 @@
 namespace widgets {
 namespace network {
 
-Popover::Popover(void *ctx) : Gtk::PopoverMenu(), ctx(ctx) {
+Popover::Popover(io::Ctx *ctx) : Gtk::PopoverMenu(), ctx(ctx) {
   model = Gio::Menu::create();
   add_settings_row();
   add_ping_row();

@@ -25,20 +25,20 @@ type Subscriptions = Vec<(
     *mut std::ffi::c_void,
 )>;
 
-pub(crate) struct Ctx {
-    pub(crate) subscriptions: Subscriptions,
-    pub(crate) events: EventsChannel,
-    pub(crate) commands: CommandsChannel,
+pub struct Ctx {
+    subscriptions: Subscriptions,
+    events: EventsChannel,
+    commands: CommandsChannel,
 }
 impl Ctx {
-    pub(crate) fn from_raw(ctx: *mut std::ffi::c_void) -> &'static mut Self {
-        let ctx = unsafe { ctx.cast::<Self>().as_mut() };
+    pub(crate) fn from_raw(ctx: *mut Self) -> &'static mut Self {
+        let ctx = unsafe { ctx.as_mut() };
         ctx.unwrap_or_else(|| fatal!("Can't read NULL ctx"))
     }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_init() -> *mut std::ffi::c_void {
+pub extern "C" fn io_init() -> *mut Ctx {
     let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
     if let Err(err) = log::set_logger(logger) {
         eprintln!("Failed to set logger: {:?}", err);
@@ -51,33 +51,33 @@ pub extern "C" fn io_init() -> *mut std::ffi::c_void {
         commands: CommandsChannel::new(),
         events: EventsChannel::new(),
     };
-    (Box::leak(Box::new(ctx)) as *mut Ctx).cast()
+    Box::leak(Box::new(ctx))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_subscribe(
     f: extern "C" fn(*const Event, *mut std::ffi::c_void),
     data: *mut std::ffi::c_void,
-    ctx: *mut std::ffi::c_void,
+    ctx: *mut Ctx,
 ) {
     Ctx::from_raw(ctx).subscriptions.push((f, data));
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_thread(ctx: *mut std::ffi::c_void) {
+pub extern "C" fn io_spawn_thread(ctx: *mut Ctx) {
     struct SendPtr {
-        ptr: *mut std::ffi::c_void,
+        ptr: *mut Ctx,
     }
     unsafe impl Send for SendPtr {}
     impl SendPtr {
-        fn get(&self) -> *mut std::ffi::c_void {
+        fn get(&self) -> *mut Ctx {
             self.ptr
         }
     }
     let ctx = SendPtr { ptr: ctx };
 
     std::thread::spawn(move || {
-        let ctx: *mut std::ffi::c_void = ctx.get();
+        let ctx: *mut Ctx = ctx.get();
 
         if let Err(err) = io_run_in_place(ctx) {
             log::error!("IO thread has crashed: {:?}", err);
@@ -85,7 +85,7 @@ pub extern "C" fn io_spawn_thread(ctx: *mut std::ffi::c_void) {
     });
 }
 
-pub fn io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
+pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
     use crate::epoll::{Epoll, FdId};
     use crate::modules::{
         control::Control, cpu::CPU, hyprland::Hyprland, launcher::Launcher, memory::Memory,
@@ -207,7 +207,7 @@ pub fn io_run_in_place(ctx: *mut std::ffi::c_void) -> Result<()> {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_poll_events(ctx: *mut std::ffi::c_void) {
+pub extern "C" fn io_poll_events(ctx: *mut Ctx) {
     let ctx = Ctx::from_raw(ctx);
     while let Some(event) = ctx.events.rx.recv() {
         log::info!("Received event {:?}", event);

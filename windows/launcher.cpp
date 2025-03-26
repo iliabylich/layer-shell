@@ -3,7 +3,7 @@
 
 namespace windows {
 
-Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
     : utils::Subscriber(ctx), rows(5) {
   set_name("LauncherWindow");
   property_width_request().set_value(700);

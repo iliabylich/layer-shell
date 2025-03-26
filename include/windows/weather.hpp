@@ -9,7 +9,7 @@ namespace windows {
 
 class Weather : public Base, utils::Subscriber {
 public:
-  Weather(const Glib::RefPtr<Gtk::Application> &app, void *ctx);
+  Weather(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
   void on_io_event(io::Event::ForecastWeather_Body data) override;
   static Weather *get();
 

@@ -5,7 +5,7 @@ namespace widgets {
 
 size_t max_icons_count = 10;
 
-Tray::Tray(void *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
+Tray::Tray(io::Ctx *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(10);
   set_css_classes({"widget", "tray", "padded"});
@@ -24,7 +24,7 @@ void Tray::cleanup() {
 Glib::RefPtr<Gio::Menu>
 new_menu_for_tray_item(io::TrayItem data,
                        Glib::RefPtr<Gio::SimpleActionGroup> &action_group,
-                       void *ctx) {
+                       io::Ctx *ctx) {
   auto menu = Gio::Menu::create();
 
   for (size_t i = 0; i < data.children.len; i++) {

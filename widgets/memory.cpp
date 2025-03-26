@@ -2,7 +2,7 @@
 
 namespace widgets {
 
-Memory::Memory(void *ctx) : Gtk::Button("--"), utils::Subscriber(ctx) {
+Memory::Memory(io::Ctx *ctx) : Gtk::Button("--"), utils::Subscriber(ctx) {
   set_css_classes({"widget", "memory", "padded", "clickable"});
   set_name("Memory");
   signal_clicked().connect([ctx]() { io::io_spawn_system_monitor(ctx); });

@@ -7,7 +7,7 @@ namespace widgets {
 
 class Time : public Gtk::Label, public utils::Subscriber {
 public:
-  Time(void *ctx);
+  Time(io::Ctx *ctx);
   void on_io_event(io::Event::Time_Body data) override;
 };
 

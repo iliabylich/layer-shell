@@ -4,7 +4,7 @@
 
 namespace windows {
 
-TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, void *ctx)
+TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
     : workspaces(ctx), change_theme(ctx), tray(ctx), weather(ctx), htop(ctx),
       language(ctx), sound(ctx), cpu(ctx), memory(ctx), network(ctx), time(ctx),
       session(ctx) {

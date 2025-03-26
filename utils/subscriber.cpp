@@ -2,7 +2,7 @@
 
 namespace utils {
 
-Subscriber::Subscriber(void *ctx) : ctx(ctx) {
+Subscriber::Subscriber(io::Ctx *ctx) : ctx(ctx) {
   io::io_subscribe(Subscriber::handle_event, this, ctx);
 }
 

@@ -4,7 +4,7 @@ namespace widgets {
 
 size_t workspaces_count = 10;
 
-Workspaces::Workspaces(void *ctx)
+Workspaces::Workspaces(io::Ctx *ctx)
     : Gtk::Box(), utils::Subscriber(ctx), buttons(workspaces_count) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(0);

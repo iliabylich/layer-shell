@@ -2,7 +2,7 @@
 
 namespace widgets {
 
-Language::Language(void *ctx) : Gtk::Label("--"), utils::Subscriber(ctx) {
+Language::Language(io::Ctx *ctx) : Gtk::Label("--"), utils::Subscriber(ctx) {
   set_css_classes({"widget", "language", "padded"});
   set_name("Language");
 }
