@@ -14,7 +14,7 @@ mod macros;
 mod modules;
 mod timer;
 
-use anyhow::{bail, Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use channel::{CommandsChannel, EventsChannel, VerboseSender};
 pub use command::*;
 pub use event::Event;
@@ -37,7 +37,7 @@ impl Ctx {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_init() -> *mut Ctx {
     let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
     if let Err(err) = log::set_logger(logger) {
@@ -54,7 +54,7 @@ pub extern "C" fn io_init() -> *mut Ctx {
     Box::leak(Box::new(ctx))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_subscribe(
     f: extern "C" fn(*const Event, *mut std::ffi::c_void),
     data: *mut std::ffi::c_void,
@@ -63,7 +63,7 @@ pub extern "C" fn io_subscribe(
     Ctx::from_raw(ctx).subscriptions.push((f, data));
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_thread(ctx: *mut Ctx) {
     struct SendPtr {
         ptr: *mut Ctx,
@@ -206,7 +206,7 @@ pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_poll_events(ctx: *mut Ctx) {
     let ctx = Ctx::from_raw(ctx);
     while let Some(event) = ctx.events.rx.recv() {

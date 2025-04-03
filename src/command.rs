@@ -23,7 +23,7 @@ pub enum Command {
     ChangeTheme,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_hyprland_go_to_workspace(idx: usize, ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
@@ -31,28 +31,28 @@ pub extern "C" fn io_hyprland_go_to_workspace(idx: usize, ctx: *mut Ctx) {
         .signal_and_send(Command::HyprlandGoToWorkspace { idx });
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_launcher_reset(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::LauncherReset);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_launcher_go_up(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::LauncherGoUp);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_launcher_go_down(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::LauncherGoDown);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_launcher_set_search(search: *const std::ffi::c_char, ctx: *mut Ctx) {
     let cstr = unsafe { std::ffi::CStr::from_ptr(search) };
     if let Ok(s) = cstr.to_str() {
@@ -64,7 +64,7 @@ pub extern "C" fn io_launcher_set_search(search: *const std::ffi::c_char, ctx: *
             });
     }
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_launcher_exec_selected(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
@@ -72,28 +72,28 @@ pub extern "C" fn io_launcher_exec_selected(ctx: *mut Ctx) {
         .signal_and_send(Command::LauncherExecSelected);
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_lock(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::Lock);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_reboot(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::Reboot);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_shutdown(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::Shutdown);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_logout(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
@@ -101,7 +101,7 @@ pub extern "C" fn io_logout(ctx: *mut Ctx) {
         .signal_and_send(Command::Logout);
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_trigger_tray(uuid: *const std::ffi::c_char, ctx: *mut Ctx) {
     let cstr = unsafe { std::ffi::CStr::from_ptr(uuid) };
     if let Ok(s) = cstr.to_str() {
@@ -114,21 +114,21 @@ pub extern "C" fn io_trigger_tray(uuid: *const std::ffi::c_char, ctx: *mut Ctx) 
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_network_editor(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::SpawnNetworkEditor);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_system_monitor(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
         .tx
         .signal_and_send(Command::SpawnSystemMonitor);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn io_change_theme(ctx: *mut Ctx) {
     Ctx::from_raw(ctx)
         .commands
