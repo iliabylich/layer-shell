@@ -8,7 +8,13 @@ use crate::{
 };
 use anyhow::{Context as _, Result, bail};
 use inotify::{EventMask, Inotify, WatchMask};
-use std::{cell::RefCell, collections::HashSet, io::ErrorKind, os::fd::AsRawFd, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::HashSet,
+    io::ErrorKind,
+    os::fd::{AsRawFd, RawFd},
+    rc::Rc,
+};
 
 pub(crate) struct Watcher<T: WatcherDir> {
     dir: T,
@@ -100,7 +106,7 @@ where
         Ok(())
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         self.inotify.as_raw_fd()
     }
 

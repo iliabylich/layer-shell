@@ -2,7 +2,7 @@ use anyhow::{Context as _, Result, bail};
 use std::{
     io::{Read, Write},
     net::{SocketAddr, TcpStream, ToSocketAddrs},
-    os::fd::{FromRawFd, IntoRawFd},
+    os::fd::{FromRawFd, IntoRawFd, RawFd},
     time::Duration,
 };
 
@@ -23,7 +23,7 @@ const PATH: &str = concat!(
     "timezone=Europe/Warsaw"
 );
 
-pub(crate) fn send_request() -> Result<i32> {
+pub(crate) fn send_request() -> Result<RawFd> {
     let addr = format!("{HOST}:80")
         .to_socket_addrs()
         .context("invalid host:port")?
@@ -47,7 +47,7 @@ pub(crate) fn send_request() -> Result<i32> {
     Ok(socket.into_raw_fd())
 }
 
-pub(crate) fn read_response(fd: i32) -> Result<String> {
+pub(crate) fn read_response(fd: RawFd) -> Result<String> {
     let mut socket = unsafe { TcpStream::from_raw_fd(fd) };
     let mut response = vec![];
     socket

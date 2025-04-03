@@ -4,9 +4,10 @@ use crate::{
 };
 use anyhow::Result;
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
+use std::os::fd::RawFd;
 
 pub(crate) struct Timer {
-    fd: i32,
+    fd: RawFd,
     ticks_count: u64,
 }
 
@@ -64,7 +65,7 @@ impl Reader for Timer {
         })
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         self.fd
     }
 

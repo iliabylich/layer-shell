@@ -5,7 +5,7 @@ use crate::{
 };
 use libc::{PF_LOCAL, SOCK_STREAM, close, read, socketpair, write};
 use std::{
-    os::fd::AsRawFd,
+    os::fd::{AsRawFd, RawFd},
     sync::mpsc::{Receiver, Sender, TryRecvError},
 };
 
@@ -70,7 +70,7 @@ impl EventsChannel {
 
 pub(crate) struct SignalingSender<T> {
     tx: VerboseSender<T>,
-    fd: i32,
+    fd: RawFd,
 }
 
 impl<T> Clone for SignalingSender<T> {
@@ -98,7 +98,7 @@ impl<T> Drop for SignalingSender<T> {
 
 pub(crate) struct SignalingCommandReceiver {
     rx: VerboseReceiver<Command>,
-    fd: i32,
+    fd: RawFd,
 }
 
 impl Reader for SignalingCommandReceiver {
@@ -110,7 +110,7 @@ impl Reader for SignalingCommandReceiver {
         unreachable!("use direct API instead")
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         self.fd
     }
 

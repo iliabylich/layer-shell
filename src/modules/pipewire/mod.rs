@@ -10,7 +10,7 @@ use dbus::{
     channel::{BusType, Channel},
     message::SignalArgs as _,
 };
-use std::time::Duration;
+use std::{os::fd::RawFd, time::Duration};
 
 pub(crate) struct Pipewire {
     tx: VerboseSender<Event>,
@@ -68,7 +68,7 @@ impl Reader for Pipewire {
         Ok(())
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         self.conn.channel().watch().fd
     }
 

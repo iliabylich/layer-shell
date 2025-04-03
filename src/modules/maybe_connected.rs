@@ -1,5 +1,6 @@
 use crate::epoll::{FdId, Reader};
 use anyhow::Result;
+use std::os::fd::RawFd;
 
 pub(crate) struct MaybeConnected<T> {
     module: Option<T>,
@@ -59,7 +60,7 @@ where
         }
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         if let Some(module) = self.module.as_ref() {
             module.fd()
         } else {

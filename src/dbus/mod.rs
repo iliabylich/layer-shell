@@ -1,4 +1,5 @@
 #[expect(clippy::needless_lifetimes)]
+#[rustfmt::skip]
 mod generated;
 
 pub(crate) mod nm;

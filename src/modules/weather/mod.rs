@@ -3,6 +3,7 @@ use crate::{
     epoll::{FdId, Reader},
 };
 use anyhow::{Context as _, Result};
+use std::os::fd::RawFd;
 
 mod client;
 mod code;
@@ -12,7 +13,7 @@ pub use code::WeatherCode;
 
 pub(crate) struct Weather {
     tx: VerboseSender<Event>,
-    fd: Option<i32>,
+    fd: Option<RawFd>,
 }
 
 impl Weather {
@@ -51,7 +52,7 @@ impl Reader for Weather {
         Ok(())
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         self.fd.unwrap_or(-1)
     }
 

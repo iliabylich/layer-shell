@@ -3,6 +3,7 @@ use libc::{
     EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLLIN, c_int, close, epoll_create, epoll_ctl, epoll_event,
     epoll_wait,
 };
+use std::os::fd::RawFd;
 
 pub(crate) trait Reader {
     type Output;
@@ -14,12 +15,12 @@ pub(crate) trait Reader {
         Self::NAME
     }
 
-    fn fd(&self) -> i32;
+    fn fd(&self) -> RawFd;
     fn fd_id(&self) -> FdId;
 }
 
 pub(crate) struct Epoll {
-    epfd: i32,
+    epfd: RawFd,
 }
 
 impl Epoll {
@@ -44,7 +45,7 @@ impl Epoll {
         self.add_reader_fd(fd, id)
     }
 
-    fn add_reader_fd(&mut self, fd: i32, id: FdId) -> Result<()> {
+    fn add_reader_fd(&mut self, fd: RawFd, id: FdId) -> Result<()> {
         let res = unsafe {
             epoll_ctl(
                 self.epfd,

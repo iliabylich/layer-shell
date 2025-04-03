@@ -9,7 +9,10 @@ use raw_event::RawEvent;
 use state::State;
 use std::{
     io::{BufRead as _, BufReader, Lines},
-    os::{fd::AsRawFd, unix::net::UnixStream},
+    os::{
+        fd::{AsRawFd, RawFd},
+        unix::net::UnixStream,
+    },
 };
 
 mod connection;
@@ -17,7 +20,7 @@ mod raw_event;
 mod state;
 
 pub(crate) struct Hyprland {
-    fd: i32,
+    fd: RawFd,
     reader: Lines<BufReader<UnixStream>>,
     state: State,
     tx: VerboseSender<Event>,
@@ -65,7 +68,7 @@ impl Reader for Hyprland {
         Ok(())
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         self.fd
     }
 

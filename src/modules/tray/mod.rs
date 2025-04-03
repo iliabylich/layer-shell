@@ -25,7 +25,7 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::time::Duration;
+use std::{os::fd::RawFd, time::Duration};
 
 mod item;
 mod state;
@@ -177,7 +177,7 @@ impl Reader for Tray {
         Ok(())
     }
 
-    fn fd(&self) -> i32 {
+    fn fd(&self) -> RawFd {
         self.conn.channel().watch().fd
     }
 
