@@ -150,8 +150,8 @@ pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
                     if ticks.is_multiple_of(CPU::INTERVAL) {
                         cpu.tick();
                     }
-                    if ticks.is_multiple_of(Weather::INTERVAL) {
-                        weather.tick();
+                    if ticks.is_multiple_of(Weather::INTERVAL) && weather.refresh() {
+                        epoll.add_reader(&weather)?;
                     }
                 }
                 FdId::HyprlandSocket => {
@@ -174,6 +174,10 @@ pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
                 }
                 FdId::TrayDBus => {
                     epoll.read_from_or_ignore(&mut tray);
+                }
+                FdId::Weather => {
+                    epoll.read_from_or_ignore(&mut weather);
+                    epoll.remove_reader(&weather);
                 }
                 FdId::Command => {
                     rx.consume_signal();

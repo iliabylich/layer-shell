@@ -81,7 +81,7 @@ impl Epoll {
                 },
             )
         };
-        println!("removed: {:?}", res);
+        println!("removed {fd} ({id:?}): {:?}", res);
     }
 
     pub(crate) fn poll(&self, buf: &mut Vec<epoll_event>) -> Result<()> {
@@ -114,14 +114,15 @@ impl Epoll {
         }
     }
 
-    pub(crate) fn read_from_or_ignore<T>(&mut self, reader: &mut T)
+    pub(crate) fn read_from_or_ignore<T>(&mut self, reader: &mut T) -> Option<T::Output>
     where
         T: Reader,
     {
         match reader.read() {
-            Ok(_) => {}
+            Ok(output) => Some(output),
             Err(err) => {
                 log::error!("error in module {}: {err}", reader.name());
+                None
             }
         }
     }
@@ -132,7 +133,7 @@ impl Drop for Epoll {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(u64)]
 pub(crate) enum FdId {
     Timer,
@@ -144,6 +145,7 @@ pub(crate) enum FdId {
     LauncherUserDirInotify,
     NetworkDBus,
     TrayDBus,
+    Weather,
 
     Disconnected,
 }
