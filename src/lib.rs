@@ -9,7 +9,6 @@ mod epoll;
 mod event;
 mod ffi;
 mod hyprctl;
-mod logger;
 mod macros;
 mod modules;
 mod timer;
@@ -39,12 +38,7 @@ impl Ctx {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init() -> *mut Ctx {
-    let logger = Box::leak(Box::new(logger::StdErrLogger::new()));
-    if let Err(err) = log::set_logger(logger) {
-        eprintln!("Failed to set logger: {:?}", err);
-    } else {
-        log::set_max_level(log::LevelFilter::Trace);
-    }
+    simple_logger::SimpleLogger::new().init().unwrap();
 
     let ctx = Ctx {
         subscriptions: vec![],
