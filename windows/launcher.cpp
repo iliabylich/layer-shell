@@ -96,4 +96,10 @@ void Launcher::on_io_event(io::Event::Launcher_Body data) {
 }
 void Launcher::on_toggle_launcher_event() { toggle_and_reset(); }
 
+Launcher *Launcher::instance;
+void Launcher::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
+  instance = new Launcher(app, ctx);
+}
+Launcher *Launcher::get() { return instance; }
+
 } // namespace windows

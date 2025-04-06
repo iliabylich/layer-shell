@@ -50,4 +50,10 @@ void Weather::on_io_event(io::Event::ForecastWeather_Body data) {
   }
 }
 
+Weather *Weather::instance;
+void Weather::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
+  instance = new Weather(app, ctx);
+}
+Weather *Weather::get() { return instance; }
+
 } // namespace windows

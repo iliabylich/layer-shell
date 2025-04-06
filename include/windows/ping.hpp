@@ -7,11 +7,15 @@ namespace windows {
 
 class Ping : public Base {
 public:
-  Ping(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
   static Ping *get();
 
 private:
+  Ping(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+
   Gtk::Widget *terminal;
+
+  static Ping *instance;
 };
 
 } // namespace windows

@@ -51,4 +51,10 @@ Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
 
 void Session::on_toggle_session_screen_event() { toggle(); }
 
+Session *Session::instance;
+void Session::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
+  instance = new Session(app, ctx);
+}
+Session *Session::get() { return instance; }
+
 } // namespace windows

@@ -31,4 +31,10 @@ HTop::HTop(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
   set_child(*terminal);
 }
 
+HTop *HTop::instance;
+void HTop::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
+  instance = new HTop(app, ctx);
+}
+HTop *HTop::get() { return instance; }
+
 } // namespace windows

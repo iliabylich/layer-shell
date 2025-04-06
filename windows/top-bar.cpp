@@ -49,4 +49,9 @@ TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
   present();
 }
 
+TopBar *TopBar::instance;
+void TopBar::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
+  instance = new TopBar(app, ctx);
+}
+
 } // namespace windows

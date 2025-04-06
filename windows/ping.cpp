@@ -31,4 +31,10 @@ Ping::Ping(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
   set_child(*terminal);
 }
 
+Ping *Ping::instance;
+void Ping::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
+  instance = new Ping(app, ctx);
+}
+Ping *Ping::get() { return instance; }
+
 } // namespace windows
