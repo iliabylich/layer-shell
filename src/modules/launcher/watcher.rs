@@ -1,9 +1,9 @@
 use crate::{
     Event, VerboseSender,
-    epoll::{FdId, Reader},
+    fd_id::FdId,
     modules::{
-        launcher::{dir::WatcherDir, state::State},
-        maybe_connected::MaybeConnected,
+        Module,
+        launcher::{Launcher, dir::WatcherDir, state::State},
     },
 };
 use anyhow::{Context as _, Result, bail};
@@ -19,15 +19,17 @@ use std::{
 pub(crate) struct Watcher<T: WatcherDir> {
     dir: T,
     inotify: Inotify,
-    state: Rc<RefCell<State>>,
+    state: Option<Rc<RefCell<State>>>,
     tx: VerboseSender<Event>,
 }
 
-impl<T> Watcher<T>
-where
-    T: WatcherDir,
-{
-    fn try_new(state: Rc<RefCell<State>>, tx: VerboseSender<Event>) -> Result<Self> {
+impl<T: WatcherDir> Module for Watcher<T> {
+    const FD_ID: FdId = T::FD_ID;
+    const NAME: &str = T::NAME;
+
+    type ReadOutput = ();
+
+    fn new(tx: VerboseSender<Event>) -> Result<Self> {
         let dir = T::new()?;
 
         let inotify = Inotify::init().context("failed to initialize Inotify")?;
@@ -43,31 +45,12 @@ where
         Ok(Self {
             dir,
             inotify,
-            state,
+            state: None,
             tx,
         })
     }
 
-    pub(crate) fn new(state: Rc<RefCell<State>>, tx: VerboseSender<Event>) -> MaybeConnected<Self> {
-        MaybeConnected::new(Self::try_new(state, tx))
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct WatcherUpdate {
-    pub(crate) created_or_updated: HashSet<String>,
-    pub(crate) removed: HashSet<String>,
-}
-
-impl<T> Reader for Watcher<T>
-where
-    T: WatcherDir,
-{
-    type Output = ();
-
-    const NAME: &str = "Inotify Watcher";
-
-    fn read(&mut self) -> Result<Self::Output> {
+    fn read_events(&mut self) -> Result<()> {
         let mut buffer = [0; 1024];
         let mut created_or_updated = HashSet::new();
         let mut removed = HashSet::new();
@@ -96,21 +79,42 @@ where
             }
         }
 
-        let mut state = self.state.borrow_mut();
-        let event = state.process_watcher_update(WatcherUpdate {
+        let mut state = self
+            .state
+            .as_mut()
+            .context("state is not set")?
+            .borrow_mut();
+        state.process_watcher_update(WatcherUpdate {
             created_or_updated,
             removed,
         });
+        let event = state.as_event();
         self.tx.send(event);
 
         Ok(())
     }
+}
 
-    fn fd(&self) -> RawFd {
+impl<T> AsRawFd for Watcher<T>
+where
+    T: WatcherDir,
+{
+    fn as_raw_fd(&self) -> RawFd {
         self.inotify.as_raw_fd()
     }
+}
 
-    fn fd_id(&self) -> FdId {
-        self.dir.fd_id()
+impl<T> Watcher<T>
+where
+    T: WatcherDir,
+{
+    pub(crate) fn connect(&mut self, launcher: &Launcher) {
+        self.state = Some(Rc::clone(&launcher.state));
     }
+}
+
+#[derive(Debug)]
+pub(crate) struct WatcherUpdate {
+    pub(crate) created_or_updated: HashSet<String>,
+    pub(crate) removed: HashSet<String>,
 }

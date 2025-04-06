@@ -1,5 +1,5 @@
 use anyhow::{Context as _, Result};
-use std::os::unix::net::UnixStream;
+use mio::net::UnixStream;
 
 pub(crate) fn connect_to_socket() -> Result<UnixStream> {
     let path = format!(
@@ -8,9 +8,6 @@ pub(crate) fn connect_to_socket() -> Result<UnixStream> {
         hyprland_instance_signature()?
     );
     let socket = UnixStream::connect(&path).context("failed to open reader socket")?;
-    socket
-        .set_nonblocking(true)
-        .context("failed to mark reader as nonblocking")?;
     Ok(socket)
 }
 

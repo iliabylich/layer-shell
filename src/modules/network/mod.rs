@@ -4,9 +4,9 @@ use crate::{
         OrgFreedesktopNetworkManagerStateChanged,
         nm::{Device, NetworkManager},
     },
-    epoll::{FdId, Reader},
+    fd_id::FdId,
     hyprctl,
-    modules::maybe_connected::MaybeConnected,
+    modules::Module,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
@@ -16,7 +16,10 @@ use dbus::{
     message::SignalArgs,
 };
 use network_speed::NetworkSpeed;
-use std::{os::fd::RawFd, time::Duration};
+use std::{
+    os::fd::{AsRawFd, RawFd},
+    time::Duration,
+};
 
 mod network_list;
 mod network_speed;
@@ -29,8 +32,13 @@ pub(crate) struct Network {
     network_speed: NetworkSpeed,
 }
 
-impl Network {
-    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
+impl Module for Network {
+    const FD_ID: FdId = FdId::NetworkDBus;
+    const NAME: &str = "Network";
+
+    type ReadOutput = ();
+
+    fn new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::System).context("failed to connecto to DBus")?;
         channel.set_watch_enabled(true);
@@ -52,11 +60,33 @@ impl Network {
         Ok(this)
     }
 
-    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
-        MaybeConnected::new(Self::try_new(tx))
-    }
+    fn read_events(&mut self) -> Result<()> {
+        while let Ok(Some(message)) = self
+            .conn
+            .channel()
+            .blocking_pop_message(Duration::from_secs(0))
+        {
+            if OrgFreedesktopNetworkManagerStateChanged::from_message(&message).is_some() {
+                self.full_reset();
+            } else if let Some(e) = PropertiesPropertiesChanged::from_message(&message) {
+                if e.interface_name == "org.freedesktop.NetworkManager.Device.Statistics" {
+                    let tx = e.changed_properties.get("TxBytes").and_then(|v| v.as_u64());
+                    let rx = e.changed_properties.get("RxBytes").and_then(|v| v.as_u64());
 
-    pub(crate) fn spawn_network_editor(&self) -> Result<()> {
+                    if let Some((tx, rx)) = tx.zip(rx) {
+                        let event = self.network_speed.update(tx, rx);
+                        self.tx.send(event);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Network {
+    pub(crate) fn spawn_network_editor() -> Result<()> {
         hyprctl::dispatch("exec wezterm start --always-new-process --class org.me.nmtui -e nmtui")
             .context("failed to spawn network editor")
     }
@@ -93,40 +123,8 @@ impl Network {
     }
 }
 
-impl Reader for Network {
-    type Output = ();
-
-    const NAME: &str = "Network";
-
-    fn read(&mut self) -> Result<Self::Output> {
-        while let Ok(Some(message)) = self
-            .conn
-            .channel()
-            .blocking_pop_message(Duration::from_secs(0))
-        {
-            if OrgFreedesktopNetworkManagerStateChanged::from_message(&message).is_some() {
-                self.full_reset();
-            } else if let Some(e) = PropertiesPropertiesChanged::from_message(&message) {
-                if e.interface_name == "org.freedesktop.NetworkManager.Device.Statistics" {
-                    let tx = e.changed_properties.get("TxBytes").and_then(|v| v.as_u64());
-                    let rx = e.changed_properties.get("RxBytes").and_then(|v| v.as_u64());
-
-                    if let Some((tx, rx)) = tx.zip(rx) {
-                        let event = self.network_speed.update(tx, rx);
-                        self.tx.send(event);
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn fd(&self) -> RawFd {
+impl AsRawFd for Network {
+    fn as_raw_fd(&self) -> RawFd {
         self.conn.channel().watch().fd
-    }
-
-    fn fd_id(&self) -> FdId {
-        FdId::NetworkDBus
     }
 }

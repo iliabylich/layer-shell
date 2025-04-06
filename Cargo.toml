@@ -17,8 +17,9 @@ nanoserde = { version = "0.2", default-features = false, features = [
     "std",
     "json",
 ] }
-libc = "0.2.169"
-simple_logger = { version = "5", default-features = false }
+libc = "0"
+mio = { version = "1", features = ["os-poll", "net", "os-ext"] }
+env_logger = { version = "0.11", default-features = false }
 
 [profile.release]
 opt-level = "z"

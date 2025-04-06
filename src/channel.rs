@@ -1,9 +1,6 @@
-use crate::{
-    Command, Event,
-    epoll::{FdId, Reader},
-    fatal,
-};
+use crate::{Command, Event, fatal, fd_id::FdId};
 use libc::{PF_LOCAL, SOCK_STREAM, close, read, socketpair, write};
+use mio::Token;
 use std::{
     os::fd::{AsRawFd, RawFd},
     sync::mpsc::{Receiver, Sender, TryRecvError},
@@ -47,7 +44,7 @@ impl<T> VerboseReceiver<T> {
 }
 
 pub(crate) struct EventsChannel {
-    pub(crate) tx: Option<VerboseSender<Event>>,
+    pub(crate) tx: VerboseSender<Event>,
     pub(crate) rx: VerboseReceiver<Event>,
 }
 
@@ -56,15 +53,9 @@ impl EventsChannel {
         let (tx, rx) = std::sync::mpsc::channel();
 
         Self {
-            tx: Some(VerboseSender { tx }),
+            tx: VerboseSender { tx },
             rx: VerboseReceiver { rx },
         }
-    }
-
-    pub(crate) fn take_tx(&mut self) -> VerboseSender<Event> {
-        self.tx
-            .take()
-            .unwrap_or_else(|| fatal!("can't take sender twice"))
     }
 }
 
@@ -101,21 +92,13 @@ pub(crate) struct SignalingCommandReceiver {
     fd: RawFd,
 }
 
-impl Reader for SignalingCommandReceiver {
-    type Output = Vec<Command>;
+impl SignalingCommandReceiver {
+    pub(crate) const TOKEN: Token = FdId::Command.token();
+}
 
-    const NAME: &str = "Commands channel";
-
-    fn read(&mut self) -> anyhow::Result<Self::Output> {
-        unreachable!("use direct API instead")
-    }
-
-    fn fd(&self) -> RawFd {
+impl AsRawFd for SignalingCommandReceiver {
+    fn as_raw_fd(&self) -> RawFd {
         self.fd
-    }
-
-    fn fd_id(&self) -> FdId {
-        FdId::Command
     }
 }
 
@@ -132,12 +115,6 @@ impl SignalingCommandReceiver {
 impl Drop for SignalingCommandReceiver {
     fn drop(&mut self) {
         unsafe { close(self.fd) };
-    }
-}
-
-impl AsRawFd for SignalingCommandReceiver {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.fd
     }
 }
 

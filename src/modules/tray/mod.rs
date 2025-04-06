@@ -8,10 +8,10 @@ use crate::{
         register_org_kde_status_notifier_watcher,
         tray::{DBusMenu, DBusNameOwnerChanged, StatusNotifierItem, UUID},
     },
-    epoll::{FdId, Reader},
     event::TrayApp,
+    fd_id::FdId,
     modules::{
-        maybe_connected::MaybeConnected,
+        Module,
         tray::{item::Item, watcher::Watcher},
     },
 };
@@ -25,7 +25,10 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use state::State;
-use std::{os::fd::RawFd, time::Duration};
+use std::{
+    os::fd::{AsRawFd, RawFd},
+    time::Duration,
+};
 
 mod item;
 mod state;
@@ -38,8 +41,13 @@ pub(crate) struct Tray {
     tx: VerboseSender<Event>,
 }
 
-impl Tray {
-    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
+impl Module for Tray {
+    const FD_ID: FdId = FdId::TrayDBus;
+    const NAME: &str = "Tray";
+
+    type ReadOutput = ();
+
+    fn new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -77,10 +85,20 @@ impl Tray {
         })
     }
 
-    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
-        MaybeConnected::new(Self::try_new(tx))
-    }
+    fn read_events(&mut self) -> Result<()> {
+        while let Ok(Some(message)) = self
+            .conn
+            .channel()
+            .blocking_pop_message(Duration::from_secs(0))
+        {
+            self.process_message(message)?;
+        }
 
+        Ok(())
+    }
+}
+
+impl Tray {
     fn process_message(&mut self, message: Message) -> Result<()> {
         let sender = message
             .sender()
@@ -155,33 +173,13 @@ impl Tray {
     pub(crate) fn trigger(&mut self, uuid: String) -> Result<()> {
         let (service, path, id) = UUID::decode(uuid)?;
         DBusMenu::new(service, path).event(&self.conn, id)?;
-        self.read()?;
+        self.read_events()?;
         Ok(())
     }
 }
 
-impl Reader for Tray {
-    type Output = ();
-
-    const NAME: &str = "Tray";
-
-    fn read(&mut self) -> Result<Self::Output> {
-        while let Ok(Some(message)) = self
-            .conn
-            .channel()
-            .blocking_pop_message(Duration::from_secs(0))
-        {
-            self.process_message(message)?;
-        }
-
-        Ok(())
-    }
-
-    fn fd(&self) -> RawFd {
+impl AsRawFd for Tray {
+    fn as_raw_fd(&self) -> RawFd {
         self.conn.channel().watch().fd
-    }
-
-    fn fd_id(&self) -> FdId {
-        FdId::TrayDBus
     }
 }

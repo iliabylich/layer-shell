@@ -1,18 +1,11 @@
-use crate::{
-    Event, VerboseSender,
-    epoll::{FdId, Reader},
-    hyprctl,
-    modules::maybe_connected::MaybeConnected,
-};
+use crate::{Event, VerboseSender, fd_id::FdId, hyprctl, modules::Module};
 use anyhow::{Context as _, Result};
+use mio::net::UnixStream;
 use raw_event::RawEvent;
 use state::State;
 use std::{
     io::{BufRead as _, BufReader, Lines},
-    os::{
-        fd::{AsRawFd, RawFd},
-        unix::net::UnixStream,
-    },
+    os::fd::{AsRawFd, RawFd},
 };
 
 mod connection;
@@ -26,8 +19,13 @@ pub(crate) struct Hyprland {
     tx: VerboseSender<Event>,
 }
 
-impl Hyprland {
-    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
+impl Module for Hyprland {
+    const FD_ID: FdId = FdId::HyprlandSocket;
+    const NAME: &str = "Hyprland";
+
+    type ReadOutput = ();
+
+    fn new(tx: VerboseSender<Event>) -> Result<Self> {
         let socket = connection::connect_to_socket()?;
         let fd = socket.as_raw_fd();
         let reader = BufReader::new(socket).lines();
@@ -44,21 +42,7 @@ impl Hyprland {
         })
     }
 
-    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
-        MaybeConnected::new(Self::try_new(tx))
-    }
-
-    pub(crate) fn go_to_workspace(&self, idx: usize) -> Result<()> {
-        hyprctl::dispatch(format!("workspace {}", idx + 1)).context("failed to go to workspace")
-    }
-}
-
-impl Reader for Hyprland {
-    type Output = ();
-
-    const NAME: &str = "Hyprland";
-
-    fn read(&mut self) -> Result<Self::Output> {
+    fn read_events(&mut self) -> Result<()> {
         while let Some(Ok(line)) = self.reader.next() {
             if let Some(event) = RawEvent::parse(&line) {
                 let event = self.state.apply(event);
@@ -67,12 +51,16 @@ impl Reader for Hyprland {
         }
         Ok(())
     }
+}
 
-    fn fd(&self) -> RawFd {
-        self.fd
+impl Hyprland {
+    pub(crate) fn go_to_workspace(idx: usize) -> Result<()> {
+        hyprctl::dispatch(format!("workspace {}", idx + 1)).context("failed to go to workspace")
     }
+}
 
-    fn fd_id(&self) -> FdId {
-        FdId::HyprlandSocket
+impl AsRawFd for Hyprland {
+    fn as_raw_fd(&self) -> RawFd {
+        self.fd
     }
 }

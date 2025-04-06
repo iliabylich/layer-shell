@@ -30,20 +30,17 @@ impl State {
         (this, event)
     }
 
-    pub(crate) fn go_up(&mut self) -> Event {
+    pub(crate) fn go_up(&mut self) {
         self.selected_idx = self.selected_idx.saturating_sub(1);
-        self.as_event()
     }
 
-    pub(crate) fn go_down(&mut self) -> Event {
+    pub(crate) fn go_down(&mut self) {
         self.selected_idx = std::cmp::min(Self::MAX_ITEMS - 1, self.selected_idx + 1);
-        self.as_event()
     }
 
-    pub(crate) fn set_search(&mut self, pattern: String) -> Event {
+    pub(crate) fn set_search(&mut self, pattern: String) {
         self.selected_idx = 0;
         self.pattern = pattern;
-        self.as_event()
     }
 
     pub(crate) fn exec_selected(&self) -> Result<()> {
@@ -53,7 +50,7 @@ impl State {
         Ok(())
     }
 
-    pub(crate) fn process_watcher_update(&mut self, update: WatcherUpdate) -> Event {
+    pub(crate) fn process_watcher_update(&mut self, update: WatcherUpdate) {
         for desktop_file in DesktopFile::parse_many(update.created_or_updated.into_iter()) {
             self.path_to_desktop_files
                 .insert(desktop_file.path.clone(), desktop_file);
@@ -61,16 +58,14 @@ impl State {
         for path in update.removed {
             self.path_to_desktop_files.remove(&path);
         }
-        self.reset()
     }
 
-    pub(crate) fn reset(&mut self) -> Event {
+    pub(crate) fn reset(&mut self) {
         self.pattern = String::new();
         self.selected_idx = 0;
-        self.as_event()
     }
 
-    fn as_event(&self) -> Event {
+    pub(crate) fn as_event(&self) -> Event {
         let apps = self
             .visible()
             .into_iter()

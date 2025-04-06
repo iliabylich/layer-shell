@@ -1,12 +1,15 @@
-use crate::epoll::FdId;
 use anyhow::{Context as _, Result};
 
+use crate::fd_id::FdId;
+
 pub(crate) trait WatcherDir {
+    const NAME: &str;
+    const FD_ID: FdId;
+
     fn new() -> Result<Self>
     where
         Self: Sized;
     fn path(&self) -> String;
-    fn fd_id(&self) -> FdId;
 }
 
 pub(crate) fn glob<T>(dir: &T) -> Result<Vec<String>>
@@ -34,16 +37,15 @@ pub(crate) struct GlobalDir {
 }
 
 impl WatcherDir for GlobalDir {
+    const NAME: &str = "Global dir watcher";
+    const FD_ID: FdId = FdId::LauncherGlobalDirInotify;
+
     fn new() -> Result<Self> {
-        let path = validate_exists(String::from("/usr/share/applications"))?;
+        let path = validate_exists("/usr/share/applications")?;
         Ok(Self { path })
     }
     fn path(&self) -> String {
         self.path.clone()
-    }
-
-    fn fd_id(&self) -> FdId {
-        FdId::LauncherGlobalDirInotify
     }
 }
 
@@ -52,6 +54,9 @@ pub(crate) struct UserDir {
 }
 
 impl WatcherDir for UserDir {
+    const NAME: &str = "User dir watcher";
+    const FD_ID: FdId = FdId::LauncherUserDirInotify;
+
     fn new() -> Result<Self> {
         let path = validate_exists(format!(
             "{}/.local/share/applications",
@@ -62,13 +67,10 @@ impl WatcherDir for UserDir {
     fn path(&self) -> String {
         self.path.clone()
     }
-
-    fn fd_id(&self) -> FdId {
-        FdId::LauncherUserDirInotify
-    }
 }
 
-fn validate_exists(path: String) -> Result<String> {
+fn validate_exists(path: impl Into<String>) -> Result<String> {
+    let path = path.into();
     match std::fs::read_dir(&path) {
         Ok(_) => Ok(path),
         Err(err) => Err(anyhow::Error::from(err)

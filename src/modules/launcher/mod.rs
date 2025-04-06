@@ -1,4 +1,4 @@
-use crate::{Event, VerboseSender, modules::maybe_connected::MaybeConnected};
+use crate::{Event, VerboseSender};
 use desktop_file::DesktopFile;
 use dir::{GlobalDir, UserDir, WatcherDir as _};
 use state::State;
@@ -16,13 +16,7 @@ pub(crate) struct Launcher {
 }
 
 impl Launcher {
-    pub(crate) fn new(
-        tx: VerboseSender<Event>,
-    ) -> (
-        Self,
-        MaybeConnected<Watcher<GlobalDir>>,
-        MaybeConnected<Watcher<UserDir>>,
-    ) {
+    pub(crate) fn new(tx: &VerboseSender<Event>) -> Self {
         let mut filelist = vec![];
         if let Ok(dir) = GlobalDir::new() {
             match dir::glob(&dir) {
@@ -40,35 +34,39 @@ impl Launcher {
         let desktop_files = DesktopFile::parse_many(filelist.iter());
         let (state, event) = State::new(desktop_files);
         tx.send(event);
+
         let state = Rc::new(RefCell::new(state));
-
-        let global_watcher = Watcher::<GlobalDir>::new(Rc::clone(&state), tx.clone());
-        let user_watcher = Watcher::<UserDir>::new(Rc::clone(&state), tx.clone());
-
-        (Self { state, tx }, global_watcher, user_watcher)
+        Self {
+            state,
+            tx: tx.clone(),
+        }
     }
 
     pub(crate) fn reset(&mut self) {
         let mut state = self.state.borrow_mut();
-        let event = state.reset();
+        state.reset();
+        let event = state.as_event();
         self.tx.send(event);
     }
 
     pub(crate) fn go_up(&mut self) {
         let mut state = self.state.borrow_mut();
-        let event = state.go_up();
+        state.go_up();
+        let event = state.as_event();
         self.tx.send(event);
     }
 
     pub(crate) fn go_down(&mut self) {
         let mut state = self.state.borrow_mut();
-        let event = state.go_down();
+        state.go_down();
+        let event = state.as_event();
         self.tx.send(event);
     }
 
     pub(crate) fn set_search(&mut self, search: String) {
         let mut state = self.state.borrow_mut();
-        let event = state.set_search(search);
+        state.set_search(search);
+        let event = state.as_event();
         self.tx.send(event);
     }
 
@@ -79,3 +77,6 @@ impl Launcher {
         }
     }
 }
+
+pub(crate) type GlobalLauncherWatcher = Watcher<GlobalDir>;
+pub(crate) type UserLauncherWatcher = Watcher<UserDir>;

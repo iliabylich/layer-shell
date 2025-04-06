@@ -1,8 +1,8 @@
 use crate::{
     Event, VerboseSender,
     dbus::{OrgLocalPipewireDBus, OrgLocalPipewireDBusDataChanged},
-    epoll::{FdId, Reader},
-    modules::maybe_connected::MaybeConnected,
+    fd_id::FdId,
+    modules::Module,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
@@ -10,15 +10,23 @@ use dbus::{
     channel::{BusType, Channel},
     message::SignalArgs as _,
 };
-use std::{os::fd::RawFd, time::Duration};
+use std::{
+    os::fd::{AsRawFd, RawFd},
+    time::Duration,
+};
 
 pub(crate) struct Pipewire {
     tx: VerboseSender<Event>,
     conn: Connection,
 }
 
-impl Pipewire {
-    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
+impl Module for Pipewire {
+    const FD_ID: FdId = FdId::PipewireDBus;
+    const NAME: &str = "Pipewire";
+
+    type ReadOutput = ();
+
+    fn new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -41,17 +49,7 @@ impl Pipewire {
         Ok(Self { tx, conn })
     }
 
-    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
-        MaybeConnected::new(Self::try_new(tx))
-    }
-}
-
-impl Reader for Pipewire {
-    type Output = ();
-
-    const NAME: &str = "Pipewire";
-
-    fn read(&mut self) -> Result<Self::Output> {
+    fn read_events(&mut self) -> Result<()> {
         while let Ok(Some(message)) = self
             .conn
             .channel()
@@ -67,12 +65,10 @@ impl Reader for Pipewire {
         }
         Ok(())
     }
+}
 
-    fn fd(&self) -> RawFd {
+impl AsRawFd for Pipewire {
+    fn as_raw_fd(&self) -> RawFd {
         self.conn.channel().watch().fd
-    }
-
-    fn fd_id(&self) -> FdId {
-        FdId::PipewireDBus
     }
 }

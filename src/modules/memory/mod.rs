@@ -58,7 +58,7 @@ impl Memory {
         Ok(())
     }
 
-    pub(crate) fn spawn_system_monitor(&self) {
+    pub(crate) fn spawn_system_monitor() {
         if let Err(err) = hyprctl::dispatch("exec gnome-system-monitor") {
             log::error!("Failed to open system monitor: {:?}", err);
         }

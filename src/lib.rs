@@ -5,18 +5,20 @@
 mod channel;
 mod command;
 mod dbus;
-mod epoll;
 mod event;
+mod fd_id;
 mod ffi;
 mod hyprctl;
+mod r#loop;
 mod macros;
 mod modules;
 mod timer;
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::Result;
 use channel::{CommandsChannel, EventsChannel, VerboseSender};
 pub use command::*;
 pub use event::Event;
+use r#loop::Loop;
 use macros::fatal;
 
 type Subscriptions = Vec<(
@@ -38,7 +40,7 @@ impl Ctx {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init() -> *mut Ctx {
-    simple_logger::SimpleLogger::new().init().unwrap();
+    env_logger::init();
 
     let ctx = Ctx {
         subscriptions: vec![],
@@ -80,128 +82,12 @@ pub extern "C" fn io_spawn_thread(ctx: *mut Ctx) {
 }
 
 pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
-    use crate::epoll::{Epoll, FdId};
-    use crate::modules::{
-        control::Control, cpu::CPU, hyprland::Hyprland, launcher::Launcher, memory::Memory,
-        network::Network, pipewire::Pipewire, session::Session, time::Time, tray::Tray,
-        weather::Weather,
-    };
-    use crate::timer::Timer;
-
     let ctx = Ctx::from_raw(ctx);
-    let tx = ctx.events.take_tx();
+    let tx = ctx.events.tx.clone();
+    let rx = ctx.commands.take_rx();
 
-    let mut epoll = Epoll::new().context("failed to init epoll")?;
-
-    let mut rx = ctx.commands.take_rx();
-    epoll.add_reader(&rx)?;
-
-    let mut hyprland = Hyprland::new(tx.clone());
-    epoll.add_reader(&hyprland)?;
-
-    let mut timer = Timer::new(1);
-    epoll.add_reader(&timer)?;
-
-    let mut control = Control::new(tx.clone());
-    epoll.add_reader(&control)?;
-
-    let mut pipewire = Pipewire::new(tx.clone());
-    epoll.add_reader(&pipewire)?;
-
-    let mut network = Network::new(tx.clone());
-    epoll.add_reader(&network)?;
-
-    let (mut launcher, mut global_dir_inotify, mut user_dir_inotify) = Launcher::new(tx.clone());
-    epoll.add_reader(&global_dir_inotify)?;
-    epoll.add_reader(&user_dir_inotify)?;
-
-    let mut tray = Tray::new(tx.clone());
-    epoll.add_reader(&tray)?;
-
-    let mut weather = Weather::new(tx.clone());
-    let mut memory = Memory::new(tx.clone());
-    let mut time = Time::new(tx.clone());
-    let mut cpu = CPU::new(tx.clone());
-    let mut session = Session::new();
-
-    let mut events = Vec::with_capacity(100);
-
-    loop {
-        epoll.poll(&mut events)?;
-        for event in events.iter() {
-            let id = FdId::try_from(event.u64)?;
-            match id {
-                FdId::Timer => {
-                    let Some(ticks) = epoll.read_from_or_disable(&mut timer) else {
-                        continue;
-                    };
-                    if ticks.is_multiple_of(Time::INTERVAL) {
-                        time.tick();
-                    }
-                    if ticks.is_multiple_of(Memory::INTERVAL) {
-                        memory.tick();
-                    }
-                    if ticks.is_multiple_of(CPU::INTERVAL) {
-                        cpu.tick();
-                    }
-                    if ticks.is_multiple_of(Weather::INTERVAL) && weather.refresh() {
-                        epoll.add_reader(&weather)?;
-                    }
-                }
-                FdId::HyprlandSocket => {
-                    epoll.read_from_or_disable(&mut hyprland);
-                }
-                FdId::ControlDBus => {
-                    epoll.read_from_or_disable(&mut control);
-                }
-                FdId::PipewireDBus => {
-                    epoll.read_from_or_disable(&mut pipewire);
-                }
-                FdId::LauncherGlobalDirInotify => {
-                    epoll.read_from_or_disable(&mut global_dir_inotify);
-                }
-                FdId::LauncherUserDirInotify => {
-                    epoll.read_from_or_disable(&mut user_dir_inotify);
-                }
-                FdId::NetworkDBus => {
-                    epoll.read_from_or_disable(&mut network);
-                }
-                FdId::TrayDBus => {
-                    epoll.read_from_or_ignore(&mut tray);
-                }
-                FdId::Weather => {
-                    epoll.read_from_or_ignore(&mut weather);
-                    epoll.remove_reader(&weather);
-                }
-                FdId::Command => {
-                    rx.consume_signal();
-                    while let Some(cmd) = rx.recv() {
-                        match cmd {
-                            Command::HyprlandGoToWorkspace { idx } => {
-                                hyprland.with(|hyprland| hyprland.go_to_workspace(idx))
-                            }
-                            Command::LauncherReset => launcher.reset(),
-                            Command::LauncherGoUp => launcher.go_up(),
-                            Command::LauncherGoDown => launcher.go_down(),
-                            Command::LauncherSetSearch { search } => launcher.set_search(search),
-                            Command::LauncherExecSelected => launcher.exec_selected(),
-                            Command::Lock => session.lock(),
-                            Command::Reboot => session.reboot(),
-                            Command::Shutdown => session.shutdown(),
-                            Command::Logout => session.logout(),
-                            Command::ChangeTheme => session.change_theme(),
-                            Command::TriggerTray { uuid } => tray.with(|tray| tray.trigger(uuid)),
-                            Command::SpawnNetworkEditor => {
-                                network.with(|network| network.spawn_network_editor())
-                            }
-                            Command::SpawnSystemMonitor => memory.spawn_system_monitor(),
-                        }
-                    }
-                }
-                FdId::Disconnected => bail!("got fd id = Last (bug?)"),
-            }
-        }
-    }
+    let r#loop = Loop::new(tx, rx)?;
+    r#loop.start();
 }
 
 #[unsafe(no_mangle)]

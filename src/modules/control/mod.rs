@@ -2,8 +2,8 @@ use crate::{
     Event,
     channel::VerboseSender,
     dbus::{OrgMeLayerShellControl, register_org_me_layer_shell_control},
-    epoll::{FdId, Reader},
-    modules::maybe_connected::MaybeConnected,
+    fd_id::FdId,
+    modules::Module,
 };
 use anyhow::{Context as _, Result};
 use dbus::{
@@ -12,15 +12,23 @@ use dbus::{
     channel::{BusType, Channel},
 };
 use dbus_crossroads::Crossroads;
-use std::{os::fd::RawFd, time::Duration};
+use std::{
+    os::fd::{AsRawFd, RawFd},
+    time::Duration,
+};
 
 pub(crate) struct Control {
     conn: Connection,
     cr: Crossroads,
 }
 
-impl Control {
-    fn try_new(tx: VerboseSender<Event>) -> Result<Self> {
+impl Module for Control {
+    const FD_ID: FdId = FdId::ControlDBus;
+    const NAME: &str = "Control";
+
+    type ReadOutput = ();
+
+    fn new(tx: VerboseSender<Event>) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -35,17 +43,7 @@ impl Control {
         Ok(Self { conn, cr })
     }
 
-    pub(crate) fn new(tx: VerboseSender<Event>) -> MaybeConnected<Self> {
-        MaybeConnected::new(Self::try_new(tx))
-    }
-}
-
-impl Reader for Control {
-    type Output = ();
-
-    const NAME: &str = "Control";
-
-    fn read(&mut self) -> Result<Self::Output> {
+    fn read_events(&mut self) -> Result<()> {
         while let Ok(Some(message)) = self
             .conn
             .channel()
@@ -60,13 +58,11 @@ impl Reader for Control {
         }
         Ok(())
     }
+}
 
-    fn fd(&self) -> RawFd {
+impl AsRawFd for Control {
+    fn as_raw_fd(&self) -> RawFd {
         self.conn.channel().watch().fd
-    }
-
-    fn fd_id(&self) -> FdId {
-        FdId::ControlDBus
     }
 }
 
