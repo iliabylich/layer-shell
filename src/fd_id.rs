@@ -1,6 +1,6 @@
 use crate::fatal;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 #[repr(usize)]
 pub(crate) enum FdId {
     Timer,

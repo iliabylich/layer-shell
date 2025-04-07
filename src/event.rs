@@ -106,14 +106,14 @@ pub struct WifiStatus {
     pub strength: u8,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct TrayApp {
     pub root_item: TrayItem,
     pub icon: TrayIcon,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct TrayItem {
     pub id: i32,
@@ -130,7 +130,7 @@ pub struct TrayItem {
     pub children: CArray<TrayItem>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 #[repr(C)]
 pub enum TrayIcon {
     Path { path: CString },
