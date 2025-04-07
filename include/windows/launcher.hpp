@@ -8,7 +8,8 @@ namespace windows {
 
 class Launcher : public Base, public utils::Subscriber {
 public:
-  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+                   io::Subscriptions *subs);
   static Launcher *get();
 
   void toggle_and_reset();
@@ -16,12 +17,14 @@ public:
   void on_toggle_launcher_event() override;
 
 private:
-  Launcher(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  Launcher(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+           io::Subscriptions *subs);
 
   std::vector<widgets::launcher::Row> rows;
   Gtk::SearchEntry input;
 
   static Launcher *instance;
+  io::Ctx *ctx;
 };
 
 } // namespace windows

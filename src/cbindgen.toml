@@ -7,4 +7,4 @@ no_includes = true
 sys_includes = ["cstdarg", "cstddef", "cstdint", "cstdlib"]
 
 [export]
-item_types = ["enums", "structs", "opaque", "functions"]
+item_types = ["enums", "structs", "opaque", "functions", "typedefs"]

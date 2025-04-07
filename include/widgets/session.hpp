@@ -1,13 +1,12 @@
 #pragma once
 
-#include "src/bindings.hpp"
 #include <gtkmm.h>
 
 namespace widgets {
 
 class Session : public Gtk::Button {
 public:
-  Session(io::Ctx *ctx);
+  Session();
 
 private:
   Gtk::Image image;

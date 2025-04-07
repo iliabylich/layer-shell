@@ -1,9 +1,10 @@
 #include "include/utils/subscriber.hpp"
+#include "bindings.hpp"
 
 namespace utils {
 
-Subscriber::Subscriber(io::Ctx *ctx) : ctx(ctx) {
-  io::io_subscribe(Subscriber::handle_event, this, ctx);
+Subscriber::Subscriber(io::Subscriptions *subs) {
+  io::io_subscription_list_add(subs, Subscriber::handle_event, this);
 }
 
 void Subscriber::handle_event(const io::Event *event, void *data) {

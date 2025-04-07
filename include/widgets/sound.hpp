@@ -7,7 +7,7 @@ namespace widgets {
 
 class Sound : public Gtk::Box, public utils::Subscriber {
 public:
-  Sound(io::Ctx *ctx);
+  Sound(io::Subscriptions *subs);
 
   void on_io_event(io::Event::Volume_Body data) override;
 

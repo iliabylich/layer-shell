@@ -7,7 +7,7 @@ namespace widgets {
 
 class Tray : public Gtk::Box, public utils::Subscriber {
 public:
-  Tray(io::Ctx *ctx);
+  Tray(io::Ctx *ctx, io::Subscriptions *subs);
   void on_io_event(io::Event::Tray_Body data) override;
 
 private:
@@ -18,6 +18,8 @@ private:
 
   void cleanup();
   void add(io::TrayApp app);
+
+  io::Ctx *ctx;
 };
 
 } // namespace widgets

@@ -1,4 +1,5 @@
 #include "include/utils/strings.hpp"
+#include <cstdlib>
 #include <cstring>
 
 namespace utils {

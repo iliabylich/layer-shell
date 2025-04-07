@@ -18,10 +18,12 @@ namespace windows {
 
 class TopBar : public Base {
 public:
-  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+                   io::Subscriptions *subs);
 
 private:
-  TopBar(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  TopBar(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+         io::Subscriptions *subs);
 
   widgets::Workspaces workspaces;
   widgets::ChangeTheme change_theme;

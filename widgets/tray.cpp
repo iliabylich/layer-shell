@@ -5,7 +5,8 @@ namespace widgets {
 
 size_t max_icons_count = 10;
 
-Tray::Tray(io::Ctx *ctx) : Gtk::Box(), utils::Subscriber(ctx) {
+Tray::Tray(io::Ctx *ctx, io::Subscriptions *subs)
+    : Gtk::Box(), utils::Subscriber(subs), ctx(ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(10);
   set_css_classes({"widget", "tray", "padded"});

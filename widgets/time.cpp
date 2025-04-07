@@ -2,7 +2,8 @@
 
 namespace widgets {
 
-Time::Time(io::Ctx *ctx) : Gtk::Label("--"), utils::Subscriber(ctx) {
+Time::Time(io::Subscriptions *subs)
+    : Gtk::Label("--"), utils::Subscriber(subs) {
   set_css_classes({"widget", "clock", "padded"});
   set_name("Time");
 }

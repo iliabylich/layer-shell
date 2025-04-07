@@ -12,6 +12,7 @@ mod hyprctl;
 mod r#loop;
 mod macros;
 mod modules;
+mod subscriptions;
 mod timer;
 
 use anyhow::Result;
@@ -20,22 +21,11 @@ pub use command::*;
 pub use event::Event;
 use r#loop::Loop;
 use macros::fatal;
-
-type Subscriptions = Vec<(
-    extern "C" fn(*const Event, *mut std::ffi::c_void),
-    *mut std::ffi::c_void,
-)>;
+pub use subscriptions::*;
 
 pub struct Ctx {
-    subscriptions: Subscriptions,
     events: EventsChannel,
     commands: CommandsChannel,
-}
-impl Ctx {
-    pub(crate) fn from_raw(ctx: *mut Self) -> &'static mut Self {
-        let ctx = unsafe { ctx.as_mut() };
-        ctx.unwrap_or_else(|| fatal!("Can't read NULL ctx"))
-    }
 }
 
 #[unsafe(no_mangle)]
@@ -43,7 +33,6 @@ pub extern "C" fn io_init() -> *mut Ctx {
     env_logger::init();
 
     let ctx = Ctx {
-        subscriptions: vec![],
         commands: CommandsChannel::new(),
         events: EventsChannel::new(),
     };
@@ -51,38 +40,17 @@ pub extern "C" fn io_init() -> *mut Ctx {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_subscribe(
-    f: extern "C" fn(*const Event, *mut std::ffi::c_void),
-    data: *mut std::ffi::c_void,
-    ctx: *mut Ctx,
-) {
-    Ctx::from_raw(ctx).subscriptions.push((f, data));
-}
-
-#[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_thread(ctx: *mut Ctx) {
-    struct SendPtr {
-        ptr: *mut Ctx,
-    }
-    unsafe impl Send for SendPtr {}
-    impl SendPtr {
-        fn get(&self) -> *mut Ctx {
-            self.ptr
-        }
-    }
-    let ctx = SendPtr { ptr: ctx };
+    let mut ctx = unsafe { Box::from_raw(ctx) };
 
     std::thread::spawn(move || {
-        let ctx: *mut Ctx = ctx.get();
-
-        if let Err(err) = io_run_in_place(ctx) {
+        if let Err(err) = io_run_in_place(&mut ctx) {
             log::error!("IO thread has crashed: {:?}", err);
         }
     });
 }
 
-pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
-    let ctx = Ctx::from_raw(ctx);
+pub fn io_run_in_place(ctx: &mut Ctx) -> Result<()> {
     let tx = ctx.events.tx.clone();
     let rx = ctx.commands.take_rx();
 
@@ -91,13 +59,9 @@ pub fn io_run_in_place(ctx: *mut Ctx) -> Result<()> {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_poll_events(ctx: *mut Ctx) {
-    let ctx = Ctx::from_raw(ctx);
+pub extern "C" fn io_poll_events(ctx: &mut Ctx, subs: &Subscriptions) {
     while let Some(event) = ctx.events.rx.recv() {
         log::info!("Received event {:?}", event);
-
-        for (sub, data) in ctx.subscriptions.iter() {
-            sub(&event, *data);
-        }
+        subs.notify_each(&event);
     }
 }

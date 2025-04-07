@@ -4,7 +4,7 @@
 
 namespace widgets {
 
-Session::Session(io::Ctx *) : Gtk::Button() {
+Session::Session() : Gtk::Button() {
   set_css_classes({"widget", "power", "padded", "clickable"});
   set_cursor("pointer");
   set_name("Session");

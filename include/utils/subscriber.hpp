@@ -6,10 +6,7 @@ namespace utils {
 
 class Subscriber {
 public:
-  Subscriber(io::Ctx *ctx);
-
-protected:
-  io::Ctx *ctx;
+  Subscriber(io::Subscriptions *subs);
 
 private:
   static void handle_event(const io::Event *event, void *data);

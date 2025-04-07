@@ -16,24 +16,25 @@ Glib::RefPtr<Gtk::Application> get_app() { return app; }
 
 int main(void) {
   auto ctx = io::io_init();
+  auto subs = io::io_subscription_list_new();
 
   app = Gtk::Application::create("org.me.LayerShell",
                                  Gio::Application::Flags::DEFAULT_FLAGS);
   app->hold();
 
-  app->signal_activate().connect([ctx]() {
+  app->signal_activate().connect([ctx, subs]() {
     utils::Icons::init();
 
-    windows::TopBar::init(app, ctx);
-    windows::Session::init(app, ctx);
+    windows::TopBar::init(app, ctx, subs);
+    windows::Session::init(app, ctx, subs);
     windows::HTop::init(app, ctx);
-    windows::Weather::init(app, ctx);
-    windows::Launcher::init(app, ctx);
+    windows::Weather::init(app, subs);
+    windows::Launcher::init(app, ctx, subs);
     windows::Ping::init(app, ctx);
 
     Glib::signal_timeout().connect(
-        [ctx]() {
-          io::io_poll_events(ctx);
+        [ctx, subs]() {
+          io::io_poll_events(ctx, subs);
           return true;
         },
         50);
@@ -43,8 +44,8 @@ int main(void) {
     io::io_spawn_thread(ctx);
   });
 
-  app->signal_startup().connect([ctx]() {
-    auto css = new utils::Css(ctx);
+  app->signal_startup().connect([subs]() {
+    auto css = new utils::Css(subs);
     css->load();
   });
 

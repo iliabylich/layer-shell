@@ -3,8 +3,9 @@
 
 namespace windows {
 
-Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
-    : utils::Subscriber(ctx), lock("Lock"), reboot("Reboot"),
+Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+                 io::Subscriptions *subs)
+    : utils::Subscriber(subs), lock("Lock"), reboot("Reboot"),
       shutdown("Shutdown"), logout("Logout") {
   set_name("SessionWindow");
   set_css_classes({"session-window"});
@@ -52,8 +53,9 @@ Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
 void Session::on_toggle_session_screen_event() { toggle(); }
 
 Session *Session::instance;
-void Session::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
-  instance = new Session(app, ctx);
+void Session::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+                   io::Subscriptions *subs) {
+  instance = new Session(app, ctx, subs);
 }
 Session *Session::get() { return instance; }
 

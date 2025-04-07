@@ -7,7 +7,7 @@ namespace utils {
 
 class Css : public Subscriber {
 public:
-  Css(io::Ctx *ctx);
+  Css(io::Subscriptions *subs);
   void load();
   void on_reload_styles() override;
 

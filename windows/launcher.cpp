@@ -3,8 +3,9 @@
 
 namespace windows {
 
-Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx)
-    : utils::Subscriber(ctx), rows(5) {
+Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+                   io::Subscriptions *subs)
+    : utils::Subscriber(subs), rows(5), ctx(ctx) {
   set_name("LauncherWindow");
   property_width_request().set_value(700);
   set_css_classes({"launcher-window"});
@@ -97,8 +98,9 @@ void Launcher::on_io_event(io::Event::Launcher_Body data) {
 void Launcher::on_toggle_launcher_event() { toggle_and_reset(); }
 
 Launcher *Launcher::instance;
-void Launcher::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
-  instance = new Launcher(app, ctx);
+void Launcher::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
+                    io::Subscriptions *subs) {
+  instance = new Launcher(app, ctx, subs);
 }
 Launcher *Launcher::get() { return instance; }
 

@@ -9,12 +9,13 @@ namespace windows {
 
 class Weather : public Base, utils::Subscriber {
 public:
-  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  static void init(const Glib::RefPtr<Gtk::Application> &app,
+                   io::Subscriptions *subs);
   static Weather *get();
   void on_io_event(io::Event::ForecastWeather_Body data) override;
 
 private:
-  Weather(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  Weather(const Glib::RefPtr<Gtk::Application> &app, io::Subscriptions *subs);
 
   widgets::weather::HourlyGrid hourly;
   widgets::weather::DailyGrid daily;

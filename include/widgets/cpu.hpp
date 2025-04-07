@@ -8,7 +8,7 @@ namespace widgets {
 
 class CPU : public Gtk::Box, public utils::Subscriber {
 public:
-  CPU(io::Ctx *ctx);
+  CPU(io::Subscriptions *subs);
   void on_io_event(io::Event::CpuUsage_Body data) override;
 
 private:
