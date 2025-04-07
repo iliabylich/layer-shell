@@ -1,5 +1,5 @@
 use crate::{
-    Event, VerboseSender,
+    channel::EventSender0,
     dbus::{
         OrgFreedesktopNetworkManagerStateChanged,
         nm::{Device, NetworkManager},
@@ -27,7 +27,7 @@ mod wifi_status;
 
 pub(crate) struct Network {
     conn: Connection,
-    tx: VerboseSender<Event>,
+    tx: EventSender0,
     primary_device: Option<Device>,
     network_speed: NetworkSpeed,
 }
@@ -38,7 +38,7 @@ impl Module for Network {
 
     type ReadOutput = ();
 
-    fn new(tx: VerboseSender<Event>) -> Result<Self> {
+    fn new(tx: EventSender0) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::System).context("failed to connecto to DBus")?;
         channel.set_watch_enabled(true);

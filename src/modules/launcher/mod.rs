@@ -1,4 +1,4 @@
-use crate::{Event, VerboseSender};
+use crate::channel::EventSender0;
 use desktop_file::DesktopFile;
 use dir::{GlobalDir, UserDir, WatcherDir as _};
 use state::State;
@@ -12,11 +12,11 @@ mod watcher;
 
 pub(crate) struct Launcher {
     state: Rc<RefCell<State>>,
-    tx: VerboseSender<Event>,
+    tx: EventSender0,
 }
 
 impl Launcher {
-    pub(crate) fn new(tx: &VerboseSender<Event>) -> Self {
+    pub(crate) fn new(tx: &EventSender0) -> Self {
         let mut filelist = vec![];
         if let Ok(dir) = GlobalDir::new() {
             match dir::glob(&dir) {

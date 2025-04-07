@@ -1,4 +1,4 @@
-use crate::{Event, VerboseSender, fd_id::FdId, hyprctl, modules::Module};
+use crate::{channel::EventSender0, fd_id::FdId, hyprctl, modules::Module};
 use anyhow::{Context as _, Result};
 use mio::net::UnixStream;
 use raw_event::RawEvent;
@@ -16,7 +16,7 @@ pub(crate) struct Hyprland {
     fd: RawFd,
     reader: Lines<BufReader<UnixStream>>,
     state: State,
-    tx: VerboseSender<Event>,
+    tx: EventSender0,
 }
 
 impl Module for Hyprland {
@@ -25,7 +25,7 @@ impl Module for Hyprland {
 
     type ReadOutput = ();
 
-    fn new(tx: VerboseSender<Event>) -> Result<Self> {
+    fn new(tx: EventSender0) -> Result<Self> {
         let socket = connection::connect_to_socket()?;
         let fd = socket.as_raw_fd();
         let reader = BufReader::new(socket).lines();

@@ -1,6 +1,6 @@
 use crate::{
-    Command, Event, VerboseSender,
-    channel::SignalingCommandReceiver,
+    Command,
+    channel::{CommandReceiver0, EventSender0},
     fatal,
     fd_id::FdId,
     modules::{
@@ -39,13 +39,13 @@ pub(crate) struct Loop {
     global_launcher_watcher: Option<GlobalLauncherWatcher>,
     user_launcher_watcher: Option<UserLauncherWatcher>,
     tray: Option<Tray>,
-    tx: VerboseSender<Event>,
-    rx: SignalingCommandReceiver,
+    tx: EventSender0,
+    rx: CommandReceiver0,
     weather: Option<Weather>,
 }
 
 impl Loop {
-    pub(crate) fn new(tx: VerboseSender<Event>, rx: SignalingCommandReceiver) -> Result<Self> {
+    pub(crate) fn new(tx: EventSender0, rx: CommandReceiver0) -> Result<Self> {
         let poll = Poll::new()?;
 
         let timer = make_module_with_fd_id::<Timer>(&tx, &poll);
@@ -70,7 +70,7 @@ impl Loop {
 
         let tray = make_module_with_fd_id::<Tray>(&tx, &poll);
 
-        register_reader(&poll, rx.as_raw_fd(), SignalingCommandReceiver::TOKEN)?;
+        register_reader(&poll, rx.as_raw_fd(), CommandReceiver0::TOKEN)?;
 
         let this = Self {
             poll,
@@ -151,9 +151,10 @@ impl Loop {
 
                 Weather::TOKEN => {
                     read_events_or_disable(&mut self.weather, &self.poll);
+                    self.weather = None;
                 }
 
-                SignalingCommandReceiver::TOKEN => {
+                CommandReceiver0::TOKEN => {
                     self.rx.consume_signal();
                     while let Some(cmd) = self.rx.recv() {
                         if let Err(err) = self.process_command(cmd) {
@@ -222,7 +223,7 @@ fn poll(poll: &mut Poll, events: &mut Events) -> Result<()> {
     Ok(())
 }
 
-fn make_module_with_fd_id<T>(tx: &VerboseSender<Event>, poll: &Poll) -> Option<T>
+fn make_module_with_fd_id<T>(tx: &EventSender0, poll: &Poll) -> Option<T>
 where
     T: Module,
 {

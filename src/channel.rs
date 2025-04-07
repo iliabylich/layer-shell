@@ -1,38 +1,24 @@
 use crate::{Command, Event, fatal, fd_id::FdId};
-use libc::{PF_LOCAL, SOCK_STREAM, close, read, socketpair, write};
 use mio::Token;
 use std::{
+    io::{Read, Write},
     os::fd::{AsRawFd, RawFd},
-    sync::mpsc::{Receiver, Sender, TryRecvError},
+    sync::mpsc::TryRecvError,
 };
 
-pub(crate) struct VerboseSender<T> {
-    tx: Sender<T>,
-}
-
-impl<T> Clone for VerboseSender<T> {
-    fn clone(&self) -> Self {
-        Self {
-            tx: self.tx.clone(),
+#[derive(Clone)]
+pub(crate) struct EventSender0(std::sync::mpsc::Sender<Event>);
+impl EventSender0 {
+    pub(crate) fn send(&self, e: Event) {
+        if let Err(err) = self.0.send(e) {
+            log::error!("failed to send event through channel: {:?}", err);
         }
     }
 }
-
-impl<T> VerboseSender<T> {
-    pub(crate) fn send(&self, t: T) {
-        if let Err(err) = self.tx.send(t) {
-            log::error!("failed to send through channel: {:?}", err);
-        }
-    }
-}
-
-pub(crate) struct VerboseReceiver<T> {
-    rx: Receiver<T>,
-}
-
-impl<T> VerboseReceiver<T> {
-    pub(crate) fn recv(&mut self) -> Option<T> {
-        match self.rx.try_recv() {
+pub(crate) struct EventReceiver0(std::sync::mpsc::Receiver<Event>);
+impl EventReceiver0 {
+    pub(crate) fn recv(&self) -> Option<Event> {
+        match self.0.try_recv() {
             Ok(t) => Some(t),
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
@@ -43,90 +29,59 @@ impl<T> VerboseReceiver<T> {
     }
 }
 
-pub(crate) fn events_channel() -> (VerboseSender<Event>, VerboseReceiver<Event>) {
-    let (tx, rx) = std::sync::mpsc::channel();
-    (VerboseSender { tx }, VerboseReceiver { rx })
-}
-
-pub(crate) struct SignalingSender<T> {
-    tx: VerboseSender<T>,
-    fd: RawFd,
-}
-
-impl<T> Clone for SignalingSender<T> {
-    fn clone(&self) -> Self {
-        Self {
-            tx: self.tx.clone(),
-            fd: self.fd,
+pub(crate) struct CommandSender0(mio::unix::pipe::Sender, std::sync::mpsc::Sender<Command>);
+impl CommandSender0 {
+    pub(crate) fn send(&mut self, c: Command) {
+        if let Err(err) = self.1.send(c) {
+            log::error!("failed to send event through channel: {:?}", err);
+            return;
+        }
+        if let Err(err) = self.0.write(&[1]) {
+            log::error!("failed to write notification about command: {:?}", err);
         }
     }
 }
 
-impl<T> SignalingSender<T> {
-    pub(crate) fn signal_and_send(&self, t: T) {
-        let res = unsafe { write(self.fd, (&1_u8 as *const u8).cast(), 1) };
-        assert_ne!(res, -1, "last err: {}", std::io::Error::last_os_error());
-        self.tx.send(t);
-    }
-}
-
-impl<T> Drop for SignalingSender<T> {
-    fn drop(&mut self) {
-        unsafe { close(self.fd) };
-    }
-}
-
-pub(crate) struct SignalingCommandReceiver {
-    rx: VerboseReceiver<Command>,
-    fd: RawFd,
-}
-
-impl SignalingCommandReceiver {
+pub(crate) struct CommandReceiver0(
+    mio::unix::pipe::Receiver,
+    std::sync::mpsc::Receiver<Command>,
+);
+impl CommandReceiver0 {
     pub(crate) const TOKEN: Token = FdId::Command.token();
-}
 
-impl AsRawFd for SignalingCommandReceiver {
-    fn as_raw_fd(&self) -> RawFd {
-        self.fd
-    }
-}
-
-impl SignalingCommandReceiver {
     pub(crate) fn consume_signal(&mut self) {
-        let mut signal = 0;
-        unsafe { read(self.fd, (&mut signal as *mut i32).cast(), 1) };
+        let mut buf = [0; 1];
+        if let Err(err) = self.0.read_exact(&mut buf) {
+            log::error!("failed to read notification about command: {:?}", err);
+        }
     }
-    pub(crate) fn recv(&mut self) -> Option<Command> {
-        self.rx.recv()
+    pub(crate) fn recv(&self) -> Option<Command> {
+        match self.1.try_recv() {
+            Ok(t) => Some(t),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                log::error!("channel is closed, can't recv");
+                None
+            }
+        }
     }
 }
 
-impl Drop for SignalingCommandReceiver {
-    fn drop(&mut self) {
-        unsafe { close(self.fd) };
+impl AsRawFd for CommandReceiver0 {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
     }
 }
 
-pub(crate) fn commands_channel() -> (SignalingSender<Command>, SignalingCommandReceiver) {
-    let mut fd = [0_i32; 2];
-    let res = unsafe { socketpair(PF_LOCAL, SOCK_STREAM, 0, fd.as_mut_ptr()) };
-    if res == -1 {
-        fatal!(
-            "failed to call socketpair: {:?}",
-            std::io::Error::last_os_error()
-        );
-    }
-    let [writerfd, readerfd] = fd;
+pub(crate) fn events() -> (EventSender0, EventReceiver0) {
     let (tx, rx) = std::sync::mpsc::channel();
+    (EventSender0(tx), EventReceiver0(rx))
+}
 
-    (
-        SignalingSender {
-            tx: VerboseSender { tx },
-            fd: writerfd,
-        },
-        SignalingCommandReceiver {
-            rx: VerboseReceiver { rx },
-            fd: readerfd,
-        },
-    )
+pub(crate) fn commands() -> (CommandSender0, CommandReceiver0) {
+    let (tx0, rx0) =
+        mio::unix::pipe::new().unwrap_or_else(|err| fatal!("failed to create pipe: {err:?}"));
+    let (tx1, rx1) = std::sync::mpsc::channel();
+
+    (CommandSender0(tx0, tx1), CommandReceiver0(rx0, rx1))
 }

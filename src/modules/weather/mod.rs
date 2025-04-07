@@ -1,4 +1,4 @@
-use crate::{Event, VerboseSender, fd_id::FdId, modules::Module};
+use crate::{channel::EventSender0, fd_id::FdId, modules::Module};
 use anyhow::Result;
 use std::{
     net::TcpStream,
@@ -12,7 +12,7 @@ mod mapper;
 pub use code::WeatherCode;
 
 pub(crate) struct Weather {
-    tx: VerboseSender<Event>,
+    tx: EventSender0,
     stream: TcpStream,
 }
 
@@ -22,7 +22,7 @@ impl Module for Weather {
 
     type ReadOutput = ();
 
-    fn new(tx: VerboseSender<Event>) -> Result<Self> {
+    fn new(tx: EventSender0) -> Result<Self> {
         let fd = client::send_request()?;
         Ok(Self { tx, stream: fd })
     }

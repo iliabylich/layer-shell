@@ -1,4 +1,4 @@
-use crate::{Event, VerboseSender, fd_id::FdId, modules::Module};
+use crate::{channel::EventSender0, fd_id::FdId, modules::Module};
 use anyhow::Result;
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
 use std::os::fd::{AsRawFd, RawFd};
@@ -14,7 +14,7 @@ impl Module for Timer {
 
     type ReadOutput = Ticks;
 
-    fn new(_: VerboseSender<Event>) -> Result<Self> {
+    fn new(_: EventSender0) -> Result<Self> {
         let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
         if fd == -1 {
             return Err(anyhow::Error::from(std::io::Error::last_os_error())

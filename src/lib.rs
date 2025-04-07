@@ -16,7 +16,7 @@ mod subscriptions;
 mod timer;
 
 use anyhow::Result;
-use channel::{SignalingCommandReceiver, SignalingSender, VerboseReceiver, VerboseSender};
+use channel::{CommandReceiver0, CommandSender0, EventReceiver0, EventSender0};
 pub use command::*;
 pub use event::Event;
 use r#loop::Loop;
@@ -30,12 +30,12 @@ pub struct Ctx {
 }
 
 pub struct IoCtx {
-    tx: VerboseSender<Event>,
-    rx: SignalingCommandReceiver,
+    tx: EventSender0,
+    rx: CommandReceiver0,
 }
 pub struct UiCtx {
-    tx: VerboseReceiver<Event>,
-    rx: SignalingSender<Command>,
+    tx: EventReceiver0,
+    rx: CommandSender0,
     subs: Subscriptions,
 }
 
@@ -43,8 +43,8 @@ pub struct UiCtx {
 pub extern "C" fn io_init() -> Ctx {
     env_logger::init();
 
-    let (etx, erx) = channel::events_channel();
-    let (ctx, crx) = channel::commands_channel();
+    let (etx, erx) = channel::events();
+    let (ctx, crx) = channel::commands();
     let subs = Subscriptions::new();
 
     Ctx {

@@ -1,5 +1,5 @@
 use crate::{
-    Event, VerboseSender,
+    channel::EventSender0,
     dbus::{
         ComCanonicalDbusmenuItemsPropertiesUpdated, ComCanonicalDbusmenuLayoutUpdated,
         OrgKdeStatusNotifierItemNewAttentionIcon, OrgKdeStatusNotifierItemNewIcon,
@@ -38,7 +38,7 @@ pub(crate) struct Tray {
     conn: Connection,
     state: State,
     cr: Crossroads,
-    tx: VerboseSender<Event>,
+    tx: EventSender0,
 }
 
 impl Module for Tray {
@@ -47,7 +47,7 @@ impl Module for Tray {
 
     type ReadOutput = ();
 
-    fn new(tx: VerboseSender<Event>) -> Result<Self> {
+    fn new(tx: EventSender0) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);

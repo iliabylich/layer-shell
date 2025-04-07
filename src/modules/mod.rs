@@ -1,4 +1,4 @@
-use crate::{Event, VerboseSender, fd_id::FdId};
+use crate::{channel::EventSender0, fd_id::FdId};
 use anyhow::Result;
 use mio::Token;
 use std::os::fd::AsRawFd;
@@ -22,7 +22,7 @@ pub(crate) trait Module: AsRawFd {
 
     type ReadOutput;
 
-    fn new(tx: VerboseSender<Event>) -> Result<Self>
+    fn new(tx: EventSender0) -> Result<Self>
     where
         Self: Sized;
 
