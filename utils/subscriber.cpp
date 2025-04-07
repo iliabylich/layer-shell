@@ -3,8 +3,8 @@
 
 namespace utils {
 
-Subscriber::Subscriber(io::Subscriptions *subs) {
-  io::io_subscription_list_add(subs, Subscriber::handle_event, this);
+Subscriber::Subscriber(io::UiCtx *ui_ctx) {
+  io::io_subscribe(ui_ctx, Subscriber::handle_event, this);
 }
 
 void Subscriber::handle_event(const io::Event *event, void *data) {

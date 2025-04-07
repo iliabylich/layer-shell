@@ -3,9 +3,8 @@
 
 namespace windows {
 
-Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-                   io::Subscriptions *subs)
-    : utils::Subscriber(subs), rows(5), ctx(ctx) {
+Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx)
+    : utils::Subscriber(ui_ctx), rows(5), ui_ctx(ui_ctx) {
   set_name("LauncherWindow");
   property_width_request().set_value(700);
   set_css_classes({"launcher-window"});
@@ -37,26 +36,26 @@ Launcher::Launcher(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
   gtk_layer_set_namespace(win, "LayerShell/Launcher");
   gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  input.signal_activate().connect([this, ctx]() {
-    io::io_launcher_exec_selected(ctx);
+  input.signal_activate().connect([this, ui_ctx]() {
+    io::io_launcher_exec_selected(ui_ctx);
     toggle_and_reset();
   });
-  input.signal_changed().connect([this, ctx]() {
+  input.signal_changed().connect([this, ui_ctx]() {
     auto search = input.get_text();
-    io::io_launcher_set_search(search.c_str(), ctx);
+    io::io_launcher_set_search(ui_ctx, search.c_str());
   });
 
   auto ctrl = Gtk::EventControllerKey::create();
   ctrl->signal_key_pressed().connect(
-      [this, ctx](guint keyval, guint, Gdk::ModifierType) {
+      [this, ui_ctx](guint keyval, guint, Gdk::ModifierType) {
         std::string key(gdk_keyval_name(keyval));
 
         if (key == "Escape") {
           toggle_and_reset();
         } else if (key == "Up") {
-          io::io_launcher_go_up(ctx);
+          io::io_launcher_go_up(ui_ctx);
         } else if (key == "Down") {
-          io::io_launcher_go_down(ctx);
+          io::io_launcher_go_down(ui_ctx);
         }
 
         return false;
@@ -74,7 +73,7 @@ void Launcher::toggle_and_reset() {
         if (is_visible()) {
           hide();
         } else {
-          io::io_launcher_reset(ctx);
+          io::io_launcher_reset(ui_ctx);
           input.set_text("");
           show();
         }
@@ -98,9 +97,9 @@ void Launcher::on_io_event(io::Event::Launcher_Body data) {
 void Launcher::on_toggle_launcher_event() { toggle_and_reset(); }
 
 Launcher *Launcher::instance;
-void Launcher::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-                    io::Subscriptions *subs) {
-  instance = new Launcher(app, ctx, subs);
+void Launcher::init(const Glib::RefPtr<Gtk::Application> &app,
+                    io::UiCtx *ui_ctx) {
+  instance = new Launcher(app, ui_ctx);
 }
 Launcher *Launcher::get() { return instance; }
 

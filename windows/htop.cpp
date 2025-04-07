@@ -5,7 +5,7 @@
 
 namespace windows {
 
-HTop::HTop(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
+HTop::HTop(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *) {
   set_name("HtopWindow");
   set_css_classes({"terminal-window"});
   property_width_request().set_value(1000);
@@ -32,8 +32,8 @@ HTop::HTop(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
 }
 
 HTop *HTop::instance;
-void HTop::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
-  instance = new HTop(app, ctx);
+void HTop::init(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx) {
+  instance = new HTop(app, ui_ctx);
 }
 HTop *HTop::get() { return instance; }
 

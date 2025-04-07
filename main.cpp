@@ -16,36 +16,37 @@ Glib::RefPtr<Gtk::Application> get_app() { return app; }
 
 int main(void) {
   auto ctx = io::io_init();
-  auto subs = io::io_subscription_list_new();
+  auto io_ctx = ctx.io;
+  auto ui_ctx = ctx.ui;
 
   app = Gtk::Application::create("org.me.LayerShell",
                                  Gio::Application::Flags::DEFAULT_FLAGS);
   app->hold();
 
-  app->signal_activate().connect([ctx, subs]() {
+  app->signal_activate().connect([ui_ctx, io_ctx]() {
     utils::Icons::init();
 
-    windows::TopBar::init(app, ctx, subs);
-    windows::Session::init(app, ctx, subs);
-    windows::HTop::init(app, ctx);
-    windows::Weather::init(app, subs);
-    windows::Launcher::init(app, ctx, subs);
-    windows::Ping::init(app, ctx);
+    windows::TopBar::init(app, ui_ctx);
+    windows::Session::init(app, ui_ctx);
+    windows::HTop::init(app, ui_ctx);
+    windows::Weather::init(app, ui_ctx);
+    windows::Launcher::init(app, ui_ctx);
+    windows::Ping::init(app, ui_ctx);
 
     Glib::signal_timeout().connect(
-        [ctx, subs]() {
-          io::io_poll_events(ctx, subs);
+        [ui_ctx]() {
+          io::io_poll_events(ui_ctx);
           return true;
         },
         50);
 
     std::cout << "Finished building widgets...\n";
 
-    io::io_spawn_thread(ctx);
+    io::io_spawn_thread(io_ctx);
   });
 
-  app->signal_startup().connect([subs]() {
-    auto css = new utils::Css(subs);
+  app->signal_startup().connect([ui_ctx]() {
+    auto css = new utils::Css(ui_ctx);
     css->load();
   });
 

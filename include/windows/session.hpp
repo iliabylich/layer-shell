@@ -7,14 +7,13 @@ namespace windows {
 
 class Session : public Base, public utils::Subscriber {
 public:
-  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-                   io::Subscriptions *subs);
+  static void init(const Glib::RefPtr<Gtk::Application> &app,
+                   io::UiCtx *ui_ctx);
   static Session *get();
   void on_toggle_session_screen_event() override;
 
 private:
-  Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-          io::Subscriptions *subs);
+  Session(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx);
 
   Gtk::Button lock;
   Gtk::Button reboot;

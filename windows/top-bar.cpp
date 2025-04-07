@@ -4,11 +4,10 @@
 
 namespace windows {
 
-TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-               io::Subscriptions *subs)
-    : workspaces(ctx, subs), change_theme(ctx), tray(ctx, subs), weather(subs),
-      htop(), language(subs), sound(subs), cpu(subs), memory(ctx, subs),
-      network(ctx, subs), time(subs), session() {
+TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx)
+    : workspaces(ui_ctx), change_theme(ui_ctx), tray(ui_ctx), weather(ui_ctx),
+      htop(), language(ui_ctx), sound(ui_ctx), cpu(ui_ctx), memory(ui_ctx),
+      network(ui_ctx), time(ui_ctx), session() {
   set_name("TopBarWindow");
   set_css_classes({"top-bar-window"});
   set_application(app);
@@ -51,9 +50,9 @@ TopBar::TopBar(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
 }
 
 TopBar *TopBar::instance;
-void TopBar::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-                  io::Subscriptions *subs) {
-  instance = new TopBar(app, ctx, subs);
+void TopBar::init(const Glib::RefPtr<Gtk::Application> &app,
+                  io::UiCtx *ui_ctx) {
+  instance = new TopBar(app, ui_ctx);
 }
 
 } // namespace windows

@@ -7,7 +7,7 @@ namespace widgets {
 
 class Language : public Gtk::Label, public utils::Subscriber {
 public:
-  Language(io::Subscriptions *subs);
+  Language(io::UiCtx *ui_ctx);
   void on_io_event(io::Event::Language_Body data) override;
 };
 

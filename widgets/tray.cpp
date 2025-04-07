@@ -5,8 +5,8 @@ namespace widgets {
 
 size_t max_icons_count = 10;
 
-Tray::Tray(io::Ctx *ctx, io::Subscriptions *subs)
-    : Gtk::Box(), utils::Subscriber(subs), ctx(ctx) {
+Tray::Tray(io::UiCtx *ui_ctx)
+    : Gtk::Box(), utils::Subscriber(ui_ctx), ui_ctx(ui_ctx) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(10);
   set_css_classes({"widget", "tray", "padded"});
@@ -25,7 +25,7 @@ void Tray::cleanup() {
 Glib::RefPtr<Gio::Menu>
 new_menu_for_tray_item(io::TrayItem data,
                        Glib::RefPtr<Gio::SimpleActionGroup> &action_group,
-                       io::Ctx *ctx) {
+                       io::UiCtx *ui_ctx) {
   auto menu = Gio::Menu::create();
 
   for (size_t i = 0; i < data.children.len; i++) {
@@ -41,13 +41,13 @@ new_menu_for_tray_item(io::TrayItem data,
     std::string toggle_type(child.toggle_type);
     std::string action_name = std::format("{}", i);
 
-    auto cb = [ctx, uuid](const Glib::VariantBase &) {
-      io::io_trigger_tray(uuid.c_str(), ctx);
+    auto cb = [ui_ctx, uuid](const Glib::VariantBase &) {
+      io::io_trigger_tray(ui_ctx, uuid.c_str());
     };
 
     if (children_display == "submenu") {
       // nested menu
-      auto submenu = new_menu_for_tray_item(child, action_group, ctx);
+      auto submenu = new_menu_for_tray_item(child, action_group, ui_ctx);
       menu_item->set_submenu(submenu);
     } else {
       // element
@@ -119,7 +119,7 @@ void Tray::add(io::TrayApp app) {
   }
 
   auto action_group = Gio::SimpleActionGroup::create();
-  auto menu = new_menu_for_tray_item(app.root_item, action_group, ctx);
+  auto menu = new_menu_for_tray_item(app.root_item, action_group, ui_ctx);
 
   auto popover_menu = new Gtk::PopoverMenu(menu);
   popover_menu->set_has_arrow(false);

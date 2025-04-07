@@ -7,11 +7,12 @@ namespace windows {
 
 class HTop : public Base {
 public:
-  static void init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  static void init(const Glib::RefPtr<Gtk::Application> &app,
+                   io::UiCtx *ui_ctx);
   static HTop *get();
 
 private:
-  HTop(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx);
+  HTop(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx);
 
   Gtk::Widget *terminal;
 

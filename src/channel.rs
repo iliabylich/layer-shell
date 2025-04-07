@@ -43,20 +43,9 @@ impl<T> VerboseReceiver<T> {
     }
 }
 
-pub(crate) struct EventsChannel {
-    pub(crate) tx: VerboseSender<Event>,
-    pub(crate) rx: VerboseReceiver<Event>,
-}
-
-impl EventsChannel {
-    pub(crate) fn new() -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        Self {
-            tx: VerboseSender { tx },
-            rx: VerboseReceiver { rx },
-        }
-    }
+pub(crate) fn events_channel() -> (VerboseSender<Event>, VerboseReceiver<Event>) {
+    let (tx, rx) = std::sync::mpsc::channel();
+    (VerboseSender { tx }, VerboseReceiver { rx })
 }
 
 pub(crate) struct SignalingSender<T> {
@@ -118,39 +107,26 @@ impl Drop for SignalingCommandReceiver {
     }
 }
 
-pub(crate) struct CommandsChannel {
-    pub(crate) tx: SignalingSender<Command>,
-    pub(crate) rx: Option<SignalingCommandReceiver>,
-}
-
-impl CommandsChannel {
-    pub(crate) fn new() -> Self {
-        let mut fd = [0_i32; 2];
-        let res = unsafe { socketpair(PF_LOCAL, SOCK_STREAM, 0, fd.as_mut_ptr()) };
-        if res == -1 {
-            fatal!(
-                "failed to call socketpair: {:?}",
-                std::io::Error::last_os_error()
-            );
-        }
-        let [writerfd, readerfd] = fd;
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        Self {
-            tx: SignalingSender {
-                tx: VerboseSender { tx },
-                fd: writerfd,
-            },
-            rx: Some(SignalingCommandReceiver {
-                rx: VerboseReceiver { rx },
-                fd: readerfd,
-            }),
-        }
+pub(crate) fn commands_channel() -> (SignalingSender<Command>, SignalingCommandReceiver) {
+    let mut fd = [0_i32; 2];
+    let res = unsafe { socketpair(PF_LOCAL, SOCK_STREAM, 0, fd.as_mut_ptr()) };
+    if res == -1 {
+        fatal!(
+            "failed to call socketpair: {:?}",
+            std::io::Error::last_os_error()
+        );
     }
+    let [writerfd, readerfd] = fd;
+    let (tx, rx) = std::sync::mpsc::channel();
 
-    pub(crate) fn take_rx(&mut self) -> SignalingCommandReceiver {
-        self.rx
-            .take()
-            .unwrap_or_else(|| fatal!("can't take receiver twice"))
-    }
+    (
+        SignalingSender {
+            tx: VerboseSender { tx },
+            fd: writerfd,
+        },
+        SignalingCommandReceiver {
+            rx: VerboseReceiver { rx },
+            fd: readerfd,
+        },
+    )
 }

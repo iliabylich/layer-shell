@@ -3,9 +3,8 @@
 
 namespace windows {
 
-Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-                 io::Subscriptions *subs)
-    : utils::Subscriber(subs), lock("Lock"), reboot("Reboot"),
+Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx)
+    : utils::Subscriber(ui_ctx), lock("Lock"), reboot("Reboot"),
       shutdown("Shutdown"), logout("Logout") {
   set_name("SessionWindow");
   set_css_classes({"session-window"});
@@ -32,30 +31,30 @@ Session::Session(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
   gtk_layer_set_namespace(window, "LayerShell/SessionScreen");
   gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  lock.signal_clicked().connect([this, ctx]() {
+  lock.signal_clicked().connect([this, ui_ctx]() {
     toggle();
-    io::io_lock(ctx);
+    io::io_lock(ui_ctx);
   });
-  reboot.signal_clicked().connect([this, ctx]() {
+  reboot.signal_clicked().connect([this, ui_ctx]() {
     toggle();
-    io::io_reboot(ctx);
+    io::io_reboot(ui_ctx);
   });
-  shutdown.signal_clicked().connect([this, ctx]() {
+  shutdown.signal_clicked().connect([this, ui_ctx]() {
     toggle();
-    io::io_shutdown(ctx);
+    io::io_shutdown(ui_ctx);
   });
-  logout.signal_clicked().connect([this, ctx]() {
+  logout.signal_clicked().connect([this, ui_ctx]() {
     toggle();
-    io::io_logout(ctx);
+    io::io_logout(ui_ctx);
   });
 }
 
 void Session::on_toggle_session_screen_event() { toggle(); }
 
 Session *Session::instance;
-void Session::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx,
-                   io::Subscriptions *subs) {
-  instance = new Session(app, ctx, subs);
+void Session::init(const Glib::RefPtr<Gtk::Application> &app,
+                   io::UiCtx *ui_ctx) {
+  instance = new Session(app, ui_ctx);
 }
 Session *Session::get() { return instance; }
 

@@ -4,8 +4,8 @@ namespace widgets {
 
 size_t cpu_count = 12;
 
-CPU::CPU(io::Subscriptions *subs)
-    : Gtk::Box(), utils::Subscriber(subs), labels(cpu_count) {
+CPU::CPU(io::UiCtx *ui_ctx)
+    : Gtk::Box(), utils::Subscriber(ui_ctx), labels(cpu_count) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(3);
   set_css_classes({"widget", "cpu", "padded"});

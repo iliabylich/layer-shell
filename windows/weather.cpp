@@ -3,9 +3,8 @@
 
 namespace windows {
 
-Weather::Weather(const Glib::RefPtr<Gtk::Application> &app,
-                 io::Subscriptions *subs)
-    : utils::Subscriber(subs) {
+Weather::Weather(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx)
+    : utils::Subscriber(ui_ctx) {
   set_name("WeatherWindow");
   set_css_classes({"weather-window"});
   set_application(app);
@@ -53,8 +52,8 @@ void Weather::on_io_event(io::Event::ForecastWeather_Body data) {
 
 Weather *Weather::instance;
 void Weather::init(const Glib::RefPtr<Gtk::Application> &app,
-                   io::Subscriptions *subs) {
-  instance = new Weather(app, subs);
+                   io::UiCtx *ui_ctx) {
+  instance = new Weather(app, ui_ctx);
 }
 Weather *Weather::get() { return instance; }
 

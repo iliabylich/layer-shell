@@ -3,8 +3,8 @@
 
 namespace widgets {
 
-Network::Network(io::Ctx *ctx, io::Subscriptions *subs)
-    : Gtk::Button(), utils::Subscriber(subs), popover(ctx) {
+Network::Network(io::UiCtx *ui_ctx)
+    : Gtk::Button(), utils::Subscriber(ui_ctx), popover(ui_ctx) {
   label.set_label("--");
 
   image.set(utils::Icons::wifi);

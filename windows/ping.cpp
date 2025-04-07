@@ -5,7 +5,7 @@
 
 namespace windows {
 
-Ping::Ping(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
+Ping::Ping(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *) {
   set_name("PingWindow");
   set_css_classes({"terminal-window"});
   property_width_request().set_value(1000);
@@ -32,8 +32,8 @@ Ping::Ping(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *) {
 }
 
 Ping *Ping::instance;
-void Ping::init(const Glib::RefPtr<Gtk::Application> &app, io::Ctx *ctx) {
-  instance = new Ping(app, ctx);
+void Ping::init(const Glib::RefPtr<Gtk::Application> &app, io::UiCtx *ui_ctx) {
+  instance = new Ping(app, ui_ctx);
 }
 Ping *Ping::get() { return instance; }
 

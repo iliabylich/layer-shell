@@ -6,7 +6,7 @@ namespace utils {
 
 class Subscriber {
 public:
-  Subscriber(io::Subscriptions *subs);
+  Subscriber(io::UiCtx *ui_ctx);
 
 private:
   static void handle_event(const io::Event *event, void *data);

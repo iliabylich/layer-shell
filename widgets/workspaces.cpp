@@ -4,8 +4,8 @@ namespace widgets {
 
 size_t workspaces_count = 10;
 
-Workspaces::Workspaces(io::Ctx *ctx, io::Subscriptions *subs)
-    : Gtk::Box(), utils::Subscriber(subs), buttons(workspaces_count) {
+Workspaces::Workspaces(io::UiCtx *ui_ctx)
+    : Gtk::Box(), utils::Subscriber(ui_ctx), buttons(workspaces_count) {
   set_orientation(Gtk::Orientation::HORIZONTAL);
   set_spacing(0);
   set_css_classes({"widget", "workspaces"});
@@ -17,7 +17,7 @@ Workspaces::Workspaces(io::Ctx *ctx, io::Subscriptions *subs)
     append(button);
 
     button.signal_clicked().connect(
-        [ctx, idx]() { io::io_hyprland_go_to_workspace(idx, ctx); });
+        [ui_ctx, idx]() { io::io_hyprland_go_to_workspace(ui_ctx, idx); });
   }
 }
 

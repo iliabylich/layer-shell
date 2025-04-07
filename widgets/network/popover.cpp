@@ -5,7 +5,7 @@
 namespace widgets {
 namespace network {
 
-Popover::Popover(io::Ctx *ctx) : Gtk::PopoverMenu(), ctx(ctx) {
+Popover::Popover(io::UiCtx *ui_ctx) : Gtk::PopoverMenu(), ui_ctx(ui_ctx) {
   model = Gio::Menu::create();
   add_settings_row();
   add_ping_row();
@@ -66,7 +66,7 @@ void Popover::add_ping_row() {
   model->append_item(item);
 }
 
-void Popover::on_settings_row_clicked() { io::io_spawn_network_editor(ctx); }
+void Popover::on_settings_row_clicked() { io::io_spawn_network_editor(ui_ctx); }
 void Popover::on_ping_row_clicked() { windows::Ping::get()->toggle(); }
 void Popover::on_network_row_clicked(const Glib::VariantBase &parameter) {
   auto ip =

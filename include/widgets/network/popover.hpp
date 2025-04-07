@@ -8,12 +8,12 @@ namespace network {
 
 class Popover : public Gtk::PopoverMenu {
 public:
-  Popover(io::Ctx *ctx);
+  Popover(io::UiCtx *ui_ctx);
   void update(io::CArray<io::Network> networks);
 
 private:
   Glib::RefPtr<Gio::Menu> model;
-  io::Ctx *ctx;
+  io::UiCtx *ui_ctx;
 
   void add_settings_row();
   void add_ping_row();

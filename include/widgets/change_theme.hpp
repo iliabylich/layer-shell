@@ -7,7 +7,7 @@ namespace widgets {
 
 class ChangeTheme : public Gtk::Button {
 public:
-  ChangeTheme(io::Ctx *ctx);
+  ChangeTheme(io::UiCtx *ui_ctx);
 
 private:
   Gtk::Image image;

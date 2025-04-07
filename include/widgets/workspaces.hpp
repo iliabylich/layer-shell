@@ -7,7 +7,7 @@ namespace widgets {
 
 class Workspaces : public Gtk::Box, public utils::Subscriber {
 public:
-  Workspaces(io::Ctx *ctx, io::Subscriptions *subs);
+  Workspaces(io::UiCtx *ui_ctx);
   void on_io_event(io::Event::Workspaces_Body data) override;
 
 private:

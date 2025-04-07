@@ -16,52 +16,79 @@ mod subscriptions;
 mod timer;
 
 use anyhow::Result;
-use channel::{CommandsChannel, EventsChannel, VerboseSender};
+use channel::{SignalingCommandReceiver, SignalingSender, VerboseReceiver, VerboseSender};
 pub use command::*;
 pub use event::Event;
 use r#loop::Loop;
 use macros::fatal;
 pub use subscriptions::*;
 
+#[repr(C)]
 pub struct Ctx {
-    events: EventsChannel,
-    commands: CommandsChannel,
+    pub io: *mut IoCtx,
+    pub ui: *mut UiCtx,
+}
+
+pub struct IoCtx {
+    tx: VerboseSender<Event>,
+    rx: SignalingCommandReceiver,
+}
+pub struct UiCtx {
+    tx: VerboseReceiver<Event>,
+    rx: SignalingSender<Command>,
+    subs: Subscriptions,
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_init() -> *mut Ctx {
+pub extern "C" fn io_init() -> Ctx {
     env_logger::init();
 
-    let ctx = Ctx {
-        commands: CommandsChannel::new(),
-        events: EventsChannel::new(),
-    };
-    Box::leak(Box::new(ctx))
+    let (etx, erx) = channel::events_channel();
+    let (ctx, crx) = channel::commands_channel();
+    let subs = Subscriptions::new();
+
+    Ctx {
+        io: Box::leak(Box::new(IoCtx { tx: etx, rx: crx })),
+        ui: Box::leak(Box::new(UiCtx {
+            tx: erx,
+            rx: ctx,
+            subs,
+        })),
+    }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_thread(ctx: *mut Ctx) {
-    let mut ctx = unsafe { Box::from_raw(ctx) };
+pub extern "C" fn io_subscribe(
+    ui_ctx: &mut UiCtx,
+    f: extern "C" fn(&Event, *mut std::ffi::c_void),
+    data: *mut std::ffi::c_void,
+) {
+    ui_ctx.subs.push(f, data);
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn io_spawn_thread(io_ctx: *mut IoCtx) {
+    let io_ctx = unsafe { *Box::from_raw(io_ctx) };
 
     std::thread::spawn(move || {
-        if let Err(err) = io_run_in_place(&mut ctx) {
+        if let Err(err) = io_run_in_place(io_ctx) {
             log::error!("IO thread has crashed: {:?}", err);
         }
     });
 }
 
-pub fn io_run_in_place(ctx: &mut Ctx) -> Result<()> {
-    let tx = ctx.events.tx.clone();
-    let rx = ctx.commands.take_rx();
+pub fn io_run_in_place(io_ctx: IoCtx) -> Result<()> {
+    let tx = io_ctx.tx;
+    let rx = io_ctx.rx;
 
     let r#loop = Loop::new(tx, rx)?;
     r#loop.start();
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_poll_events(ctx: &mut Ctx, subs: &Subscriptions) {
-    while let Some(event) = ctx.events.rx.recv() {
+pub extern "C" fn io_poll_events(ui_ctx: &mut UiCtx) {
+    while let Some(event) = ui_ctx.tx.recv() {
         log::info!("Received event {:?}", event);
-        subs.notify_each(&event);
+        ui_ctx.subs.notify_each(&event);
     }
 }

@@ -4,7 +4,7 @@
 
 namespace widgets {
 
-ChangeTheme::ChangeTheme(io::Ctx *ctx) : Gtk::Button() {
+ChangeTheme::ChangeTheme(io::UiCtx *ui_ctx) : Gtk::Button() {
   set_css_classes({"widget", "power", "padded", "clickable"});
   set_cursor("pointer");
   set_name("ChangeTheme");
@@ -12,7 +12,7 @@ ChangeTheme::ChangeTheme(io::Ctx *ctx) : Gtk::Button() {
   image.set(utils::Icons::change_theme);
   set_child(image);
 
-  signal_clicked().connect([ctx]() { io::io_change_theme(ctx); });
+  signal_clicked().connect([ui_ctx]() { io::io_change_theme(ui_ctx); });
 }
 
 } // namespace widgets
