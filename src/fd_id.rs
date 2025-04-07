@@ -14,7 +14,7 @@ pub(crate) enum FdId {
     TrayDBus,
     Weather,
 
-    Disconnected,
+    Unknown,
 }
 impl FdId {
     pub(crate) const fn token(self) -> mio::Token {
@@ -23,7 +23,7 @@ impl FdId {
 }
 impl From<usize> for FdId {
     fn from(value: usize) -> Self {
-        if value >= Self::Disconnected as usize {
+        if value >= Self::Unknown as usize {
             fatal!("invalid fd id {value}");
         }
         unsafe { std::mem::transmute::<usize, Self>(value) }

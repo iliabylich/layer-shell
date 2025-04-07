@@ -1,6 +1,9 @@
 use crate::{Event, VerboseSender, fd_id::FdId, modules::Module};
 use anyhow::Result;
-use std::os::fd::{AsRawFd, RawFd};
+use std::{
+    net::TcpStream,
+    os::fd::{AsRawFd, RawFd},
+};
 
 mod client;
 mod code;
@@ -10,7 +13,7 @@ pub use code::WeatherCode;
 
 pub(crate) struct Weather {
     tx: VerboseSender<Event>,
-    fd: RawFd,
+    stream: TcpStream,
 }
 
 impl Module for Weather {
@@ -21,11 +24,11 @@ impl Module for Weather {
 
     fn new(tx: VerboseSender<Event>) -> Result<Self> {
         let fd = client::send_request()?;
-        Ok(Self { tx, fd })
+        Ok(Self { tx, stream: fd })
     }
 
     fn read_events(&mut self) -> Result<()> {
-        let res = client::read_response(self.fd)?;
+        let res = client::read_response(&mut self.stream)?;
         let (current, forecast) = mapper::map(res)?;
         self.tx.send(current);
         self.tx.send(forecast);
@@ -39,6 +42,6 @@ impl Weather {
 
 impl AsRawFd for Weather {
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.stream.as_raw_fd()
     }
 }
