@@ -1,10 +1,16 @@
 use crate::{channel::EventSender0, fd_id::FdId, modules::Module};
 use anyhow::Result;
-use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
-use std::os::fd::{AsRawFd, RawFd};
+use rustix::{
+    io::read,
+    time::{
+        Itimerspec, TimerfdClockId, TimerfdFlags, TimerfdTimerFlags, Timespec, timerfd_create,
+        timerfd_settime,
+    },
+};
+use std::os::fd::{AsRawFd, OwnedFd, RawFd};
 
 pub(crate) struct Timer {
-    fd: RawFd,
+    fd: OwnedFd,
     ticks_count: u64,
 }
 
@@ -15,42 +21,27 @@ impl Module for Timer {
     type ReadOutput = Ticks;
 
     fn new(_: EventSender0) -> Result<Self> {
-        let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
-        if fd == -1 {
-            return Err(anyhow::Error::from(std::io::Error::last_os_error())
-                .context("timerfd_create failed"));
-        }
-        let timer = Self { fd, ticks_count: 0 };
+        let fd = timerfd_create(TimerfdClockId::Realtime, TimerfdFlags::empty())?;
 
-        let timerspec = itimerspec {
-            it_interval: timespec {
+        let timerspec = Itimerspec {
+            it_interval: Timespec {
                 tv_sec: 1,
                 tv_nsec: 0,
             },
-            it_value: timespec {
+            it_value: Timespec {
                 tv_sec: 0,
                 tv_nsec: 1,
             },
         };
-        let res = unsafe { timerfd_settime(fd, 0, &timerspec, std::ptr::null_mut()) };
-        if res == -1 {
-            return Err(anyhow::Error::from(std::io::Error::last_os_error())
-                .context("timerfd_settime failed"));
-        }
+        timerfd_settime(&fd, TimerfdTimerFlags::empty(), &timerspec)?;
 
-        Ok(timer)
+        Ok(Self { fd, ticks_count: 0 })
     }
 
     fn read_events(&mut self) -> Result<Ticks> {
-        let mut time = 0_u64;
-        let len = unsafe {
-            libc::read(
-                self.fd,
-                (&mut time as *mut u64).cast(),
-                std::mem::size_of::<u64>(),
-            )
-        };
-        anyhow::ensure!(len == std::mem::size_of::<u64>() as isize);
+        let mut buf = [0; 50];
+        let len = read(&self.fd, &mut buf)?;
+        anyhow::ensure!(len == std::mem::size_of::<u64>());
         self.ticks_count += 1;
         Ok(Ticks {
             ticks_count: self.ticks_count,
@@ -58,17 +49,9 @@ impl Module for Timer {
     }
 }
 
-impl Drop for Timer {
-    fn drop(&mut self) {
-        unsafe {
-            close(self.fd);
-        }
-    }
-}
-
 impl AsRawFd for Timer {
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.fd.as_raw_fd()
     }
 }
 

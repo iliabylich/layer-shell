@@ -17,9 +17,9 @@ nanoserde = { version = "0.2", default-features = false, features = [
     "std",
     "json",
 ] }
-libc = "0"
 mio = { version = "1", features = ["os-poll", "net", "os-ext"] }
 env_logger = { version = "0.11", default-features = false }
+rustix = { version = "1", features = ["time"] }
 
 [profile.release]
 opt-level = "z"
