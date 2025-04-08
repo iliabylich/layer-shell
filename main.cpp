@@ -15,6 +15,7 @@ static Glib::RefPtr<Gtk::Application> app;
 Glib::RefPtr<Gtk::Application> get_app() { return app; }
 
 int main(void) {
+  setenv("GSK_RENDERER", "cairo", true);
   auto ctx = io::io_init();
   auto io_ctx = ctx.io;
   auto ui_ctx = ctx.ui;
