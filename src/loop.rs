@@ -1,6 +1,6 @@
 use crate::{
     Command,
-    channel::{CommandReceiver0, EventSender0},
+    channel::{CommandReceiver, EventSender},
     fatal,
     fd_id::FdId,
     modules::{
@@ -39,13 +39,13 @@ pub(crate) struct Loop {
     global_launcher_watcher: Option<GlobalLauncherWatcher>,
     user_launcher_watcher: Option<UserLauncherWatcher>,
     tray: Option<Tray>,
-    tx: EventSender0,
-    rx: CommandReceiver0,
+    tx: EventSender,
+    rx: CommandReceiver,
     weather: Option<Weather>,
 }
 
 impl Loop {
-    pub(crate) fn new(tx: EventSender0, rx: CommandReceiver0) -> Result<Self> {
+    pub(crate) fn new(tx: EventSender, rx: CommandReceiver) -> Result<Self> {
         let poll = Poll::new()?;
 
         let timer = make_module_with_fd_id::<Timer>(&tx, &poll);
@@ -70,7 +70,7 @@ impl Loop {
 
         let tray = make_module_with_fd_id::<Tray>(&tx, &poll);
 
-        register_reader(&poll, rx.as_raw_fd(), CommandReceiver0::TOKEN)?;
+        register_reader(&poll, rx.as_raw_fd(), CommandReceiver::TOKEN)?;
 
         let this = Self {
             poll,
@@ -154,7 +154,7 @@ impl Loop {
                     self.weather = None;
                 }
 
-                CommandReceiver0::TOKEN => {
+                CommandReceiver::TOKEN => {
                     self.rx.consume_signal();
                     while let Some(cmd) = self.rx.recv() {
                         if let Err(err) = self.process_command(cmd) {
@@ -223,7 +223,7 @@ fn poll(poll: &mut Poll, events: &mut Events) -> Result<()> {
     Ok(())
 }
 
-fn make_module_with_fd_id<T>(tx: &EventSender0, poll: &Poll) -> Option<T>
+fn make_module_with_fd_id<T>(tx: &EventSender, poll: &Poll) -> Option<T>
 where
     T: Module,
 {

@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    channel::EventSender0,
+    channel::EventSender,
     dbus::{OrgMeLayerShellControl, register_org_me_layer_shell_control},
     fd_id::FdId,
     modules::Module,
@@ -28,7 +28,7 @@ impl Module for Control {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender0) -> Result<Self> {
+    fn new(tx: EventSender) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -67,7 +67,7 @@ impl AsRawFd for Control {
 }
 
 struct DBusService {
-    tx: EventSender0,
+    tx: EventSender,
 }
 
 impl OrgMeLayerShellControl for DBusService {

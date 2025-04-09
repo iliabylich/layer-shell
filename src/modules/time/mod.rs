@@ -1,13 +1,13 @@
-use crate::{Event, channel::EventSender0};
+use crate::{Event, channel::EventSender};
 
 pub(crate) struct Time {
-    tx: EventSender0,
+    tx: EventSender,
 }
 
 impl Time {
     pub(crate) const INTERVAL: u64 = 1;
 
-    pub(crate) fn new(tx: EventSender0) -> Self {
+    pub(crate) fn new(tx: EventSender) -> Self {
         Self { tx }
     }
 

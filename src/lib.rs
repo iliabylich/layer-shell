@@ -16,7 +16,7 @@ mod subscriptions;
 mod timer;
 
 use anyhow::Result;
-use channel::{CommandReceiver0, CommandSender0, EventReceiver0, EventSender0};
+use channel::{CommandReceiver, CommandSender, EventReceiver, EventSender};
 pub use command::*;
 pub use event::Event;
 use r#loop::Loop;
@@ -30,12 +30,12 @@ pub struct Ctx {
 }
 
 pub struct IoCtx {
-    tx: EventSender0,
-    rx: CommandReceiver0,
+    tx: EventSender,
+    rx: CommandReceiver,
 }
 pub struct UiCtx {
-    tx: EventReceiver0,
-    rx: CommandSender0,
+    tx: EventReceiver,
+    rx: CommandSender,
     subs: Subscriptions,
 }
 

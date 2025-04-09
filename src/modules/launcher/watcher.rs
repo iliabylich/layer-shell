@@ -1,5 +1,5 @@
 use crate::{
-    channel::EventSender0,
+    channel::EventSender,
     fd_id::FdId,
     modules::{
         Module,
@@ -20,7 +20,7 @@ pub(crate) struct Watcher<T: WatcherDir> {
     dir: T,
     inotify: Inotify,
     state: Option<Rc<RefCell<State>>>,
-    tx: EventSender0,
+    tx: EventSender,
 }
 
 impl<T: WatcherDir> Module for Watcher<T> {
@@ -29,7 +29,7 @@ impl<T: WatcherDir> Module for Watcher<T> {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender0) -> Result<Self> {
+    fn new(tx: EventSender) -> Result<Self> {
         let dir = T::new()?;
 
         let inotify = Inotify::init().context("failed to initialize Inotify")?;

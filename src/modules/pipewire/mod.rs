@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    channel::EventSender0,
+    channel::EventSender,
     dbus::{OrgLocalPipewireDBus, OrgLocalPipewireDBusDataChanged},
     fd_id::FdId,
     modules::Module,
@@ -17,7 +17,7 @@ use std::{
 };
 
 pub(crate) struct Pipewire {
-    tx: EventSender0,
+    tx: EventSender,
     conn: Connection,
 }
 
@@ -27,7 +27,7 @@ impl Module for Pipewire {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender0) -> Result<Self> {
+    fn new(tx: EventSender) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);

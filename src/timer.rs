@@ -1,4 +1,4 @@
-use crate::{channel::EventSender0, fd_id::FdId, modules::Module};
+use crate::{channel::EventSender, fd_id::FdId, modules::Module};
 use anyhow::Result;
 use rustix::{
     io::read,
@@ -20,7 +20,7 @@ impl Module for Timer {
 
     type ReadOutput = Ticks;
 
-    fn new(_: EventSender0) -> Result<Self> {
+    fn new(_: EventSender) -> Result<Self> {
         let fd = timerfd_create(TimerfdClockId::Realtime, TimerfdFlags::empty())?;
 
         let timerspec = Itimerspec {

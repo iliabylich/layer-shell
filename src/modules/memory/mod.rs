@@ -1,16 +1,16 @@
-use crate::{Event, channel::EventSender0, hyprctl};
+use crate::{Event, channel::EventSender, hyprctl};
 use anyhow::{Context as _, Result};
 use std::io::Read;
 
 pub(crate) struct Memory {
-    tx: EventSender0,
+    tx: EventSender,
     buf: Vec<u8>,
 }
 
 impl Memory {
     pub(crate) const INTERVAL: u64 = 1;
 
-    pub(crate) fn new(tx: EventSender0) -> Self {
+    pub(crate) fn new(tx: EventSender) -> Self {
         Self {
             tx,
             buf: vec![0; 1_000],

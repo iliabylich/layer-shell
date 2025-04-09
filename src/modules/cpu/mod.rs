@@ -1,19 +1,19 @@
 mod cpu_core_info;
 
-use crate::{Event, channel::EventSender0};
+use crate::{Event, channel::EventSender};
 use anyhow::Result;
 use cpu_core_info::CpuCoreInfo;
 
 pub(crate) struct CPU {
     state: Option<Vec<CpuCoreInfo>>,
-    tx: EventSender0,
+    tx: EventSender,
     buf: Vec<u8>,
 }
 
 impl CPU {
     pub(crate) const INTERVAL: u64 = 1;
 
-    pub(crate) fn new(tx: EventSender0) -> Self {
+    pub(crate) fn new(tx: EventSender) -> Self {
         Self {
             tx,
             state: None,
