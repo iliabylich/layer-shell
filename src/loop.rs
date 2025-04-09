@@ -2,7 +2,6 @@ use crate::{
     Command,
     channel::{CommandReceiver, EventSender},
     fatal,
-    fd_id::FdId,
     modules::{
         Module, TickingModule,
         clock::Clock,
@@ -17,11 +16,11 @@ use crate::{
         tray::Tray,
         weather::Weather,
     },
+    poll::Poll,
     timer::Timer,
 };
 use anyhow::{Context as _, Result};
-use mio::{Events, Interest, Poll, Token, unix::SourceFd};
-use std::os::fd::{AsRawFd, RawFd};
+use mio::Events;
 
 pub(crate) struct Loop {
     poll: Poll,
@@ -70,7 +69,7 @@ impl Loop {
 
         let tray = make_module_with_fd_id::<Tray>(&tx, &poll);
 
-        register_reader(&poll, rx.as_raw_fd(), CommandReceiver::TOKEN)?;
+        poll.add_reader(&rx)?;
 
         let this = Self {
             poll,
@@ -97,7 +96,7 @@ impl Loop {
     }
 
     fn tick(&mut self, events: &mut Events) {
-        if let Err(err) = poll(&mut self.poll, events) {
+        if let Err(err) = self.poll.poll(events) {
             log::error!("{err:?}");
             return;
         }
@@ -203,33 +202,13 @@ impl Loop {
     }
 }
 
-fn register_reader(poll: &Poll, fd: RawFd, token: Token) -> Result<()> {
-    let fd_id = FdId::from(token);
-    poll.registry()
-        .register(&mut SourceFd(&fd), token, Interest::READABLE)
-        .with_context(|| format!("failed to register {fd} with {token:?} ({fd_id:?}) in epoll"))?;
-    log::info!("[epoll] registered fd {fd} with token {token:?} ({fd_id:?})");
-    Ok(())
-}
-
-fn unregister_reader(poll: &Poll, fd: RawFd) {
-    if let Err(err) = poll.registry().deregister(&mut SourceFd(&fd)) {
-        log::error!("[epoll] failed to un-register {fd} from epoll: {err:?}");
-    }
-}
-
-fn poll(poll: &mut Poll, events: &mut Events) -> Result<()> {
-    poll.poll(events, None).context("failed to poll epoll")?;
-    Ok(())
-}
-
 fn make_module_with_fd_id<T>(tx: &EventSender, poll: &Poll) -> Option<T>
 where
     T: Module,
 {
     match T::new(tx.clone()) {
         Ok(module) => {
-            if let Err(err) = register_reader(poll, module.as_raw_fd(), T::FD_ID.token()) {
+            if let Err(err) = poll.add_reader(&module) {
                 fatal!("[epoll] failed to register reader {:?}: {err:?}", T::FD_ID);
             }
             Some(module)
@@ -250,7 +229,7 @@ where
             Ok(output) => Some(output),
             Err(err) => {
                 log::error!("[{}] {err:?}", T::NAME);
-                unregister_reader(poll, reader.as_raw_fd());
+                poll.remove_reader(reader);
                 None
             }
         },

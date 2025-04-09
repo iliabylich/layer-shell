@@ -1,5 +1,5 @@
-use crate::{Command, Event, fatal, fd_id::FdId};
-use mio::Token;
+use crate::{Command, Event, fatal, fd_id::FdId, modules::Module};
+use anyhow::{Result, bail};
 use std::{
     io::{Read, Write},
     os::fd::{AsRawFd, RawFd},
@@ -47,8 +47,6 @@ pub(crate) struct CommandReceiver(
     std::sync::mpsc::Receiver<Command>,
 );
 impl CommandReceiver {
-    pub(crate) const TOKEN: Token = FdId::Command.token();
-
     pub(crate) fn consume_signal(&mut self) {
         let mut buf = [0; 1];
         if let Err(err) = self.0.read_exact(&mut buf) {
@@ -64,6 +62,21 @@ impl CommandReceiver {
                 None
             }
         }
+    }
+}
+
+impl Module for CommandReceiver {
+    const FD_ID: FdId = FdId::Command;
+    const NAME: &str = "CommandReceiver";
+
+    type ReadOutput = ();
+
+    fn new(_: EventSender) -> Result<Self> {
+        bail!("use channel::commands()")
+    }
+
+    fn read_events(&mut self) -> Result<Self::ReadOutput> {
+        bail!("use consume_signal() and recv()")
     }
 }
 

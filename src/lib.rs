@@ -12,6 +12,7 @@ mod hyprctl;
 mod r#loop;
 mod macros;
 mod modules;
+mod poll;
 mod subscriptions;
 mod timer;
 
