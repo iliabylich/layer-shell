@@ -4,7 +4,8 @@ use crate::{
     fatal,
     fd_id::FdId,
     modules::{
-        Module,
+        Module, TickingModule,
+        clock::Clock,
         control::Control,
         cpu::CPU,
         hyprland::Hyprland,
@@ -13,7 +14,6 @@ use crate::{
         network::Network,
         pipewire::Pipewire,
         session::Session,
-        time::Time,
         tray::Tray,
         weather::Weather,
     },
@@ -28,9 +28,9 @@ pub(crate) struct Loop {
 
     timer: Option<Timer>,
 
-    time: Time,
-    memory: Memory,
-    cpu: CPU,
+    clock: Option<Clock>,
+    memory: Option<Memory>,
+    cpu: Option<CPU>,
     hyprland: Option<Hyprland>,
     control: Option<Control>,
     pipewire: Option<Pipewire>,
@@ -49,9 +49,9 @@ impl Loop {
         let poll = Poll::new()?;
 
         let timer = make_module_with_fd_id::<Timer>(&tx, &poll);
-        let time = Time::new(tx.clone());
-        let memory = Memory::new(tx.clone());
-        let cpu = CPU::new(tx.clone());
+        let clock = Some(Clock::new(tx.clone()));
+        let memory = Some(Memory::new(tx.clone()));
+        let cpu = Some(CPU::new(tx.clone()));
         let hyprland = make_module_with_fd_id::<Hyprland>(&tx, &poll);
         let control = make_module_with_fd_id::<Control>(&tx, &poll);
         let pipewire = make_module_with_fd_id::<Pipewire>(&tx, &poll);
@@ -77,7 +77,7 @@ impl Loop {
 
             timer,
 
-            time,
+            clock,
             memory,
             cpu,
             hyprland,
@@ -106,14 +106,14 @@ impl Loop {
             match event.token() {
                 Timer::TOKEN => {
                     if let Some(ticks) = read_events_or_disable(&mut self.timer, &self.poll) {
-                        if ticks.is_multiple_of(Time::INTERVAL) {
-                            self.time.tick();
+                        if ticks.is_multiple_of(Clock::INTERVAL) {
+                            tick_module(&mut self.clock);
                         }
                         if ticks.is_multiple_of(Memory::INTERVAL) {
-                            self.memory.tick();
+                            tick_module(&mut self.memory);
                         }
                         if ticks.is_multiple_of(CPU::INTERVAL) {
-                            self.cpu.tick();
+                            tick_module(&mut self.cpu);
                         }
                         if ticks.is_multiple_of(Weather::INTERVAL) {
                             self.weather = make_module_with_fd_id::<Weather>(&self.tx, &self.poll);
@@ -257,6 +257,18 @@ where
         None => {
             log::error!("[{}] unexpected epoll event", T::NAME);
             None
+        }
+    }
+}
+
+fn tick_module<T>(module: &mut Option<T>)
+where
+    T: TickingModule,
+{
+    if let Some(callable) = module.as_mut() {
+        if let Err(err) = callable.tick() {
+            log::error!("module {} returned an error: {err:?}", T::NAME);
+            *module = None;
         }
     }
 }

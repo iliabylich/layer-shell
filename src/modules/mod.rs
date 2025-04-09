@@ -3,6 +3,7 @@ use anyhow::Result;
 use mio::Token;
 use std::os::fd::AsRawFd;
 
+pub(crate) mod clock;
 pub(crate) mod control;
 pub(crate) mod cpu;
 pub(crate) mod hyprland;
@@ -11,7 +12,6 @@ pub(crate) mod memory;
 pub(crate) mod network;
 pub(crate) mod pipewire;
 pub(crate) mod session;
-pub(crate) mod time;
 pub(crate) mod tray;
 pub(crate) mod weather;
 
@@ -27,4 +27,10 @@ pub(crate) trait Module: AsRawFd {
         Self: Sized;
 
     fn read_events(&mut self) -> Result<Self::ReadOutput>;
+}
+
+pub(crate) trait TickingModule {
+    const NAME: &str;
+
+    fn tick(&mut self) -> Result<()>;
 }

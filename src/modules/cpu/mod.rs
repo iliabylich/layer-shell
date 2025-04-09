@@ -1,6 +1,6 @@
 mod cpu_core_info;
 
-use crate::{Event, channel::EventSender};
+use crate::{Event, channel::EventSender, modules::TickingModule};
 use anyhow::Result;
 use cpu_core_info::CpuCoreInfo;
 
@@ -20,14 +20,12 @@ impl CPU {
             buf: vec![0; 1_000],
         }
     }
+}
 
-    pub(crate) fn tick(&mut self) {
-        if let Err(err) = self.try_tick() {
-            log::error!("failed to tick CPU: {:?}", err);
-        }
-    }
+impl TickingModule for CPU {
+    const NAME: &str = "CPU";
 
-    fn try_tick(&mut self) -> Result<()> {
+    fn tick(&mut self) -> Result<()> {
         let (usage, new_state) =
             CpuCoreInfo::parse_current_comparing_to(self.state.as_ref(), &mut self.buf)?;
         let event = Event::CpuUsage {

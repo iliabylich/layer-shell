@@ -1,4 +1,4 @@
-use crate::{Event, channel::EventSender, hyprctl};
+use crate::{Event, channel::EventSender, hyprctl, modules::TickingModule};
 use anyhow::{Context as _, Result};
 use std::io::Read;
 
@@ -17,13 +17,17 @@ impl Memory {
         }
     }
 
-    pub(crate) fn tick(&mut self) {
-        if let Err(err) = self.try_tick() {
-            log::error!("{:?}", err);
+    pub(crate) fn spawn_system_monitor() {
+        if let Err(err) = hyprctl::dispatch("exec gnome-system-monitor") {
+            log::error!("Failed to open system monitor: {:?}", err);
         }
     }
+}
 
-    fn try_tick(&mut self) -> Result<()> {
+impl TickingModule for Memory {
+    const NAME: &str = "Memory";
+
+    fn tick(&mut self) -> Result<()> {
         let mut file = std::fs::File::open("/proc/meminfo").context("failed to open")?;
         let len = file.read(&mut self.buf).context("failed to read")?;
         let contents = std::str::from_utf8(&self.buf[..len]).context("non-utf8 content")?;
@@ -56,11 +60,5 @@ impl Memory {
         };
         self.tx.send(event);
         Ok(())
-    }
-
-    pub(crate) fn spawn_system_monitor() {
-        if let Err(err) = hyprctl::dispatch("exec gnome-system-monitor") {
-            log::error!("Failed to open system monitor: {:?}", err);
-        }
     }
 }

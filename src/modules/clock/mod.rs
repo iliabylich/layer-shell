@@ -1,21 +1,26 @@
-use crate::{Event, channel::EventSender};
+use crate::{Event, channel::EventSender, modules::TickingModule};
 
-pub(crate) struct Time {
+pub(crate) struct Clock {
     tx: EventSender,
 }
 
-impl Time {
+impl Clock {
     pub(crate) const INTERVAL: u64 = 1;
 
     pub(crate) fn new(tx: EventSender) -> Self {
         Self { tx }
     }
+}
 
-    pub(crate) fn tick(&mut self) {
+impl TickingModule for Clock {
+    const NAME: &str = "Time";
+
+    fn tick(&mut self) -> anyhow::Result<()> {
         let now = chrono::Local::now();
         let event = Event::Time {
             time: now.format("%H:%M:%S | %b %e | %a").to_string().into(),
         };
-        self.tx.send(event)
+        self.tx.send(event);
+        Ok(())
     }
 }
