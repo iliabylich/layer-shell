@@ -71,7 +71,7 @@ impl Module for CommandReceiver {
 
     type ReadOutput = ();
 
-    fn new(_: EventSender) -> Result<Self> {
+    fn new(_: &EventSender) -> Result<Self> {
         bail!("use channel::commands()")
     }
 

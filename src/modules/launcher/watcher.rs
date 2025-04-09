@@ -29,7 +29,7 @@ impl<T: WatcherDir> Module for Watcher<T> {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender) -> Result<Self> {
+    fn new(tx: &EventSender) -> Result<Self> {
         let dir = T::new()?;
 
         let inotify = Inotify::init().context("failed to initialize Inotify")?;
@@ -46,7 +46,7 @@ impl<T: WatcherDir> Module for Watcher<T> {
             dir,
             inotify,
             state: None,
-            tx,
+            tx: tx.clone(),
         })
     }
 

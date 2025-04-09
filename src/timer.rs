@@ -20,7 +20,7 @@ impl Module for Timer {
 
     type ReadOutput = Ticks;
 
-    fn new(_: EventSender) -> Result<Self> {
+    fn new(_: &EventSender) -> Result<Self> {
         let fd = timerfd_create(TimerfdClockId::Realtime, TimerfdFlags::empty())?;
 
         let timerspec = Itimerspec {

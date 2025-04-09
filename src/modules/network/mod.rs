@@ -38,7 +38,7 @@ impl Module for Network {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender) -> Result<Self> {
+    fn new(tx: &EventSender) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::System).context("failed to connecto to DBus")?;
         channel.set_watch_enabled(true);
@@ -52,7 +52,7 @@ impl Module for Network {
 
         let mut this = Self {
             conn,
-            tx,
+            tx: tx.clone(),
             primary_device: None,
             network_speed: NetworkSpeed::new(),
         };

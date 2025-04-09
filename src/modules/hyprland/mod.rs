@@ -25,7 +25,7 @@ impl Module for Hyprland {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender) -> Result<Self> {
+    fn new(tx: &EventSender) -> Result<Self> {
         let socket = connection::connect_to_socket()?;
         let fd = socket.as_raw_fd();
         let reader = BufReader::new(socket).lines();
@@ -38,7 +38,7 @@ impl Module for Hyprland {
             fd,
             reader,
             state,
-            tx,
+            tx: tx.clone(),
         })
     }
 

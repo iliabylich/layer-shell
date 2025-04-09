@@ -1,9 +1,8 @@
 use crate::{
     Command,
     channel::{CommandReceiver, EventSender},
-    fatal,
     modules::{
-        Module, TickingModule,
+        MaybeModule, MaybeTickingModule, Module,
         clock::Clock,
         control::Control,
         cpu::CPU,
@@ -25,74 +24,82 @@ use mio::Events;
 pub(crate) struct Loop {
     poll: Poll,
 
-    timer: Option<Timer>,
-
     clock: Option<Clock>,
     memory: Option<Memory>,
     cpu: Option<CPU>,
+    weather: Option<Weather>,
+    launcher: Launcher,
+
+    timer: Option<Timer>,
     hyprland: Option<Hyprland>,
     control: Option<Control>,
     pipewire: Option<Pipewire>,
     network: Option<Network>,
-    launcher: Launcher,
     global_launcher_watcher: Option<GlobalLauncherWatcher>,
     user_launcher_watcher: Option<UserLauncherWatcher>,
     tray: Option<Tray>,
+
     tx: EventSender,
     rx: CommandReceiver,
-    weather: Option<Weather>,
 }
 
 impl Loop {
     pub(crate) fn new(tx: EventSender, rx: CommandReceiver) -> Result<Self> {
         let poll = Poll::new()?;
 
-        let timer = make_module_with_fd_id::<Timer>(&tx, &poll);
-        let clock = Some(Clock::new(tx.clone()));
-        let memory = Some(Memory::new(tx.clone()));
-        let cpu = Some(CPU::new(tx.clone()));
-        let hyprland = make_module_with_fd_id::<Hyprland>(&tx, &poll);
-        let control = make_module_with_fd_id::<Control>(&tx, &poll);
-        let pipewire = make_module_with_fd_id::<Pipewire>(&tx, &poll);
-        let network = make_module_with_fd_id::<Network>(&tx, &poll);
-
+        let clock = Some(Clock::new(&tx));
+        let memory = Some(Memory::new(&tx));
+        let cpu = Some(CPU::new(&tx));
+        let weather = None;
         let launcher = Launcher::new(&tx);
-        let mut global_launcher_watcher =
-            make_module_with_fd_id::<GlobalLauncherWatcher>(&tx, &poll);
+
+        let timer = Timer::try_new(&tx);
+        let hyprland = Hyprland::try_new(&tx);
+        let control = Control::try_new(&tx);
+        let pipewire = Pipewire::try_new(&tx);
+        let network = Network::try_new(&tx);
+        let mut global_launcher_watcher = GlobalLauncherWatcher::try_new(&tx);
+        let mut user_launcher_watcher = UserLauncherWatcher::try_new(&tx);
+        let tray = Tray::try_new(&tx);
+
+        poll.add_maybe_reader(&timer);
+        poll.add_maybe_reader(&hyprland);
+        poll.add_maybe_reader(&control);
+        poll.add_maybe_reader(&pipewire);
+        poll.add_maybe_reader(&network);
+        poll.add_maybe_reader(&global_launcher_watcher);
+        poll.add_maybe_reader(&user_launcher_watcher);
+        poll.add_maybe_reader(&tray);
+        poll.add_reader(&rx);
+
         if let Some(watcher) = global_launcher_watcher.as_mut() {
             watcher.connect(&launcher);
         }
-        let mut user_launcher_watcher = make_module_with_fd_id::<UserLauncherWatcher>(&tx, &poll);
         if let Some(watcher) = user_launcher_watcher.as_mut() {
             watcher.connect(&launcher);
         }
 
-        let tray = make_module_with_fd_id::<Tray>(&tx, &poll);
-
-        poll.add_reader(&rx)?;
-
-        let this = Self {
+        Ok(Self {
             poll,
-
-            timer,
 
             clock,
             memory,
             cpu,
+            weather,
+            launcher,
+
+            timer,
             hyprland,
             control,
             pipewire,
             network,
-            launcher,
             global_launcher_watcher,
             user_launcher_watcher,
             tray,
+
             tx,
             rx,
-            weather: None,
-        };
-
-        Ok(this)
+        })
     }
 
     fn tick(&mut self, events: &mut Events) {
@@ -104,52 +111,55 @@ impl Loop {
         for event in events.iter() {
             match event.token() {
                 Timer::TOKEN => {
-                    if let Some(ticks) = read_events_or_disable(&mut self.timer, &self.poll) {
+                    if let Some(ticks) = self.timer.read_events_or_unregister(&self.poll) {
                         if ticks.is_multiple_of(Clock::INTERVAL) {
-                            tick_module(&mut self.clock);
+                            self.clock.tick();
                         }
                         if ticks.is_multiple_of(Memory::INTERVAL) {
-                            tick_module(&mut self.memory);
+                            self.memory.tick();
                         }
                         if ticks.is_multiple_of(CPU::INTERVAL) {
-                            tick_module(&mut self.cpu);
+                            self.cpu.tick();
                         }
                         if ticks.is_multiple_of(Weather::INTERVAL) {
-                            self.weather = make_module_with_fd_id::<Weather>(&self.tx, &self.poll);
+                            self.weather = Weather::try_new(&self.tx);
+                            self.poll.add_maybe_reader(&self.weather);
                         }
                     }
                 }
 
                 Hyprland::TOKEN => {
-                    read_events_or_disable(&mut self.hyprland, &self.poll);
+                    self.hyprland.read_events_or_unregister(&self.poll);
                 }
 
                 Control::TOKEN => {
-                    read_events_or_disable(&mut self.control, &self.poll);
+                    self.control.read_events_or_unregister(&self.poll);
                 }
 
                 Pipewire::TOKEN => {
-                    read_events_or_disable(&mut self.pipewire, &self.poll);
+                    self.pipewire.read_events_or_unregister(&self.poll);
                 }
 
                 Network::TOKEN => {
-                    read_events_or_disable(&mut self.network, &self.poll);
+                    self.network.read_events_or_unregister(&self.poll);
                 }
 
                 GlobalLauncherWatcher::TOKEN => {
-                    read_events_or_disable(&mut self.global_launcher_watcher, &self.poll);
+                    self.global_launcher_watcher
+                        .read_events_or_unregister(&self.poll);
                 }
 
                 UserLauncherWatcher::TOKEN => {
-                    read_events_or_disable(&mut self.user_launcher_watcher, &self.poll);
+                    self.user_launcher_watcher
+                        .read_events_or_unregister(&self.poll);
                 }
 
                 Tray::TOKEN => {
-                    read_events_or_disable(&mut self.tray, &self.poll);
+                    self.tray.read_events_or_unregister(&self.poll);
                 }
 
                 Weather::TOKEN => {
-                    read_events_or_disable(&mut self.weather, &self.poll);
+                    self.weather.read_events_or_unregister(&self.poll);
                     self.weather = None;
                 }
 
@@ -199,55 +209,5 @@ impl Loop {
         }
 
         Ok(())
-    }
-}
-
-fn make_module_with_fd_id<T>(tx: &EventSender, poll: &Poll) -> Option<T>
-where
-    T: Module,
-{
-    match T::new(tx.clone()) {
-        Ok(module) => {
-            if let Err(err) = poll.add_reader(&module) {
-                fatal!("[epoll] failed to register reader {:?}: {err:?}", T::FD_ID);
-            }
-            Some(module)
-        }
-        Err(err) => {
-            log::error!("[{}] {err:?}", T::NAME);
-            None
-        }
-    }
-}
-
-fn read_events_or_disable<T>(module: &mut Option<T>, poll: &Poll) -> Option<T::ReadOutput>
-where
-    T: Module,
-{
-    match module.as_mut() {
-        Some(reader) => match reader.read_events() {
-            Ok(output) => Some(output),
-            Err(err) => {
-                log::error!("[{}] {err:?}", T::NAME);
-                poll.remove_reader(reader);
-                None
-            }
-        },
-        None => {
-            log::error!("[{}] unexpected epoll event", T::NAME);
-            None
-        }
-    }
-}
-
-fn tick_module<T>(module: &mut Option<T>)
-where
-    T: TickingModule,
-{
-    if let Some(callable) = module.as_mut() {
-        if let Err(err) = callable.tick() {
-            log::error!("module {} returned an error: {err:?}", T::NAME);
-            *module = None;
-        }
     }
 }

@@ -10,9 +10,9 @@ pub(crate) struct Memory {
 impl Memory {
     pub(crate) const INTERVAL: u64 = 1;
 
-    pub(crate) fn new(tx: EventSender) -> Self {
+    pub(crate) fn new(tx: &EventSender) -> Self {
         Self {
-            tx,
+            tx: tx.clone(),
             buf: vec![0; 1_000],
         }
     }

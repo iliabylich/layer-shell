@@ -7,8 +7,8 @@ pub(crate) struct Clock {
 impl Clock {
     pub(crate) const INTERVAL: u64 = 1;
 
-    pub(crate) fn new(tx: EventSender) -> Self {
-        Self { tx }
+    pub(crate) fn new(tx: &EventSender) -> Self {
+        Self { tx: tx.clone() }
     }
 }
 

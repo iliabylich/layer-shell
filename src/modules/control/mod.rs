@@ -28,7 +28,7 @@ impl Module for Control {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender) -> Result<Self> {
+    fn new(tx: &EventSender) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -38,7 +38,7 @@ impl Module for Control {
 
         let mut cr = Crossroads::new();
         let token = register_org_me_layer_shell_control::<DBusService>(&mut cr);
-        cr.insert("/Control", &[token], DBusService { tx });
+        cr.insert("/Control", &[token], DBusService { tx: tx.clone() });
 
         Ok(Self { conn, cr })
     }

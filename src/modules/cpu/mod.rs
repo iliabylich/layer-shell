@@ -13,9 +13,9 @@ pub(crate) struct CPU {
 impl CPU {
     pub(crate) const INTERVAL: u64 = 1;
 
-    pub(crate) fn new(tx: EventSender) -> Self {
+    pub(crate) fn new(tx: &EventSender) -> Self {
         Self {
-            tx,
+            tx: tx.clone(),
             state: None,
             buf: vec![0; 1_000],
         }

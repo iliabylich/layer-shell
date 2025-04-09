@@ -22,9 +22,12 @@ impl Module for Weather {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender) -> Result<Self> {
+    fn new(tx: &EventSender) -> Result<Self> {
         let fd = client::send_request()?;
-        Ok(Self { tx, stream: fd })
+        Ok(Self {
+            tx: tx.clone(),
+            stream: fd,
+        })
     }
 
     fn read_events(&mut self) -> Result<()> {

@@ -47,7 +47,7 @@ impl Module for Tray {
 
     type ReadOutput = ();
 
-    fn new(tx: EventSender) -> Result<Self> {
+    fn new(tx: &EventSender) -> Result<Self> {
         let mut channel =
             Channel::get_private(BusType::Session).context("failed to connect to DBus")?;
         channel.set_watch_enabled(true);
@@ -81,7 +81,7 @@ impl Module for Tray {
             conn,
             state,
             cr,
-            tx,
+            tx: tx.clone(),
         })
     }
 
