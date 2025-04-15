@@ -51,17 +51,17 @@ impl DBusMenu {
 
         Ok(TrayItem {
             id: 0,
-            uuid: String::new().into(),
-            type_: String::new().into(),
-            label: String::new().into(),
+            uuid: String::new(),
+            type_: String::new(),
+            label: String::new(),
             enabled: true,
             visible: true,
-            icon_name: String::new().into(),
-            icon_data: String::new().into(),
-            toggle_type: String::new().into(),
+            icon_name: String::new(),
+            icon_data: String::new(),
+            toggle_type: String::new(),
             toggle_state: 0,
-            children_display: String::new().into(),
-            children: children.into(),
+            children_display: String::new(),
+            children,
         })
     }
 
@@ -149,17 +149,17 @@ impl DBusMenu {
 
         Ok(TrayItem {
             id,
-            uuid: UUID::encode(&self.service, &self.path, id).into(),
-            type_: type_.into(),
-            label: label.into(),
+            uuid: UUID::encode(&self.service, &self.path, id),
+            type_,
+            label,
             enabled,
             visible,
-            icon_name: icon_name.into(),
-            icon_data: icon_data.into(),
-            toggle_type: toggle_type.into(),
+            icon_name,
+            icon_data,
+            toggle_type,
             toggle_state,
-            children_display: children_display.into(),
-            children: children.into(),
+            children_display,
+            children,
         })
     }
 }

@@ -1,26 +1,26 @@
 dbus-generate:
     ./dbus/generate.sh
 
-clean:
-    cargo clean
-    rm -rf builddir
+css-generate:
+    sassc main.scss main.css
 
-cargo-debug out:
-    cargo build
-    cp target/debug/liblayer_shell_io.so builddir/{{out}}
-cargo-release out:
-    cargo build --release
-    cp target/release/liblayer_shell_io.so builddir/{{out}}
-
-setup build:
-    meson setup builddir --buildtype={{build}}
-
-install destdir:
-    meson install -C builddir --destdir={{destdir}}
+lint:
+    ruff format ui
+    ruff check ui
+    cargo clippy
 
 dev:
-    meson compile -C builddir
-    ./builddir/layer-shell
+    cargo build
+    DEV=1 ./ui/main.py
+
+build-release:
+    @just css-generate
+    cargo build --release
+    python3 -m zipapp ui --python "/usr/bin/env python3" -m "main:main"
+
+install destdir:
+    install -Dm0755 ui.pyz {{destdir}}/bin/layer-shell
+    install -Dm0644 target/release/liblayer_shell_io.so {{destdir}}/lib/x86_64-linux-gnu/liblayer_shell_io.so
 
 perf-io:
     #!/usr/bin/env -S bash -x

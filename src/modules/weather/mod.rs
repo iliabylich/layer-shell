@@ -8,8 +8,7 @@ use std::{
 mod client;
 mod code;
 mod mapper;
-
-pub use code::WeatherCode;
+pub(crate) use code::WeatherCode;
 
 pub(crate) struct Weather {
     tx: EventSender,

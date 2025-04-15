@@ -1,9 +1,10 @@
 /target
 src/dbus/interfaces
-main
-compile_commands.json
 .cache
 .vscode
 *.o
-io-version.c
 *.data
+__pycache__
+main.css
+.ruff_cache
+*.pyz

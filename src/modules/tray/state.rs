@@ -26,7 +26,7 @@ impl State {
 
     fn as_event(&self) -> Event {
         Event::Tray {
-            list: self.map.values().cloned().collect::<Vec<_>>().into(),
+            apps: self.map.values().cloned().collect(),
         }
     }
 

@@ -52,8 +52,8 @@ impl NetworkSpeed {
         let download_speed = self.rx.update(rx);
 
         Event::NetworkSpeed {
-            upload_speed: fmt(upload_speed).into(),
-            download_speed: fmt(download_speed).into(),
+            upload_speed: fmt(upload_speed),
+            download_speed: fmt(download_speed),
         }
     }
 }

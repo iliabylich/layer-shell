@@ -1,4 +1,4 @@
-use crate::{event::AppIcon, hyprctl};
+use crate::{event::LauncherAppIcon, hyprctl};
 use anyhow::{Context as _, Result};
 use std::io::{BufRead as _, BufReader};
 
@@ -7,7 +7,7 @@ pub(crate) struct DesktopFile {
     pub(crate) path: String,
     pub(crate) app_name: String,
     pub(crate) exec: String,
-    pub(crate) icon: AppIcon,
+    pub(crate) icon: LauncherAppIcon,
 }
 
 // https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html
@@ -48,9 +48,9 @@ impl DesktopFile {
 
         let icon = icon.context("failed to get Icon")?;
         let icon = if icon.starts_with('/') {
-            AppIcon::IconPath(icon.into())
+            LauncherAppIcon::IconPath(icon)
         } else {
-            AppIcon::IconName(icon.into())
+            LauncherAppIcon::IconName(icon)
         };
 
         Ok(DesktopFile {

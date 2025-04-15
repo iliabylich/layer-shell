@@ -1,10 +1,8 @@
 use crate::Event;
+use pyo3::{Bound, IntoPyObject, Python, ffi::PyObject, py_run};
 
-pub type Data = *mut std::ffi::c_void;
-pub type SubscriptionFn = extern "C" fn(&Event, Data);
-
-pub struct Subscriptions {
-    list: Vec<(SubscriptionFn, Data)>,
+pub(crate) struct Subscriptions {
+    list: Vec<*mut PyObject>,
 }
 
 impl Subscriptions {
@@ -12,17 +10,24 @@ impl Subscriptions {
         Self { list: vec![] }
     }
 
-    pub(crate) fn push(
-        &mut self,
-        f: extern "C" fn(&Event, *mut std::ffi::c_void),
-        data: *mut std::ffi::c_void,
-    ) {
-        self.list.push((f, data));
+    pub(crate) fn push(&mut self, sub: *mut PyObject) {
+        self.list.push(sub);
     }
 
     pub(crate) fn notify_each(&self, event: &Event) {
-        for (f, data) in self.list.iter() {
-            (f)(event, *data);
+        for sub in self.list.iter() {
+            Python::with_gil(|py| {
+                let sub = unsafe { Bound::from_borrowed_ptr(py, *sub) };
+                match event.clone().into_pyobject(py) {
+                    Ok(event) => py_run!(py, sub event, "sub.on_event(event)"),
+                    Err(err) => {
+                        log::error!("failed to convert event {event:?} to python: {err:?}")
+                    }
+                }
+            });
         }
     }
 }
+
+unsafe impl Send for Subscriptions {}
+unsafe impl Sync for Subscriptions {}

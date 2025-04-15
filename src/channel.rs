@@ -15,6 +15,7 @@ impl EventSender {
         }
     }
 }
+
 pub(crate) struct EventReceiver(std::sync::mpsc::Receiver<Event>);
 impl EventReceiver {
     pub(crate) fn recv(&self) -> Option<Event> {
@@ -28,6 +29,7 @@ impl EventReceiver {
         }
     }
 }
+unsafe impl Sync for EventReceiver {}
 
 pub(crate) struct CommandSender(mio::unix::pipe::Sender, std::sync::mpsc::Sender<Command>);
 impl CommandSender {
@@ -64,6 +66,7 @@ impl CommandReceiver {
         }
     }
 }
+unsafe impl Sync for CommandReceiver {}
 
 impl Module for CommandReceiver {
     const FD_ID: FdId = FdId::Command;

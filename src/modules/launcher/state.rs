@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event::App,
+    event::LauncherApp,
     modules::launcher::{desktop_file::DesktopFile, watcher::WatcherUpdate},
 };
 use anyhow::Result;
@@ -70,14 +70,14 @@ impl State {
             .visible()
             .into_iter()
             .enumerate()
-            .map(|(idx, desktop_file)| App {
-                name: desktop_file.app_name.into(),
+            .map(|(idx, desktop_file)| LauncherApp {
+                name: desktop_file.app_name,
                 selected: idx == self.selected_idx,
                 icon: desktop_file.icon,
             })
             .collect::<Vec<_>>();
 
-        Event::Launcher { apps: apps.into() }
+        Event::Launcher { apps }
     }
 
     fn visible(&self) -> Vec<DesktopFile> {

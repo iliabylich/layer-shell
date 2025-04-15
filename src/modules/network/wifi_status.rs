@@ -1,16 +1,13 @@
-use crate::{Event, dbus::nm::Device, event::WifiStatus, ffi::COption};
+use crate::{Event, dbus::nm::Device, event::WifiStatus};
 use anyhow::Result;
 use dbus::blocking::Connection;
 
 pub(crate) fn load(device: &Device, conn: &Connection) -> Event {
     let wifi_status = match get_wifi_status(device, conn) {
-        Ok((ssid, strength)) => COption::Some(WifiStatus {
-            ssid: ssid.into(),
-            strength,
-        }),
+        Ok((ssid, strength)) => Some(WifiStatus { ssid, strength }),
         Err(err) => {
             log::warn!("WiFiStatus error: {:?}", err);
-            COption::None
+            None
         }
     };
 

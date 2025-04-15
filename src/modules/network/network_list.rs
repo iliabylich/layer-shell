@@ -8,7 +8,7 @@ use dbus::blocking::Connection;
 
 pub(crate) fn load(conn: &Connection) -> Event {
     Event::NetworkList {
-        list: get_network_list(conn).unwrap_or_default().into(),
+        list: get_network_list(conn).unwrap_or_default(),
     }
 }
 
@@ -32,8 +32,5 @@ fn get_network_for_device(device: &Device, conn: &Connection) -> Result<NetworkD
     let ip4_config = device.ip4_config(conn)?;
     let address = ip4_config.address(conn)?;
 
-    Ok(NetworkData {
-        iface: iface.into(),
-        address: address.into(),
-    })
+    Ok(NetworkData { iface, address })
 }

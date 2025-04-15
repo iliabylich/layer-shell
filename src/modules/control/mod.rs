@@ -72,17 +72,17 @@ struct DBusService {
 
 impl OrgMeLayerShellControl for DBusService {
     fn toggle_launcher(&mut self) -> std::result::Result<(), dbus::MethodErr> {
-        self.tx.send(Event::ToggleLauncher);
+        self.tx.send(Event::ToggleLauncher());
         Ok(())
     }
 
     fn toggle_session_screen(&mut self) -> std::result::Result<(), dbus::MethodErr> {
-        self.tx.send(Event::ToggleSessionScreen);
+        self.tx.send(Event::ToggleSessionScreen());
         Ok(())
     }
 
     fn reload_styles(&mut self) -> std::result::Result<(), dbus::MethodErr> {
-        self.tx.send(Event::ReloadStyles);
+        self.tx.send(Event::ReloadStyles());
         Ok(())
     }
 
