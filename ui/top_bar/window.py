@@ -50,5 +50,5 @@ class Window(BaseWindow):
         Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.TOP, True)
         Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.LEFT, True)
         Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.RIGHT, True)
-        Gtk4LayerShell.set_margin(self, Gtk4LayerShell.Edge.TOP, 0)
         Gtk4LayerShell.set_namespace(self, "LayerShell/TopBar")
+        Gtk4LayerShell.auto_exclusive_zone_enable(self)
