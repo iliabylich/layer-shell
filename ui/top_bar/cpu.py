@@ -1,6 +1,7 @@
+from math import floor
+
 from gi.repository import Gtk
 from utils.subscribe import subscribe
-from math import floor
 
 
 class CPU(Gtk.Box):

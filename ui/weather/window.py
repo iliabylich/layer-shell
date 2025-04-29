@@ -1,8 +1,8 @@
 from gi.repository import Gtk, Gtk4LayerShell
-from utils.subscribe import subscribe
 from utils.base_window import BaseWindow
-from weather.hourly_grid import HourlyGrid
+from utils.subscribe import subscribe
 from weather.daily_grid import DailyGrid
+from weather.hourly_grid import HourlyGrid
 
 
 class Window(BaseWindow):

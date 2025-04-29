@@ -1,6 +1,6 @@
 from os import environ
-from gi.repository import Vte, GLib
 
+from gi.repository import GLib, Vte
 from utils.base_window import BaseWindow
 
 

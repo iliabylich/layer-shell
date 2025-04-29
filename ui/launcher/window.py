@@ -1,8 +1,8 @@
-from gi.repository import Gtk, Gtk4LayerShell, Gdk, GLib
-from utils.subscribe import subscribe
-from utils.base_window import BaseWindow
-from liblayer_shell_io import Commands
+from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell
 from launcher.row import Row
+from liblayer_shell_io import Commands
+from utils.base_window import BaseWindow
+from utils.subscribe import subscribe
 
 
 class Window(BaseWindow):

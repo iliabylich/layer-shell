@@ -1,7 +1,7 @@
 from gi.repository import Gtk, Gtk4LayerShell
-from utils.subscribe import subscribe
-from utils.base_window import BaseWindow
 from liblayer_shell_io import Commands
+from utils.base_window import BaseWindow
+from utils.subscribe import subscribe
 
 
 class Session(BaseWindow):

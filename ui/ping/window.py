@@ -4,7 +4,7 @@ from utils.vte_window import VteWindow
 
 class Window(VteWindow):
     def __init__(self, *args, **kwargs):
-        super().__init__(command=["ping", "8.8.8.8"], *args, **kwargs)
+        super().__init__(*args, command=["ping", "8.8.8.8"], **kwargs)
 
         self.set_name("PingWindow")
         self.set_size_request(1000, 700)

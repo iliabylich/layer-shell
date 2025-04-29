@@ -1,6 +1,6 @@
-from gi.repository import Gtk, Gdk
-from utils.subscribe import subscribe
+from gi.repository import Gdk, Gtk
 from liblayer_shell_io import Commands
+from utils.subscribe import subscribe
 
 
 class ChangeTheme(Gtk.Button):

@@ -1,6 +1,6 @@
-from gi.repository import Gtk, Gdk, Gio, GLib, GdkPixbuf
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
+from liblayer_shell_io import Commands, TrayIcon
 from utils.subscribe import subscribe
-from liblayer_shell_io import TrayIcon, Commands
 
 
 class Tray(Gtk.Box):

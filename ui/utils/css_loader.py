@@ -1,7 +1,8 @@
 from os import environ
-from gi.repository import Gtk, Gdk
-from utils.subscribe import subscribe
+
+from gi.repository import Gdk, Gtk
 from liblayer_shell_io import main_css
+from utils.subscribe import subscribe
 
 
 class CssLoader:
@@ -26,7 +27,7 @@ class CssLoader:
         home = environ["HOME"]
         path = f"{home}/.config/layer-shell/theme.css"
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
             return ""

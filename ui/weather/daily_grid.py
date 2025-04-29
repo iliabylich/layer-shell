@@ -1,12 +1,12 @@
 from gi.repository import Gtk
 from weather.base_grid import BaseGrid
-from weather.temperature_label import TemperatureLabel
 from weather.temperature_icon import TemperatureIcon
+from weather.temperature_label import TemperatureLabel
 
 
 class DailyGrid(BaseGrid):
     def __init__(self, app, *args, **kwargs):
-        super().__init__(cols_count=4, rows_count=6, *args, **kwargs)
+        super().__init__(*args, cols_count=4, rows_count=6, **kwargs)
         self.app = app
 
         for row in range(0, self.rows_count):

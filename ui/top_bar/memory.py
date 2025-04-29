@@ -1,6 +1,6 @@
 from gi.repository import Gtk
-from utils.subscribe import subscribe
 from liblayer_shell_io import Commands
+from utils.subscribe import subscribe
 
 
 class Memory(Gtk.Button):

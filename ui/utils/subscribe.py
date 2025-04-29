@@ -1,4 +1,5 @@
-from liblayer_shell_io import Event, subscribe as io_subscribe
+from liblayer_shell_io import Event
+from liblayer_shell_io import subscribe as io_subscribe
 
 MAP = {
     Event.Memory: "memory",

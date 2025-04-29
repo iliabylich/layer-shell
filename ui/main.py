@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from setproctitle import setproctitle
-from ctypes import CDLL
-import gi
 import os
 import sys
+from ctypes import CDLL
+
+import gi
+from setproctitle import setproctitle
 
 CDLL("libgtk4-layer-shell.so")
 

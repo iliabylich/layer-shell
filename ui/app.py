@@ -1,13 +1,13 @@
-from gi.repository import Gtk, GLib
-from liblayer_shell_io import init, spawn_thread, poll_events
+from gi.repository import GLib, Gtk
+from htop.window import Window as Htop
+from launcher.window import Window as Launcher
+from liblayer_shell_io import init, poll_events, spawn_thread
+from ping.window import Window as Ping
+from top_bar.window import Window as TopBar
 from utils.css_loader import CssLoader
 from utils.icons import Icons
-from top_bar.window import Window as TopBar
-from windows.session import Session
-from htop.window import Window as Htop
 from weather.window import Window as Weather
-from ping.window import Window as Ping
-from launcher.window import Window as Launcher
+from windows.session import Session
 
 
 class App(Gtk.Application):

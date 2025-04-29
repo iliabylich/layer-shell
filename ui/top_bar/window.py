@@ -1,17 +1,17 @@
 from gi.repository import Gtk, Gtk4LayerShell
-from utils.base_window import BaseWindow
-from top_bar.workspaces import Workspaces
 from top_bar.change_theme import ChangeTheme
-from top_bar.power import Power
 from top_bar.clock import Clock
-from top_bar.network import Network
-from top_bar.htop import Htop
-from top_bar.memory import Memory
 from top_bar.cpu import CPU
-from top_bar.sound import Sound
+from top_bar.htop import Htop
 from top_bar.language import Language
-from top_bar.weather import Weather
+from top_bar.memory import Memory
+from top_bar.network import Network
+from top_bar.power import Power
+from top_bar.sound import Sound
 from top_bar.tray import Tray
+from top_bar.weather import Weather
+from top_bar.workspaces import Workspaces
+from utils.base_window import BaseWindow
 
 
 class Window(BaseWindow):

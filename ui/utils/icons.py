@@ -1,4 +1,4 @@
-from gi.repository import GLib, Gio
+from gi.repository import Gio, GLib
 from liblayer_shell_io import Icons as LibIcons
 
 
