@@ -172,46 +172,6 @@ impl Commands {
     }
 }
 
-#[pyfunction]
-fn main_css() -> &'static str {
-    include_str!("../main.css")
-}
-#[pyclass]
-struct Icons;
-macro_rules! icons {
-    ($($name:ident,)+) => {
-        #[pymethods]
-        impl Icons {
-            $(
-                #[staticmethod]
-                fn $name() -> &'static [u8] {
-                    include_bytes!(concat!("../icons/", stringify!($name), ".png"))
-                }
-            )*
-
-            #[staticmethod]
-            fn names() -> Vec<&'static str> {
-                vec![
-                    $(stringify!($name),)*
-                ]
-            }
-        }
-    };
-}
-icons!(
-    change_theme,
-    download,
-    foggy,
-    partly_cloudy,
-    power,
-    question_mark,
-    rainy,
-    snowy,
-    sunny,
-    thunderstorm,
-    upload,
-    wifi,
-);
 #[pymodule]
 fn liblayer_shell_io(m: &Bound<'_, PyModule>) -> PyResult<()> {
     use event::{LauncherApp, LauncherAppIcon, TrayApp, TrayIcon, TrayItem, WifiStatus};
@@ -221,7 +181,6 @@ fn liblayer_shell_io(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<UiCtx>()?;
     m.add_class::<Event>()?;
     m.add_class::<Commands>()?;
-    m.add_class::<Icons>()?;
     m.add_class::<WifiStatus>()?;
     m.add_class::<WeatherCode>()?;
     m.add_class::<LauncherApp>()?;
@@ -234,6 +193,5 @@ fn liblayer_shell_io(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(poll_events, m)?)?;
     m.add_function(wrap_pyfunction!(subscribe, m)?)?;
 
-    m.add_function(wrap_pyfunction!(main_css, m)?)?;
     Ok(())
 }

@@ -1,5 +1,5 @@
+from icons.icons import Icons
 from liblayer_shell_io import WeatherCode
-from utils.icons import Icons
 
 
 class WeatherHelper:

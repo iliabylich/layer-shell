@@ -2,7 +2,7 @@ dbus-generate:
     ./dbus/generate.sh
 
 css-generate:
-    sassc main.scss main.css
+    sassc main.scss ui/utils/main.css
 
 lint:
     ruff format ui
@@ -10,6 +10,7 @@ lint:
     cargo clippy
 
 dev:
+    @just css-generate
     cargo build
     DEV=1 ./ui/main.py
 

@@ -1,7 +1,7 @@
-from os import environ
+import importlib.resources
+import os
 
 from gi.repository import Gdk, Gtk
-from liblayer_shell_io import main_css
 from utils.subscribe import subscribe
 
 
@@ -12,7 +12,7 @@ class CssLoader:
         subscribe(self)
 
     def load(self):
-        full_css = self.theme_css() + "\n" + main_css()
+        full_css = self.theme_css() + "\n" + self.main_css()
         self.provider = Gtk.CssProvider()
         self.provider.connect("parsing-error", self.on_error)
         self.provider.load_from_string(full_css)
@@ -24,13 +24,16 @@ class CssLoader:
         print("Finished loading CSS...")
 
     def theme_css(self):
-        home = environ["HOME"]
+        home = os.environ["HOME"]
         path = f"{home}/.config/layer-shell/theme.css"
         try:
             with open(path, encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
             return ""
+
+    def main_css(self):
+        return importlib.resources.read_text(__package__, "main.css")
 
     def on_error(self, provider, section, error):
         print("Failed to parse CSS:", section.to_string(), error)
