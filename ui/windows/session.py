@@ -1,14 +1,13 @@
 from gi.repository import Gtk, Gtk4LayerShell
 from liblayer_shell_io import Commands
 from utils.base_window import BaseWindow
-from utils.subscribe import subscribe
 
 
 class Session(BaseWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app = self.get_application()
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_name("SessionWindow")
         self.set_css_classes(["session-window"])

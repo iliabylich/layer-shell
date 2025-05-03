@@ -1,12 +1,11 @@
 from gi.repository import Gtk
-from utils.subscribe import subscribe
 
 
 class Language(Gtk.Label):
     def __init__(self, app, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app = app
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_label("--")
         self.set_css_classes(["widget", "language", "padded"])

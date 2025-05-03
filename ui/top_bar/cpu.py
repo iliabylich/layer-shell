@@ -1,7 +1,6 @@
 from math import floor
 
 from gi.repository import Gtk
-from utils.subscribe import subscribe
 
 
 class CPU(Gtk.Box):
@@ -9,7 +8,7 @@ class CPU(Gtk.Box):
         super().__init__(*args, **kwargs)
         self.cpu_count = 12
         self.app = app
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(3)

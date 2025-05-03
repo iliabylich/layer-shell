@@ -1,12 +1,11 @@
 from gi.repository import Gtk
-from utils.subscribe import subscribe
 
 
 class Sound(Gtk.Box):
     def __init__(self, app, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app = app
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(5)

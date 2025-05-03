@@ -1,5 +1,4 @@
 from gi.repository import Gtk
-from utils.subscribe import subscribe
 from utils.weather_helper import WeatherHelper
 
 
@@ -7,7 +6,7 @@ class Weather(Gtk.Button):
     def __init__(self, app, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app = app
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_label("--")
         self.set_css_classes(["widget", "weather", "padded", "clickable"])

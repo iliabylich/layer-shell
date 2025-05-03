@@ -1,6 +1,5 @@
 from gi.repository import Gtk
 from liblayer_shell_io import Commands
-from utils.subscribe import subscribe
 
 
 class Workspaces(Gtk.Box):
@@ -8,7 +7,7 @@ class Workspaces(Gtk.Box):
         super().__init__(*args, **kwargs)
         self.app = app
 
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
         self.workspaces_count = 10
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)

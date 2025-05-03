@@ -4,10 +4,12 @@ from gi.repository import GLib, Gtk
 from htop.window import Window as Htop
 from icons.icons import Icons
 from launcher.window import Window as Launcher
-from liblayer_shell_io import init, poll_events, spawn_thread
+from liblayer_shell_io import init as io_init
+from liblayer_shell_io import spawn_thread as io_spawn_thread
 from ping.window import Window as Ping
 from top_bar.window import Window as TopBar
 from utils.css_loader import CssLoader
+from utils.pub_sub import PubSub
 from weather.window import Window as Weather
 from windows.session import Session
 
@@ -17,7 +19,8 @@ class App(Gtk.Application):
         super().__init__(**kwargs)
 
         self.root_path = os.path.dirname(os.path.abspath(__file__))
-        self.io_ctx, self.ui_ctx = init()
+        self.io_ctx, self.ui_ctx = io_init()
+        self.pub_sub = PubSub(self.ui_ctx)
         self.connect("startup", self.on_startup)
         self.connect("activate", self.on_activate)
 
@@ -38,10 +41,10 @@ class App(Gtk.Application):
         GLib.timeout_add(50, self.on_tick)
 
         print("Finished bulding widgets...")
-        spawn_thread(self.io_ctx)
+        io_spawn_thread(self.io_ctx)
 
         self.top_bar.present()
 
     def on_tick(self):
-        poll_events(self.ui_ctx)
+        self.pub_sub.poll_events()
         return True

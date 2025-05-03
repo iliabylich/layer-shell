@@ -6,7 +6,7 @@ css-generate:
 
 lint:
     ruff format ui
-    ruff check ui
+    ruff check ui --fix
     cargo clippy
 
 dev:

@@ -2,14 +2,13 @@ from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell
 from launcher.row import Row
 from liblayer_shell_io import Commands
 from utils.base_window import BaseWindow
-from utils.subscribe import subscribe
 
 
 class Window(BaseWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app = self.get_application()
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_name("LauncherWindow")
         self.set_size_request(700, -1)
@@ -75,7 +74,7 @@ class Window(BaseWindow):
         if self.get_visible():
             self.set_visible(False)
         else:
-            GLib.timeout_add(0, self.send_launcher_reset_command)
+            self.send_launcher_reset_command()
             self.input.set_text("")
             self.set_visible(True)
 

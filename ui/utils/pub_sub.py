@@ -1,5 +1,5 @@
 from liblayer_shell_io import Event
-from liblayer_shell_io import subscribe as io_subscribe
+from liblayer_shell_io import poll_events as io_poll_events
 
 MAP = {
     Event.Memory: "memory",
@@ -21,8 +21,21 @@ MAP = {
 }
 
 
-def subscribe(obj):
-    io_subscribe(obj.app.ui_ctx, Subscriber(obj))
+class PubSub:
+    def __init__(self, ui_ctx):
+        self.subscribers = []
+        self.ui_ctx = ui_ctx
+
+    def poll_events(self):
+        for event in io_poll_events(self.ui_ctx):
+            self.publish(event)
+
+    def subscribe(self, obj):
+        self.subscribers.append(Subscriber(obj))
+
+    def publish(self, event):
+        for sub in self.subscribers:
+            sub.on_event(event)
 
 
 class Subscriber:

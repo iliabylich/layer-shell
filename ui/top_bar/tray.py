@@ -1,6 +1,5 @@
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 from liblayer_shell_io import Commands, TrayIcon
-from utils.subscribe import subscribe
 
 
 class Tray(Gtk.Box):
@@ -8,7 +7,7 @@ class Tray(Gtk.Box):
         super().__init__(*args, **kwargs)
         self.app = app
         self.max_icons_count = 10
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(10)

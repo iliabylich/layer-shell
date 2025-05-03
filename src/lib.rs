@@ -11,7 +11,6 @@ mod r#loop;
 mod macros;
 mod modules;
 mod poll;
-mod subscriptions;
 mod timer;
 
 use anyhow::Result;
@@ -20,7 +19,6 @@ use command::*;
 use event::Event;
 use r#loop::Loop;
 use macros::fatal;
-use subscriptions::Subscriptions;
 
 pub struct IoCtx {
     tx: EventSender,
@@ -30,7 +28,6 @@ pub struct IoCtx {
 pub struct UiCtx {
     tx: EventReceiver,
     rx: CommandSender,
-    subs: Subscriptions,
 }
 
 pub fn io_init() -> (IoCtx, UiCtx) {
@@ -38,16 +35,8 @@ pub fn io_init() -> (IoCtx, UiCtx) {
 
     let (etx, erx) = channel::events();
     let (ctx, crx) = channel::commands();
-    let subs = Subscriptions::new();
 
-    (
-        IoCtx { tx: etx, rx: crx },
-        UiCtx {
-            tx: erx,
-            rx: ctx,
-            subs,
-        },
-    )
+    (IoCtx { tx: etx, rx: crx }, UiCtx { tx: erx, rx: ctx })
 }
 
 fn io_spawn_thread(io_ctx: IoCtx) {
@@ -66,22 +55,18 @@ pub fn io_run_in_place(io_ctx: IoCtx) -> Result<()> {
     r#loop.start();
 }
 
-fn io_subscribe(ui_ctx: &mut UiCtx, sub: *mut PyObject) {
-    ui_ctx.subs.push(sub);
-}
-
-fn io_poll_events(ui_ctx: &mut UiCtx) {
+fn io_poll_events(ui_ctx: &mut UiCtx) -> Vec<Event> {
+    let mut out = vec![];
     while let Some(event) = ui_ctx.tx.recv() {
         log::info!("Received event {:?}", event);
-        ui_ctx.subs.notify_each(&event);
+        out.push(event);
     }
+    out
 }
 
 use pyo3::{
-    Bound, PyResult,
-    ffi::PyObject,
-    pyclass, pyfunction, pymethods, pymodule,
-    types::{PyAny, PyModule, PyModuleMethods as _},
+    Bound, PyResult, pyclass, pyfunction, pymethods, pymodule,
+    types::{PyModule, PyModuleMethods as _},
     wrap_pyfunction,
 };
 
@@ -102,14 +87,14 @@ fn spawn_thread(io_ctx: &mut MaybeIoCtx) {
     }
 }
 #[pyfunction]
-fn poll_events(ui_ctx: &mut UiCtx) {
-    io_poll_events(ui_ctx);
+fn poll_events(ui_ctx: &mut UiCtx) -> Vec<Event> {
+    io_poll_events(ui_ctx)
 }
-#[pyfunction]
-fn subscribe(ui_ctx: &mut UiCtx, sub: Bound<'_, PyAny>) {
-    let sub = sub.into_ptr();
-    io_subscribe(ui_ctx, sub);
-}
+// #[pyfunction]
+// fn subscribe(ui_ctx: &mut UiCtx, sub: Bound<'_, PyAny>) {
+//     let sub = sub.into_ptr();
+//     io_subscribe(ui_ctx, sub);
+// }
 #[pyclass]
 struct Commands;
 #[pymethods]
@@ -191,7 +176,7 @@ fn liblayer_shell_io(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(spawn_thread, m)?)?;
     m.add_function(wrap_pyfunction!(poll_events, m)?)?;
-    m.add_function(wrap_pyfunction!(subscribe, m)?)?;
+    // m.add_function(wrap_pyfunction!(subscribe, m)?)?;
 
     Ok(())
 }

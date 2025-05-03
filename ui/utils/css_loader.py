@@ -2,14 +2,13 @@ import importlib.resources
 import os
 
 from gi.repository import Gdk, Gtk
-from utils.subscribe import subscribe
 
 
 class CssLoader:
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
         self.app = app
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
     def load(self):
         full_css = self.theme_css() + "\n" + self.main_css()

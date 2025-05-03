@@ -1,13 +1,12 @@
 from gi.repository import Gdk, Gio, GLib, Gtk
 from liblayer_shell_io import Commands
-from utils.subscribe import subscribe
 
 
 class Network(Gtk.Button):
     def __init__(self, app, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app = app
-        subscribe(self)
+        self.app.pub_sub.subscribe(self)
 
         self.set_css_classes(["widget", "network", "padded", "clickable"])
         self.set_name("Network")
