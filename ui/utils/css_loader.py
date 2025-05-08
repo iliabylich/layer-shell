@@ -6,8 +6,7 @@ from utils.context import ctx
 
 
 class CssLoader:
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self):
         ctx.pub_sub.subscribe(self)
 
     def load(self):

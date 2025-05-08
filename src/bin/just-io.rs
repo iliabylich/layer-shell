@@ -1,7 +1,7 @@
-use layer_shell_io::{io_init, io_run_in_place};
+use layer_shell_io::IO;
 
 fn main() {
-    let (io_ctx, _ui_ctx) = io_init();
+    let (io_ctx, _ui_ctx) = IO::init();
 
-    io_run_in_place(io_ctx).unwrap();
+    IO::run_in_place(io_ctx).unwrap();
 }

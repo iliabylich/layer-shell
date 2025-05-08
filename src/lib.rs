@@ -19,6 +19,10 @@ use command::*;
 use event::Event;
 use r#loop::Loop;
 use macros::fatal;
+use pyo3::{
+    Bound, PyResult, pyclass, pymethods, pymodule,
+    types::{PyModule, PyModuleMethods as _},
+};
 
 pub struct IoCtx {
     tx: EventSender,
@@ -30,71 +34,59 @@ pub struct UiCtx {
     rx: CommandSender,
 }
 
-pub fn io_init() -> (IoCtx, UiCtx) {
-    env_logger::init();
-
-    let (etx, erx) = channel::events();
-    let (ctx, crx) = channel::commands();
-
-    (IoCtx { tx: etx, rx: crx }, UiCtx { tx: erx, rx: ctx })
-}
-
-fn io_spawn_thread(io_ctx: IoCtx) {
-    std::thread::spawn(move || {
-        if let Err(err) = io_run_in_place(io_ctx) {
-            log::error!("IO thread has crashed: {:?}", err);
-        }
-    });
-}
-
-pub fn io_run_in_place(io_ctx: IoCtx) -> Result<()> {
-    let tx = io_ctx.tx;
-    let rx = io_ctx.rx;
-
-    let r#loop = Loop::new(tx, rx)?;
-    r#loop.start();
-}
-
-fn io_poll_events(ui_ctx: &mut UiCtx) -> Vec<Event> {
-    let mut out = vec![];
-    while let Some(event) = ui_ctx.tx.recv() {
-        log::info!("Received event {:?}", event);
-        out.push(event);
-    }
-    out
-}
-
-use pyo3::{
-    Bound, PyResult, pyclass, pyfunction, pymethods, pymodule,
-    types::{PyModule, PyModuleMethods as _},
-    wrap_pyfunction,
-};
-
 #[pyclass]
+#[derive(Default)]
 pub struct MaybeIoCtx(Option<IoCtx>);
 
-#[pyfunction]
-fn init() -> (MaybeIoCtx, UiCtx) {
-    let (io_ctx, ui_ctx) = io_init();
-    (MaybeIoCtx(Some(io_ctx)), ui_ctx)
-}
-#[pyfunction]
-fn spawn_thread(io_ctx: &mut MaybeIoCtx) {
-    if let Some(io_ctx) = io_ctx.0.take() {
-        io_spawn_thread(io_ctx);
-    } else {
-        eprintln!("Can't spawn thread, IO ctx has already been taken")
+#[pyclass]
+pub struct IO;
+
+impl IO {
+    pub fn run_in_place(io_ctx: MaybeIoCtx) -> Result<()> {
+        if let Some(io_ctx) = io_ctx.0 {
+            let tx = io_ctx.tx;
+            let rx = io_ctx.rx;
+
+            let r#loop = Loop::new(tx, rx)?;
+            r#loop.start();
+        } else {
+            anyhow::bail!("Can't spawn thread, IO ctx has already been taken")
+        }
     }
 }
-#[pyfunction]
-fn poll_events(ui_ctx: &mut UiCtx) -> Vec<Event> {
-    io_poll_events(ui_ctx)
+
+#[pymethods]
+impl IO {
+    #[staticmethod]
+    pub fn init() -> (MaybeIoCtx, UiCtx) {
+        env_logger::init();
+
+        let (etx, erx) = channel::events();
+        let (ctx, crx) = channel::commands();
+
+        let io_ctx = IoCtx { tx: etx, rx: crx };
+        let ui_ctx = UiCtx { tx: erx, rx: ctx };
+        (MaybeIoCtx(Some(io_ctx)), ui_ctx)
+    }
+    #[staticmethod]
+    fn spawn_thread(io_ctx: &mut MaybeIoCtx) {
+        let io_ctx = std::mem::take(io_ctx);
+        std::thread::spawn(move || {
+            if let Err(err) = Self::run_in_place(io_ctx) {
+                log::error!("IO thread has crashed: {:?}", err);
+            }
+        });
+    }
+    #[staticmethod]
+    fn poll_events(ui_ctx: &mut UiCtx) -> Vec<Event> {
+        let mut out = vec![];
+        while let Some(event) = ui_ctx.tx.recv() {
+            log::info!("Received event {:?}", event);
+            out.push(event);
+        }
+        out
+    }
 }
-// #[pyfunction]
-// fn subscribe(ui_ctx: &mut UiCtx, sub: Bound<'_, PyAny>) {
-//     let sub = sub.into_ptr();
-//     io_subscribe(ui_ctx, sub);
-// }
 #[pyclass]
 struct Commands;
 #[pymethods]
@@ -162,6 +154,7 @@ fn liblayer_shell_io(m: &Bound<'_, PyModule>) -> PyResult<()> {
     use event::{LauncherApp, LauncherAppIcon, TrayApp, TrayIcon, TrayItem, WifiStatus};
     use modules::weather::WeatherCode;
 
+    m.add_class::<IO>()?;
     m.add_class::<MaybeIoCtx>()?;
     m.add_class::<UiCtx>()?;
     m.add_class::<Event>()?;
@@ -173,10 +166,6 @@ fn liblayer_shell_io(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<TrayApp>()?;
     m.add_class::<TrayItem>()?;
     m.add_class::<TrayIcon>()?;
-    m.add_function(wrap_pyfunction!(init, m)?)?;
-    m.add_function(wrap_pyfunction!(spawn_thread, m)?)?;
-    m.add_function(wrap_pyfunction!(poll_events, m)?)?;
-    // m.add_function(wrap_pyfunction!(subscribe, m)?)?;
 
     Ok(())
 }

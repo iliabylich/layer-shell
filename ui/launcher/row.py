@@ -3,8 +3,8 @@ from liblayer_shell_io import LauncherAppIcon
 
 
 class Row(Gtk.Box):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(0)

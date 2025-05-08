@@ -2,8 +2,7 @@ from gi.repository import GLib, Gtk
 from htop.window import Window as Htop
 from icons.icons import Icons
 from launcher.window import Window as Launcher
-from liblayer_shell_io import init as io_init
-from liblayer_shell_io import spawn_thread as io_spawn_thread
+from liblayer_shell_io import IO
 from ping.window import Window as Ping
 from session.window import Window as Session
 from top_bar.window import Window as TopBar
@@ -18,7 +17,7 @@ class App(Gtk.Application):
         super().__init__(**kwargs)
 
         ctx.app = self
-        ctx.io_ctx, ctx.ui_ctx = io_init()
+        ctx.io_ctx, ctx.ui_ctx = IO.init()
         ctx.pub_sub = PubSub()
         self.connect("startup", self.on_startup)
         self.connect("activate", self.on_activate)
@@ -40,7 +39,7 @@ class App(Gtk.Application):
         GLib.timeout_add(50, self.on_tick)
 
         print("Finished bulding widgets...")
-        io_spawn_thread(ctx.io_ctx)
+        IO.spawn_thread(ctx.io_ctx)
 
         ctx.windows.top_bar.present()
 
