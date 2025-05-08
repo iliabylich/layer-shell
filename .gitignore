@@ -8,3 +8,4 @@ __pycache__
 main.css
 .ruff_cache
 *.pyz
+Cargo.lock
