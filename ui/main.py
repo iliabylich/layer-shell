@@ -34,5 +34,5 @@ from app import App  # noqa: E402
 
 setproctitle("layer-shell")
 
-app = App(application_id="org.me.LayerShell")
+app = App()
 app.run(None)

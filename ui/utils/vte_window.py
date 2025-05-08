@@ -5,8 +5,8 @@ from utils.base_window import BaseWindow
 
 
 class VteWindow(BaseWindow):
-    def __init__(self, command, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, application, command):
+        super().__init__(application=application)
 
         self.set_css_classes(["terminal-window"])
         self.toggle_on_escape()

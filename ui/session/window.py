@@ -5,8 +5,8 @@ from utils.context import ctx
 
 
 class Window(BaseWindow):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, application):
+        super().__init__(application=application)
         ctx.pub_sub.subscribe(self)
 
         self.set_name("SessionWindow")

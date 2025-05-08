@@ -5,8 +5,8 @@ from weather.temperature_label import TemperatureLabel
 
 
 class DailyGrid(BaseGrid):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, cols_count=4, rows_count=6, **kwargs)
+    def __init__(self):
+        super().__init__(cols_count=4, rows_count=6)
 
         for row in range(0, self.rows_count):
             day = Gtk.Label.new("??")

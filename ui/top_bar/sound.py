@@ -3,8 +3,8 @@ from utils.context import ctx
 
 
 class Sound(Gtk.Box):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         ctx.pub_sub.subscribe(self)
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)

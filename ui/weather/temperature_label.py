@@ -2,8 +2,8 @@ from gi.repository import Gtk
 
 
 class TemperatureLabel(Gtk.Label):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.set_label("??")
 
     def set_temperature(self, temperature):

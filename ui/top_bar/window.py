@@ -15,8 +15,8 @@ from utils.base_window import BaseWindow
 
 
 class Window(BaseWindow):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, application):
+        super().__init__(application=application)
 
         self.set_name("TopBarWindow")
         self.set_css_classes(["top-bar-window"])

@@ -13,8 +13,8 @@ from weather.window import Window as Weather
 
 
 class App(Gtk.Application):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self):
+        super().__init__(application_id="org.me.LayerShell")
 
         ctx.app = self
         ctx.io_ctx, ctx.ui_ctx = IO.init()

@@ -3,8 +3,8 @@ from utils.context import ctx
 
 
 class Power(Gtk.Button):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
 
         self.set_css_classes(["widget", "power", "padded", "clickable"])
         self.set_cursor(Gdk.Cursor.new_from_name("pointer"))

@@ -5,8 +5,8 @@ from weather.temperature_label import TemperatureLabel
 
 
 class HourlyGrid(BaseGrid):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, cols_count=3, rows_count=10, **kwargs)
+    def __init__(self):
+        super().__init__(cols_count=3, rows_count=10)
 
         for row in range(0, self.rows_count):
             hour = Gtk.Label.new("??")

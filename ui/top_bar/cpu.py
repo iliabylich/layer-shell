@@ -5,8 +5,8 @@ from utils.context import ctx
 
 
 class CPU(Gtk.Box):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.cpu_count = 12
         ctx.pub_sub.subscribe(self)
 
@@ -41,8 +41,8 @@ INDICATORS = [
 
 
 class CpuLabel(Gtk.Label):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.set_use_markup(True)
         self.set_load(0)
 

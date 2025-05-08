@@ -4,8 +4,8 @@ from utils.weather_helper import WeatherHelper
 
 
 class TemperatureIcon(Gtk.Image):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
 
         self.set_from_gicon(ctx.icons.question_mark)
 

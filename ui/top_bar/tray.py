@@ -5,8 +5,8 @@ from utils.context import ctx
 
 
 class Tray(Gtk.Box):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.max_icons_count = 10
         ctx.pub_sub.subscribe(self)
 
@@ -66,8 +66,8 @@ class TrayApp:
 
 
 class TrayAppIcon(Gtk.Image):
-    def __init__(self, tray_icon, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_icon):
+        super().__init__()
 
         if isinstance(tray_icon, TrayIcon.Path):
             self.set_from_file(tray_icon.path)
@@ -93,8 +93,8 @@ class TrayAppIcon(Gtk.Image):
 
 
 class TrayMenu(Gio.Menu):
-    def __init__(self, tray_item, action_group, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_item, action_group):
+        super().__init__()
 
         for idx, child in enumerate(tray_item.children):
             if not child.visible:
@@ -125,10 +125,9 @@ def TrayMenuItemFor(tray_item, action_group, idx):
 
 
 class BaseTrayMenuItem(Gio.MenuItem):
-    def __init__(self, tray_item, action_group, idx, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_item, idx):
+        super().__init__()
         self.tray_item = tray_item
-        self.action_group = action_group
         self.idx = idx
 
         self.set_label(tray_item.label)
@@ -150,16 +149,16 @@ class BaseTrayMenuItem(Gio.MenuItem):
 
 
 class TrayNestedMenuItem(BaseTrayMenuItem):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_item, action_group, idx):
+        super().__init__(tray_item=tray_item, idx=idx)
 
-        submenu = TrayMenu(tray_item=self.tray_item, action_group=self.action_group)
+        submenu = TrayMenu(tray_item=self.tray_item, action_group=action_group)
         self.set_submenu(submenu)
 
 
 class TrayCheckboxItem(BaseTrayMenuItem):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_item, action_group, idx):
+        super().__init__(tray_item=tray_item, idx=idx)
 
         action = Gio.SimpleAction.new_stateful(
             self.action_name(),
@@ -167,13 +166,13 @@ class TrayCheckboxItem(BaseTrayMenuItem):
             GLib.Variant("b", self.tray_item.toggle_state == 1),
         )
         action.connect("activate", self.on_activate)
-        self.action_group.add_action(action)
+        action_group.add_action(action)
         self.set_action_and_target_value(f"tray.{self.action_name()}", None)
 
 
 class TrayRadioItem(BaseTrayMenuItem):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_item, action_group, idx):
+        super().__init__(tray_item=tray_item, idx=idx)
 
         action = Gio.SimpleAction.new_stateful(
             self.action_name(),
@@ -181,24 +180,24 @@ class TrayRadioItem(BaseTrayMenuItem):
             GLib.Variant("b", self.tray_item.toggle_state == 1),
         )
         action.connect("activate", self.on_activate)
-        self.action_group.add_action(action)
+        action_group.add_action(action)
         self.set_action_and_target_value(
             f"tray.{self.action_name()}", GLib.Variant("b", True)
         )
 
 
 class TrayRegularItem(BaseTrayMenuItem):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_item, action_group, idx):
+        super().__init__(tray_item=tray_item, idx=idx)
 
         action = Gio.SimpleAction.new(self.action_name())
         action.connect("activate", self.on_activate)
-        self.action_group.add_action(action)
+        action_group.add_action(action)
         self.set_action_and_target_value(f"tray.{self.action_name()}", None)
 
 
 class TrayDisabledItem(BaseTrayMenuItem):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tray_item, action_group, idx):
+        super().__init__(tray_item=tray_item, idx=idx)
 
         self.set_action_and_target_value("tray.noop", None)

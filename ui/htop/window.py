@@ -3,8 +3,8 @@ from utils.vte_window import VteWindow
 
 
 class Window(VteWindow):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, command=["htop"], **kwargs)
+    def __init__(self, application):
+        super().__init__(application=application, command=["htop"])
 
         self.set_name("HtopWindow")
         self.set_size_request(1000, 700)

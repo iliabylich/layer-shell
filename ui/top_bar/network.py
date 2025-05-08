@@ -4,8 +4,8 @@ from utils.context import ctx
 
 
 class Network(Gtk.Button):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         ctx.pub_sub.subscribe(self)
 
         self.set_css_classes(["widget", "network", "padded", "clickable"])
@@ -63,8 +63,8 @@ class Network(Gtk.Button):
 
 
 class NetworkPopover(Gtk.PopoverMenu):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
 
         self.model = Gio.Menu.new()
         self.add_settings_row()

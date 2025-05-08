@@ -2,8 +2,8 @@ from gi.repository import Gtk
 
 
 class BaseGrid(Gtk.Grid):
-    def __init__(self, cols_count, rows_count, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, cols_count, rows_count):
+        super().__init__()
         self.cols_count = cols_count
         self.rows_count = rows_count
 

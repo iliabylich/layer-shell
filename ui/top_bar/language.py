@@ -3,8 +3,8 @@ from utils.context import ctx
 
 
 class Language(Gtk.Label):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         ctx.pub_sub.subscribe(self)
 
         self.set_label("--")

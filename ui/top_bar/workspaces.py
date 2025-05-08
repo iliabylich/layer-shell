@@ -4,8 +4,8 @@ from utils.context import ctx
 
 
 class Workspaces(Gtk.Box):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
 
         ctx.pub_sub.subscribe(self)
         self.workspaces_count = 10
