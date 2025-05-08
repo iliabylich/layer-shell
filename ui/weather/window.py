@@ -1,5 +1,6 @@
 from gi.repository import Gtk, Gtk4LayerShell
 from utils.base_window import BaseWindow
+from utils.context import ctx
 from weather.daily_grid import DailyGrid
 from weather.hourly_grid import HourlyGrid
 
@@ -7,15 +8,14 @@ from weather.hourly_grid import HourlyGrid
 class Window(BaseWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = self.get_application()
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_name("WeatherWindow")
         self.set_css_classes(["weather-window"])
         self.toggle_on_escape()
 
-        self.hourly_grid = HourlyGrid(app=self.app)
-        self.daily_grid = DailyGrid(app=self.app)
+        self.hourly_grid = HourlyGrid()
+        self.daily_grid = DailyGrid()
 
         layout = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         self.set_child(layout)

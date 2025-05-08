@@ -1,5 +1,3 @@
-import os
-
 from gi.repository import GLib, Gtk
 from htop.window import Window as Htop
 from icons.icons import Icons
@@ -7,44 +5,45 @@ from launcher.window import Window as Launcher
 from liblayer_shell_io import init as io_init
 from liblayer_shell_io import spawn_thread as io_spawn_thread
 from ping.window import Window as Ping
+from session.window import Window as Session
 from top_bar.window import Window as TopBar
+from utils.context import ctx
 from utils.css_loader import CssLoader
 from utils.pub_sub import PubSub
 from weather.window import Window as Weather
-from windows.session import Session
 
 
 class App(Gtk.Application):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.root_path = os.path.dirname(os.path.abspath(__file__))
-        self.io_ctx, self.ui_ctx = io_init()
-        self.pub_sub = PubSub(self.ui_ctx)
+        ctx.app = self
+        ctx.io_ctx, ctx.ui_ctx = io_init()
+        ctx.pub_sub = PubSub()
         self.connect("startup", self.on_startup)
         self.connect("activate", self.on_activate)
 
     def on_startup(self, _):
-        self.css_loader = CssLoader(self)
+        self.css_loader = CssLoader()
         self.css_loader.load()
 
     def on_activate(self, _):
-        self.icons = Icons(self)
+        ctx.icons = Icons()
 
-        self.top_bar = TopBar(application=self)
-        self.session = Session(application=self)
-        self.htop = Htop(application=self)
-        self.weather = Weather(application=self)
-        self.launcher = Launcher(application=self)
-        self.ping = Ping(application=self)
+        ctx.windows.top_bar = TopBar(application=self)
+        ctx.windows.session = Session(application=self)
+        ctx.windows.htop = Htop(application=self)
+        ctx.windows.weather = Weather(application=self)
+        ctx.windows.launcher = Launcher(application=self)
+        ctx.windows.ping = Ping(application=self)
 
         GLib.timeout_add(50, self.on_tick)
 
         print("Finished bulding widgets...")
-        io_spawn_thread(self.io_ctx)
+        io_spawn_thread(ctx.io_ctx)
 
-        self.top_bar.present()
+        ctx.windows.top_bar.present()
 
     def on_tick(self):
-        self.pub_sub.poll_events()
+        ctx.pub_sub.poll_events()
         return True

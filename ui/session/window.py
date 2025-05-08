@@ -1,13 +1,13 @@
 from gi.repository import Gtk, Gtk4LayerShell
-from liblayer_shell_io import Commands
 from utils.base_window import BaseWindow
+from utils.commands import Commands
+from utils.context import ctx
 
 
-class Session(BaseWindow):
+class Window(BaseWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = self.get_application()
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_name("SessionWindow")
         self.set_css_classes(["session-window"])
@@ -45,19 +45,19 @@ class Session(BaseWindow):
 
     def on_lock_clicked(self, _):
         self.toggle()
-        Commands.lock(self.app.ui_ctx)
+        Commands.lock()
 
     def on_reboot_clicked(self, _):
         self.toggle()
-        Commands.reboot(self.app.ui_ctx)
+        Commands.reboot()
 
     def on_shutdown_clicked(self, _):
         self.toggle()
-        Commands.shutdown(self.app.ui_ctx)
+        Commands.shutdown()
 
     def on_logout_clicked(self, _):
         self.toggle()
-        Commands.logout(self.app.ui_ctx)
+        Commands.logout()
 
     def on_toggle_session_screen(self, _):
         self.toggle()

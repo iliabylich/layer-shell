@@ -21,17 +21,17 @@ class Row(Gtk.Box):
         self.append(self.image)
         self.append(self.label)
 
-    def update(self, app):
+    def update(self, launcher_app):
         self.show()
-        if app.selected:
+        if launcher_app.selected:
             self.add_css_class("active")
         else:
             self.remove_css_class("active")
 
-        if isinstance(app.icon, LauncherAppIcon.IconName):
-            self.image.set_from_icon_name(app.icon._0)
-        elif isinstance(app.icon, LauncherAppIcon.IconPath):
-            self.image.set_from_file(app.icon._0)
+        if isinstance(launcher_app.icon, LauncherAppIcon.IconName):
+            self.image.set_from_icon_name(launcher_app.icon._0)
+        elif isinstance(launcher_app.icon, LauncherAppIcon.IconPath):
+            self.image.set_from_file(launcher_app.icon._0)
         else:
-            print(f"Unknown icon type {app.icon}")
-        self.label.set_label(app.name)
+            print(f"Unknown icon type {launcher_app.icon}")
+        self.label.set_label(launcher_app.name)

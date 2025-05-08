@@ -1,5 +1,5 @@
-from icons.icons import Icons
 from liblayer_shell_io import WeatherCode
+from utils.context import ctx
 
 
 class WeatherHelper:
@@ -68,14 +68,14 @@ class WeatherHelper:
                 return "Unsupported (bug?)"
 
     @staticmethod
-    def code_to_icon(code: WeatherCode, icons: Icons):
+    def code_to_icon(code: WeatherCode):
         match code:
             case WeatherCode.ClearSky | WeatherCode.MainlyClear:
-                return icons.sunny
+                return ctx.icons.sunny
             case WeatherCode.PartlyCloudy | WeatherCode.Overcast:
-                return icons.partly_cloudy
+                return ctx.icons.partly_cloudy
             case WeatherCode.FogDepositingRime | WeatherCode.FogNormal:
-                return icons.foggy
+                return ctx.icons.foggy
             case (
                 WeatherCode.DrizzleDense
                 | WeatherCode.DrizzleLight
@@ -91,7 +91,7 @@ class WeatherHelper:
                 | WeatherCode.RainShowersModerate
                 | WeatherCode.RainShowersViolent
             ):
-                return icons.rainy
+                return ctx.icons.rainy
             case (
                 WeatherCode.SnowFallSlight
                 | WeatherCode.SnowFallModerate
@@ -100,12 +100,12 @@ class WeatherHelper:
                 | WeatherCode.SnowShowersSlight
                 | WeatherCode.SnowShowersHeavy
             ):
-                return icons.snowy
+                return ctx.icons.snowy
             case (
                 WeatherCode.Thunderstorm
                 | WeatherCode.ThunderstormWithHailSight
                 | WeatherCode.ThunderstormWithHailHeavy
             ):
-                return icons.thunderstorm
+                return ctx.icons.thunderstorm
             case WeatherCode.Unknown:
-                return icons.question_mark
+                return ctx.icons.question_mark

@@ -5,9 +5,8 @@ from weather.temperature_label import TemperatureLabel
 
 
 class DailyGrid(BaseGrid):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, cols_count=4, rows_count=6, **kwargs)
-        self.app = app
 
         for row in range(0, self.rows_count):
             day = Gtk.Label.new("??")
@@ -19,7 +18,7 @@ class DailyGrid(BaseGrid):
             max_weather = TemperatureLabel()
             self.attach(max_weather, 2, row, 1, 1)
 
-            image = TemperatureIcon(self.app)
+            image = TemperatureIcon()
             self.attach(image, 3, row, 1, 1)
 
     def update_row(self, weather_on_day, row):

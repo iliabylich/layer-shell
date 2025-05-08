@@ -1,14 +1,14 @@
-from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell
+from gi.repository import Gdk, Gtk, Gtk4LayerShell
 from launcher.row import Row
-from liblayer_shell_io import Commands
 from utils.base_window import BaseWindow
+from utils.commands import Commands
+from utils.context import ctx
 
 
 class Window(BaseWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = self.get_application()
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_name("LauncherWindow")
         self.set_size_request(700, -1)
@@ -52,21 +52,21 @@ class Window(BaseWindow):
         self.add_controller(ctrl)
 
     def on_submit(self, _):
-        Commands.launcher_exec_selected(self.app.ui_ctx)
+        Commands.launcher_exec_selected()
         self.toggle_and_reset()
 
     def on_input_changed(self, _):
         search = self.input.get_text()
-        Commands.launcher_set_search(self.app.ui_ctx, search)
+        Commands.launcher_set_search(search)
 
     def on_key_pressed(self, ctrl, keyval, keycode, state, r):
         key = Gdk.keyval_name(keyval)
         if key == "Escape":
             self.toggle_and_reset()
         elif key == "Up":
-            Commands.launcher_go_up(self.app.ui_ctx)
+            Commands.launcher_go_up()
         elif key == "Down":
-            Commands.launcher_go_down(self.app.ui_ctx)
+            Commands.launcher_go_down()
 
         return False
 
@@ -90,5 +90,5 @@ class Window(BaseWindow):
                 row.hide()
 
     def send_launcher_reset_command(self):
-        Commands.launcher_reset(self.app.ui_ctx)
+        Commands.launcher_reset()
         return False

@@ -1,13 +1,14 @@
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
-from liblayer_shell_io import Commands, TrayIcon
+from liblayer_shell_io import TrayIcon
+from utils.commands import Commands
+from utils.context import ctx
 
 
 class Tray(Gtk.Box):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
         self.max_icons_count = 10
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(10)
@@ -21,16 +22,16 @@ class Tray(Gtk.Box):
             self.remove(child)
 
     def add(self, tray_app):
-        tray_app = TrayApp(app=self.app, tray_app=tray_app)
+        tray_app = TrayApp(tray_app=tray_app)
         self.append(tray_app.icon)
 
     def on_tray(self, event):
         self.cleanup()
 
-        for idx, app in enumerate(event.apps):
+        for idx, tray_app in enumerate(event.apps):
             if idx > self.max_icons_count:
                 break
-            self.add(app)
+            self.add(tray_app)
 
     def get_children(self, widget):
         out = []
@@ -42,12 +43,11 @@ class Tray(Gtk.Box):
 
 
 class TrayApp:
-    def __init__(self, app, tray_app):
+    def __init__(self, tray_app):
         self.icon = TrayAppIcon(tray_app.icon)
 
         action_group = Gio.SimpleActionGroup.new()
         menu = TrayMenu(
-            app=app,
             tray_item=tray_app.root_item,
             action_group=action_group,
         )
@@ -93,7 +93,7 @@ class TrayAppIcon(Gtk.Image):
 
 
 class TrayMenu(Gio.Menu):
-    def __init__(self, app, tray_item, action_group, *args, **kwargs):
+    def __init__(self, tray_item, action_group, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         for idx, child in enumerate(tray_item.children):
@@ -101,13 +101,13 @@ class TrayMenu(Gio.Menu):
                 continue
 
             menu_item = TrayMenuItemFor(
-                app=app, tray_item=child, action_group=action_group, idx=idx
+                tray_item=child, action_group=action_group, idx=idx
             )
 
             self.append_item(menu_item)
 
 
-def TrayMenuItemFor(app, tray_item, action_group, idx):
+def TrayMenuItemFor(tray_item, action_group, idx):
     if tray_item.children_display == "submenu":
         cls = TrayNestedMenuItem
     else:
@@ -121,13 +121,12 @@ def TrayMenuItemFor(app, tray_item, action_group, idx):
         else:
             cls = TrayDisabledItem
 
-    return cls(app=app, tray_item=tray_item, action_group=action_group, idx=idx)
+    return cls(tray_item=tray_item, action_group=action_group, idx=idx)
 
 
 class BaseTrayMenuItem(Gio.MenuItem):
-    def __init__(self, app, tray_item, action_group, idx, *args, **kwargs):
+    def __init__(self, tray_item, action_group, idx, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
         self.tray_item = tray_item
         self.action_group = action_group
         self.idx = idx
@@ -147,16 +146,14 @@ class BaseTrayMenuItem(Gio.MenuItem):
         return f"{self.idx}"
 
     def on_activate(self, action, parameter):
-        Commands.trigger_tray(self.app.ui_ctx, self.uuid())
+        Commands.trigger_tray(self.uuid())
 
 
 class TrayNestedMenuItem(BaseTrayMenuItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        submenu = TrayMenu(
-            app=self.app, tray_item=self.tray_item, action_group=self.action_group
-        )
+        submenu = TrayMenu(tray_item=self.tray_item, action_group=self.action_group)
         self.set_submenu(submenu)
 
 

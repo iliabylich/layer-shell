@@ -1,13 +1,13 @@
 from gi.repository import Gtk
-from liblayer_shell_io import Commands
+from utils.commands import Commands
+from utils.context import ctx
 
 
 class Workspaces(Gtk.Box):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
 
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
         self.workspaces_count = 10
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -33,4 +33,4 @@ class Workspaces(Gtk.Box):
                 button.set_css_classes([])
 
     def on_click(self, idx):
-        Commands.hyprland_go_to_workspace(self.app.ui_ctx, idx)
+        Commands.hyprland_go_to_workspace(idx)

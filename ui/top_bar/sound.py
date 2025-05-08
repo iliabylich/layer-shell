@@ -1,11 +1,11 @@
 from gi.repository import Gtk
+from utils.context import ctx
 
 
 class Sound(Gtk.Box):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(5)

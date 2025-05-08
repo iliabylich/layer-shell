@@ -2,13 +2,13 @@ import importlib.resources
 import os
 
 from gi.repository import Gdk, Gtk
+from utils.context import ctx
 
 
 class CssLoader:
-    def __init__(self, app, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.app = app
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
     def load(self):
         full_css = self.theme_css() + "\n" + self.main_css()

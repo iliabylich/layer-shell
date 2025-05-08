@@ -1,12 +1,12 @@
 from gi.repository import Gtk
+from utils.context import ctx
 from utils.weather_helper import WeatherHelper
 
 
 class Weather(Gtk.Button):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_label("--")
         self.set_css_classes(["widget", "weather", "padded", "clickable"])
@@ -19,4 +19,4 @@ class Weather(Gtk.Button):
         self.set_label(f"{temperature}℃ {description}")
 
     def on_click(self, _):
-        self.app.weather.toggle()
+        ctx.windows.weather.toggle()

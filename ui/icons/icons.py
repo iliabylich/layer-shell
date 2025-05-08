@@ -5,7 +5,7 @@ from gi.repository import Gio, GLib
 
 
 class Icons:
-    def __init__(self, app):
+    def __init__(self):
         for entry in importlib.resources.files(__package__).iterdir():
             if entry.is_file() and entry.name.lower().endswith(".png"):
                 self.declare_icon(entry)

@@ -1,12 +1,12 @@
 from gi.repository import Gtk
-from liblayer_shell_io import Commands
+from utils.commands import Commands
+from utils.context import ctx
 
 
 class Memory(Gtk.Button):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_label("--")
         self.set_css_classes(["widget", "memory", "padded", "clickable"])
@@ -19,4 +19,4 @@ class Memory(Gtk.Button):
         self.set_label(f"RAM {used}G/{total}G")
 
     def on_click(self, _):
-        Commands.spawn_system_monitor(self.app.ui_ctx)
+        Commands.spawn_system_monitor()

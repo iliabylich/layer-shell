@@ -1,12 +1,12 @@
 from gi.repository import Gdk, Gio, GLib, Gtk
-from liblayer_shell_io import Commands
+from utils.commands import Commands
+from utils.context import ctx
 
 
 class Network(Gtk.Button):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
-        self.app.pub_sub.subscribe(self)
+        ctx.pub_sub.subscribe(self)
 
         self.set_css_classes(["widget", "network", "padded", "clickable"])
         self.set_name("Network")
@@ -14,15 +14,15 @@ class Network(Gtk.Button):
 
         self.label = Gtk.Label.new("-- ")
 
-        self.image = Gtk.Image.new_from_gicon(self.app.icons.wifi)
+        self.image = Gtk.Image.new_from_gicon(ctx.icons.wifi)
 
         self.download_speed_label = Gtk.Label.new("??")
         self.download_speed_label.set_css_classes(["network-speed-label"])
-        self.download_speed_icon = Gtk.Image.new_from_gicon(self.app.icons.download)
+        self.download_speed_icon = Gtk.Image.new_from_gicon(ctx.icons.download)
 
         self.upload_speed_label = Gtk.Label.new("??")
         self.upload_speed_label.set_css_classes(["network-speed-label"])
-        self.upload_speed_icon = Gtk.Image.new_from_gicon(self.app.icons.upload)
+        self.upload_speed_icon = Gtk.Image.new_from_gicon(ctx.icons.upload)
 
         network_wrapper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.set_child(network_wrapper)
@@ -37,7 +37,7 @@ class Network(Gtk.Button):
         network_wrapper.append(self.upload_speed_label)
         network_wrapper.append(self.upload_speed_icon)
 
-        self.popover = NetworkPopover(self.app)
+        self.popover = NetworkPopover()
         self.popover.set_parent(self)
 
         self.connect("clicked", self.on_click)
@@ -63,9 +63,8 @@ class Network(Gtk.Button):
 
 
 class NetworkPopover(Gtk.PopoverMenu):
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.app = app
 
         self.model = Gio.Menu.new()
         self.add_settings_row()
@@ -112,10 +111,10 @@ class NetworkPopover(Gtk.PopoverMenu):
         self.model.append_item(item)
 
     def on_settings_row_clicked(self, action, parameter):
-        Commands.spawn_network_editor(self.app.ui_ctx)
+        Commands.spawn_network_editor()
 
     def on_ping_row_clicked(self, action, parameter):
-        self.app.ping.toggle()
+        ctx.windows.ping.toggle()
 
     def on_network_row_clicked(self, action, parameter):
         ip = parameter.get_string()
@@ -125,4 +124,4 @@ class NetworkPopover(Gtk.PopoverMenu):
         clipboard.set(ip)
 
         notification = Gio.Notification.new(f"Copied {ip}")
-        self.app.send_notification(None, notification)
+        ctx.app.send_notification(None, notification)
