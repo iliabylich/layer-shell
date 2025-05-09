@@ -4,14 +4,19 @@ use dbus::blocking::Connection;
 
 pub(crate) fn load(device: &Device, conn: &Connection) -> Event {
     let wifi_status = match get_wifi_status(device, conn) {
-        Ok((ssid, strength)) => Some(WifiStatus { ssid, strength }),
+        Ok((ssid, strength)) => Some(WifiStatus {
+            ssid: ssid.into(),
+            strength,
+        }),
         Err(err) => {
             log::warn!("WiFiStatus error: {:?}", err);
             None
         }
     };
 
-    Event::WifiStatus { wifi_status }
+    Event::WifiStatus {
+        wifi_status: wifi_status.into(),
+    }
 }
 
 fn get_wifi_status(device: &Device, conn: &Connection) -> Result<(String, u8)> {

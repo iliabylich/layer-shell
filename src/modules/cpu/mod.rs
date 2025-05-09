@@ -28,7 +28,9 @@ impl TickingModule for CPU {
     fn tick(&mut self) -> Result<()> {
         let (usage_per_core, new_state) =
             CpuCoreInfo::parse_current_comparing_to(self.state.as_ref(), &mut self.buf)?;
-        let event = Event::CpuUsage { usage_per_core };
+        let event = Event::CpuUsage {
+            usage_per_core: usage_per_core.into(),
+        };
         self.tx.send(event);
         self.state = Some(new_state);
         Ok(())

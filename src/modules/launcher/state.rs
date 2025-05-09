@@ -71,13 +71,13 @@ impl State {
             .into_iter()
             .enumerate()
             .map(|(idx, desktop_file)| LauncherApp {
-                name: desktop_file.app_name,
+                name: desktop_file.app_name.into(),
                 selected: idx == self.selected_idx,
                 icon: desktop_file.icon,
             })
             .collect::<Vec<_>>();
 
-        Event::Launcher { apps }
+        Event::Launcher { apps: apps.into() }
     }
 
     fn visible(&self) -> Vec<DesktopFile> {

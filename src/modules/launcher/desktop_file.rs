@@ -48,9 +48,9 @@ impl DesktopFile {
 
         let icon = icon.context("failed to get Icon")?;
         let icon = if icon.starts_with('/') {
-            LauncherAppIcon::IconPath(icon)
+            LauncherAppIcon::IconPath(icon.into())
         } else {
-            LauncherAppIcon::IconName(icon)
+            LauncherAppIcon::IconName(icon.into())
         };
 
         Ok(DesktopFile {

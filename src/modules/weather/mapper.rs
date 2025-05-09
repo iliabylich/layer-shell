@@ -55,7 +55,10 @@ fn map_forecast(hourly: HourlyResponse, daily: DailyResponse) -> Result<Event> {
     let hourly = map_hourly(hourly)?;
     let daily = map_daily(daily)?;
 
-    Ok(Event::ForecastWeather { hourly, daily })
+    Ok(Event::ForecastWeather {
+        hourly: hourly.into(),
+        daily: daily.into(),
+    })
 }
 
 fn map_hourly(
@@ -75,7 +78,7 @@ fn map_hourly(
 
         if time > now {
             hourly.push(WeatherOnHour {
-                hour: time.format("%H:%M").to_string(),
+                hour: time.format("%H:%M").to_string().into(),
                 temperature: temp,
                 code,
             });
@@ -110,7 +113,7 @@ fn map_daily(
         let date = NaiveDate::parse_from_str(&time, "%Y-%m-%d").context("invalid date format")?;
         if date > today {
             daily.push(WeatherOnDay {
-                day: date.format("%b-%d").to_string(),
+                day: date.format("%b-%d").to_string().into(),
                 temperature_min: min,
                 temperature_max: max,
                 code,

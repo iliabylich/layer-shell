@@ -1,29 +1,31 @@
-use crate::modules::weather::WeatherCode;
-use pyo3::pyclass;
+use crate::{
+    ffi::{CArray, COption, CString},
+    modules::weather::WeatherCode,
+};
 
-#[derive(Debug, Clone)]
-#[pyclass]
+#[derive(Debug)]
+#[repr(C)]
 #[must_use]
-pub(crate) enum Event {
+pub enum Event {
     Memory {
         used: f64,
         total: f64,
     },
     CpuUsage {
-        usage_per_core: Vec<usize>,
+        usage_per_core: CArray<usize>,
     },
     Time {
-        time: String,
+        time: CString,
     },
     Workspaces {
-        ids: Vec<usize>,
+        ids: CArray<usize>,
         active_id: usize,
     },
     Language {
-        lang: String,
+        lang: CString,
     },
     Launcher {
-        apps: Vec<LauncherApp>,
+        apps: CArray<LauncherApp>,
     },
     Volume {
         volume: u32,
@@ -34,134 +36,106 @@ pub(crate) enum Event {
         code: WeatherCode,
     },
     ForecastWeather {
-        hourly: Vec<WeatherOnHour>,
-        daily: Vec<WeatherOnDay>,
+        hourly: CArray<WeatherOnHour>,
+        daily: CArray<WeatherOnDay>,
     },
     WifiStatus {
-        wifi_status: Option<WifiStatus>,
+        wifi_status: COption<WifiStatus>,
     },
     NetworkSpeed {
-        upload_speed: String,
-        download_speed: String,
+        upload_speed: CString,
+        download_speed: CString,
     },
     NetworkList {
-        list: Vec<Network>,
+        list: CArray<Network>,
     },
     Tray {
-        apps: Vec<TrayApp>,
+        apps: CArray<TrayApp>,
     },
-    ToggleLauncher(),
-    ToggleSessionScreen(),
-    ReloadStyles(),
+    ToggleLauncher,
+    ToggleSessionScreen,
+    ReloadStyles,
 }
 
 unsafe impl Sync for Event {}
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) struct LauncherApp {
-    #[pyo3(get)]
-    pub(crate) name: String,
-    #[pyo3(get)]
-    pub(crate) selected: bool,
-    #[pyo3(get)]
-    pub(crate) icon: LauncherAppIcon,
+#[repr(C)]
+pub struct LauncherApp {
+    pub name: CString,
+    pub selected: bool,
+    pub icon: LauncherAppIcon,
 }
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) enum LauncherAppIcon {
-    IconPath(String),
-    IconName(String),
+#[repr(C)]
+pub enum LauncherAppIcon {
+    IconPath(CString),
+    IconName(CString),
 }
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) struct WeatherOnHour {
-    #[pyo3(get)]
-    pub(crate) hour: String,
-    #[pyo3(get)]
-    pub(crate) temperature: f32,
-    #[pyo3(get)]
-    pub(crate) code: WeatherCode,
+#[repr(C)]
+pub struct WeatherOnHour {
+    pub hour: CString,
+    pub temperature: f32,
+    pub code: WeatherCode,
 }
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) struct WeatherOnDay {
-    #[pyo3(get)]
-    pub(crate) day: String,
-    #[pyo3(get)]
-    pub(crate) temperature_min: f32,
-    #[pyo3(get)]
-    pub(crate) temperature_max: f32,
-    #[pyo3(get)]
-    pub(crate) code: WeatherCode,
+#[repr(C)]
+pub struct WeatherOnDay {
+    pub day: CString,
+    pub temperature_min: f32,
+    pub temperature_max: f32,
+    pub code: WeatherCode,
 }
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) struct Network {
-    #[pyo3(get)]
-    pub(crate) iface: String,
-    #[pyo3(get)]
-    pub(crate) address: String,
+#[repr(C)]
+pub struct Network {
+    pub iface: CString,
+    pub address: CString,
 }
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) struct WifiStatus {
-    #[pyo3(get)]
-    pub(crate) ssid: String,
-    #[pyo3(get)]
-    pub(crate) strength: u8,
+#[repr(C)]
+pub struct WifiStatus {
+    pub ssid: CString,
+    pub strength: u8,
 }
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) struct TrayApp {
-    #[pyo3(get)]
-    pub(crate) root_item: TrayItem,
-    #[pyo3(get)]
-    pub(crate) icon: TrayIcon,
+#[repr(C)]
+pub struct TrayApp {
+    pub root_item: TrayItem,
+    pub icon: TrayIcon,
 }
 
 #[derive(Debug, Clone)]
-#[pyclass]
-pub(crate) struct TrayItem {
-    #[pyo3(get)]
-    pub(crate) id: i32,
-    #[pyo3(get)]
-    pub(crate) uuid: String,
-    #[pyo3(get)]
-    pub(crate) type_: String,
-    #[pyo3(get)]
-    pub(crate) label: String,
-    #[pyo3(get)]
-    pub(crate) enabled: bool,
-    #[pyo3(get)]
-    pub(crate) visible: bool,
-    #[pyo3(get)]
-    pub(crate) icon_name: String,
-    #[pyo3(get)]
-    pub(crate) icon_data: String,
-    #[pyo3(get)]
-    pub(crate) toggle_type: String,
-    #[pyo3(get)]
-    pub(crate) toggle_state: i64,
-    #[pyo3(get)]
-    pub(crate) children_display: String,
-    #[pyo3(get)]
-    pub(crate) children: Vec<TrayItem>,
+#[repr(C)]
+pub struct TrayItem {
+    pub id: i32,
+    pub uuid: CString,
+    pub type_: CString,
+    pub label: CString,
+    pub enabled: bool,
+    pub visible: bool,
+    pub icon_name: CString,
+    pub icon_data: CString,
+    pub toggle_type: CString,
+    pub toggle_state: i64,
+    pub children_display: CString,
+    pub children: CArray<TrayItem>,
 }
 
 #[derive(Clone)]
-#[pyclass]
-pub(crate) enum TrayIcon {
-    Path { path: String },
-    Name { name: String },
-    PixmapVariant { w: u32, h: u32, bytes: Vec<u8> },
-    Unset(),
+#[repr(C)]
+pub enum TrayIcon {
+    Path { path: CString },
+    Name { name: CString },
+    PixmapVariant { w: u32, h: u32, bytes: CArray<u8> },
+    Unset,
 }
 
 impl std::fmt::Debug for TrayIcon {
@@ -173,9 +147,9 @@ impl std::fmt::Debug for TrayIcon {
                 .debug_struct("TrayIconPixmapVariant")
                 .field("w", w)
                 .field("h", h)
-                .field("bytes", &format!("[...{} bytes]", bytes.len()))
+                .field("bytes", &format!("[...{} bytes]", bytes.len))
                 .finish(),
-            TrayIcon::Unset() => write!(f, "None"),
+            TrayIcon::Unset => write!(f, "None"),
         }
     }
 }

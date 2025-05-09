@@ -45,14 +45,19 @@ impl State {
 
     pub(crate) fn as_workspaces_changed_event(&self) -> Event {
         Event::Workspaces {
-            ids: self.workspace_ids.iter().copied().collect(),
+            ids: self
+                .workspace_ids
+                .iter()
+                .copied()
+                .collect::<Vec<_>>()
+                .into(),
             active_id: self.active_workspace_id,
         }
     }
 
     pub(crate) fn as_language_changed_event(&self) -> Event {
         Event::Language {
-            lang: self.language.clone(),
+            lang: self.language.clone().into(),
         }
     }
 }

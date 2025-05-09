@@ -18,7 +18,7 @@ impl TickingModule for Clock {
     fn tick(&mut self) -> anyhow::Result<()> {
         let now = chrono::Local::now();
         let event = Event::Time {
-            time: now.format("%H:%M:%S | %b %e | %a").to_string(),
+            time: now.format("%H:%M:%S | %b %e | %a").to_string().into(),
         };
         self.tx.send(event);
         Ok(())

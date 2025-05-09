@@ -1,8 +1,6 @@
-use pyo3::prelude::*;
-
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[pyclass(eq)]
-pub(crate) enum WeatherCode {
+#[repr(C)]
+pub enum WeatherCode {
     ClearSky,
     MainlyClear,
     PartlyCloudy,

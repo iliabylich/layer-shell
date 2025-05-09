@@ -21,7 +21,6 @@ nanoserde = { version = "0.2", default-features = false, features = [
 mio = { version = "1", features = ["os-poll", "net", "os-ext"] }
 env_logger = { version = "0.11", default-features = false }
 rustix = { version = "1", features = ["time"] }
-pyo3 = { version = "0.24.1", features = ["extension-module"] }
 
 [profile.release]
 opt-level = "z"

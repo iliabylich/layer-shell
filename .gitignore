@@ -4,8 +4,4 @@ src/dbus/interfaces
 .vscode
 *.o
 *.data
-__pycache__
-main.css
-.ruff_cache
-*.pyz
 Cargo.lock

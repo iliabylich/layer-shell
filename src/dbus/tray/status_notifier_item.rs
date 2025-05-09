@@ -28,9 +28,13 @@ impl StatusNotifierItem {
             .context("failed to get IconName")?;
 
         if name_or_path.starts_with("/") {
-            Ok(TrayIcon::Path { path: name_or_path })
+            Ok(TrayIcon::Path {
+                path: name_or_path.into(),
+            })
         } else {
-            Ok(TrayIcon::Name { name: name_or_path })
+            Ok(TrayIcon::Name {
+                name: name_or_path.into(),
+            })
         }
     }
 
@@ -48,7 +52,7 @@ impl StatusNotifierItem {
         Ok(TrayIcon::PixmapVariant {
             w: w as u32,
             h: h as u32,
-            bytes,
+            bytes: bytes.into(),
         })
     }
 
@@ -57,7 +61,7 @@ impl StatusNotifierItem {
             .or_else(|_| self.icon_pixmap(conn))
             .unwrap_or_else(|_| {
                 log::warn!("DBus service has no IconName/IconPixmap");
-                TrayIcon::Unset()
+                TrayIcon::Unset
             })
     }
 
