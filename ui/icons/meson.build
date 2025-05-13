@@ -1,26 +1,27 @@
-icon_names = [
-    'change_theme',
-    'download_speed',
-    'foggy',
-    'partly_cloudy',
-    'power',
-    'question_mark',
-    'rainy',
-    'snowy',
-    'sunny',
-    'thunderstorm',
-    'upload_speed',
-    'wifi',
-]
-
-icon_paths = []
-foreach name : icon_names
-    icon_paths += ''.join([name, '.png'])
-endforeach
-
-embedded_icons = xxd.process(icon_paths)
-
+xxd = find_program('xxd')
+xxd = generator(
+    xxd,
+    output: '@PLAINNAME@.xxd',
+    arguments: ['-i', '@INPUT@', '@OUTPUT@'],
+)
 cat = find_program('cat')
+
+icons = files(
+    'change_theme.png',
+    'download_speed.png',
+    'foggy.png',
+    'partly_cloudy.png',
+    'power.png',
+    'question_mark.png',
+    'rainy.png',
+    'snowy.png',
+    'sunny.png',
+    'thunderstorm.png',
+    'upload_speed.png',
+    'wifi.png',
+)
+
+embedded_icons = xxd.process(icons)
 
 all_icons_embedded = custom_target(
     'all-icons-embedded',
@@ -31,11 +32,9 @@ all_icons_embedded = custom_target(
 )
 sources += all_icons_embedded
 
-cmd = [meson.project_source_root() / 'ui' / 'icons' / 'make-x-icons.sh']
-cmd += icon_names
 x_icons = custom_target(
     'x-icons',
-    command: cmd,
+    command: ['make-x-icons.sh', icons],
     capture: true,
     output: 'x-icons.h',
 )

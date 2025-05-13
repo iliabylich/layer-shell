@@ -1,7 +1,17 @@
+xxd = find_program('xxd')
+xxd = generator(
+    xxd,
+    output: '@PLAINNAME@.xxd',
+    arguments: ['-i', '@INPUT@', '@OUTPUT@'],
+)
+
+sassc = find_program('sassc')
 sassc = generator(
-    find_program('sassc'),
+    sassc,
     output: '@PLAINNAME@',
     arguments: ['@INPUT@', '@OUTPUT@'],
 )
-css = xxd.process(sassc.process('main.scss'))
-sources += css
+
+sources += xxd.process(
+    sassc.process('main.scss'),
+)

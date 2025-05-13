@@ -1,16 +1,30 @@
-cbindgen = find_program('cbindgen')
+find_program('cargo')
 
-source_root = meson.project_source_root()
+rustlib = custom_target(
+    'liblayer_shell_io.a',
+    command: [
+        files('build.sh'),
+        get_option('buildtype'),
+        meson.project_source_root(),
+        '@OUTPUT@',
+    ],
+    output: 'liblayer_shell_io.a',
+    build_always_stale: true,
+    build_by_default: true,
+)
+sources += rustlib
 
-cargo_cmd = [cbindgen]
-cargo_cmd += ['--config', source_root / 'src/cbindgen.toml']
-cargo_cmd += '--quiet'
-cargo_cmd += source_root
-cargo_cmd += ['--output', '@OUTPUT@']
+cbindgen = find_program('cbindgen', version: '>= 0.28')
 
 bindings = custom_target(
     'bindings.h',
-    command: cargo_cmd,
+    command: [
+        cbindgen,
+        '--config', files('cbindgen.toml'),
+        '--quiet',
+        '--output', '@OUTPUT@',
+        '@SOURCE_ROOT@',
+    ],
     output: 'bindings.h',
     build_always_stale: true,
     build_by_default: true,
