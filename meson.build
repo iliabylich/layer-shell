@@ -18,7 +18,11 @@ bindir = get_option('bindir')
 executable(
     'layer-shell',
     sources,
-    c_args: ['-Wno-c23-extensions'],
+    c_args: [
+        '-Wno-c23-extensions',
+        '-DGDK_DISABLE_DEPRECATED',
+        '-DGTK_DISABLE_DEPRECATED',
+    ],
     dependencies: [
         dependency('glib-2.0'),
         dependency('gtk4'),
