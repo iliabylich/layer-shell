@@ -3,7 +3,7 @@
 #include <gtk4-layer-shell.h>
 
 struct _Session {
-  GtkWindow parent_instance;
+  BaseWindow parent_instance;
 
   GtkWidget *lock;
   GtkWidget *reboot;
@@ -11,7 +11,7 @@ struct _Session {
   GtkWidget *logout;
 };
 
-G_DEFINE_TYPE(Session, session, GTK_TYPE_WINDOW)
+G_DEFINE_TYPE(Session, session, BASE_WINDOW_TYPE)
 
 enum {
   LOCK = 0,
@@ -35,17 +35,6 @@ static void session_class_init(SessionClass *klass) {
 #undef SIGNAL
 }
 
-static void session_init_layer(GtkWindow *window) {
-  gtk_layer_init_for_window(window);
-  gtk_layer_set_layer(window, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_BOTTOM, true);
-  gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_namespace(window, "LayerShell/SessionScreen");
-  gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
-}
-
 #define HANDLER(name, signal)                                                  \
   static void name(GtkButton *, Session *session) {                            \
     window_toggle(GTK_WINDOW(session));                                        \
@@ -59,9 +48,6 @@ HANDLER(logout, LOGOUT)
 #undef HANDLER
 
 static void session_init(Session *self) {
-  window_toggle_on_escape(GTK_WINDOW(self));
-  session_init_layer(GTK_WINDOW(self));
-
   GtkWidget *layout =
       g_object_new(GTK_TYPE_BOX,
                    //
@@ -96,6 +82,23 @@ GtkWidget *session_new(GtkApplication *app) {
                       "name", "SessionWindow",
                       //
                       "css-classes", (const char *[]){"session-window", NULL},
+                      //
+                      "toggle-on-escape", true,
+                      //
+                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+                      //
+                      "layer-anchor-top", true,
+                      //
+                      "layer-anchor-right", true,
+                      //
+                      "layer-anchor-bottom", true,
+                      //
+                      "layer-anchor-left", true,
+                      //
+                      "layer-namespace", "LayerShell/SessionScreen",
+                      //
+                      "layer-keyboard-mode",
+                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
                       //
                       NULL);
 }

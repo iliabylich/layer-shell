@@ -5,14 +5,14 @@
 #define ROWS_COUNT 5
 
 struct _Launcher {
-  GtkWindow parent_instance;
+  BaseWindow parent_instance;
 
   GtkWidget *input;
   GtkWidget *scroll;
   GtkWidget *rows[ROWS_COUNT];
 };
 
-G_DEFINE_TYPE(Launcher, launcher, GTK_TYPE_WINDOW)
+G_DEFINE_TYPE(Launcher, launcher, BASE_WINDOW_TYPE)
 
 enum {
   EXEC_SELECTED = 0,
@@ -41,13 +41,6 @@ static void launcher_class_init(LauncherClass *klass) {
                    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
-static void launcher_init_layer(GtkWindow *window) {
-  gtk_layer_init_for_window(window);
-  gtk_layer_set_layer(window, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(window, "LayerShell/Launcher");
-  gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
-}
-
 static void on_submit(GtkEntry *, Launcher *self) {
   g_signal_emit(self, signals[EXEC_SELECTED], 0);
   launcher_toggle_and_reset(self);
@@ -72,8 +65,6 @@ static bool on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
 }
 
 static void launcher_init(Launcher *self) {
-  launcher_init_layer(GTK_WINDOW(self));
-
   self->input =
       g_object_new(GTK_TYPE_SEARCH_ENTRY,
                    //
@@ -138,6 +129,13 @@ GtkWidget *launcher_new(GtkApplication *app) {
                       "height-request", -1,
                       //
                       "css-classes", (const char *[]){"launcher-window", NULL},
+                      //
+                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+                      //
+                      "layer-namespace", "LayerShell/Launcher",
+                      //
+                      "layer-keyboard-mode",
+                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
                       //
                       NULL);
 }

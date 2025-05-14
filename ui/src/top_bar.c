@@ -2,30 +2,17 @@
 #include <gtk4-layer-shell.h>
 
 struct _TopBar {
-  GtkWindow parent_instance;
+  BaseWindow parent_instance;
 
   GtkWidget *left;
   GtkWidget *right;
 };
 
-G_DEFINE_TYPE(TopBar, top_bar, GTK_TYPE_WINDOW)
+G_DEFINE_TYPE(TopBar, top_bar, BASE_WINDOW_TYPE)
 
 static void top_bar_class_init(TopBarClass *) {}
 
-static void top_bar_init_layer(GtkWindow *window) {
-  gtk_layer_init_for_window(window);
-  gtk_layer_set_layer(window, GTK_LAYER_SHELL_LAYER_TOP);
-  gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_margin(window, GTK_LAYER_SHELL_EDGE_TOP, 0);
-  gtk_layer_set_namespace(window, "LayerShell/TopBar");
-  gtk_layer_auto_exclusive_zone_enable(window);
-}
-
 static void top_bar_init(TopBar *self) {
-  top_bar_init_layer(GTK_WINDOW(self));
-
   self->left = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
   self->right = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
 
@@ -50,6 +37,20 @@ GtkWidget *top_bar_new(GtkApplication *app) {
                       "name", "TopBarWindow",
                       //
                       "css-classes", (const char *[]){"top-bar-window", NULL},
+                      //
+                      "layer", GTK_LAYER_SHELL_LAYER_TOP,
+                      //
+                      "layer-anchor-top", true,
+                      //
+                      "layer-anchor-left", true,
+                      //
+                      "layer-anchor-right", true,
+                      //
+                      "layer-margin-top", 0,
+                      //
+                      "layer-namespace", "LayerShell/TopBar",
+                      //
+                      "layer-auto-exclusive-zone-enabled", true,
                       //
                       NULL);
 }

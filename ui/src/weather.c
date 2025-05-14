@@ -1,31 +1,20 @@
 #include "ui/include/weather.h"
 #include "ui/include/weather/daily_grid.h"
 #include "ui/include/weather/hourly_grid.h"
-#include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
 struct _Weather {
-  GtkWindow parent_instance;
+  BaseWindow parent_instance;
 
   GtkWidget *hourly_grid;
   GtkWidget *daily_grid;
 };
 
-G_DEFINE_TYPE(Weather, weather, GTK_TYPE_WINDOW)
+G_DEFINE_TYPE(Weather, weather, BASE_WINDOW_TYPE)
 
 static void weather_class_init(WeatherClass *) {}
 
-static void weather_init_layer(GtkWindow *window) {
-  gtk_layer_init_for_window(window);
-  gtk_layer_set_layer(window, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(window, "LayerShell/Weather");
-  gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
-}
-
 static void weather_init(Weather *self) {
-  window_toggle_on_escape(GTK_WINDOW(self));
-  weather_init_layer(GTK_WINDOW(self));
-
   self->hourly_grid = hourly_grid_new();
   self->daily_grid = daily_grid_new();
 
@@ -51,6 +40,15 @@ GtkWidget *weather_new(GtkApplication *app) {
                       "name", "WeatherWindow",
                       //
                       "css-classes", (const char *[]){"weather-window", NULL},
+                      //
+                      "toggle-on-escape", true,
+                      //
+                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+                      //
+                      "layer-namespace", "LayerShell/Weather",
+                      //
+                      "layer-keyboard-mode",
+                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
                       //
                       NULL);
 }

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "ui/include/base_window.h"
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(Htop, htop, HTOP, WINDOW, GtkWindow)
+G_DECLARE_FINAL_TYPE(Htop, htop, HTOP, WINDOW, BaseWindow)
 
 GtkWidget *htop_new(GtkApplication *app);
 

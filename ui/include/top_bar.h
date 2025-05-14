@@ -1,8 +1,9 @@
 #pragma once
 
+#include "ui/include/base_window.h"
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(TopBar, top_bar, TOP_BAR, WINDOW, GtkWindow)
+G_DECLARE_FINAL_TYPE(TopBar, top_bar, TOP_BAR, WINDOW, BaseWindow)
 
 GtkWidget *top_bar_new(GtkApplication *app);
 void top_bar_push_left(TopBar *top_bar, GtkWidget *child);

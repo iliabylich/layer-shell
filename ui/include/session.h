@@ -1,8 +1,9 @@
 #pragma once
 
+#include "ui/include/base_window.h"
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(Session, session, SESSION, WINDOW, GtkWindow)
+G_DECLARE_FINAL_TYPE(Session, session, SESSION, WINDOW, BaseWindow)
 
 GtkWidget *session_new(GtkApplication *app);
 

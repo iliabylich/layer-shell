@@ -1,4 +1,5 @@
 sources += files(
+    'src/base_window.c',
     'src/buffer.c',
     'src/css.c',
     'src/htop.c',

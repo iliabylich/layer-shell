@@ -3,23 +3,14 @@
 #include <gtk4-layer-shell.h>
 
 struct _Htop {
-  GtkWindow parent_instance;
+  BaseWindow parent_instance;
 };
 
-G_DEFINE_TYPE(Htop, htop, GTK_TYPE_WINDOW)
+G_DEFINE_TYPE(Htop, htop, BASE_WINDOW_TYPE)
 
 static void htop_class_init(HtopClass *) {}
 
-static void htop_init_layer(GtkWindow *window) {
-  gtk_layer_init_for_window(window);
-  gtk_layer_set_layer(window, GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(window, "LayerShell/Htop");
-  gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
-}
-
 static void htop_init(Htop *self) {
-  window_toggle_on_escape(GTK_WINDOW(self));
-  htop_init_layer(GTK_WINDOW(self));
   char *command[] = {"htop", NULL};
   vte_window(GTK_WINDOW(self), command);
 }
@@ -34,6 +25,15 @@ GtkWidget *htop_new(GtkApplication *app) {
                       "width-request", 1000,
                       //
                       "height-request", 700,
+                      //
+                      "toggle-on-escape", true,
+                      //
+                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+                      //
+                      "layer-namespace", "LayerShell/Htop",
+                      //
+                      "layer-keyboard-mode",
+                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
                       //
                       NULL);
 }
