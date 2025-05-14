@@ -1,5 +1,4 @@
 #include "ui/include/htop.h"
-#include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
 struct _Htop {
@@ -10,10 +9,7 @@ G_DEFINE_TYPE(Htop, htop, BASE_WINDOW_TYPE)
 
 static void htop_class_init(HtopClass *) {}
 
-static void htop_init(Htop *self) {
-  char *command[] = {"htop", NULL};
-  vte_window(GTK_WINDOW(self), command);
-}
+static void htop_init(Htop *) {}
 
 GtkWidget *htop_new(GtkApplication *app) {
   return g_object_new(HTOP_TYPE,
@@ -34,6 +30,8 @@ GtkWidget *htop_new(GtkApplication *app) {
                       //
                       "layer-keyboard-mode",
                       GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
+                      //
+                      "vte-command", (const char *[]){"htop", NULL},
                       //
                       NULL);
 }

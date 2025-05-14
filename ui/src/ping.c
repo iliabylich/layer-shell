@@ -1,5 +1,4 @@
 #include "ui/include/ping.h"
-#include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
 struct _Ping {
@@ -10,10 +9,7 @@ G_DEFINE_TYPE(Ping, ping, BASE_WINDOW_TYPE)
 
 static void ping_class_init(PingClass *) {}
 
-static void ping_init(Ping *self) {
-  char *command[] = {"ping", "8.8.8.8", NULL};
-  vte_window(GTK_WINDOW(self), command);
-}
+static void ping_init(Ping *) {}
 
 GtkWidget *ping_new(GtkApplication *app) {
   return g_object_new(PING_TYPE,
@@ -34,6 +30,8 @@ GtkWidget *ping_new(GtkApplication *app) {
                       //
                       "layer-keyboard-mode",
                       GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
+                      //
+                      "vte-command", (const char *[]){"ping", "8.8.8.8", NULL},
                       //
                       NULL);
 }

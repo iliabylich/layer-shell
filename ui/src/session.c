@@ -1,5 +1,4 @@
 #include "ui/include/session.h"
-#include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
 struct _Session {

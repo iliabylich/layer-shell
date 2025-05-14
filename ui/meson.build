@@ -37,7 +37,6 @@ sources += files(
     'src/weather/temperature_icon.c',
     'src/weather/temperature_label.c',
     'src/weather_helper.c',
-    'src/window_helper.c',
     'main.c',
 )
 

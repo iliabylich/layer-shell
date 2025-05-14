@@ -19,7 +19,6 @@
 #include "ui/include/top_bar/weather_button.h"
 #include "ui/include/top_bar/workspaces.h"
 #include "ui/include/weather.h"
-#include "ui/include/window_helper.h"
 #include <gtk/gtk.h>
 
 GtkApplication *app;
