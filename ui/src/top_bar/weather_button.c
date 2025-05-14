@@ -10,19 +10,22 @@ G_DEFINE_TYPE(WeatherButton, weather_button, GTK_TYPE_BUTTON)
 
 static void weather_button_class_init(WeatherButtonClass *) {}
 
-static const char *css_classes[] = {"widget", "weather", "padded", "clickable",
-                                    NULL};
-
-static void weather_button_init(WeatherButton *self) {
-  gtk_button_set_label(GTK_BUTTON(self), "--");
-  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
-  gtk_widget_set_cursor(GTK_WIDGET(self),
-                        gdk_cursor_new_from_name("pointer", NULL));
-  gtk_widget_set_name(GTK_WIDGET(self), "WeatherButton");
-}
+static void weather_button_init(WeatherButton *) {}
 
 GtkWidget *weather_button_new() {
-  return g_object_new(weather_button_get_type(), NULL);
+  return g_object_new(
+      weather_button_get_type(),
+      //
+      "label", "--",
+      //
+      "css-classes",
+      (const char *[]){"widget", "weather", "padded", "clickable", NULL},
+      //
+      "cursor", gdk_cursor_new_from_name("pointer", NULL),
+      //
+      "name", "WeatherButton",
+      //
+      NULL);
 }
 
 void weather_button_refresh(WeatherButton *button, float temperature,

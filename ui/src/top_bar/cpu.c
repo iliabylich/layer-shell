@@ -13,17 +13,22 @@ G_DEFINE_TYPE(Cpu, cpu, GTK_TYPE_BOX)
 
 static void cpu_class_init(CpuClass *) {}
 
-static const char *css_classes[] = {"widget", "cpu", "padded", NULL};
+static void cpu_init(Cpu *) {}
 
-static void cpu_init(Cpu *self) {
-  gtk_orientable_set_orientation(GTK_ORIENTABLE(self),
-                                 GTK_ORIENTATION_HORIZONTAL);
-  gtk_box_set_spacing(GTK_BOX(self), 3);
-  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
-  gtk_widget_set_name(GTK_WIDGET(self), "CPU");
+GtkWidget *cpu_new() {
+  return g_object_new(CPU_TYPE,
+                      //
+                      "orientation", GTK_ORIENTATION_HORIZONTAL,
+                      //
+                      "spacing", 3,
+                      //
+                      "css-classes",
+                      (const char *[]){"widget", "cpu", "padded", NULL},
+                      //
+                      "name", "CPU",
+                      //
+                      NULL);
 }
-
-GtkWidget *cpu_new() { return g_object_new(CPU_TYPE, NULL); }
 
 static bool first_time_init_p(Cpu *self) { return self->labels_count == 0; }
 

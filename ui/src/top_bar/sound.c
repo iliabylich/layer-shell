@@ -11,20 +11,25 @@ G_DEFINE_TYPE(Sound, sound, GTK_TYPE_BOX)
 
 static void sound_class_init(SoundClass *) {}
 
-static const char *css_classes[] = {"widget", "sound", "padded", NULL};
-
 static void sound_init(Sound *self) {
-  gtk_orientable_set_orientation(GTK_ORIENTABLE(self),
-                                 GTK_ORIENTATION_HORIZONTAL);
-  gtk_box_set_spacing(GTK_BOX(self), 5);
-  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
-  gtk_widget_set_name(GTK_WIDGET(self), "Sound");
-
   self->image = gtk_image_new_from_icon_name("dialog-question");
   gtk_box_append(GTK_BOX(self), self->image);
 }
 
-GtkWidget *sound_new() { return g_object_new(sound_get_type(), NULL); }
+GtkWidget *sound_new() {
+  return g_object_new(sound_get_type(),
+                      //
+                      "orientation", GTK_ORIENTATION_HORIZONTAL,
+                      //
+                      "spacing", 5,
+                      //
+                      "css-classes",
+                      (const char *[]){"widget", "sound", "padded", NULL},
+                      //
+                      "name", "Sound",
+                      //
+                      NULL);
+}
 
 void sound_refresh(Sound *self, uint32_t volume, bool muted) {
   const char *icon_name = NULL;

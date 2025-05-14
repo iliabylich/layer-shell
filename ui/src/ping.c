@@ -18,8 +18,6 @@ static void ping_init_layer(GtkWindow *window) {
 }
 
 static void ping_init(Ping *self) {
-  gtk_widget_set_name(GTK_WIDGET(self), "PingWindow");
-  gtk_widget_set_size_request(GTK_WIDGET(self), 1000, 700);
   window_toggle_on_escape(GTK_WINDOW(self));
   ping_init_layer(GTK_WINDOW(self));
   char *command[] = {"ping", "8.8.8.8", NULL};
@@ -27,5 +25,15 @@ static void ping_init(Ping *self) {
 }
 
 Ping *ping_new(GtkApplication *app) {
-  return g_object_new(ping_get_type(), "application", app, NULL);
+  return g_object_new(ping_get_type(),
+                      //
+                      "application", app,
+                      //
+                      "name", "PingWindow",
+                      //
+                      "width-request", 1000,
+                      //
+                      "height-request", 700,
+                      //
+                      NULL);
 }

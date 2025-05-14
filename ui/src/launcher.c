@@ -1,4 +1,6 @@
 #include "ui/include/launcher.h"
+#include "glib-object.h"
+#include "gtk/gtk.h"
 #include "ui/include/launcher/row.h"
 #include <gtk4-layer-shell.h>
 
@@ -72,33 +74,50 @@ static bool on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
 }
 
 static void launcher_init(Launcher *self) {
-  gtk_widget_set_name(GTK_WIDGET(self), "LauncherWindow");
-  gtk_widget_set_size_request(GTK_WIDGET(self), 700, -1);
-  gtk_widget_add_css_class(GTK_WIDGET(self), "launcher-window");
   launcher_init_layer(GTK_WINDOW(self));
 
-  GtkWidget *layout = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_add_css_class(layout, "wrapper");
-  gtk_window_set_child(GTK_WINDOW(self), layout);
-
-  self->input = gtk_search_entry_new();
-  gtk_widget_add_css_class(self->input, "search-box");
-  gtk_widget_set_hexpand(GTK_WIDGET(self), true);
-  gtk_box_append(GTK_BOX(layout), self->input);
-
-  self->scroll = gtk_scrolled_window_new();
-  gtk_widget_add_css_class(GTK_WIDGET(self->scroll), "scroll-list");
-  gtk_widget_set_can_focus(self->scroll, false);
-  gtk_box_append(GTK_BOX(layout), self->scroll);
+  self->input =
+      g_object_new(GTK_TYPE_SEARCH_ENTRY,
+                   //
+                   "css-classes", (const char *[]){"search-box", NULL},
+                   //
+                   "hexpand", true,
+                   //
+                   NULL);
 
   GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(self->scroll), content);
-
   for (size_t i = 0; i < ROWS_COUNT; i++) {
     GtkWidget *row = launcher_row_new();
     self->rows[i] = row;
     gtk_box_append(GTK_BOX(content), row);
   }
+
+  self->scroll =
+      g_object_new(GTK_TYPE_SCROLLED_WINDOW,
+                   //
+                   "css-classes", (const char *[]){"scroll-list", NULL},
+                   //
+                   "can-focus", false,
+                   //
+                   "child", content,
+                   //
+                   NULL);
+
+  GtkWidget *layout =
+      g_object_new(GTK_TYPE_BOX,
+                   //
+                   "orientation", GTK_ORIENTATION_VERTICAL,
+                   //
+                   "spacing", 0,
+                   //
+                   "css-classes", (const char *[]){"wrapper", NULL},
+                   //
+                   NULL);
+
+  gtk_box_append(GTK_BOX(layout), self->input);
+  gtk_box_append(GTK_BOX(layout), self->scroll);
+
+  gtk_window_set_child(GTK_WINDOW(self), layout);
 
   g_signal_connect(self->input, "activate", G_CALLBACK(on_submit), self);
   g_signal_connect(self->input, "changed", G_CALLBACK(on_input_changed), self);
@@ -110,7 +129,19 @@ static void launcher_init(Launcher *self) {
 }
 
 Launcher *launcher_new(GtkApplication *app) {
-  return g_object_new(launcher_get_type(), "application", app, NULL);
+  return g_object_new(launcher_get_type(),
+                      //
+                      "application", app,
+                      //
+                      "name", "LauncherWindow",
+                      //
+                      "width-request", 700,
+                      //
+                      "height-request", -1,
+                      //
+                      "css-classes", (const char *[]){"launcher-window", NULL},
+                      //
+                      NULL);
 }
 
 void launcher_refresn(Launcher *self, IO_CArray_LauncherApp apps) {

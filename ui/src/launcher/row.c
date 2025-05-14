@@ -12,25 +12,36 @@ G_DEFINE_TYPE(LauncherRow, launcher_row, GTK_TYPE_BOX)
 static void launcher_row_class_init(LauncherRowClass *) {}
 
 static void launcher_row_init(LauncherRow *self) {
-  gtk_orientable_set_orientation(GTK_ORIENTABLE(self),
-                                 GTK_ORIENTATION_HORIZONTAL);
-  gtk_box_set_spacing(GTK_BOX(self), 0);
-  gtk_widget_add_css_class(GTK_WIDGET(self), "row");
+  self->image = g_object_new(GTK_TYPE_IMAGE,
+                             //
+                             "icon-size", GTK_ICON_SIZE_LARGE,
+                             //
+                             NULL);
 
-  self->image = gtk_image_new();
-  gtk_image_set_icon_size(GTK_IMAGE(self->image), GTK_ICON_SIZE_LARGE);
-
-  self->label = gtk_label_new("...");
-  gtk_label_set_xalign(GTK_LABEL(self->label), 0.0);
-  gtk_widget_set_valign(GTK_WIDGET(self->label), GTK_ALIGN_CENTER);
-  gtk_label_set_ellipsize(GTK_LABEL(self->label), PANGO_ELLIPSIZE_END);
+  self->label = g_object_new(GTK_TYPE_LABEL,
+                             //
+                             "xalign", 0.0,
+                             //
+                             "valign", GTK_ALIGN_CENTER,
+                             //
+                             "ellipsize", PANGO_ELLIPSIZE_END,
+                             //
+                             NULL);
 
   gtk_box_append(GTK_BOX(self), self->image);
   gtk_box_append(GTK_BOX(self), self->label);
 }
 
 GtkWidget *launcher_row_new() {
-  return g_object_new(launcher_row_get_type(), NULL);
+  return g_object_new(launcher_row_get_type(),
+                      //
+                      "orientation", GTK_ORIENTATION_HORIZONTAL,
+                      //
+                      "spacing", 0,
+                      //
+                      "css-classes", (const char *[]){"row", NULL},
+                      //
+                      NULL);
 }
 
 void launcher_row_update(LauncherRow *self, IO_LauncherApp app) {

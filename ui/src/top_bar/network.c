@@ -40,16 +40,7 @@ static void on_click(Network *self) {
   gtk_popover_popup(GTK_POPOVER(self->popover));
 }
 
-static const char *css_classes[] = {"widget", "network", "padded", "clickable",
-                                    NULL};
-
 static void network_init(Network *self) {
-  gtk_button_set_label(GTK_BUTTON(self), "--");
-  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
-  gtk_widget_set_cursor(GTK_WIDGET(self),
-                        gdk_cursor_new_from_name("pointer", NULL));
-  gtk_widget_set_name(GTK_WIDGET(self), "Network");
-
   self->label = gtk_label_new("-- ");
   self->image = gtk_image_new_from_gicon(get_wifi_icon());
 
@@ -83,7 +74,19 @@ static void network_init(Network *self) {
   g_signal_connect(self, "clicked", G_CALLBACK(on_click), NULL);
 }
 
-GtkWidget *network_new() { return g_object_new(network_get_type(), NULL); }
+GtkWidget *network_new() {
+  return g_object_new(
+      NETWORK_TYPE,
+      //
+      "css-classes",
+      (const char *[]){"widget", "network", "padded", "clickable", NULL},
+      //
+      "cursor", gdk_cursor_new_from_name("pointer", NULL),
+      //
+      "name", "Network",
+      //
+      NULL);
+}
 
 void network_refresh_wifi_status(Network *network,
                                  IO_COption_WifiStatus wifi_status) {

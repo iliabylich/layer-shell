@@ -18,8 +18,6 @@ static void htop_init_layer(GtkWindow *window) {
 }
 
 static void htop_init(Htop *self) {
-  gtk_widget_set_name(GTK_WIDGET(self), "HtopWindow");
-  gtk_widget_set_size_request(GTK_WIDGET(self), 1000, 700);
   window_toggle_on_escape(GTK_WINDOW(self));
   htop_init_layer(GTK_WINDOW(self));
   char *command[] = {"htop", NULL};
@@ -27,5 +25,15 @@ static void htop_init(Htop *self) {
 }
 
 Htop *htop_new(GtkApplication *app) {
-  return g_object_new(htop_get_type(), "application", app, NULL);
+  return g_object_new(htop_get_type(),
+                      //
+                      "application", app,
+                      //
+                      "name", "HtopWindow",
+                      //
+                      "width-request", 1000,
+                      //
+                      "height-request", 700,
+                      //
+                      NULL);
 }

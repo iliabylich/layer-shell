@@ -27,7 +27,7 @@ GtkWidget *tray_app_icon_new(IO_TrayIcon tray_icon) {
     return gtk_image_new_from_gicon(get_question_mark_icon());
   }
   default: {
-    printf("Unknown tray app icon tag\n");
+    fprintf(stderr, "Unknown tray app icon tag\n");
     return NULL;
   }
   }

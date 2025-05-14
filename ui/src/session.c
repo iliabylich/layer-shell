@@ -1,4 +1,5 @@
 #include "ui/include/session.h"
+#include "gtk/gtk.h"
 #include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
@@ -59,14 +60,21 @@ HANDLER(logout, LOGOUT)
 #undef HANDLER
 
 static void session_init(Session *self) {
-  gtk_widget_set_name(GTK_WIDGET(self), "SessionWindow");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "session-window");
   window_toggle_on_escape(GTK_WINDOW(self));
   session_init_layer(GTK_WINDOW(self));
 
-  GtkWidget *layout = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 200);
-  gtk_box_set_homogeneous(GTK_BOX(layout), true);
-  gtk_widget_add_css_class(GTK_WIDGET(layout), "wrapper");
+  GtkWidget *layout =
+      g_object_new(GTK_TYPE_BOX,
+                   //
+                   "orientation", GTK_ORIENTATION_HORIZONTAL,
+                   //
+                   "spacing", 200,
+                   //
+                   "homogeneous", true,
+                   //
+                   "css-classes", (const char *[]){"wrapper", NULL},
+                   //
+                   NULL);
   gtk_window_set_child(GTK_WINDOW(self), layout);
 
 #define BUTTON(name, label)                                                    \
@@ -82,5 +90,13 @@ static void session_init(Session *self) {
 }
 
 Session *session_new(GtkApplication *app) {
-  return g_object_new(session_get_type(), "application", app, NULL);
+  return g_object_new(session_get_type(),
+                      //
+                      "application", app,
+                      //
+                      "name", "SessionWindow",
+                      //
+                      "css-classes", (const char *[]){"session-window", NULL},
+                      //
+                      NULL);
 }

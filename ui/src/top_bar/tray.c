@@ -22,17 +22,22 @@ static void tray_class_init(TrayClass *klass) {
                    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
-static const char *css_classes[] = {"widget", "tray", "padded", NULL};
+static void tray_init(Tray *) {}
 
-static void tray_init(Tray *self) {
-  gtk_orientable_set_orientation(GTK_ORIENTABLE(self),
-                                 GTK_ORIENTATION_HORIZONTAL);
-  gtk_box_set_spacing(GTK_BOX(self), 10);
-  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
-  gtk_widget_set_name(GTK_WIDGET(self), "Tray");
+GtkWidget *tray_new() {
+  return g_object_new(tray_get_type(),
+                      //
+                      "orientation", GTK_ORIENTATION_HORIZONTAL,
+                      //
+                      "spacing", 10,
+                      //
+                      "css-classes",
+                      (const char *[]){"widget", "tray", "padded", NULL},
+                      //
+                      "name", "Tray",
+                      //
+                      NULL);
 }
-
-GtkWidget *tray_new() { return g_object_new(tray_get_type(), NULL); }
 
 static void tray_cleanup(Tray *self) {
   GtkWidget *child = gtk_widget_get_first_child(GTK_WIDGET(self));

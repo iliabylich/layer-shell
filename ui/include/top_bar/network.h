@@ -29,5 +29,5 @@ void network_emit_settings_clicked(Network *network);
 void network_emit_ping_clicked(Network *network);
 void network_emit_network_clicked(Network *network, const char *address);
 
-#define NETWORK(obj)                                                           \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), network_get_type(), Network))
+#define NETWORK_TYPE network_get_type()
+#define NETWORK(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, NETWORK_TYPE, Network)

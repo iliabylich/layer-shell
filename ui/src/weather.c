@@ -23,8 +23,6 @@ static void weather_init_layer(GtkWindow *window) {
 }
 
 static void weather_init(Weather *self) {
-  gtk_widget_set_name(GTK_WIDGET(self), "WeatherWindow");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "weather-window");
   window_toggle_on_escape(GTK_WINDOW(self));
   weather_init_layer(GTK_WINDOW(self));
 
@@ -46,7 +44,15 @@ static void weather_init(Weather *self) {
 }
 
 Weather *weather_new(GtkApplication *app) {
-  return g_object_new(weather_get_type(), "application", app, NULL);
+  return g_object_new(weather_get_type(),
+                      //
+                      "application", app,
+                      //
+                      "name", "WeatherWindow",
+                      //
+                      "css-classes", (const char *[]){"weather-window", NULL},
+                      //
+                      NULL);
 }
 
 void weather_refresh(Weather *weather, IO_Event_IO_ForecastWeather_Body data) {

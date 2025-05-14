@@ -1,15 +1,17 @@
 #include "ui/include/top_bar/language.h"
 #include "gtk/gtk.h"
 
-static const char *css_classes[] = {"widget", "language", "padded", NULL};
-
 GtkWidget *language_new() {
-  GtkWidget *label = gtk_label_new("--");
-
-  gtk_widget_set_css_classes(label, css_classes);
-  gtk_widget_set_name(label, "Language");
-
-  return label;
+  return g_object_new(GTK_TYPE_LABEL,
+                      //
+                      "label", "--",
+                      //
+                      "css-classes",
+                      (const char *[]){"widget", "language", "padded", NULL},
+                      //
+                      "name", "Language",
+                      //
+                      NULL);
 }
 
 void language_refresh(Language *self, const char *lang) {

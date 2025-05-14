@@ -1,11 +1,12 @@
 #include "ui/include/top_bar.h"
+#include "gtk/gtk.h"
 #include <gtk4-layer-shell.h>
 
 struct _TopBar {
   GtkWindow parent_instance;
 
-  GtkBox *left;
-  GtkBox *right;
+  GtkWidget *left;
+  GtkWidget *right;
 };
 
 G_DEFINE_TYPE(TopBar, top_bar, GTK_TYPE_WINDOW)
@@ -24,26 +25,34 @@ static void top_bar_init_layer(GtkWindow *window) {
 }
 
 static void top_bar_init(TopBar *self) {
-  gtk_widget_set_name(GTK_WIDGET(self), "TopBarWindow");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "top-bar-window");
   top_bar_init_layer(GTK_WINDOW(self));
 
-  GtkWidget *layout = gtk_center_box_new();
-  gtk_widget_add_css_class(layout, "wrapper");
+  self->left = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+  self->right = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+
+  GtkWidget *layout =
+      g_object_new(GTK_TYPE_CENTER_BOX,
+                   //
+                   "css-classes", (const char *[]){"wrapper", NULL},
+                   //
+                   "start-widget", self->left,
+                   //
+                   "end-widget", self->right,
+                   //
+                   NULL);
   gtk_window_set_child(GTK_WINDOW(self), layout);
-
-  GtkWidget *left = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-  GtkWidget *right = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
-
-  gtk_center_box_set_start_widget(GTK_CENTER_BOX(layout), left);
-  gtk_center_box_set_end_widget(GTK_CENTER_BOX(layout), right);
-
-  self->left = GTK_BOX(left);
-  self->right = GTK_BOX(right);
 }
 
 TopBar *top_bar_new(GtkApplication *app) {
-  return g_object_new(top_bar_get_type(), "application", app, NULL);
+  return g_object_new(top_bar_get_type(),
+                      //
+                      "application", app,
+                      //
+                      "name", "TopBarWindow",
+                      //
+                      "css-classes", (const char *[]){"top-bar-window", NULL},
+                      //
+                      NULL);
 }
 
 void top_bar_push_left(TopBar *top_bar, GtkWidget *child) {
