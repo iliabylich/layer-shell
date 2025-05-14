@@ -40,12 +40,12 @@ static void on_click(Network *self) {
   gtk_popover_popup(GTK_POPOVER(self->popover));
 }
 
+static const char *css_classes[] = {"widget", "network", "padded", "clickable",
+                                    NULL};
+
 static void network_init(Network *self) {
   gtk_button_set_label(GTK_BUTTON(self), "--");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "widget");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "network");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "padded");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "clickable");
+  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
   gtk_widget_set_cursor(GTK_WIDGET(self),
                         gdk_cursor_new_from_name("pointer", NULL));
   gtk_widget_set_name(GTK_WIDGET(self), "Network");

@@ -9,10 +9,12 @@ G_DEFINE_TYPE(Memory, memory, GTK_TYPE_BUTTON)
 
 static void memory_class_init(MemoryClass *) {}
 
+static const char *css_classes[] = {"widget", "memory", "padded", "clickable",
+                                    NULL};
+
 static void memory_init(Memory *self) {
   gtk_widget_set_name(GTK_WIDGET(self), "Memory");
-  const char *CSS_CLASSES[] = {"widget", "memory", "padded", "clickable"};
-  gtk_widget_set_css_classes(GTK_WIDGET(self), CSS_CLASSES);
+  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
   gtk_widget_set_cursor(GTK_WIDGET(self),
                         gdk_cursor_new_from_name("pointer", NULL));
   gtk_button_set_label(GTK_BUTTON(self), "--");

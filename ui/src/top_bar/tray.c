@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/tray.h"
+#include "gtk/gtk.h"
 #include "ui/include/top_bar/tray_app.h"
 
 struct _Tray {
@@ -21,13 +22,13 @@ static void tray_class_init(TrayClass *klass) {
                    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
+static const char *css_classes[] = {"widget", "tray", "padded", NULL};
+
 static void tray_init(Tray *self) {
   gtk_orientable_set_orientation(GTK_ORIENTABLE(self),
                                  GTK_ORIENTATION_HORIZONTAL);
   gtk_box_set_spacing(GTK_BOX(self), 10);
-  gtk_widget_add_css_class(GTK_WIDGET(self), "widget");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "tray");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "padded");
+  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
   gtk_widget_set_name(GTK_WIDGET(self), "Tray");
 }
 

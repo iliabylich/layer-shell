@@ -9,11 +9,12 @@ G_DEFINE_TYPE(ChangeTheme, change_theme, GTK_TYPE_BUTTON)
 
 static void change_theme_class_init(ChangeThemeClass *) {}
 
+static const char *css_classes[] = {
+    "widget", "change-theme", "padded", "clickable", NULL,
+};
+
 static void change_theme_init(ChangeTheme *self) {
-  gtk_widget_add_css_class(GTK_WIDGET(self), "widget");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "change-theme");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "padded");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "clickable");
+  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
   gtk_widget_set_cursor(GTK_WIDGET(self),
                         gdk_cursor_new_from_name("pointer", NULL));
   gtk_widget_set_name(GTK_WIDGET(self), "ChangeTheme");

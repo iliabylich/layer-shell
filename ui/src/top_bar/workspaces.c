@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/workspaces.h"
+#include "gtk/gtk.h"
 #include "ui/include/top_bar/workspaces_button.h"
 
 #define WORKSPACES_COUNT 10
@@ -23,12 +24,13 @@ static void workspaces_class_init(WorkspacesClass *klass) {
                    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_INT);
 }
 
+static const char *css_classes[] = {"widget", "workspaces", NULL};
+
 static void workspaces_init(Workspaces *self) {
   gtk_orientable_set_orientation(GTK_ORIENTABLE(self),
                                  GTK_ORIENTATION_HORIZONTAL);
   gtk_box_set_spacing(GTK_BOX(self), 0);
-  gtk_widget_add_css_class(GTK_WIDGET(self), "widget");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "workspaces");
+  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
   gtk_widget_set_name(GTK_WIDGET(self), "Workspaces");
 
   for (size_t i = 0; i < WORKSPACES_COUNT; i++) {

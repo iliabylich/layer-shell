@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/weather_button.h"
+#include "gtk/gtk.h"
 #include "ui/include/weather_helper.h"
 
 struct _WeatherButton {
@@ -9,12 +10,12 @@ G_DEFINE_TYPE(WeatherButton, weather_button, GTK_TYPE_BUTTON)
 
 static void weather_button_class_init(WeatherButtonClass *) {}
 
+static const char *css_classes[] = {"widget", "weather", "padded", "clickable",
+                                    NULL};
+
 static void weather_button_init(WeatherButton *self) {
   gtk_button_set_label(GTK_BUTTON(self), "--");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "widget");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "weather_button");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "padded");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "clickable");
+  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
   gtk_widget_set_cursor(GTK_WIDGET(self),
                         gdk_cursor_new_from_name("pointer", NULL));
   gtk_widget_set_name(GTK_WIDGET(self), "WeatherButton");

@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/sound.h"
+#include "gtk/gtk.h"
 
 struct _Sound {
   GtkBox parent_instance;
@@ -10,13 +11,13 @@ G_DEFINE_TYPE(Sound, sound, GTK_TYPE_BOX)
 
 static void sound_class_init(SoundClass *) {}
 
+static const char *css_classes[] = {"widget", "sound", "padded", NULL};
+
 static void sound_init(Sound *self) {
   gtk_orientable_set_orientation(GTK_ORIENTABLE(self),
                                  GTK_ORIENTATION_HORIZONTAL);
   gtk_box_set_spacing(GTK_BOX(self), 5);
-  gtk_widget_add_css_class(GTK_WIDGET(self), "widget");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "sound");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "padded");
+  gtk_widget_set_css_classes(GTK_WIDGET(self), css_classes);
   gtk_widget_set_name(GTK_WIDGET(self), "Sound");
 
   self->image = gtk_image_new_from_icon_name("dialog-question");
