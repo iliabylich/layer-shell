@@ -49,63 +49,64 @@ GtkWidget *power;
 int poll_events(void) {
   IO_CArray_Event events = io_poll_events(ui_ctx);
   for (size_t i = 0; i < events.len; i++) {
-    IO_Event e = events.ptr[i];
-    switch (e.tag) {
+    IO_Event event = events.ptr[i];
+    switch (event.tag) {
     case IO_Event_Workspaces: {
-      workspaces_refresh(WORKSPACES(workspaces), e.workspaces.ids,
-                         e.workspaces.active_id);
+      workspaces_refresh(WORKSPACES(workspaces), event.workspaces.ids,
+                         event.workspaces.active_id);
       break;
     }
     case IO_Event_ReloadStyles: {
-      reload_css();
+      css_reload();
       break;
     }
     case IO_Event_Tray: {
-      tray_refresh(TRAY(tray), e.tray.apps);
+      tray_refresh(TRAY(tray), event.tray.apps);
       break;
     }
     case IO_Event_CurrentWeather: {
       weather_button_refresh(WEATHER_BUTTON(weather_button),
-                             e.current_weather.temperature,
-                             e.current_weather.code);
+                             event.current_weather.temperature,
+                             event.current_weather.code);
       break;
     }
     case IO_Event_ForecastWeather: {
-      weather_refresh(weather, e.forecast_weather);
+      weather_refresh(weather, event.forecast_weather);
       break;
     }
     case IO_Event_Language: {
-      language_refresh(LANGUAGE(language), e.language.lang);
+      language_refresh(LANGUAGE(language), event.language.lang);
       break;
     }
     case IO_Event_Volume: {
-      sound_refresh(SOUND(sound), e.volume.volume, e.volume.muted);
+      sound_refresh(SOUND(sound), event.volume.volume, event.volume.muted);
       break;
     }
     case IO_Event_CpuUsage: {
-      cpu_refresh(CPU(cpu), e.cpu_usage.usage_per_core);
+      cpu_refresh(CPU(cpu), event.cpu_usage.usage_per_core);
       break;
     }
     case IO_Event_Memory: {
-      memory_refresh(MEMORY(memory), e.memory.used, e.memory.total);
+      memory_refresh(MEMORY(memory), event.memory.used, event.memory.total);
       break;
     }
     case IO_Event_WifiStatus: {
-      network_refresh_wifi_status(NETWORK(network), e.wifi_status.wifi_status);
+      network_refresh_wifi_status(NETWORK(network),
+                                  event.wifi_status.wifi_status);
       break;
     }
     case IO_Event_NetworkSpeed: {
       network_refresh_network_speed(NETWORK(network),
-                                    e.network_speed.upload_speed,
-                                    e.network_speed.download_speed);
+                                    event.network_speed.upload_speed,
+                                    event.network_speed.download_speed);
       break;
     }
     case IO_Event_NetworkList: {
-      network_refresh_network_list(NETWORK(network), e.network_list.list);
+      network_refresh_network_list(NETWORK(network), event.network_list.list);
       break;
     }
     case IO_Event_Time: {
-      clock_refresh(CLOCK(clock_), e.time.time);
+      clock_refresh(CLOCK(clock_), event.time.time);
       break;
     }
     case IO_Event_ToggleSessionScreen: {
@@ -113,7 +114,7 @@ int poll_events(void) {
       break;
     }
     case IO_Event_Launcher: {
-      launcher_refresn(launcher, e.launcher.apps);
+      launcher_refresn(launcher, event.launcher.apps);
       break;
     }
     case IO_Event_ToggleLauncher: {
@@ -249,7 +250,7 @@ int main(int argc, char **argv) {
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", on_app_activate, NULL);
-  g_signal_connect(app, "startup", load_css, NULL);
+  g_signal_connect(app, "startup", css_load, NULL);
   g_application_run(G_APPLICATION(app), argc, argv);
 
   return 0;

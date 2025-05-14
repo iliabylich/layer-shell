@@ -17,6 +17,8 @@ sources += files(
     'src/top_bar/memory.c',
     'src/top_bar/network.c',
     'src/top_bar/network_popover.c',
+    'src/top_bar/network_popover_action_map.c',
+    'src/top_bar/network_popover_menu.c',
     'src/top_bar/power.c',
     'src/top_bar/sound.c',
     'src/top_bar/tray.c',

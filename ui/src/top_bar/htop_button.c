@@ -19,6 +19,4 @@ static void htop_button_init(HtopButton *self) {
   gtk_widget_set_name(GTK_WIDGET(self), "HTop");
 }
 
-GtkWidget *htop_button_new() {
-  return g_object_new(htop_button_get_type(), NULL);
-}
+GtkWidget *htop_button_new() { return g_object_new(HTOP_BUTTON_TYPE, NULL); }

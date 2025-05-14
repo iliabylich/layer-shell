@@ -22,6 +22,4 @@ static void change_theme_init(ChangeTheme *self) {
   gtk_button_set_child(GTK_BUTTON(self), image);
 }
 
-GtkWidget *change_theme_new() {
-  return g_object_new(change_theme_get_type(), NULL);
-}
+GtkWidget *change_theme_new() { return g_object_new(CHANGE_THEME_TYPE, NULL); }

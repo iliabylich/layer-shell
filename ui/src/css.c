@@ -22,7 +22,7 @@ static buffer_t main_css(void) {
 
 GtkCssProvider *provider = NULL;
 
-void load_css(void) {
+void css_load(void) {
   buffer_t css = buffer_merge(theme_css(), main_css());
 
   provider = gtk_css_provider_new();
@@ -40,10 +40,10 @@ void load_css(void) {
   printf("Finished loading CSS...\n");
 }
 
-void reload_css(void) {
+void css_reload(void) {
   printf("Reloading styles...\n");
   GdkDisplay *display = gdk_display_get_default();
   gtk_style_context_remove_provider_for_display(display,
                                                 GTK_STYLE_PROVIDER(provider));
-  load_css();
+  css_load();
 }

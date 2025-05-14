@@ -28,7 +28,6 @@ static void network_class_init(NetworkClass *klass) {
   signals[SETTINGS_CLICKED] =
       g_signal_new("settings-clicked", G_TYPE_FROM_CLASS(klass),
                    G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
-
   signals[PING_CLICKED] =
       g_signal_new("ping-clicked", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST,
                    0, NULL, NULL, NULL, G_TYPE_NONE, 0);
@@ -100,8 +99,8 @@ void network_refresh_wifi_status(Network *network,
   }
 }
 
-void network_refresh_network_speed(Network *network, IO_CString upload_speed,
-                                   IO_CString download_speed) {
+void network_refresh_network_speed(Network *network, const char *upload_speed,
+                                   const char *download_speed) {
   gtk_label_set_label(GTK_LABEL(network->upload_speed_label), upload_speed);
   gtk_label_set_label(GTK_LABEL(network->download_speed_label), download_speed);
 }

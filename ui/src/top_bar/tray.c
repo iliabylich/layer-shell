@@ -53,7 +53,7 @@ static void tray_add(Tray *self, IO_TrayApp tray_app) {
   gtk_box_append(GTK_BOX(self), icon);
 }
 
-void tray_emit_triggered(Tray *tray, IO_CString uuid) {
+void tray_emit_triggered(Tray *tray, char *uuid) {
   g_signal_emit(tray, signals[TRIGGERED], 0, uuid);
 }
 

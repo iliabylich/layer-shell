@@ -1,21 +1,22 @@
 #include "ui/include/top_bar/cpu_label.h"
 
-GtkLabel *cpu_label_new() {
+GtkWidget *cpu_label_new() {
   GtkWidget *label = gtk_label_new("");
   gtk_label_set_use_markup(GTK_LABEL(label), true);
   cpu_label_set_load(GTK_LABEL(label), 0);
-  return GTK_LABEL(label);
+  return label;
 }
 
-const char *INDICATORS[] = {
+static const char *INDICATORS[] = {
     "<span color='#FFFFFF'>▁</span>", "<span color='#FFD5D5'>▂</span>",
     "<span color='#FFAAAA'>▃</span>", "<span color='#FF8080'>▄</span>",
     "<span color='#FF5555'>▅</span>", "<span color='#FF2B2B'>▆</span>",
     "<span color='#FF0000'>▇</span>", "<span color='#E60000'>█</span>",
 };
-const size_t INDICATORS_COUNT = sizeof(INDICATORS) / sizeof(const char *);
+static const size_t INDICATORS_COUNT =
+    sizeof(INDICATORS) / sizeof(const char *);
 
-void cpu_label_set_load(GtkLabel *label, float load) {
+void cpu_label_set_load(CpuLabel *label, float load) {
   size_t indicator_idx = floor(load / 100.0 * INDICATORS_COUNT);
 
   if (indicator_idx == INDICATORS_COUNT) {
@@ -23,5 +24,5 @@ void cpu_label_set_load(GtkLabel *label, float load) {
   }
 
   const char *markup = INDICATORS[indicator_idx];
-  gtk_label_set_label(GTK_LABEL(label), markup);
+  gtk_label_set_label(label, markup);
 }

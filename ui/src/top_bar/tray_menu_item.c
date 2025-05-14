@@ -18,7 +18,7 @@ static char *namespaced_action_name(size_t idx) {
 
 typedef struct {
   Tray *tray;
-  IO_CString uuid;
+  char *uuid;
 } context_t;
 char *strcopy(char *s) {
   size_t len = strlen(s);
@@ -27,7 +27,7 @@ char *strcopy(char *s) {
   out[len] = 0;
   return out;
 }
-context_t *context_new(Tray *tray, IO_CString uuid) {
+context_t *context_new(Tray *tray, char *uuid) {
   context_t *out = malloc(sizeof(context_t));
   out->tray = tray;
   out->uuid = strcopy(uuid);

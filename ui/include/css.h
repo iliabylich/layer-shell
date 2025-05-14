@@ -1,4 +1,4 @@
 #pragma once
 
-void load_css(void);
-void reload_css(void);
+void css_load(void);
+void css_reload(void);
