@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/tray_app.h"
+#include "gtk/gtk.h"
 #include "ui/include/top_bar/tray_app_icon.h"
 #include "ui/include/top_bar/tray_menu.h"
 
@@ -16,6 +17,8 @@ GtkWidget *tray_app_new(IO_TrayApp tray_app, Tray *tray) {
 
   GtkWidget *popover_menu = gtk_popover_menu_new_from_model(G_MENU_MODEL(menu));
   gtk_popover_set_has_arrow(GTK_POPOVER(popover_menu), false);
+  gtk_popover_menu_set_flags(GTK_POPOVER_MENU(popover_menu),
+                             GTK_POPOVER_MENU_NESTED);
   gtk_widget_set_parent(popover_menu, icon);
 
   GtkGesture *gesture = gtk_gesture_click_new();
