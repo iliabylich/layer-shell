@@ -42,7 +42,7 @@ static void session_init_layer(GtkWindow *window) {
   gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_RIGHT, true);
   gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_BOTTOM, true);
   gtk_layer_set_anchor(window, GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_namespace(window, "LayerShell/Session");
+  gtk_layer_set_namespace(window, "LayerShell/SessionScreen");
   gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 }
 

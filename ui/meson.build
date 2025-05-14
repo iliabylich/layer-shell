@@ -1,4 +1,4 @@
-sources = files(
+sources += files(
     'src/buffer.c',
     'src/css.c',
     'src/htop.c',
