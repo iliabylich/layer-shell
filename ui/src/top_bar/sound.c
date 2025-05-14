@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/sound.h"
-#include "gtk/gtk.h"
 
 struct _Sound {
   GtkBox parent_instance;
@@ -17,7 +16,7 @@ static void sound_init(Sound *self) {
 }
 
 GtkWidget *sound_new() {
-  return g_object_new(sound_get_type(),
+  return g_object_new(SOUND_TYPE,
                       //
                       "orientation", GTK_ORIENTATION_HORIZONTAL,
                       //

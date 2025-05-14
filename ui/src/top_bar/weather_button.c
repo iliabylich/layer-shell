@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/weather_button.h"
-#include "gtk/gtk.h"
 #include "ui/include/weather_helper.h"
 
 struct _WeatherButton {
@@ -14,7 +13,7 @@ static void weather_button_init(WeatherButton *) {}
 
 GtkWidget *weather_button_new() {
   return g_object_new(
-      weather_button_get_type(),
+      WEATHER_BUTTON_TYPE,
       //
       "label", "--",
       //

@@ -7,15 +7,20 @@ struct _HourlyGrid {
   BaseGrid parent_instance;
 };
 
-G_DEFINE_TYPE(HourlyGrid, hourly_grid, TYPE_BASE_GRID)
+G_DEFINE_TYPE(HourlyGrid, hourly_grid, BASE_GRID_TYPE)
 
 static void hourly_grid_class_init(HourlyGridClass *) {}
 
 static void hourly_grid_init(HourlyGrid *) {}
 
 GtkWidget *hourly_grid_new() {
-  HourlyGrid *self = g_object_new(hourly_grid_get_type(), "cols_count", 3,
-                                  "rows_count", 10, NULL);
+  HourlyGrid *self = g_object_new(HOURLY_GRID_TYPE,
+                                  //
+                                  "cols_count", 3,
+                                  //
+                                  "rows_count", 10,
+                                  //
+                                  NULL);
 
   for (size_t row = 0; row < self->parent_instance.rows_count; row++) {
 #define ATTACH(widget, column)                                                 \

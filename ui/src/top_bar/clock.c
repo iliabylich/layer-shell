@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/clock.h"
-#include "gtk/gtk.h"
 
 GtkWidget *clock_new() {
   return g_object_new(GTK_TYPE_LABEL,

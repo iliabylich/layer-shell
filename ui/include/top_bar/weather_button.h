@@ -10,5 +10,6 @@ GtkWidget *weather_button_new();
 void weather_button_refresh(WeatherButton *button, float temperature,
                             IO_WeatherCode code);
 
+#define WEATHER_BUTTON_TYPE weather_button_get_type()
 #define WEATHER_BUTTON(obj)                                                    \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), weather_button_get_type(), WeatherButton))
+  G_TYPE_CHECK_INSTANCE_CAST(obj, WEATHER_BUTTON_TYPE, WeatherButton)

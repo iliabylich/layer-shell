@@ -24,8 +24,8 @@ static void htop_init(Htop *self) {
   vte_window(GTK_WINDOW(self), command);
 }
 
-Htop *htop_new(GtkApplication *app) {
-  return g_object_new(htop_get_type(),
+GtkWidget *htop_new(GtkApplication *app) {
+  return g_object_new(HTOP_TYPE,
                       //
                       "application", app,
                       //

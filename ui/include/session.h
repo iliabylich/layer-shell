@@ -4,4 +4,7 @@
 
 G_DECLARE_FINAL_TYPE(Session, session, SESSION, WINDOW, GtkWindow)
 
-Session *session_new(GtkApplication *app);
+GtkWidget *session_new(GtkApplication *app);
+
+#define SESSION_TYPE session_get_type()
+#define SESSION(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, SESSION_TYPE, Session)

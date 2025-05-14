@@ -33,7 +33,7 @@ static void launcher_row_init(LauncherRow *self) {
 }
 
 GtkWidget *launcher_row_new() {
-  return g_object_new(launcher_row_get_type(),
+  return g_object_new(LAUNCHER_ROW_TYPE,
                       //
                       "orientation", GTK_ORIENTATION_HORIZONTAL,
                       //

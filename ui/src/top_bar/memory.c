@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/memory.h"
-#include "gtk/gtk.h"
 
 struct _Memory {
   GtkButton parent_instance;

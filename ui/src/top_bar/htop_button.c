@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/htop_button.h"
-#include "gtk/gtk.h"
 
 struct _HtopButton {
   GtkButton parent_instance;

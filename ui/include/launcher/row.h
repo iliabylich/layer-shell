@@ -8,5 +8,6 @@ G_DECLARE_FINAL_TYPE(LauncherRow, launcher_row, LAUNCHER_ROW, WIDGET, GtkBox)
 GtkWidget *launcher_row_new();
 void launcher_row_update(LauncherRow *row, IO_LauncherApp app);
 
+#define LAUNCHER_ROW_TYPE launcher_row_get_type()
 #define LAUNCHER_ROW(obj)                                                      \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), launcher_row_get_type(), LauncherRow))
+  G_TYPE_CHECK_INSTANCE_CAST(obj, LAUNCHER_ROW_TYPE, LauncherRow)

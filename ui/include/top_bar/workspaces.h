@@ -10,5 +10,6 @@ void workspaces_emit_switched(Workspaces *workspaces, size_t idx);
 void workspaces_refresh(Workspaces *workspaces, IO_CArray_usize ids,
                         size_t active_id);
 
+#define WORKSPACES_TYPE workspaces_get_type()
 #define WORKSPACES(obj)                                                        \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), workspaces_get_type(), Workspaces))
+  G_TYPE_CHECK_INSTANCE_CAST(obj, WORKSPACES_TYPE, Workspaces)

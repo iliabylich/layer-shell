@@ -1,5 +1,4 @@
 #include "ui/include/session.h"
-#include "gtk/gtk.h"
 #include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
@@ -89,8 +88,8 @@ static void session_init(Session *self) {
 #undef BUTTON
 }
 
-Session *session_new(GtkApplication *app) {
-  return g_object_new(session_get_type(),
+GtkWidget *session_new(GtkApplication *app) {
+  return g_object_new(SESSION_TYPE,
                       //
                       "application", app,
                       //

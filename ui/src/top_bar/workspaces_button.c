@@ -21,7 +21,7 @@ static void workspaces_button_init(WorkspacesButton *self) {
 }
 
 GtkWidget *workspaces_button_new(Workspaces *workspaces, size_t idx) {
-  WorkspacesButton *self = g_object_new(workspaces_button_get_type(), NULL);
+  WorkspacesButton *self = g_object_new(WORKSPACES_BUTTON_TYPE, NULL);
 
   self->workspaces = workspaces;
   self->idx = idx;

@@ -43,8 +43,8 @@ static void weather_init(Weather *self) {
   gtk_box_append(GTK_BOX(right_side), self->daily_grid);
 }
 
-Weather *weather_new(GtkApplication *app) {
-  return g_object_new(weather_get_type(),
+GtkWidget *weather_new(GtkApplication *app) {
+  return g_object_new(WEATHER_TYPE,
                       //
                       "application", app,
                       //

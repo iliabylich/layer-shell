@@ -70,7 +70,7 @@ static void base_grid_init(BaseGrid *self) {
 }
 
 GtkWidget *base_grid_new(size_t cols_count, size_t rows_count) {
-  BaseGrid *self = g_object_new(base_grid_get_type(),
+  BaseGrid *self = g_object_new(BASE_GRID_TYPE,
                                 //
                                 "cols_count", cols_count,
                                 //

@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/cpu.h"
-#include "gtk/gtk.h"
 #include "ui/include/top_bar/cpu_label.h"
 
 struct _Cpu {

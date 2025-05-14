@@ -26,12 +26,12 @@ GtkApplication *app;
 IO_UiCtx *ui_ctx;
 IO_IoCtx *io_ctx;
 
-TopBar *top_bar;
-Weather *weather;
-Htop *htop;
-Ping *ping;
-Session *session;
-Launcher *launcher;
+GtkWidget *top_bar;
+GtkWidget *weather;
+GtkWidget *htop;
+GtkWidget *ping;
+GtkWidget *session;
+GtkWidget *launcher;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
@@ -71,7 +71,7 @@ int poll_events(void) {
       break;
     }
     case IO_Event_ForecastWeather: {
-      weather_refresh(weather, event.forecast_weather);
+      weather_refresh(WEATHER(weather), event.forecast_weather);
       break;
     }
     case IO_Event_Language: {
@@ -114,11 +114,11 @@ int poll_events(void) {
       break;
     }
     case IO_Event_Launcher: {
-      launcher_refresn(launcher, event.launcher.apps);
+      launcher_refresn(LAUNCHER(launcher), event.launcher.apps);
       break;
     }
     case IO_Event_ToggleLauncher: {
-      launcher_toggle_and_reset(launcher);
+      launcher_toggle_and_reset(LAUNCHER(launcher));
       break;
     }
     }
@@ -197,19 +197,19 @@ static void on_app_activate() {
   clock_ = clock_new();
   power = power_new();
 
-  top_bar_push_left(top_bar, workspaces);
-  top_bar_push_left(top_bar, change_theme);
+  top_bar_push_left(TOP_BAR(top_bar), workspaces);
+  top_bar_push_left(TOP_BAR(top_bar), change_theme);
 
-  top_bar_push_right(top_bar, tray);
-  top_bar_push_right(top_bar, weather_button);
-  top_bar_push_right(top_bar, htop_button);
-  top_bar_push_right(top_bar, language);
-  top_bar_push_right(top_bar, sound);
-  top_bar_push_right(top_bar, cpu);
-  top_bar_push_right(top_bar, memory);
-  top_bar_push_right(top_bar, network);
-  top_bar_push_right(top_bar, clock_);
-  top_bar_push_right(top_bar, power);
+  top_bar_push_right(TOP_BAR(top_bar), tray);
+  top_bar_push_right(TOP_BAR(top_bar), weather_button);
+  top_bar_push_right(TOP_BAR(top_bar), htop_button);
+  top_bar_push_right(TOP_BAR(top_bar), language);
+  top_bar_push_right(TOP_BAR(top_bar), sound);
+  top_bar_push_right(TOP_BAR(top_bar), cpu);
+  top_bar_push_right(TOP_BAR(top_bar), memory);
+  top_bar_push_right(TOP_BAR(top_bar), network);
+  top_bar_push_right(TOP_BAR(top_bar), clock_);
+  top_bar_push_right(TOP_BAR(top_bar), power);
 
 #define CONNECT(widget, signal, callback)                                      \
   g_signal_connect(widget, signal, G_CALLBACK(callback), NULL);

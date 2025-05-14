@@ -7,15 +7,20 @@ struct _DailyGrid {
   BaseGrid parent_instance;
 };
 
-G_DEFINE_TYPE(DailyGrid, daily_grid, TYPE_BASE_GRID)
+G_DEFINE_TYPE(DailyGrid, daily_grid, BASE_GRID_TYPE)
 
 static void daily_grid_class_init(DailyGridClass *) {}
 
 static void daily_grid_init(DailyGrid *) {}
 
 GtkWidget *daily_grid_new() {
-  DailyGrid *self = g_object_new(daily_grid_get_type(), "cols_count", 4,
-                                 "rows_count", 6, NULL);
+  DailyGrid *self = g_object_new(DAILY_GRID_TYPE,
+                                 //
+                                 "cols_count", 4,
+                                 //
+                                 "rows_count", 6,
+                                 //
+                                 NULL);
 
   for (size_t row = 0; row < self->parent_instance.rows_count; row++) {
 #define ATTACH(widget, column)                                                 \

@@ -1,6 +1,4 @@
 #include "ui/include/launcher.h"
-#include "glib-object.h"
-#include "gtk/gtk.h"
 #include "ui/include/launcher/row.h"
 #include <gtk4-layer-shell.h>
 
@@ -128,8 +126,8 @@ static void launcher_init(Launcher *self) {
   gtk_widget_add_controller(GTK_WIDGET(self), ctrl);
 }
 
-Launcher *launcher_new(GtkApplication *app) {
-  return g_object_new(launcher_get_type(),
+GtkWidget *launcher_new(GtkApplication *app) {
+  return g_object_new(LAUNCHER_TYPE,
                       //
                       "application", app,
                       //

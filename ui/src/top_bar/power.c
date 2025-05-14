@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/power.h"
-#include "gtk/gtk.h"
 #include "ui/include/icons.h"
 
 struct _Power {
@@ -14,7 +13,7 @@ static void power_init(Power *) {}
 
 GtkWidget *power_new() {
   return g_object_new(
-      power_get_type(),
+      POWER_TYPE,
       //
       "css-classes",
       (const char *[]){"widget", "power", "padded", "clickable", NULL},

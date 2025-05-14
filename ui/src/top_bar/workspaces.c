@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/workspaces.h"
-#include "gtk/gtk.h"
 #include "ui/include/top_bar/workspaces_button.h"
 
 #define WORKSPACES_COUNT 10
@@ -33,7 +32,7 @@ static void workspaces_init(Workspaces *self) {
 }
 
 GtkWidget *workspaces_new() {
-  return g_object_new(workspaces_get_type(),
+  return g_object_new(WORKSPACES_TYPE,
                       //
                       "name", "Workspaces",
                       //

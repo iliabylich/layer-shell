@@ -24,8 +24,8 @@ static void ping_init(Ping *self) {
   vte_window(GTK_WINDOW(self), command);
 }
 
-Ping *ping_new(GtkApplication *app) {
-  return g_object_new(ping_get_type(),
+GtkWidget *ping_new(GtkApplication *app) {
+  return g_object_new(PING_TYPE,
                       //
                       "application", app,
                       //

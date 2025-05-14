@@ -1,5 +1,4 @@
 #include "ui/include/top_bar.h"
-#include "gtk/gtk.h"
 #include <gtk4-layer-shell.h>
 
 struct _TopBar {
@@ -43,8 +42,8 @@ static void top_bar_init(TopBar *self) {
   gtk_window_set_child(GTK_WINDOW(self), layout);
 }
 
-TopBar *top_bar_new(GtkApplication *app) {
-  return g_object_new(top_bar_get_type(),
+GtkWidget *top_bar_new(GtkApplication *app) {
+  return g_object_new(TOP_BAR_TYPE,
                       //
                       "application", app,
                       //

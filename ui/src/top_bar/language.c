@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/language.h"
-#include "gtk/gtk.h"
 
 GtkWidget *language_new() {
   return g_object_new(GTK_TYPE_LABEL,

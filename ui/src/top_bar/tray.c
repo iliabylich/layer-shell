@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/tray.h"
-#include "gtk/gtk.h"
 #include "ui/include/top_bar/tray_app.h"
 
 struct _Tray {
@@ -25,7 +24,7 @@ static void tray_class_init(TrayClass *klass) {
 static void tray_init(Tray *) {}
 
 GtkWidget *tray_new() {
-  return g_object_new(tray_get_type(),
+  return g_object_new(TRAY_TYPE,
                       //
                       "orientation", GTK_ORIENTATION_HORIZONTAL,
                       //
