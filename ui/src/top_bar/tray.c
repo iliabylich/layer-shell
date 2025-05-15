@@ -1,6 +1,6 @@
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/macros.h"
-#include "ui/include/top_bar/tray_app.h"
+#include "ui/include/top_bar/tray_app_icon.h"
 
 struct _Tray {
   GtkBox parent_instance;
@@ -52,7 +52,7 @@ static void tray_cleanup(Tray *self) {
 }
 
 static void tray_add(Tray *self, IO_TrayApp tray_app) {
-  GtkWidget *icon = tray_app_new(tray_app, self);
+  GtkWidget *icon = tray_app_icon_new(tray_app, self);
   gtk_box_append(GTK_BOX(self), icon);
 }
 

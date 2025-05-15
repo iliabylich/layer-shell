@@ -251,6 +251,7 @@ int main(int argc, char **argv) {
   g_signal_connect(app, "activate", on_app_activate, NULL);
   g_signal_connect(app, "startup", css_load, NULL);
   g_application_run(G_APPLICATION(app), argc, argv);
+  g_object_unref(app);
 
   return 0;
 }
