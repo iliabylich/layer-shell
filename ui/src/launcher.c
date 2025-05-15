@@ -1,5 +1,6 @@
 #include "ui/include/launcher.h"
 #include "ui/include/launcher/row.h"
+#include "ui/include/macros.h"
 #include <gtk4-layer-shell.h>
 
 #define ROWS_COUNT 5
@@ -68,7 +69,7 @@ static void launcher_init(Launcher *self) {
   // clang-format off
   self->input = g_object_new(
       GTK_TYPE_SEARCH_ENTRY,
-      "css-classes", (const char *[]){"search-box", NULL},
+      "css-classes", CSS("search-box"),
       "hexpand", true,
       NULL);
   // clang-format on
@@ -83,7 +84,7 @@ static void launcher_init(Launcher *self) {
   // clang-format off
   self->scroll = g_object_new(
       GTK_TYPE_SCROLLED_WINDOW,
-      "css-classes", (const char *[]){"scroll-list", NULL},
+      "css-classes", CSS("scroll-list"),
       "can-focus", false,
       "child", content,
       NULL);
@@ -94,7 +95,7 @@ static void launcher_init(Launcher *self) {
       GTK_TYPE_BOX,
       "orientation", GTK_ORIENTATION_VERTICAL,
       "spacing", 0,
-      "css-classes", (const char *[]){"wrapper", NULL},
+      "css-classes", CSS("wrapper"),
       NULL);
   // clang-format on
 
@@ -120,7 +121,7 @@ GtkWidget *launcher_new(GtkApplication *app) {
       "name", "LauncherWindow",
       "width-request", 700,
       "height-request", -1,
-      "css-classes", (const char *[]){"launcher-window", NULL},
+      "css-classes", CSS("launcher-window"),
       "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
       "layer-namespace", "LayerShell/Launcher",
       "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,

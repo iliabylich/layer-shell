@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/memory.h"
+#include "ui/include/macros.h"
 
 struct _Memory {
   GtkButton parent_instance;
@@ -15,7 +16,7 @@ GtkWidget *memory_new() {
   return g_object_new(
       MEMORY_TYPE,
       "name", "Memory",
-      "css-classes", (const char *[]){"widget", "memory", "padded", "clickable", NULL},
+      "css-classes", CSS("widget", "memory", "padded", "clickable"),
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
       "label", "--",
       NULL);

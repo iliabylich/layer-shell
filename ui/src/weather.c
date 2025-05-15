@@ -1,4 +1,5 @@
 #include "ui/include/weather.h"
+#include "ui/include/macros.h"
 #include "ui/include/weather/daily_grid.h"
 #include "ui/include/weather/hourly_grid.h"
 #include <gtk4-layer-shell.h>
@@ -38,7 +39,7 @@ GtkWidget *weather_new(GtkApplication *app) {
       WEATHER_TYPE,
       "application", app,
       "name", "WeatherWindow",
-      "css-classes", (const char *[]){"weather-window", NULL},
+      "css-classes", CSS("weather-window"),
       "toggle-on-escape", true,
       "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
       "layer-namespace", "LayerShell/Weather",

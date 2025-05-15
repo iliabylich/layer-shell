@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/tray.h"
+#include "ui/include/macros.h"
 #include "ui/include/top_bar/tray_app.h"
 
 struct _Tray {
@@ -29,7 +30,7 @@ GtkWidget *tray_new() {
       TRAY_TYPE,
       "orientation", GTK_ORIENTATION_HORIZONTAL,
       "spacing", 10,
-      "css-classes", (const char *[]){"widget", "tray", "padded", NULL},
+      "css-classes", CSS("widget", "tray", "padded"),
       "name", "Tray",
       NULL);
   // clang-format on

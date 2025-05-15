@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/sound.h"
+#include "ui/include/macros.h"
 
 struct _Sound {
   GtkBox parent_instance;
@@ -21,7 +22,7 @@ GtkWidget *sound_new() {
       SOUND_TYPE,
       "orientation", GTK_ORIENTATION_HORIZONTAL,
       "spacing", 5,
-      "css-classes", (const char *[]){"widget", "sound", "padded", NULL},
+      "css-classes", CSS("widget", "sound", "padded"),
       "name", "Sound",
       NULL);
   // clang-format on

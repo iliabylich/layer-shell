@@ -1,5 +1,6 @@
 #include "ui/include/top_bar/change_theme.h"
 #include "ui/include/icons.h"
+#include "ui/include/macros.h"
 
 struct _ChangeTheme {
   GtkButton parent_instance;
@@ -15,7 +16,7 @@ GtkWidget *change_theme_new() {
   // clang-format off
   return g_object_new(
       CHANGE_THEME_TYPE,
-      "css-classes", (const char *[]){"widget", "change-theme", "padded", "clickable", NULL},
+      "css-classes", CSS("widget", "change-theme", "padded", "clickable"),
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
       "name", "ChangeTheme",
       "child", gtk_image_new_from_gicon(get_change_theme_icon()),

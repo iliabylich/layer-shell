@@ -1,4 +1,5 @@
 #include "ui/include/session.h"
+#include "ui/include/macros.h"
 #include <gtk4-layer-shell.h>
 
 struct _Session {
@@ -53,7 +54,7 @@ static void session_init(Session *self) {
       "orientation", GTK_ORIENTATION_HORIZONTAL,
       "spacing", 200,
       "homogeneous", true,
-      "css-classes", (const char *[]){"wrapper", NULL},
+      "css-classes", CSS("wrapper"),
       NULL);
   // clang-format on
   gtk_window_set_child(GTK_WINDOW(self), layout);
@@ -76,7 +77,7 @@ GtkWidget *session_new(GtkApplication *app) {
       SESSION_TYPE,
       "application", app,
       "name", "SessionWindow",
-      "css-classes", (const char *[]){"session-window", NULL},
+      "css-classes", CSS("session-window"),
       "toggle-on-escape", true,
       "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
       "layer-anchor-top", true,

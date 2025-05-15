@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/workspaces.h"
+#include "ui/include/macros.h"
 #include "ui/include/top_bar/workspaces_button.h"
 
 #define WORKSPACES_COUNT 10
@@ -38,7 +39,7 @@ GtkWidget *workspaces_new() {
       "name", "Workspaces",
       "spacing", 0,
       "orientation", GTK_ORIENTATION_HORIZONTAL,
-      "css-classes", (const char *[]){"widget", "workspaces", NULL},
+      "css-classes", CSS("widget", "workspaces"),
       NULL);
   // clang-format on
 }

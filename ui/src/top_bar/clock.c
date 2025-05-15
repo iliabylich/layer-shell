@@ -1,11 +1,12 @@
 #include "ui/include/top_bar/clock.h"
+#include "ui/include/macros.h"
 
 GtkWidget *clock_new() {
   // clang-format off
   return g_object_new(
       GTK_TYPE_LABEL,
       "label", "--",
-      "css-classes", (const char *[]){"widget", "clock", "padded", NULL},
+      "css-classes", CSS("widget", "clock", "padded"),
       "name", "Clock",
       NULL);
   // clang-format on

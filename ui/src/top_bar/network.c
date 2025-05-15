@@ -1,5 +1,6 @@
 #include "ui/include/top_bar/network.h"
 #include "ui/include/icons.h"
+#include "ui/include/macros.h"
 #include "ui/include/top_bar/network_popover.h"
 
 struct _Network {
@@ -45,7 +46,7 @@ static GtkWidget *network_speed_label_new() {
   return g_object_new(
       GTK_TYPE_LABEL,
       "label", "??",
-      "css-classes", (const char *[]){"network-speed-label", NULL},
+      "css-classes", CSS("network-speed-label"),
       NULL);
   // clang-format on
 }
@@ -85,7 +86,7 @@ GtkWidget *network_new() {
   return g_object_new(
       NETWORK_TYPE,
       "css-classes",
-      (const char *[]){"widget", "network", "padded", "clickable", NULL},
+      CSS("widget", "network", "padded", "clickable"),
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
       "name", "Network",
       NULL);

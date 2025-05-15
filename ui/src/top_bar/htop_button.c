@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/htop_button.h"
+#include "ui/include/macros.h"
 
 struct _HtopButton {
   GtkButton parent_instance;
@@ -15,7 +16,7 @@ GtkWidget *htop_button_new() {
   return g_object_new(
       HTOP_BUTTON_TYPE,
       "label", "HTop",
-      "css-classes", (const char *[]){"widget", "terminal", "padded", "clickable", NULL},
+      "css-classes", CSS("widget", "terminal", "padded", "clickable"),
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
       "name", "HTop",
       NULL);

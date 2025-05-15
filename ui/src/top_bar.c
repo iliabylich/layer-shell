@@ -1,4 +1,5 @@
 #include "ui/include/top_bar.h"
+#include "ui/include/macros.h"
 #include <gtk4-layer-shell.h>
 
 struct _TopBar {
@@ -19,7 +20,7 @@ static void top_bar_init(TopBar *self) {
   // clang-format off
   GtkWidget *layout = g_object_new(
       GTK_TYPE_CENTER_BOX,
-      "css-classes", (const char *[]){"wrapper", NULL},
+      "css-classes", CSS("wrapper"),
       "start-widget", self->left,
       "end-widget", self->right,
       NULL);
@@ -33,7 +34,7 @@ GtkWidget *top_bar_new(GtkApplication *app) {
       TOP_BAR_TYPE,
       "application", app,
       "name", "TopBarWindow",
-      "css-classes", (const char *[]){"top-bar-window", NULL},
+      "css-classes", CSS("top-bar-window"),
       "layer", GTK_LAYER_SHELL_LAYER_TOP,
       "layer-anchor-top", true,
       "layer-anchor-left", true,

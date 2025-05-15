@@ -1,4 +1,5 @@
 #include "ui/include/htop.h"
+#include "ui/include/macros.h"
 #include <gtk4-layer-shell.h>
 
 struct _Htop {
@@ -23,7 +24,7 @@ GtkWidget *htop_new(GtkApplication *app) {
       "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
       "layer-namespace", "LayerShell/Htop",
       "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-      "vte-command", (const char *[]){"htop", NULL},
+      "vte-command", VTE_CMD("htop"),
       NULL);
   // clang-format on
 }

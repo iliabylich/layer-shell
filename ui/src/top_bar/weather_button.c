@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/weather_button.h"
+#include "ui/include/macros.h"
 #include "ui/include/weather_helper.h"
 
 struct _WeatherButton {
@@ -16,7 +17,7 @@ GtkWidget *weather_button_new() {
   return g_object_new(
       WEATHER_BUTTON_TYPE,
       "label", "--",
-      "css-classes", (const char *[]){"widget", "weather", "padded", "clickable", NULL},
+      "css-classes", CSS("widget", "weather", "padded", "clickable"),
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
       "name", "WeatherButton",
       NULL);

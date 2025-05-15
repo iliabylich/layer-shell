@@ -1,4 +1,5 @@
 #include "ui/include/ping.h"
+#include "ui/include/macros.h"
 #include <gtk4-layer-shell.h>
 
 struct _Ping {
@@ -23,7 +24,7 @@ GtkWidget *ping_new(GtkApplication *app) {
       "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
       "layer-namespace", "LayerShell/Ping",
       "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-      "vte-command", (const char *[]){"ping", "8.8.8.8", NULL},
+      "vte-command", VTE_CMD("ping", "8.8.8.8"),
       NULL);
   // clang-format on
 }

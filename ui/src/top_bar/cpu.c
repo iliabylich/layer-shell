@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/cpu.h"
+#include "ui/include/macros.h"
 #include "ui/include/top_bar/cpu_label.h"
 
 struct _Cpu {
@@ -20,7 +21,7 @@ GtkWidget *cpu_new() {
       CPU_TYPE,
       "orientation", GTK_ORIENTATION_HORIZONTAL,
       "spacing", 3,
-      "css-classes", (const char *[]){"widget", "cpu", "padded", NULL},
+      "css-classes", CSS("widget", "cpu", "padded"),
       "name", "CPU",
       NULL);
   // clang-format on

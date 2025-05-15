@@ -1,4 +1,5 @@
 #include "ui/include/launcher/row.h"
+#include "ui/include/macros.h"
 
 struct _LauncherRow {
   GtkBox parent_instance;
@@ -38,7 +39,7 @@ GtkWidget *launcher_row_new() {
       LAUNCHER_ROW_TYPE,
       "orientation", GTK_ORIENTATION_HORIZONTAL,
       "spacing", 0,
-      "css-classes", (const char *[]){"row", NULL},
+      "css-classes", CSS("row"),
       NULL);
   // clang-format on
 }
