@@ -32,18 +32,15 @@ static void workspaces_init(Workspaces *self) {
 }
 
 GtkWidget *workspaces_new() {
-  return g_object_new(WORKSPACES_TYPE,
-                      //
-                      "name", "Workspaces",
-                      //
-                      "spacing", 0,
-                      //
-                      "orientation", GTK_ORIENTATION_HORIZONTAL,
-                      //
-                      "css-classes",
-                      (const char *[]){"widget", "workspaces", NULL},
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      WORKSPACES_TYPE,
+      "name", "Workspaces",
+      "spacing", 0,
+      "orientation", GTK_ORIENTATION_HORIZONTAL,
+      "css-classes", (const char *[]){"widget", "workspaces", NULL},
+      NULL);
+  // clang-format on
 }
 
 void workspaces_emit_switched(Workspaces *workspaces, size_t idx) {

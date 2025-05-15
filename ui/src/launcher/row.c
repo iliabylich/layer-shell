@@ -12,36 +12,35 @@ G_DEFINE_TYPE(LauncherRow, launcher_row, GTK_TYPE_BOX)
 static void launcher_row_class_init(LauncherRowClass *) {}
 
 static void launcher_row_init(LauncherRow *self) {
-  self->image = g_object_new(GTK_TYPE_IMAGE,
-                             //
-                             "icon-size", GTK_ICON_SIZE_LARGE,
-                             //
-                             NULL);
+  // clang-format off
+  self->image = g_object_new(
+      GTK_TYPE_IMAGE,
+      "icon-size", GTK_ICON_SIZE_LARGE,
+      NULL);
+  // clang-format on
 
-  self->label = g_object_new(GTK_TYPE_LABEL,
-                             //
-                             "xalign", 0.0,
-                             //
-                             "valign", GTK_ALIGN_CENTER,
-                             //
-                             "ellipsize", PANGO_ELLIPSIZE_END,
-                             //
-                             NULL);
+  // clang-format off
+  self->label = g_object_new(
+      GTK_TYPE_LABEL,
+      "xalign", 0.0,
+      "valign", GTK_ALIGN_CENTER,
+      "ellipsize", PANGO_ELLIPSIZE_END,
+      NULL);
+  // clang-format on
 
   gtk_box_append(GTK_BOX(self), self->image);
   gtk_box_append(GTK_BOX(self), self->label);
 }
 
 GtkWidget *launcher_row_new() {
-  return g_object_new(LAUNCHER_ROW_TYPE,
-                      //
-                      "orientation", GTK_ORIENTATION_HORIZONTAL,
-                      //
-                      "spacing", 0,
-                      //
-                      "css-classes", (const char *[]){"row", NULL},
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      LAUNCHER_ROW_TYPE,
+      "orientation", GTK_ORIENTATION_HORIZONTAL,
+      "spacing", 0,
+      "css-classes", (const char *[]){"row", NULL},
+      NULL);
+  // clang-format on
 }
 
 void launcher_row_update(LauncherRow *self, IO_LauncherApp app) {

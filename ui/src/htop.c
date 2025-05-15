@@ -12,26 +12,18 @@ static void htop_class_init(HtopClass *) {}
 static void htop_init(Htop *) {}
 
 GtkWidget *htop_new(GtkApplication *app) {
-  return g_object_new(HTOP_TYPE,
-                      //
-                      "application", app,
-                      //
-                      "name", "HtopWindow",
-                      //
-                      "width-request", 1000,
-                      //
-                      "height-request", 700,
-                      //
-                      "toggle-on-escape", true,
-                      //
-                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-                      //
-                      "layer-namespace", "LayerShell/Htop",
-                      //
-                      "layer-keyboard-mode",
-                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-                      //
-                      "vte-command", (const char *[]){"htop", NULL},
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      HTOP_TYPE,
+      "application", app,
+      "name", "HtopWindow",
+      "width-request", 1000,
+      "height-request", 700,
+      "toggle-on-escape", true,
+      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+      "layer-namespace", "LayerShell/Htop",
+      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
+      "vte-command", (const char *[]){"htop", NULL},
+      NULL);
+  // clang-format on
 }

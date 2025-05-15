@@ -70,13 +70,11 @@ static void base_grid_init(BaseGrid *self) {
 }
 
 GtkWidget *base_grid_new(size_t cols_count, size_t rows_count) {
-  BaseGrid *self = g_object_new(BASE_GRID_TYPE,
-                                //
-                                "cols_count", cols_count,
-                                //
-                                "rows_count", rows_count,
-                                //
-                                NULL);
-
-  return GTK_WIDGET(self);
+  // clang-format off
+  return g_object_new(
+      BASE_GRID_TYPE,
+      "cols_count", cols_count,
+      "rows_count", rows_count,
+      NULL);
+  // clang-format on
 }

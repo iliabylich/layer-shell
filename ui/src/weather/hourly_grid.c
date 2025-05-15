@@ -14,13 +14,13 @@ static void hourly_grid_class_init(HourlyGridClass *) {}
 static void hourly_grid_init(HourlyGrid *) {}
 
 GtkWidget *hourly_grid_new() {
-  HourlyGrid *self = g_object_new(HOURLY_GRID_TYPE,
-                                  //
-                                  "cols_count", 3,
-                                  //
-                                  "rows_count", 10,
-                                  //
-                                  NULL);
+  // clang-format off
+  HourlyGrid *self = g_object_new(
+      HOURLY_GRID_TYPE,
+      "cols_count", 3,
+      "rows_count", 10,
+      NULL);
+  // clang-format on
 
   for (size_t row = 0; row < self->parent_instance.rows_count; row++) {
 #define ATTACH(widget, column)                                                 \

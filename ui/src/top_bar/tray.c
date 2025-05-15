@@ -24,18 +24,15 @@ static void tray_class_init(TrayClass *klass) {
 static void tray_init(Tray *) {}
 
 GtkWidget *tray_new() {
-  return g_object_new(TRAY_TYPE,
-                      //
-                      "orientation", GTK_ORIENTATION_HORIZONTAL,
-                      //
-                      "spacing", 10,
-                      //
-                      "css-classes",
-                      (const char *[]){"widget", "tray", "padded", NULL},
-                      //
-                      "name", "Tray",
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      TRAY_TYPE,
+      "orientation", GTK_ORIENTATION_HORIZONTAL,
+      "spacing", 10,
+      "css-classes", (const char *[]){"widget", "tray", "padded", NULL},
+      "name", "Tray",
+      NULL);
+  // clang-format on
 }
 
 static void tray_cleanup(Tray *self) {

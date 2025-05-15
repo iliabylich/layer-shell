@@ -16,18 +16,15 @@ static void sound_init(Sound *self) {
 }
 
 GtkWidget *sound_new() {
-  return g_object_new(SOUND_TYPE,
-                      //
-                      "orientation", GTK_ORIENTATION_HORIZONTAL,
-                      //
-                      "spacing", 5,
-                      //
-                      "css-classes",
-                      (const char *[]){"widget", "sound", "padded", NULL},
-                      //
-                      "name", "Sound",
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      SOUND_TYPE,
+      "orientation", GTK_ORIENTATION_HORIZONTAL,
+      "spacing", 5,
+      "css-classes", (const char *[]){"widget", "sound", "padded", NULL},
+      "name", "Sound",
+      NULL);
+  // clang-format on
 }
 
 void sound_refresh(Sound *self, uint32_t volume, bool muted) {

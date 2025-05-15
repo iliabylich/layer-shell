@@ -33,24 +33,18 @@ static void weather_init(Weather *self) {
 }
 
 GtkWidget *weather_new(GtkApplication *app) {
-  return g_object_new(WEATHER_TYPE,
-                      //
-                      "application", app,
-                      //
-                      "name", "WeatherWindow",
-                      //
-                      "css-classes", (const char *[]){"weather-window", NULL},
-                      //
-                      "toggle-on-escape", true,
-                      //
-                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-                      //
-                      "layer-namespace", "LayerShell/Weather",
-                      //
-                      "layer-keyboard-mode",
-                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      WEATHER_TYPE,
+      "application", app,
+      "name", "WeatherWindow",
+      "css-classes", (const char *[]){"weather-window", NULL},
+      "toggle-on-escape", true,
+      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+      "layer-namespace", "LayerShell/Weather",
+      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
+      NULL);
+  // clang-format on
 }
 
 void weather_refresh(Weather *weather, IO_Event_IO_ForecastWeather_Body data) {

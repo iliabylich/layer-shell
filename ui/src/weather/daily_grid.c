@@ -14,13 +14,13 @@ static void daily_grid_class_init(DailyGridClass *) {}
 static void daily_grid_init(DailyGrid *) {}
 
 GtkWidget *daily_grid_new() {
-  DailyGrid *self = g_object_new(DAILY_GRID_TYPE,
-                                 //
-                                 "cols_count", 4,
-                                 //
-                                 "rows_count", 6,
-                                 //
-                                 NULL);
+  // clang-format off
+  DailyGrid *self = g_object_new(
+      DAILY_GRID_TYPE,
+      "cols_count", 4,
+      "rows_count", 6,
+      NULL);
+  // clang-format on
 
   for (size_t row = 0; row < self->parent_instance.rows_count; row++) {
 #define ATTACH(widget, column)                                                 \

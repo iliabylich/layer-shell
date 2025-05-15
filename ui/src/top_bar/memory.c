@@ -11,19 +11,15 @@ static void memory_class_init(MemoryClass *) {}
 static void memory_init(Memory *) {}
 
 GtkWidget *memory_new() {
+  // clang-format off
   return g_object_new(
       MEMORY_TYPE,
-      //
       "name", "Memory",
-      //
-      "css-classes",
-      (const char *[]){"widget", "memory", "padded", "clickable", NULL},
-      //
+      "css-classes", (const char *[]){"widget", "memory", "padded", "clickable", NULL},
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
-      //
       "label", "--",
-      //
       NULL);
+  // clang-format on
 }
 
 void memory_refresh(Memory *memory, double used, double total) {

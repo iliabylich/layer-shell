@@ -15,18 +15,15 @@ static void cpu_class_init(CpuClass *) {}
 static void cpu_init(Cpu *) {}
 
 GtkWidget *cpu_new() {
-  return g_object_new(CPU_TYPE,
-                      //
-                      "orientation", GTK_ORIENTATION_HORIZONTAL,
-                      //
-                      "spacing", 3,
-                      //
-                      "css-classes",
-                      (const char *[]){"widget", "cpu", "padded", NULL},
-                      //
-                      "name", "CPU",
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      CPU_TYPE,
+      "orientation", GTK_ORIENTATION_HORIZONTAL,
+      "spacing", 3,
+      "css-classes", (const char *[]){"widget", "cpu", "padded", NULL},
+      "name", "CPU",
+      NULL);
+  // clang-format on
 }
 
 static bool first_time_init_p(Cpu *self) { return self->labels_count == 0; }

@@ -12,26 +12,18 @@ static void ping_class_init(PingClass *) {}
 static void ping_init(Ping *) {}
 
 GtkWidget *ping_new(GtkApplication *app) {
-  return g_object_new(PING_TYPE,
-                      //
-                      "application", app,
-                      //
-                      "name", "PingWindow",
-                      //
-                      "width-request", 1000,
-                      //
-                      "height-request", 700,
-                      //
-                      "toggle-on-escape", true,
-                      //
-                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-                      //
-                      "layer-namespace", "LayerShell/Ping",
-                      //
-                      "layer-keyboard-mode",
-                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-                      //
-                      "vte-command", (const char *[]){"ping", "8.8.8.8", NULL},
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      PING_TYPE,
+      "application", app,
+      "name", "PingWindow",
+      "width-request", 1000,
+      "height-request", 700,
+      "toggle-on-escape", true,
+      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+      "layer-namespace", "LayerShell/Ping",
+      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
+      "vte-command", (const char *[]){"ping", "8.8.8.8", NULL},
+      NULL);
+  // clang-format on
 }

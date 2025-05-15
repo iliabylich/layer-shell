@@ -40,19 +40,25 @@ static void on_click(Network *self) {
   gtk_popover_popup(GTK_POPOVER(self->popover));
 }
 
+static GtkWidget *network_speed_label_new() {
+  // clang-format off
+  return g_object_new(
+      GTK_TYPE_LABEL,
+      "label", "??",
+      "css-classes", (const char *[]){"network-speed-label", NULL},
+      NULL);
+  // clang-format on
+}
+
 static void network_init(Network *self) {
   self->label = gtk_label_new("-- ");
   self->image = gtk_image_new_from_gicon(get_wifi_icon());
 
-  self->download_speed_label = gtk_label_new("??");
-  gtk_widget_add_css_class(GTK_WIDGET(self->download_speed_label),
-                           "network-speed-label");
+  self->download_speed_label = network_speed_label_new();
   self->download_speed_icon =
       gtk_image_new_from_gicon(get_download_speed_icon());
 
-  self->upload_speed_label = gtk_label_new("??");
-  gtk_widget_add_css_class(GTK_WIDGET(self->upload_speed_label),
-                           "network-speed-label");
+  self->upload_speed_label = network_speed_label_new();
   self->upload_speed_icon = gtk_image_new_from_gicon(get_upload_speed_icon());
 
   GtkWidget *wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -75,17 +81,15 @@ static void network_init(Network *self) {
 }
 
 GtkWidget *network_new() {
+  // clang-format off
   return g_object_new(
       NETWORK_TYPE,
-      //
       "css-classes",
       (const char *[]){"widget", "network", "padded", "clickable", NULL},
-      //
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
-      //
       "name", "Network",
-      //
       NULL);
+  // clang-format on
 }
 
 void network_refresh_wifi_status(Network *network,

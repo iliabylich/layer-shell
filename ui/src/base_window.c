@@ -1,5 +1,4 @@
 #include "ui/include/base_window.h"
-#include "glib-object.h"
 #include "vte/vte.h"
 #include <gtk4-layer-shell.h>
 

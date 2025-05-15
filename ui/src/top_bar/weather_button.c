@@ -12,19 +12,15 @@ static void weather_button_class_init(WeatherButtonClass *) {}
 static void weather_button_init(WeatherButton *) {}
 
 GtkWidget *weather_button_new() {
+  // clang-format off
   return g_object_new(
       WEATHER_BUTTON_TYPE,
-      //
       "label", "--",
-      //
-      "css-classes",
-      (const char *[]){"widget", "weather", "padded", "clickable", NULL},
-      //
+      "css-classes", (const char *[]){"widget", "weather", "padded", "clickable", NULL},
       "cursor", gdk_cursor_new_from_name("pointer", NULL),
-      //
       "name", "WeatherButton",
-      //
       NULL);
+  // clang-format on
 }
 
 void weather_button_refresh(WeatherButton *button, float temperature,

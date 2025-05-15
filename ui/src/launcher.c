@@ -65,14 +65,13 @@ static bool on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
 }
 
 static void launcher_init(Launcher *self) {
-  self->input =
-      g_object_new(GTK_TYPE_SEARCH_ENTRY,
-                   //
-                   "css-classes", (const char *[]){"search-box", NULL},
-                   //
-                   "hexpand", true,
-                   //
-                   NULL);
+  // clang-format off
+  self->input = g_object_new(
+      GTK_TYPE_SEARCH_ENTRY,
+      "css-classes", (const char *[]){"search-box", NULL},
+      "hexpand", true,
+      NULL);
+  // clang-format on
 
   GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   for (size_t i = 0; i < ROWS_COUNT; i++) {
@@ -81,27 +80,23 @@ static void launcher_init(Launcher *self) {
     gtk_box_append(GTK_BOX(content), row);
   }
 
-  self->scroll =
-      g_object_new(GTK_TYPE_SCROLLED_WINDOW,
-                   //
-                   "css-classes", (const char *[]){"scroll-list", NULL},
-                   //
-                   "can-focus", false,
-                   //
-                   "child", content,
-                   //
-                   NULL);
+  // clang-format off
+  self->scroll = g_object_new(
+      GTK_TYPE_SCROLLED_WINDOW,
+      "css-classes", (const char *[]){"scroll-list", NULL},
+      "can-focus", false,
+      "child", content,
+      NULL);
+  // clang-format on
 
-  GtkWidget *layout =
-      g_object_new(GTK_TYPE_BOX,
-                   //
-                   "orientation", GTK_ORIENTATION_VERTICAL,
-                   //
-                   "spacing", 0,
-                   //
-                   "css-classes", (const char *[]){"wrapper", NULL},
-                   //
-                   NULL);
+  // clang-format off
+  GtkWidget *layout = g_object_new(
+      GTK_TYPE_BOX,
+      "orientation", GTK_ORIENTATION_VERTICAL,
+      "spacing", 0,
+      "css-classes", (const char *[]){"wrapper", NULL},
+      NULL);
+  // clang-format on
 
   gtk_box_append(GTK_BOX(layout), self->input);
   gtk_box_append(GTK_BOX(layout), self->scroll);
@@ -118,26 +113,19 @@ static void launcher_init(Launcher *self) {
 }
 
 GtkWidget *launcher_new(GtkApplication *app) {
-  return g_object_new(LAUNCHER_TYPE,
-                      //
-                      "application", app,
-                      //
-                      "name", "LauncherWindow",
-                      //
-                      "width-request", 700,
-                      //
-                      "height-request", -1,
-                      //
-                      "css-classes", (const char *[]){"launcher-window", NULL},
-                      //
-                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-                      //
-                      "layer-namespace", "LayerShell/Launcher",
-                      //
-                      "layer-keyboard-mode",
-                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      LAUNCHER_TYPE,
+      "application", app,
+      "name", "LauncherWindow",
+      "width-request", 700,
+      "height-request", -1,
+      "css-classes", (const char *[]){"launcher-window", NULL},
+      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+      "layer-namespace", "LayerShell/Launcher",
+      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
+      NULL);
+  // clang-format on
 }
 
 void launcher_refresn(Launcher *self, IO_CArray_LauncherApp apps) {

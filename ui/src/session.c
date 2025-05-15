@@ -47,18 +47,15 @@ HANDLER(logout, LOGOUT)
 #undef HANDLER
 
 static void session_init(Session *self) {
-  GtkWidget *layout =
-      g_object_new(GTK_TYPE_BOX,
-                   //
-                   "orientation", GTK_ORIENTATION_HORIZONTAL,
-                   //
-                   "spacing", 200,
-                   //
-                   "homogeneous", true,
-                   //
-                   "css-classes", (const char *[]){"wrapper", NULL},
-                   //
-                   NULL);
+  // clang-format off
+  GtkWidget *layout = g_object_new(
+      GTK_TYPE_BOX,
+      "orientation", GTK_ORIENTATION_HORIZONTAL,
+      "spacing", 200,
+      "homogeneous", true,
+      "css-classes", (const char *[]){"wrapper", NULL},
+      NULL);
+  // clang-format on
   gtk_window_set_child(GTK_WINDOW(self), layout);
 
 #define BUTTON(name, label)                                                    \
@@ -74,30 +71,20 @@ static void session_init(Session *self) {
 }
 
 GtkWidget *session_new(GtkApplication *app) {
-  return g_object_new(SESSION_TYPE,
-                      //
-                      "application", app,
-                      //
-                      "name", "SessionWindow",
-                      //
-                      "css-classes", (const char *[]){"session-window", NULL},
-                      //
-                      "toggle-on-escape", true,
-                      //
-                      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-                      //
-                      "layer-anchor-top", true,
-                      //
-                      "layer-anchor-right", true,
-                      //
-                      "layer-anchor-bottom", true,
-                      //
-                      "layer-anchor-left", true,
-                      //
-                      "layer-namespace", "LayerShell/SessionScreen",
-                      //
-                      "layer-keyboard-mode",
-                      GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-                      //
-                      NULL);
+  // clang-format off
+  return g_object_new(
+      SESSION_TYPE,
+      "application", app,
+      "name", "SessionWindow",
+      "css-classes", (const char *[]){"session-window", NULL},
+      "toggle-on-escape", true,
+      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
+      "layer-anchor-top", true,
+      "layer-anchor-right", true,
+      "layer-anchor-bottom", true,
+      "layer-anchor-left", true,
+      "layer-namespace", "LayerShell/SessionScreen",
+      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
+      NULL);
+  // clang-format on
 }
