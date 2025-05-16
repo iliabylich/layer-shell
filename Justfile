@@ -9,7 +9,7 @@ compile:
 
 dev:
     @just compile
-    ./builddir/layer-shell
+    ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=lsan.supp ./builddir/layer-shell
 
 clean:
     rm -rf builddir
@@ -29,7 +29,3 @@ perf-io:
 strace-io:
     cargo build --bin just-io
     strace target/debug/just-io
-
-asan:
-    @just compile
-    ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=lsan.supp ./builddir/layer-shell
