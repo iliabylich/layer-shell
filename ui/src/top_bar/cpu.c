@@ -11,9 +11,22 @@ struct _Cpu {
 
 G_DEFINE_TYPE(Cpu, cpu, GTK_TYPE_BOX)
 
-static void cpu_class_init(CpuClass *) {}
+static void cpu_dispose(GObject *gobject) {
+  Cpu *self = CPU(gobject);
+  if (self->labels) {
+    free(self->labels);
+  }
+  G_OBJECT_CLASS(cpu_parent_class)->dispose(gobject);
+}
 
-static void cpu_init(Cpu *) {}
+static void cpu_class_init(CpuClass *klass) {
+  G_OBJECT_CLASS(klass)->dispose = cpu_dispose;
+}
+
+static void cpu_init(Cpu *self) {
+  self->labels = NULL;
+  self->labels_count = 0;
+}
 
 GtkWidget *cpu_new() {
   // clang-format off

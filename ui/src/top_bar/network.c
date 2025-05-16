@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/network.h"
+#include "gtk/gtk.h"
 #include "ui/include/icons.h"
 #include "ui/include/macros.h"
 #include "ui/include/top_bar/network_popover.h"
@@ -25,6 +26,12 @@ enum {
 };
 static guint signals[N_SIGNALS] = {0};
 
+static void network_dispose(GObject *gobject) {
+  Network *self = NETWORK(gobject);
+  gtk_widget_unparent(self->popover);
+  G_OBJECT_CLASS(network_parent_class)->dispose(gobject);
+}
+
 static void network_class_init(NetworkClass *klass) {
   signals[SETTINGS_CLICKED] =
       g_signal_new("settings-clicked", G_TYPE_FROM_CLASS(klass),
@@ -35,6 +42,8 @@ static void network_class_init(NetworkClass *klass) {
   signals[NETWORK_CLICKED] = g_signal_new(
       "network-clicked", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL,
       NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
+
+  G_OBJECT_CLASS(klass)->dispose = network_dispose;
 }
 
 static void on_click(Network *self) {

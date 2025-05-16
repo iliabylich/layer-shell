@@ -54,7 +54,8 @@ static void drop_window(GtkWindow *win) {
 
 int poll_events(void) {
   IO_CArray_Event events = io_poll_events(ui_ctx);
-  for (size_t i = 0; i < events.len; i++) {
+  bool keep_processing = true;
+  for (size_t i = 0; i < events.len && keep_processing; i++) {
     IO_Event event = events.ptr[i];
     switch (event.tag) {
     case IO_Event_Workspaces: {
@@ -132,8 +133,14 @@ int poll_events(void) {
       io_finalize(ui_ctx, io_thread);
       fprintf(stderr, "[UI] Removing windows...\n");
       drop_window(GTK_WINDOW(top_bar));
+      drop_window(GTK_WINDOW(weather));
+      drop_window(GTK_WINDOW(htop));
+      drop_window(GTK_WINDOW(ping));
+      drop_window(GTK_WINDOW(session));
+      drop_window(GTK_WINDOW(launcher));
       g_application_quit(G_APPLICATION(app));
       fprintf(stderr, "[UI] Quit done.\n");
+      keep_processing = false;
       break;
     }
     }

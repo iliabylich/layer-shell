@@ -16,10 +16,19 @@ enum {
 };
 static guint signals[N_SIGNALS] = {0};
 
+static void tray_cleanup(Tray *self);
+static void tray_dispose(GObject *gobject) {
+  Tray *self = TRAY(gobject);
+  tray_cleanup(self);
+  G_OBJECT_CLASS(tray_parent_class)->dispose(gobject);
+}
+
 static void tray_class_init(TrayClass *klass) {
   signals[TRIGGERED] =
       g_signal_new("triggered", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
                    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
+
+  G_OBJECT_CLASS(klass)->dispose = tray_dispose;
 }
 
 static void tray_init(Tray *) {}
