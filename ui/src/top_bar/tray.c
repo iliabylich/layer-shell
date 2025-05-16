@@ -1,9 +1,14 @@
 #include "ui/include/top_bar/tray.h"
+#include "glib.h"
+#include "gtk/gtk.h"
+#include "gtk/gtkshortcut.h"
 #include "ui/include/macros.h"
 #include "ui/include/top_bar/tray_app_icon.h"
 
 struct _Tray {
   GtkBox parent_instance;
+
+  GList *icons;
 };
 
 #define MAX_ICONS_COUNT 10
@@ -31,7 +36,7 @@ static void tray_class_init(TrayClass *klass) {
   G_OBJECT_CLASS(klass)->dispose = tray_dispose;
 }
 
-static void tray_init(Tray *) {}
+static void tray_init(Tray *self) { self->icons = NULL; }
 
 GtkWidget *tray_new() {
   // clang-format off
@@ -46,23 +51,16 @@ GtkWidget *tray_new() {
 }
 
 static void tray_cleanup(Tray *self) {
-  GtkWidget *child = gtk_widget_get_first_child(GTK_WIDGET(self));
-  while (child) {
-    GtkWidget *grandchild = gtk_widget_get_first_child(child);
-    while (grandchild) {
-      GtkWidget *next = gtk_widget_get_next_sibling(grandchild);
-      gtk_widget_unparent(grandchild);
-      grandchild = next;
-    }
-    GtkWidget *next = gtk_widget_get_next_sibling(child);
-    gtk_box_remove(GTK_BOX(self), child);
-    child = next;
+  if (self->icons == NULL) {
+    return;
   }
-}
 
-static void tray_add(Tray *self, IO_TrayApp tray_app) {
-  GtkWidget *icon = tray_app_icon_new(tray_app, self);
-  gtk_box_append(GTK_BOX(self), icon);
+  for (GList *ptr = self->icons; ptr != NULL; ptr = ptr->next) {
+    GtkWidget *icon = GTK_WIDGET(ptr->data);
+    tray_app_icon_cleanup(TRAY_APP_ICON(icon));
+  }
+  g_list_free(self->icons);
+  self->icons = NULL;
 }
 
 void tray_emit_triggered(Tray *tray, char *uuid) {
@@ -72,7 +70,10 @@ void tray_emit_triggered(Tray *tray, char *uuid) {
 void tray_refresh(Tray *self, IO_CArray_TrayApp apps) {
   tray_cleanup(self);
 
+  self->icons = NULL;
   for (size_t i = 0; i < apps.len && i < MAX_ICONS_COUNT; i++) {
-    tray_add(self, apps.ptr[i]);
+    GtkWidget *icon = tray_app_icon_new(apps.ptr[i], self);
+    self->icons = g_list_append(self->icons, icon);
+    gtk_box_append(GTK_BOX(self), icon);
   }
 }
