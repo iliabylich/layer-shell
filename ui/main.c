@@ -1,5 +1,4 @@
 #include "bindings.h"
-#include "glib-object.h"
 #include "ui/include/css.h"
 #include "ui/include/htop.h"
 #include "ui/include/icons.h"

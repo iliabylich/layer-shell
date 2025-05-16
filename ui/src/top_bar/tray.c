@@ -1,7 +1,4 @@
 #include "ui/include/top_bar/tray.h"
-#include "glib.h"
-#include "gtk/gtk.h"
-#include "gtk/gtkshortcut.h"
 #include "ui/include/macros.h"
 #include "ui/include/top_bar/tray_app_icon.h"
 
