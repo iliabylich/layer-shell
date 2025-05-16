@@ -1,4 +1,5 @@
 #include "bindings.h"
+#include "glib-object.h"
 #include "ui/include/css.h"
 #include "ui/include/htop.h"
 #include "ui/include/icons.h"
@@ -24,6 +25,7 @@
 GtkApplication *app;
 IO_UiCtx *ui_ctx;
 IO_IoCtx *io_ctx;
+IO_IoThread *io_thread;
 
 GtkWidget *top_bar;
 GtkWidget *weather;
@@ -44,6 +46,11 @@ GtkWidget *memory;
 GtkWidget *network;
 GtkWidget *clock_;
 GtkWidget *power;
+
+static void drop_window(GtkWindow *win) {
+  gtk_application_remove_window(app, GTK_WINDOW(win));
+  g_object_unref(G_OBJECT(win));
+}
 
 int poll_events(void) {
   IO_CArray_Event events = io_poll_events(ui_ctx);
@@ -118,6 +125,15 @@ int poll_events(void) {
     }
     case IO_Event_ToggleLauncher: {
       launcher_toggle_and_reset(LAUNCHER(launcher));
+      break;
+    }
+    case IO_Event_Exit: {
+      fprintf(stderr, "[UI] Received exit...\n");
+      io_finalize(ui_ctx, io_thread);
+      fprintf(stderr, "[UI] Removing windows...\n");
+      drop_window(GTK_WINDOW(top_bar));
+      g_application_quit(G_APPLICATION(app));
+      fprintf(stderr, "[UI] Quit done.\n");
       break;
     }
     }
@@ -238,7 +254,7 @@ static void on_app_activate() {
 
   g_timeout_add(50, G_SOURCE_FUNC(poll_events), NULL);
 
-  io_spawn_thread(io_ctx);
+  io_thread = io_spawn_thread(io_ctx);
 }
 
 int main(int argc, char **argv) {

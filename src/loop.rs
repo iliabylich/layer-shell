@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use crate::{
     Command,
     channel::{CommandReceiver, EventSender},
@@ -102,10 +104,10 @@ impl Loop {
         })
     }
 
-    fn tick(&mut self, events: &mut Events) {
+    fn tick(&mut self, events: &mut Events) -> ControlFlow<()> {
         if let Err(err) = self.poll.poll(events) {
             log::error!("{err:?}");
-            return;
+            return ControlFlow::Continue(());
         }
 
         for event in events.iter() {
@@ -166,6 +168,9 @@ impl Loop {
                 CommandReceiver::TOKEN => {
                     self.rx.consume_signal();
                     while let Some(cmd) = self.rx.recv() {
+                        if let Command::FinishIoThread = cmd {
+                            return ControlFlow::Break(());
+                        }
                         if let Err(err) = self.process_command(cmd) {
                             log::error!("failed to process command: {err:?}");
                         }
@@ -175,18 +180,23 @@ impl Loop {
                 _ => unreachable!(),
             }
         }
+
+        ControlFlow::Continue(())
     }
 
-    pub(crate) fn start(mut self) -> ! {
+    pub(crate) fn start(mut self) {
         let mut events = Events::with_capacity(100);
 
         loop {
-            self.tick(&mut events);
+            if let ControlFlow::Break(_) = self.tick(&mut events) {
+                break;
+            }
         }
     }
 
     fn process_command(&mut self, cmd: Command) -> Result<()> {
         match cmd {
+            Command::FinishIoThread => unreachable!("FinishIoThread is processed by the caller"),
             Command::HyprlandGoToWorkspace { idx } => Hyprland::go_to_workspace(idx)?,
             Command::LauncherReset => self.launcher.reset(),
             Command::LauncherGoUp => self.launcher.go_up(),

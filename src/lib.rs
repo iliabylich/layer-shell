@@ -30,23 +30,33 @@ pub struct UiCtx {
     tx: EventReceiver,
     rx: CommandSender,
 }
+impl Drop for UiCtx {
+    fn drop(&mut self) {
+        eprintln!("Dropping UiCtx...");
+    }
+}
 #[repr(C)]
 pub struct Ctx {
     pub io: *mut IoCtx,
     pub ui: *mut UiCtx,
 }
 
+pub struct IoThread {
+    handle: std::thread::JoinHandle<()>,
+}
+
 /// # Safety
 ///
 /// This function must be called at most once.
 pub unsafe fn io_run_in_place(io_ctx: *mut IoCtx) -> Result<()> {
-    let io_ctx = unsafe { Box::from_raw(io_ctx) };
+    let io_ctx = unsafe { *Box::from_raw(io_ctx) };
 
     let tx = io_ctx.tx;
     let rx = io_ctx.rx;
 
     let r#loop = Loop::new(tx, rx)?;
     r#loop.start();
+    Ok(())
 }
 
 #[unsafe(no_mangle)]
@@ -68,14 +78,16 @@ pub extern "C" fn io_init() -> Ctx {
 ///
 /// This function must be called at most once.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_spawn_thread(io_ctx: *mut IoCtx) {
+pub unsafe extern "C" fn io_spawn_thread(io_ctx: *mut IoCtx) -> *mut IoThread {
     let io_ctx = unsafe { Box::from_raw(io_ctx) };
 
-    std::thread::spawn(move || {
+    let handle = std::thread::spawn(move || {
         if let Err(err) = unsafe { io_run_in_place(Box::leak(io_ctx)) } {
             log::error!("IO thread has crashed: {:?}", err);
         }
     });
+
+    Box::leak(Box::new(IoThread { handle }))
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_poll_events(ui_ctx: &mut UiCtx) -> CArray<Event> {
@@ -89,6 +101,18 @@ pub extern "C" fn io_poll_events(ui_ctx: &mut UiCtx) -> CArray<Event> {
 #[unsafe(no_mangle)]
 pub extern "C" fn io_drop_events(events: CArray<Event>) {
     drop(events)
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_finalize(ui_ctx: *mut UiCtx, io_thread: *mut IoThread) {
+    let mut ui_ctx = unsafe { Box::from_raw(ui_ctx) };
+    ui_ctx.rx.send(Command::FinishIoThread);
+
+    let io_thread = unsafe { Box::from_raw(io_thread) };
+    eprintln!("Waiting for IO thread to finish...");
+    io_thread.handle.join().unwrap();
+    eprintln!("IO thread has finished...");
+
+    drop(ui_ctx);
 }
 
 #[unsafe(no_mangle)]

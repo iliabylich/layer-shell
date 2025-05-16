@@ -87,6 +87,7 @@ impl OrgMeLayerShellControl for DBusService {
     }
 
     fn exit(&mut self) -> std::result::Result<(), dbus::MethodErr> {
-        std::process::exit(0);
+        self.tx.send(Event::Exit);
+        Ok(())
     }
 }

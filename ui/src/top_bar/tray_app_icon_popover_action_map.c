@@ -103,7 +103,7 @@ static void visit_radio(IO_TrayItem tray_item, GActionGroup *action_group,
   g_action_map_add_action(G_ACTION_MAP(action_group), G_ACTION(action));
 }
 
-static void visit_regular(IO_TrayItem tray_item, GActionGroup *action_group,
+static void visit_regular(IO_TrayItem, GActionGroup *action_group,
                           context_t *context) {
   GSimpleAction *action = g_simple_action_new(context->name, NULL);
   g_signal_connect(action, "activate", G_CALLBACK(on_activate), context);
