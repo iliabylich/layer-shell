@@ -5,4 +5,5 @@
 #include <gtk/gtk.h>
 
 GSimpleActionGroup *tray_app_icon_popover_action_map_new(IO_TrayItem tray_item,
-                                                         Tray *tray);
+                                                         Tray *tray,
+                                                         GList **context_pool);

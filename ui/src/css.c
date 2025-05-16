@@ -37,11 +37,11 @@ void css_load(void) {
       display, GTK_STYLE_PROVIDER(provider),
       GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-  printf("Finished loading CSS...\n");
+  fprintf(stderr, "Finished loading CSS...\n");
 }
 
 void css_reload(void) {
-  printf("Reloading styles...\n");
+  fprintf(stderr, "Reloading styles...\n");
   GdkDisplay *display = gdk_display_get_default();
   gtk_style_context_remove_provider_for_display(display,
                                                 GTK_STYLE_PROVIDER(provider));

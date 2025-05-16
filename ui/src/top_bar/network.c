@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/network.h"
-#include "gtk/gtk.h"
 #include "ui/include/icons.h"
 #include "ui/include/macros.h"
 #include "ui/include/top_bar/network_popover.h"

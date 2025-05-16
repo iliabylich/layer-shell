@@ -10,35 +10,40 @@ static void on_activate(GSimpleAction *, GVariant *,
 }
 
 static void visit(IO_TrayItem tray_item, GActionGroup *action_group,
-                  tray_app_icon_context_t *context);
+                  tray_app_icon_context_t *context, GList **context_pool);
 static void visit_nested(IO_TrayItem tray_item, GActionGroup *action_group,
-                         tray_app_icon_context_t *context);
+                         tray_app_icon_context_t *context,
+                         GList **context_pool);
 static void visit_disabled(IO_TrayItem tray_item, GActionGroup *action_group,
-                           tray_app_icon_context_t *context);
+                           tray_app_icon_context_t *context,
+                           GList **context_pool);
 static void visit_checkbox(IO_TrayItem tray_item, GActionGroup *action_group,
-                           tray_app_icon_context_t *context);
+                           tray_app_icon_context_t *context,
+                           GList **context_pool);
 static void visit_radio(IO_TrayItem tray_item, GActionGroup *action_group,
-                        tray_app_icon_context_t *context);
+                        tray_app_icon_context_t *context, GList **context_pool);
 static void visit_regular(IO_TrayItem tray_item, GActionGroup *action_group,
-                          tray_app_icon_context_t *context);
+                          tray_app_icon_context_t *context,
+                          GList **context_pool);
 
 static void visit(IO_TrayItem tray_item, GActionGroup *action_group,
-                  tray_app_icon_context_t *context) {
+                  tray_app_icon_context_t *context, GList **context_pool) {
   if (TRAY_ITEM_IS_NESTED(tray_item)) {
-    visit_nested(tray_item, action_group, context);
+    visit_nested(tray_item, action_group, context, context_pool);
   } else if (TRAY_ITEM_IS_DISABLED(tray_item)) {
-    visit_disabled(tray_item, action_group, context);
+    visit_disabled(tray_item, action_group, context, context_pool);
   } else if (TRAY_ITEM_IS_CHECKBOX(tray_item)) {
-    visit_checkbox(tray_item, action_group, context);
+    visit_checkbox(tray_item, action_group, context, context_pool);
   } else if (TRAY_ITEM_IS_RADIO(tray_item)) {
-    visit_radio(tray_item, action_group, context);
+    visit_radio(tray_item, action_group, context, context_pool);
   } else {
-    visit_regular(tray_item, action_group, context);
+    visit_regular(tray_item, action_group, context, context_pool);
   }
 }
 
 static void visit_nested(IO_TrayItem tray_item, GActionGroup *action_group,
-                         tray_app_icon_context_t *context) {
+                         tray_app_icon_context_t *context,
+                         GList **context_pool) {
   for (size_t child_idx = 0; child_idx < tray_item.children.len; child_idx++) {
     IO_TrayItem child = tray_item.children.ptr[child_idx];
     if (!child.visible) {
@@ -47,15 +52,17 @@ static void visit_nested(IO_TrayItem tray_item, GActionGroup *action_group,
 
     tray_app_icon_context_t *child_context =
         tray_app_icon_context_new_child(context, child_idx, child.uuid);
-    visit(child, action_group, child_context);
+    *context_pool = g_list_append(*context_pool, child_context);
+
+    visit(child, action_group, child_context, context_pool);
   }
 }
 
 static void visit_disabled(IO_TrayItem, GActionGroup *,
-                           tray_app_icon_context_t *) {}
+                           tray_app_icon_context_t *, GList **) {}
 
 static void visit_checkbox(IO_TrayItem tray_item, GActionGroup *action_group,
-                           tray_app_icon_context_t *context) {
+                           tray_app_icon_context_t *context, GList **) {
   GSimpleAction *action = g_simple_action_new_stateful(
       context->name, NULL, g_variant_new_boolean(tray_item.toggle_state == 1));
   g_signal_connect(action, "activate", G_CALLBACK(on_activate), context);
@@ -63,7 +70,7 @@ static void visit_checkbox(IO_TrayItem tray_item, GActionGroup *action_group,
 }
 
 static void visit_radio(IO_TrayItem tray_item, GActionGroup *action_group,
-                        tray_app_icon_context_t *context) {
+                        tray_app_icon_context_t *context, GList **) {
   GSimpleAction *action = g_simple_action_new_stateful(
       context->name, G_VARIANT_TYPE_BOOLEAN,
       g_variant_new_boolean(tray_item.toggle_state == 1));
@@ -72,20 +79,22 @@ static void visit_radio(IO_TrayItem tray_item, GActionGroup *action_group,
 }
 
 static void visit_regular(IO_TrayItem, GActionGroup *action_group,
-                          tray_app_icon_context_t *context) {
+                          tray_app_icon_context_t *context, GList **) {
   GSimpleAction *action = g_simple_action_new(context->name, NULL);
   g_signal_connect(action, "activate", G_CALLBACK(on_activate), context);
   g_action_map_add_action(G_ACTION_MAP(action_group), G_ACTION(action));
 }
 
 GSimpleActionGroup *tray_app_icon_popover_action_map_new(IO_TrayItem tray_item,
-                                                         Tray *tray) {
+                                                         Tray *tray,
+                                                         GList **context_pool) {
   GSimpleActionGroup *action_group = g_simple_action_group_new();
 
   tray_app_icon_context_t *context =
       tray_app_icon_context_new_root(tray, TRAY_ACTION_ROOT_PREFIX, "root");
+  *context_pool = g_list_append(*context_pool, context);
 
-  visit_nested(tray_item, G_ACTION_GROUP(action_group), context);
+  visit_nested(tray_item, G_ACTION_GROUP(action_group), context, context_pool);
 
   return action_group;
 }
