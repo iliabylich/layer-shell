@@ -1,25 +1,29 @@
 #include "ui/include/top_bar/change_theme.h"
 #include "ui/include/icons.h"
 #include "ui/include/macros.h"
+#include "ui/include/top_bar.h"
 
-struct _ChangeTheme {
-  GtkButton parent_instance;
-};
+typedef struct {
+  change_theme_clicked_f callback;
+} data_t;
+#define DATA_KEY "data"
 
-G_DEFINE_TYPE(ChangeTheme, change_theme, GTK_TYPE_BUTTON)
+static void on_click(GtkWidget *self) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+  data->callback();
+}
 
-static void change_theme_class_init(ChangeThemeClass *) {}
+GtkWidget *change_theme_init(change_theme_clicked_f callback) {
+  GtkWidget *self = top_bar_get_widget_by_id("CHANGE_THEME");
 
-static void change_theme_init(ChangeTheme *) {}
+  GtkWidget *image = top_bar_get_widget_by_id("CHANGE_THEME_IMAGE");
+  gtk_image_set_from_gicon(GTK_IMAGE(image), get_change_theme_icon());
 
-GtkWidget *change_theme_new() {
-  // clang-format off
-  return g_object_new(
-      CHANGE_THEME_TYPE,
-      "css-classes", CSS("widget", "change-theme", "padded", "clickable"),
-      "cursor", gdk_cursor_new_from_name("pointer", NULL),
-      "name", "ChangeTheme",
-      "child", gtk_image_new_from_gicon(get_change_theme_icon()),
-      NULL);
-  // clang-format on
+  data_t *data = malloc(sizeof(data_t));
+  data->callback = callback;
+  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
+
+  g_signal_connect(self, "clicked", G_CALLBACK(on_click), data);
+
+  return self;
 }

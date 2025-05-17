@@ -2,10 +2,7 @@
 
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(Memory, memory, MEMORY, Widget, GtkButton)
+typedef void (*memory_clicked_f)();
 
-GtkWidget *memory_new();
-void memory_refresh(Memory *memory, double used, double total);
-
-#define MEMORY_TYPE memory_get_type()
-#define MEMORY(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, MEMORY_TYPE, Memory)
+GtkWidget *memory_init(memory_clicked_f callback);
+void memory_refresh(GtkWidget *memory, double used, double total);

@@ -1,73 +1,57 @@
 #include "ui/include/top_bar/cpu.h"
 #include "ui/include/macros.h"
+#include "ui/include/top_bar.h"
 #include "ui/include/top_bar/cpu_label.h"
 
-struct _Cpu {
-  GtkBox parent_instance;
-
+typedef struct {
   CpuLabel **labels;
   size_t labels_count;
-};
+} data_t;
+#define DATA_KEY "data"
 
-G_DEFINE_TYPE(Cpu, cpu, GTK_TYPE_BOX)
+GtkWidget *cpu_init() {
+  GtkWidget *self = top_bar_get_widget_by_id("CPU");
 
-static void cpu_dispose(GObject *gobject) {
-  Cpu *self = CPU(gobject);
-  if (self->labels) {
-    free(self->labels);
-  }
-  G_OBJECT_CLASS(cpu_parent_class)->dispose(gobject);
+  data_t *data = malloc(sizeof(data_t));
+  data->labels = NULL;
+  data->labels_count = 0;
+  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
+
+  return self;
 }
 
-static void cpu_class_init(CpuClass *klass) {
-  G_OBJECT_CLASS(klass)->dispose = cpu_dispose;
-}
+static bool first_time_init_p(data_t *data) { return data->labels_count == 0; }
 
-static void cpu_init(Cpu *self) {
-  self->labels = NULL;
-  self->labels_count = 0;
-}
-
-GtkWidget *cpu_new() {
-  // clang-format off
-  return g_object_new(
-      CPU_TYPE,
-      "orientation", GTK_ORIENTATION_HORIZONTAL,
-      "spacing", 3,
-      "css-classes", CSS("widget", "cpu", "padded"),
-      "name", "CPU",
-      NULL);
-  // clang-format on
-}
-
-static bool first_time_init_p(Cpu *self) { return self->labels_count == 0; }
-
-static void assert_cpu_count_is(Cpu *self, size_t count) {
-  if (self->labels_count != count) {
+static void assert_cpu_count_is(data_t *data, size_t count) {
+  if (data->labels_count != count) {
     fprintf(stderr, "Dynamic number of CPU cores %lu vs %lu, exiting...\n",
-            self->labels_count, count);
+            data->labels_count, count);
     exit(EXIT_FAILURE);
   }
 }
 
-static void create_labels(Cpu *self, size_t count) {
-  self->labels = calloc(count, sizeof(GtkWidget *));
+static void create_labels(GtkWidget *self, size_t count) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+
+  data->labels = calloc(count, sizeof(GtkWidget *));
   for (size_t i = 0; i < count; i++) {
     GtkWidget *label = cpu_label_new();
-    self->labels[i] = CPU_LABEL(label);
+    data->labels[i] = CPU_LABEL(label);
     gtk_box_append(GTK_BOX(self), label);
   }
-  self->labels_count = count;
+  data->labels_count = count;
 }
 
-void cpu_refresh(Cpu *self, IO_CArray_usize usage_per_core) {
-  if (first_time_init_p(self)) {
+void cpu_refresh(GtkWidget *self, IO_CArray_usize usage_per_core) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+
+  if (first_time_init_p(data)) {
     create_labels(self, usage_per_core.len);
   } else {
-    assert_cpu_count_is(self, usage_per_core.len);
+    assert_cpu_count_is(data, usage_per_core.len);
   }
 
   for (size_t i = 0; i < usage_per_core.len; i++) {
-    cpu_label_set_load(self->labels[i], usage_per_core.ptr[i]);
+    cpu_label_set_load(data->labels[i], usage_per_core.ptr[i]);
   }
 }

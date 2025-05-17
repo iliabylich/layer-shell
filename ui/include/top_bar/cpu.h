@@ -3,10 +3,5 @@
 #include "bindings.h"
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(Cpu, cpu, CPU, Widget, GtkBox)
-
-GtkWidget *cpu_new();
-void cpu_refresh(Cpu *cpu, IO_CArray_usize usage_per_core);
-
-#define CPU_TYPE cpu_get_type()
-#define CPU(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, CPU_TYPE, Cpu)
+GtkWidget *cpu_init();
+void cpu_refresh(GtkWidget *cpu, IO_CArray_usize usage_per_core);

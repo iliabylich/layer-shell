@@ -1,54 +1,49 @@
 #include "ui/include/weather.h"
+#include "gtk/gtk.h"
 #include "ui/include/macros.h"
 #include "ui/include/weather/daily_grid.h"
 #include "ui/include/weather/hourly_grid.h"
+#include "ui/include/window_helper.h"
+#include "weather.xml.xxd"
 #include <gtk4-layer-shell.h>
 
-struct _Weather {
-  BaseWindow parent_instance;
-
+typedef struct {
   GtkWidget *hourly_grid;
   GtkWidget *daily_grid;
-};
+} data_t;
+#define DATA_KEY "data"
 
-G_DEFINE_TYPE(Weather, weather, BASE_WINDOW_TYPE)
+BLP_BUILDER(weather)
 
-static void weather_class_init(WeatherClass *) {}
+GtkWidget *weather_init(GtkApplication *app) {
+  GtkWidget *self = builder_get_object("WEATHER");
+  gtk_window_set_application(GTK_WINDOW(self), app);
+  window_set_toggle_on_escape(GTK_WINDOW(self));
+  gtk_layer_init_for_window(GTK_WINDOW(self));
+  gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_namespace(GTK_WINDOW(self), "LayerShell/Weather");
+  gtk_layer_set_keyboard_mode(GTK_WINDOW(self),
+                              GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-static void weather_init(Weather *self) {
-  self->hourly_grid = hourly_grid_new();
-  self->daily_grid = daily_grid_new();
+  GtkWidget *hourly_grid = builder_get_object("HOURLY");
+  hourly_grid_init(hourly_grid);
+  GtkWidget *daily_grid = builder_get_object("DAILY");
+  daily_grid_init(daily_grid);
 
-  GtkWidget *layout = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 50);
-  gtk_window_set_child(GTK_WINDOW(self), layout);
+  data_t *data = malloc(sizeof(data_t));
+  data->hourly_grid = hourly_grid;
+  data->daily_grid = daily_grid;
+  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
 
-  GtkWidget *left_side = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_box_append(GTK_BOX(layout), left_side);
-  gtk_box_append(GTK_BOX(left_side), gtk_label_new("Hourly"));
-  gtk_box_append(GTK_BOX(left_side), self->hourly_grid);
-
-  GtkWidget *right_side = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_box_append(GTK_BOX(layout), right_side);
-  gtk_box_append(GTK_BOX(right_side), gtk_label_new("Daily"));
-  gtk_box_append(GTK_BOX(right_side), self->daily_grid);
+  return self;
 }
 
-GtkWidget *weather_new(GtkApplication *app) {
-  // clang-format off
-  return g_object_new(
-      WEATHER_TYPE,
-      "application", app,
-      "name", "WeatherWindow",
-      "css-classes", CSS("weather-window"),
-      "toggle-on-escape", true,
-      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-      "layer-namespace", "LayerShell/Weather",
-      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-      NULL);
-  // clang-format on
+void weather_refresh(GtkWidget *self,
+                     IO_Event_IO_ForecastWeather_Body weather) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+
+  hourly_grid_refresh(data->hourly_grid, weather.hourly);
+  daily_grid_refresh(data->daily_grid, weather.daily);
 }
 
-void weather_refresh(Weather *weather, IO_Event_IO_ForecastWeather_Body data) {
-  hourly_grid_refresh(HOURLY_GRID(weather->hourly_grid), data.hourly);
-  daily_grid_refresh(DAILY_GRID(weather->daily_grid), data.daily);
-}
+void weather_toggle(GtkWidget *self) { window_toggle(GTK_WINDOW(self)); }

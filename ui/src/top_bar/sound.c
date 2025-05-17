@@ -1,34 +1,26 @@
 #include "ui/include/top_bar/sound.h"
 #include "ui/include/macros.h"
+#include "ui/include/top_bar.h"
 
-struct _Sound {
-  GtkBox parent_instance;
-
+typedef struct {
   GtkWidget *image;
-};
+} data_t;
+#define DATA_KEY "data"
 
-G_DEFINE_TYPE(Sound, sound, GTK_TYPE_BOX)
+GtkWidget *sound_init() {
+  GtkWidget *self = top_bar_get_widget_by_id("SOUND");
+  GtkWidget *image = top_bar_get_widget_by_id("SOUND_IMAGE");
 
-static void sound_class_init(SoundClass *) {}
+  data_t *data = malloc(sizeof(data_t));
+  data->image = image;
+  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
 
-static void sound_init(Sound *self) {
-  self->image = gtk_image_new_from_icon_name("dialog-question");
-  gtk_box_append(GTK_BOX(self), self->image);
+  return self;
 }
 
-GtkWidget *sound_new() {
-  // clang-format off
-  return g_object_new(
-      SOUND_TYPE,
-      "orientation", GTK_ORIENTATION_HORIZONTAL,
-      "spacing", 5,
-      "css-classes", CSS("widget", "sound", "padded"),
-      "name", "Sound",
-      NULL);
-  // clang-format on
-}
+void sound_refresh(GtkWidget *self, uint32_t volume, bool muted) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
 
-void sound_refresh(Sound *self, uint32_t volume, bool muted) {
   const char *icon_name = NULL;
   if (volume == 0 || muted) {
     icon_name = "audio-volume-muted-symbolic";
@@ -41,5 +33,5 @@ void sound_refresh(Sound *self, uint32_t volume, bool muted) {
   } else {
     icon_name = "audio-volume-overamplified-symbolic";
   }
-  gtk_image_set_from_icon_name(GTK_IMAGE(self->image), icon_name);
+  gtk_image_set_from_icon_name(GTK_IMAGE(data->image), icon_name);
 }

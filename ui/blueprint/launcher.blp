@@ -1,0 +1,29 @@
+using Gtk 4.0;
+
+Gtk.Window LAUNCHER {
+    styles ["launcher-window"]
+    name: "LauncherWindow";
+    width-request: 700;
+    height-request: -1;
+
+    Gtk.Box {
+        styles ["wrapper"]
+        orientation: vertical;
+        spacing: 0;
+
+        Gtk.SearchEntry INPUT {
+            styles ["search-box"]
+            hexpand: true;
+        }
+
+        Gtk.ScrolledWindow SCROLL {
+            styles ["scroll-list"]
+            can-focus: false;
+
+            Gtk.Box CONTENT {
+                orientation: vertical;
+                spacing: 0;
+            }
+        }
+    }
+}

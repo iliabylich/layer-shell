@@ -1,31 +1,16 @@
 #include "ui/include/top_bar/tray_app_icon.h"
 #include "ui/include/icons.h"
+#include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_app_icon_context.h"
 #include "ui/include/top_bar/tray_app_icon_popover.h"
 
-struct _TrayAppIcon {
-  GtkBox parent_instance;
-
+typedef struct {
   GtkWidget *icon;
   GtkWidget *popover;
   GList *context_pool;
-};
-
-G_DEFINE_TYPE(TrayAppIcon, tray_app_icon, GTK_TYPE_BOX)
-
-static void tray_app_icon_dispose(GObject *gobject) {
-  TrayAppIcon *self = TRAY_APP_ICON(gobject);
-  if (self->popover) {
-    gtk_widget_unparent(self->popover);
-  }
-  G_OBJECT_CLASS(tray_app_icon_parent_class)->dispose(gobject);
-}
-
-static void tray_app_icon_class_init(TrayAppIconClass *klass) {
-  G_OBJECT_CLASS(klass)->dispose = tray_app_icon_dispose;
-}
-
-static void tray_app_icon_init(TrayAppIcon *self) { self->context_pool = NULL; }
+  tray_triggered_f callback;
+} data_t;
+#define DATA_KEY "data"
 
 static GtkWidget *
 image_from_pixmap_variant(IO_TrayIcon_IO_PixmapVariant_Body pixmap_variant) {
@@ -67,28 +52,31 @@ static void on_click(GtkGestureClick *, gint, gdouble, gdouble,
   gtk_popover_popup(GTK_POPOVER(popover_menu));
 }
 
-GtkWidget *tray_app_icon_new(IO_TrayApp tray_app, Tray *tray) {
-  TrayAppIcon *self = g_object_new(TRAY_APP_ICON_TYPE, NULL);
+GtkWidget *tray_app_icon_new(IO_TrayApp tray_app, GtkWidget *tray) {
+  GtkWidget *self = icon_new(tray_app.icon);
 
-  self->context_pool = NULL;
-  self->icon = icon_new(tray_app.icon);
-  self->popover =
-      tray_app_icon_popover_new(tray_app.root_item, tray, &self->context_pool);
-  gtk_widget_set_parent(self->popover, self->icon);
+  data_t *data = malloc(sizeof(data_t));
+  data->context_pool = NULL;
+  data->icon = self;
+  data->popover =
+      tray_app_icon_popover_new(tray_app.root_item, tray, &data->context_pool);
+  gtk_widget_set_parent(data->popover, self);
 
   GtkGesture *gesture = gtk_gesture_click_new();
-  g_signal_connect(gesture, "pressed", G_CALLBACK(on_click), self->popover);
-  gtk_widget_add_controller(self->icon, GTK_EVENT_CONTROLLER(gesture));
+  g_signal_connect(gesture, "pressed", G_CALLBACK(on_click), data->popover);
+  gtk_widget_add_controller(self, GTK_EVENT_CONTROLLER(gesture));
 
-  gtk_box_append(GTK_BOX(self), self->icon);
+  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
 
-  return GTK_WIDGET(self);
+  return self;
 }
 
-void tray_app_icon_cleanup(TrayAppIcon *self) {
-  g_list_free_full(self->context_pool,
+void tray_app_icon_cleanup(GtkWidget *self) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+
+  g_list_free_full(data->context_pool,
                    (GDestroyNotify)tray_app_icon_context_free);
-  gtk_widget_unparent(self->popover);
-  self->popover = NULL;
+  gtk_widget_unparent(data->popover);
+  data->popover = NULL;
   gtk_widget_unparent(GTK_WIDGET(self));
 }

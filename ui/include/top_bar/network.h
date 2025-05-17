@@ -16,18 +16,20 @@
 #define NETWORK_ROW_ACTION "network-row-clicked"
 #define NETWORK_ROW_DETAILED_ACTION "network.network-row-clicked"
 
-G_DECLARE_FINAL_TYPE(Network, network, NETWORK, Widget, GtkButton)
+typedef void (*network_settings_clicked_f)();
+typedef void (*network_ping_clicked_f)();
+typedef void (*network_address_clicked_f)(const char *address);
 
-GtkWidget *network_new();
-void network_refresh_wifi_status(Network *network,
+GtkWidget *network_init(network_settings_clicked_f on_settings_clicked,
+                        network_ping_clicked_f on_ping_clicked,
+                        network_address_clicked_f on_address_clicked);
+
+void network_refresh_wifi_status(GtkWidget *network,
                                  IO_COption_WifiStatus wifi_status);
-void network_refresh_network_speed(Network *network, const char *upload_speed,
+void network_refresh_network_speed(GtkWidget *network, const char *upload_speed,
                                    const char *download_speed);
-void network_refresh_network_list(Network *network, IO_CArray_Network list);
+void network_refresh_network_list(GtkWidget *network, IO_CArray_Network list);
 
-void network_emit_settings_clicked(Network *network);
-void network_emit_ping_clicked(Network *network);
-void network_emit_network_clicked(Network *network, const char *address);
-
-#define NETWORK_TYPE network_get_type()
-#define NETWORK(obj) G_TYPE_CHECK_INSTANCE_CAST(obj, NETWORK_TYPE, Network)
+void network_emit_settings_clicked(GtkWidget *network);
+void network_emit_ping_clicked(GtkWidget *network);
+void network_emit_network_clicked(GtkWidget *network, const char *address);

@@ -58,7 +58,7 @@ int poll_events(void) {
     IO_Event event = events.ptr[i];
     switch (event.tag) {
     case IO_Event_Workspaces: {
-      workspaces_refresh(WORKSPACES(workspaces), event.workspaces.ids,
+      workspaces_refresh(workspaces, event.workspaces.ids,
                          event.workspaces.active_id);
       break;
     }
@@ -67,64 +67,61 @@ int poll_events(void) {
       break;
     }
     case IO_Event_Tray: {
-      tray_refresh(TRAY(tray), event.tray.apps);
+      tray_refresh(tray, event.tray.apps);
       break;
     }
     case IO_Event_CurrentWeather: {
-      weather_button_refresh(WEATHER_BUTTON(weather_button),
-                             event.current_weather.temperature,
+      weather_button_refresh(weather_button, event.current_weather.temperature,
                              event.current_weather.code);
       break;
     }
     case IO_Event_ForecastWeather: {
-      weather_refresh(WEATHER(weather), event.forecast_weather);
+      weather_refresh(weather, event.forecast_weather);
       break;
     }
     case IO_Event_Language: {
-      language_refresh(LANGUAGE(language), event.language.lang);
+      language_refresh(language, event.language.lang);
       break;
     }
     case IO_Event_Volume: {
-      sound_refresh(SOUND(sound), event.volume.volume, event.volume.muted);
+      sound_refresh(sound, event.volume.volume, event.volume.muted);
       break;
     }
     case IO_Event_CpuUsage: {
-      cpu_refresh(CPU(cpu), event.cpu_usage.usage_per_core);
+      cpu_refresh(cpu, event.cpu_usage.usage_per_core);
       break;
     }
     case IO_Event_Memory: {
-      memory_refresh(MEMORY(memory), event.memory.used, event.memory.total);
+      memory_refresh(memory, event.memory.used, event.memory.total);
       break;
     }
     case IO_Event_WifiStatus: {
-      network_refresh_wifi_status(NETWORK(network),
-                                  event.wifi_status.wifi_status);
+      network_refresh_wifi_status(network, event.wifi_status.wifi_status);
       break;
     }
     case IO_Event_NetworkSpeed: {
-      network_refresh_network_speed(NETWORK(network),
-                                    event.network_speed.upload_speed,
+      network_refresh_network_speed(network, event.network_speed.upload_speed,
                                     event.network_speed.download_speed);
       break;
     }
     case IO_Event_NetworkList: {
-      network_refresh_network_list(NETWORK(network), event.network_list.list);
+      network_refresh_network_list(network, event.network_list.list);
       break;
     }
     case IO_Event_Time: {
-      clock_refresh(CLOCK(clock_), event.time.time);
+      clock_refresh(clock_, event.time.time);
       break;
     }
     case IO_Event_ToggleSessionScreen: {
-      window_toggle(GTK_WINDOW(session));
+      session_toggle(session);
       break;
     }
     case IO_Event_Launcher: {
-      launcher_refresn(LAUNCHER(launcher), event.launcher.apps);
+      launcher_refresn(launcher, event.launcher.apps);
       break;
     }
     case IO_Event_ToggleLauncher: {
-      launcher_toggle_and_reset(LAUNCHER(launcher));
+      launcher_toggle_and_reset(launcher);
       break;
     }
     case IO_Event_Exit: {
@@ -148,27 +145,27 @@ int poll_events(void) {
   return 1;
 }
 
-static void switch_workspace(Workspaces *, size_t idx) {
+static void on_workspace_change_clicked(size_t idx) {
   io_hyprland_go_to_workspace(ui_ctx, idx);
 }
 
-static void switch_theme() { io_change_theme(ui_ctx); }
+static void on_theme_change_clicked() { io_change_theme(ui_ctx); }
 
-static void trigger_tray(Tray *, const uint8_t *uuid) {
+static void on_tray_triggered(const uint8_t *uuid) {
   io_trigger_tray(ui_ctx, uuid);
 }
 
-static void toggle_weather() { window_toggle(GTK_WINDOW(weather)); }
+static void on_weather_button_clicked() { weather_toggle(weather); }
 
-static void toggle_htop() { window_toggle(GTK_WINDOW(htop)); }
+static void on_htop_button_clicked() { htop_toggle(htop); }
 
-static void open_system_monitor() { io_spawn_system_monitor(ui_ctx); }
+static void on_memory_clicked() { io_spawn_system_monitor(ui_ctx); }
 
-static void spawn_network_editor() { io_spawn_network_editor(ui_ctx); }
+static void on_network_settings_clicked() { io_spawn_network_editor(ui_ctx); }
 
-static void toggle_ping() { window_toggle(GTK_WINDOW(ping)); }
+static void on_network_ping_clicked() { ping_toggle(ping); }
 
-static void copy_ip_to_clipboard(Network *, char *ip) {
+static void on_nework_address_clicked(const char *ip) {
   GdkDisplay *display = gdk_display_get_default();
   GdkClipboard *clipboard = gdk_display_get_clipboard(display);
   gdk_clipboard_set_text(clipboard, ip);
@@ -179,82 +176,48 @@ static void copy_ip_to_clipboard(Network *, char *ip) {
   g_application_send_notification(G_APPLICATION(app), NULL, notification);
 }
 
-static void toggle_session_window() { window_toggle(GTK_WINDOW(session)); }
+static void on_power_clicked() { session_toggle(session); }
 
-static void lock() { io_lock(ui_ctx); }
-static void reboot() { io_reboot(ui_ctx); }
-static void shutdown() { io_shutdown(ui_ctx); }
-static void logout() { io_logout(ui_ctx); }
+static void on_lock_clicked() { io_lock(ui_ctx); }
+static void on_reboot_clicked() { io_reboot(ui_ctx); }
+static void on_shutdown_clicked() { io_shutdown(ui_ctx); }
+static void on_logout_clicked() { io_logout(ui_ctx); }
 
-static void launcher_exec_selected() { io_launcher_exec_selected(ui_ctx); }
-static void launcher_go_up() { io_launcher_go_up(ui_ctx); }
-static void launcher_go_down() { io_launcher_go_down(ui_ctx); }
-static void launcher_reset() { io_launcher_reset(ui_ctx); }
-static void launcher_set_search(Launcher *, const uint8_t *search) {
+static void on_launcher_exec_selected() { io_launcher_exec_selected(ui_ctx); }
+static void on_launcher_go_up() { io_launcher_go_up(ui_ctx); }
+static void on_launcher_go_down() { io_launcher_go_down(ui_ctx); }
+static void on_launcher_reset() { io_launcher_reset(ui_ctx); }
+static void on_launcher_set_search(const uint8_t *search) {
   io_launcher_set_search(ui_ctx, search);
 }
 
 static void on_app_activate() {
   init_icons();
 
-  top_bar = top_bar_new(app);
-  weather = weather_new(app);
-  htop = htop_new(app);
-  ping = ping_new(app);
-  session = session_new(app);
-  launcher = launcher_new(app);
+  top_bar = top_bar_init(app);
+  weather = weather_init(app);
+  htop = htop_init(app);
+  ping = ping_init(app);
+  session = session_init(app, on_lock_clicked, on_reboot_clicked,
+                         on_shutdown_clicked, on_logout_clicked);
+  launcher = launcher_init(app, on_launcher_exec_selected, on_launcher_go_up,
+                           on_launcher_go_down, on_launcher_reset,
+                           on_launcher_set_search);
 
-  workspaces = workspaces_new();
-  change_theme = change_theme_new();
+  workspaces = workspaces_init(on_workspace_change_clicked);
+  change_theme = change_theme_init(on_theme_change_clicked);
 
-  tray = tray_new();
-  weather_button = weather_button_new();
-  htop_button = htop_button_new();
-  language = language_new();
-  sound = sound_new();
-  cpu = cpu_new();
-  memory = memory_new();
-  network = network_new();
-  clock_ = clock_new();
-  power = power_new();
-
-  top_bar_push_left(TOP_BAR(top_bar), workspaces);
-  top_bar_push_left(TOP_BAR(top_bar), change_theme);
-
-  top_bar_push_right(TOP_BAR(top_bar), tray);
-  top_bar_push_right(TOP_BAR(top_bar), weather_button);
-  top_bar_push_right(TOP_BAR(top_bar), htop_button);
-  top_bar_push_right(TOP_BAR(top_bar), language);
-  top_bar_push_right(TOP_BAR(top_bar), sound);
-  top_bar_push_right(TOP_BAR(top_bar), cpu);
-  top_bar_push_right(TOP_BAR(top_bar), memory);
-  top_bar_push_right(TOP_BAR(top_bar), network);
-  top_bar_push_right(TOP_BAR(top_bar), clock_);
-  top_bar_push_right(TOP_BAR(top_bar), power);
-
-#define CONNECT(widget, signal, callback)                                      \
-  g_signal_connect(widget, signal, G_CALLBACK(callback), NULL);
-
-  CONNECT(workspaces, "switched", switch_workspace);
-  CONNECT(change_theme, "clicked", switch_theme);
-  CONNECT(tray, "triggered", trigger_tray);
-  CONNECT(weather_button, "clicked", toggle_weather);
-  CONNECT(htop_button, "clicked", toggle_htop);
-  CONNECT(memory, "clicked", open_system_monitor);
-  CONNECT(network, "settings-clicked", spawn_network_editor);
-  CONNECT(network, "ping-clicked", toggle_ping);
-  CONNECT(network, "network-clicked", copy_ip_to_clipboard);
-  CONNECT(power, "clicked", toggle_session_window);
-  CONNECT(session, "lock", lock);
-  CONNECT(session, "reboot", reboot);
-  CONNECT(session, "shutdown", shutdown);
-  CONNECT(session, "logout", logout);
-  CONNECT(launcher, "exec-selected", launcher_exec_selected);
-  CONNECT(launcher, "go-up", launcher_go_up);
-  CONNECT(launcher, "go-down", launcher_go_down);
-  CONNECT(launcher, "reset", launcher_reset);
-  CONNECT(launcher, "set-search", launcher_set_search);
-#undef CONNECT
+  tray = tray_init(on_tray_triggered);
+  weather_button = weather_button_init(on_weather_button_clicked);
+  htop_button = htop_button_init(on_htop_button_clicked);
+  language = language_init();
+  sound = sound_init();
+  cpu = cpu_init();
+  memory = memory_init(on_memory_clicked);
+  network = network_init(on_network_settings_clicked, on_network_ping_clicked,
+                         on_nework_address_clicked);
+  clock_ = clock_init();
+  power = power_init(on_power_clicked);
 
   gtk_window_present(GTK_WINDOW(top_bar));
 

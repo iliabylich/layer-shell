@@ -3,13 +3,9 @@
 #include "bindings.h"
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(Workspaces, workspaces, WORKSPACES, Widget, GtkBox)
+typedef void (*workspace_change_f)(size_t idx);
 
-GtkWidget *workspaces_new();
-void workspaces_emit_switched(Workspaces *workspaces, size_t idx);
-void workspaces_refresh(Workspaces *workspaces, IO_CArray_usize ids,
+GtkWidget *workspaces_init(workspace_change_f callback);
+void workspaces_emit_switched(GtkWidget *workspaces, size_t idx);
+void workspaces_refresh(GtkWidget *workspaces, IO_CArray_usize ids,
                         size_t active_id);
-
-#define WORKSPACES_TYPE workspaces_get_type()
-#define WORKSPACES(obj)                                                        \
-  G_TYPE_CHECK_INSTANCE_CAST(obj, WORKSPACES_TYPE, Workspaces)

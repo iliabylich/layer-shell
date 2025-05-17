@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ui/include/top_bar/tray.h"
+#include <gtk/gtk.h>
 
 typedef struct {
-  Tray *tray;
+  GtkWidget *tray;
   GActionGroup *action_group;
   GList **pool;
   char *name;
@@ -11,7 +11,7 @@ typedef struct {
 } tray_app_icon_context_t;
 
 tray_app_icon_context_t *
-tray_app_icon_context_new_root(Tray *tray, GActionGroup *action_group,
+tray_app_icon_context_new_root(GtkWidget *tray, GActionGroup *action_group,
                                GList **pool);
 
 tray_app_icon_context_t *

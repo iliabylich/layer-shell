@@ -1,0 +1,35 @@
+using Gtk 4.0;
+
+Gtk.Window WEATHER {
+    styles ["weather-window"]
+    name: "WeatherWindow";
+
+    Gtk.Box {
+        orientation: horizontal;
+        spacing: 50;
+
+        Gtk.Box {
+            orientation: vertical;
+            spacing: 0;
+
+            Gtk.Label {
+                label: "Hourly";
+            }
+
+            Gtk.Grid HOURLY {
+            }
+        }
+
+        Gtk.Box {
+            orientation: vertical;
+            spacing: 0;
+
+            Gtk.Label {
+                label: "Daily";
+            }
+
+            Gtk.Grid DAILY {
+            }
+        }
+    }
+}

@@ -3,26 +3,14 @@
 #include "ui/include/weather/temperature_icon.h"
 #include "ui/include/weather/temperature_label.h"
 
-struct _HourlyGrid {
-  BaseGrid parent_instance;
-};
+#define COLS_COUNT 3
+#define ROWS_COUNT 10
 
-G_DEFINE_TYPE(HourlyGrid, hourly_grid, BASE_GRID_TYPE)
+void hourly_grid_init(GtkWidget *self) {
+  base_grid_init(self, COLS_COUNT, ROWS_COUNT);
 
-static void hourly_grid_class_init(HourlyGridClass *) {}
-
-static void hourly_grid_init(HourlyGrid *) {}
-
-GtkWidget *hourly_grid_new() {
-  // clang-format off
-  HourlyGrid *self = g_object_new(
-      HOURLY_GRID_TYPE,
-      "cols_count", 3,
-      "rows_count", 10,
-      NULL);
-  // clang-format on
-
-  for (size_t row = 0; row < self->parent_instance.rows_count; row++) {
+  base_grid_data_t *data = base_grid_get_data(self);
+  for (size_t row = 0; row < data->rows_count; row++) {
 #define ATTACH(widget, column)                                                 \
   gtk_grid_attach(GTK_GRID(self), widget, column, row, 1, 1)
 
@@ -32,11 +20,9 @@ GtkWidget *hourly_grid_new() {
 
 #undef ATTACH
   }
-
-  return GTK_WIDGET(self);
 }
 
-static void hourly_grid_refresh_row(HourlyGrid *self,
+static void hourly_grid_refresh_row(GtkWidget *self,
                                     IO_WeatherOnHour weather_on_hour,
                                     size_t row) {
 #define CHILD_AT(column) gtk_grid_get_child_at(GTK_GRID(self), column, row)
@@ -48,9 +34,10 @@ static void hourly_grid_refresh_row(HourlyGrid *self,
 #undef CHILD_AT
 }
 
-void hourly_grid_refresh(HourlyGrid *grid, IO_CArray_WeatherOnHour data) {
-  for (size_t i = 0; i < data.len && i < grid->parent_instance.rows_count;
-       i++) {
-    hourly_grid_refresh_row(grid, data.ptr[i], i);
+void hourly_grid_refresh(GtkWidget *self, IO_CArray_WeatherOnHour weather) {
+  base_grid_data_t *data = base_grid_get_data(self);
+
+  for (size_t i = 0; i < weather.len && i < data->rows_count; i++) {
+    hourly_grid_refresh_row(self, weather.ptr[i], i);
   }
 }

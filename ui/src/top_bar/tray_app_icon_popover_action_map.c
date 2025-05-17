@@ -74,7 +74,8 @@ static void visit_regular(IO_TrayItem, context_t *context) {
 }
 
 GActionGroup *tray_app_icon_popover_action_map_new(IO_TrayItem tray_item,
-                                                   Tray *tray, GList **pool) {
+                                                   GtkWidget *tray,
+                                                   GList **pool) {
   GActionGroup *action_group = G_ACTION_GROUP(g_simple_action_group_new());
 
   context_t *context = context_new_root(tray, action_group, pool);

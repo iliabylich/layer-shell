@@ -3,7 +3,7 @@
 #include "ui/include/top_bar/network_popover_action_map.h"
 #include "ui/include/top_bar/network_popover_menu.h"
 
-GtkWidget *network_popover_new(Network *parent) {
+GtkWidget *network_popover_new(GtkWidget *parent) {
   GMenu *menu = network_popover_menu_new();
 
   GSimpleActionGroup *action_group =

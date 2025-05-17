@@ -1,17 +1,8 @@
 #include "ui/include/top_bar/clock.h"
-#include "ui/include/macros.h"
+#include "ui/include/top_bar.h"
 
-GtkWidget *clock_new() {
-  // clang-format off
-  return g_object_new(
-      GTK_TYPE_LABEL,
-      "label", "--",
-      "css-classes", CSS("widget", "clock", "padded"),
-      "name", "Clock",
-      NULL);
-  // clang-format on
-}
+GtkWidget *clock_init() { return top_bar_get_widget_by_id("CLOCK"); }
 
-void clock_refresh(Clock *self, const char *time) {
-  gtk_label_set_text(self, time);
+void clock_refresh(GtkWidget *self, const char *time) {
+  gtk_label_set_text(GTK_LABEL(self), time);
 }

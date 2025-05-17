@@ -3,13 +3,8 @@
 #include "bindings.h"
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(WeatherButton, weather_button, WEATHER_BUTTON, Widget,
-                     GtkButton)
+typedef void (*weather_button_clicked_f)();
 
-GtkWidget *weather_button_new();
-void weather_button_refresh(WeatherButton *button, float temperature,
+GtkWidget *weather_button_init(weather_button_clicked_f callback);
+void weather_button_refresh(GtkWidget *button, float temperature,
                             IO_WeatherCode code);
-
-#define WEATHER_BUTTON_TYPE weather_button_get_type()
-#define WEATHER_BUTTON(obj)                                                    \
-  G_TYPE_CHECK_INSTANCE_CAST(obj, WEATHER_BUTTON_TYPE, WeatherButton)

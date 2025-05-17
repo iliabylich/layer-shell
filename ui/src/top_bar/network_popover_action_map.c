@@ -3,17 +3,17 @@
 
 static void emit_settings_clicked(GSimpleAction *, GVariant *,
                                   GtkWidget *parent) {
-  network_emit_settings_clicked(NETWORK(parent));
+  network_emit_settings_clicked(parent);
 }
 
 static void emit_ping_clicked(GSimpleAction *, GVariant *, GtkWidget *parent) {
-  network_emit_ping_clicked(NETWORK(parent));
+  network_emit_ping_clicked(parent);
 }
 
 static void emit_network_clicked(GSimpleAction *, GVariant *parameter,
                                  GtkWidget *parent) {
   const char *address = g_variant_get_string(parameter, NULL);
-  network_emit_network_clicked(NETWORK(parent), address);
+  network_emit_network_clicked(parent, address);
 }
 
 static void add(GSimpleActionGroup *action_group, const char *action_name,

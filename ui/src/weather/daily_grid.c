@@ -3,28 +3,16 @@
 #include "ui/include/weather/temperature_icon.h"
 #include "ui/include/weather/temperature_label.h"
 
-struct _DailyGrid {
-  BaseGrid parent_instance;
-};
+#define COLS_COUNT 4
+#define ROWS_COUNT 6
 
-G_DEFINE_TYPE(DailyGrid, daily_grid, BASE_GRID_TYPE)
+void daily_grid_init(GtkWidget *self) {
+  base_grid_init(self, COLS_COUNT, ROWS_COUNT);
 
-static void daily_grid_class_init(DailyGridClass *) {}
-
-static void daily_grid_init(DailyGrid *) {}
-
-GtkWidget *daily_grid_new() {
-  // clang-format off
-  DailyGrid *self = g_object_new(
-      DAILY_GRID_TYPE,
-      "cols_count", 4,
-      "rows_count", 6,
-      NULL);
-  // clang-format on
-
-  for (size_t row = 0; row < self->parent_instance.rows_count; row++) {
+  base_grid_data_t *data = base_grid_get_data(self);
+  for (size_t row = 0; row < data->rows_count; row++) {
 #define ATTACH(widget, column)                                                 \
-  gtk_grid_attach(GTK_GRID(self), widget, column, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(self), widget, column, row, 1, 1)
 
     ATTACH(gtk_label_new("??"), 0);
     ATTACH(temperature_label_new(), 1);
@@ -33,11 +21,9 @@ GtkWidget *daily_grid_new() {
 
 #undef ATTACH
   }
-
-  return GTK_WIDGET(self);
 }
 
-static void daily_grid_refresh_row(DailyGrid *self,
+static void daily_grid_refresh_row(GtkWidget *self,
                                    IO_WeatherOnDay weather_on_day, size_t row) {
 #define CHILD_AT(column) gtk_grid_get_child_at(GTK_GRID(self), column, row)
 
@@ -49,9 +35,10 @@ static void daily_grid_refresh_row(DailyGrid *self,
 #undef CHILD_AT
 }
 
-void daily_grid_refresh(DailyGrid *grid, IO_CArray_WeatherOnDay data) {
-  for (size_t i = 0; i < data.len && i < grid->parent_instance.rows_count;
-       i++) {
-    daily_grid_refresh_row(grid, data.ptr[i], i);
+void daily_grid_refresh(GtkWidget *self, IO_CArray_WeatherOnDay weather) {
+  base_grid_data_t *data = base_grid_get_data(self);
+
+  for (size_t i = 0; i < weather.len && i < data->rows_count; i++) {
+    daily_grid_refresh_row(self, weather.ptr[i], i);
   }
 }

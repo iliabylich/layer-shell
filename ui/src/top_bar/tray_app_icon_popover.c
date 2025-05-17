@@ -3,7 +3,7 @@
 #include "ui/include/top_bar/tray_app_icon_popover_action_map.h"
 #include "ui/include/top_bar/tray_app_icon_popover_menu.h"
 
-GtkWidget *tray_app_icon_popover_new(IO_TrayItem tray_item, Tray *tray,
+GtkWidget *tray_app_icon_popover_new(IO_TrayItem tray_item, GtkWidget *tray,
                                      GList **context_pool) {
   GActionGroup *action_group =
       tray_app_icon_popover_action_map_new(tray_item, tray, context_pool);

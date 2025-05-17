@@ -1,30 +1,14 @@
 #include "ui/include/top_bar/memory.h"
-#include "ui/include/macros.h"
+#include "ui/include/top_bar.h"
 
-struct _Memory {
-  GtkButton parent_instance;
-};
-
-G_DEFINE_TYPE(Memory, memory, GTK_TYPE_BUTTON)
-
-static void memory_class_init(MemoryClass *) {}
-
-static void memory_init(Memory *) {}
-
-GtkWidget *memory_new() {
-  // clang-format off
-  return g_object_new(
-      MEMORY_TYPE,
-      "name", "Memory",
-      "css-classes", CSS("widget", "memory", "padded", "clickable"),
-      "cursor", gdk_cursor_new_from_name("pointer", NULL),
-      "label", "--",
-      NULL);
-  // clang-format on
+GtkWidget *memory_init(memory_clicked_f callback) {
+  GtkWidget *self = top_bar_get_widget_by_id("MEMORY");
+  g_signal_connect(self, "clicked", callback, NULL);
+  return self;
 }
 
-void memory_refresh(Memory *memory, double used, double total) {
+void memory_refresh(GtkWidget *self, double used, double total) {
   char buffer[100];
   sprintf(buffer, "RAM %.1fG/%.1fG", used, total);
-  gtk_button_set_label(GTK_BUTTON(memory), buffer);
+  gtk_button_set_label(GTK_BUTTON(self), buffer);
 }

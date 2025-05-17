@@ -1,24 +1,12 @@
 #include "ui/include/top_bar/power.h"
+#include "gtk/gtk.h"
 #include "ui/include/icons.h"
-#include "ui/include/macros.h"
+#include "ui/include/top_bar.h"
 
-struct _Power {
-  GtkButton parent_instance;
-};
-
-G_DEFINE_TYPE(Power, power, GTK_TYPE_BUTTON)
-
-static void power_class_init(PowerClass *) {}
-
-static void power_init(Power *) {}
-
-GtkWidget *power_new() {
-  // clang-format off
-  return g_object_new(
-      POWER_TYPE,
-      "css-classes", CSS("widget", "power", "padded", "clickable"),
-      "cursor", gdk_cursor_new_from_name("pointer", NULL),
-      "name", "Power",
-      "child", gtk_image_new_from_gicon(get_power_icon()), NULL);
-  // clang-format on
+GtkWidget *power_init(power_clicked_f callback) {
+  GtkWidget *self = top_bar_get_widget_by_id("POWER");
+  GtkWidget *power_icon = top_bar_get_widget_by_id("POWER_ICON");
+  gtk_image_set_from_gicon(GTK_IMAGE(power_icon), get_power_icon());
+  g_signal_connect(self, "clicked", callback, NULL);
+  return self;
 }

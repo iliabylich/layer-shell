@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/tray_app_icon_context.h"
+#include "ui/include/top_bar/tray.h"
 
 static char *strcopy(const char *s) {
   size_t len = strlen(s);
@@ -15,7 +16,7 @@ static char *strconcat(const char *prefix, size_t suffix) {
 }
 
 tray_app_icon_context_t *
-tray_app_icon_context_new_root(Tray *tray, GActionGroup *action_group,
+tray_app_icon_context_new_root(GtkWidget *tray, GActionGroup *action_group,
                                GList **pool) {
   tray_app_icon_context_t *context = calloc(1, sizeof(tray_app_icon_context_t));
   context->tray = tray;

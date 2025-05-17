@@ -2,10 +2,6 @@
 
 #include <gtk/gtk.h>
 
-G_DECLARE_FINAL_TYPE(HtopButton, htop_button, HTOP_BUTTON, Widget, GtkButton)
+typedef void (*htop_button_clicked_f)();
 
-GtkWidget *htop_button_new();
-
-#define HTOP_BUTTON_TYPE htop_button_get_type()
-#define HTOP_BUTTON(obj)                                                       \
-  G_TYPE_CHECK_INSTANCE_CAST(obj, HTOP_BUTTON_TYPE, HtopButton)
+GtkWidget *htop_button_init(htop_button_clicked_f callback);

@@ -1,30 +1,23 @@
 #include "ui/include/ping.h"
+#include "ping.xml.xxd"
 #include "ui/include/macros.h"
+#include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
-struct _Ping {
-  GtkWindow parent_instance;
-};
+BLP_BUILDER(ping)
 
-G_DEFINE_TYPE(Ping, ping, BASE_WINDOW_TYPE)
+GtkWidget *ping_init(GtkApplication *app) {
+  GtkWidget *self = builder_get_object("PING");
+  gtk_window_set_application(GTK_WINDOW(self), app);
+  window_set_toggle_on_escape(GTK_WINDOW(self));
+  gtk_layer_init_for_window(GTK_WINDOW(self));
+  gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_namespace(GTK_WINDOW(self), "LayerShell/Ping");
+  gtk_layer_set_keyboard_mode(GTK_WINDOW(self),
+                              GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+  window_vte(GTK_WINDOW(self), (char *[]){"ping", "8.8.8.8", NULL});
 
-static void ping_class_init(PingClass *) {}
-
-static void ping_init(Ping *) {}
-
-GtkWidget *ping_new(GtkApplication *app) {
-  // clang-format off
-  return g_object_new(
-      PING_TYPE,
-      "application", app,
-      "name", "PingWindow",
-      "width-request", 1000,
-      "height-request", 700,
-      "toggle-on-escape", true,
-      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-      "layer-namespace", "LayerShell/Ping",
-      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-      "vte-command", VTE_CMD("ping", "8.8.8.8"),
-      NULL);
-  // clang-format on
+  return self;
 }
+
+void ping_toggle(GtkWidget *self) { window_toggle(GTK_WINDOW(self)); }

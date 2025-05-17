@@ -1,18 +1,10 @@
 #include "ui/include/top_bar/language.h"
 #include "ui/include/macros.h"
+#include "ui/include/top_bar.h"
 
-GtkWidget *language_new() {
-  // clang-format off
-  return g_object_new(
-      GTK_TYPE_LABEL,
-      "label", "--",
-      "css-classes", CSS("widget", "language", "padded"),
-      "name", "Language",
-      NULL);
-  // clang-format on
-}
+GtkWidget *language_init() { return top_bar_get_widget_by_id("LANGUAGE"); }
 
-void language_refresh(Language *self, const char *lang) {
+void language_refresh(GtkWidget *self, const char *lang) {
   const char *text;
 
   if (strcmp(lang, "English (US)") == 0) {
@@ -23,5 +15,5 @@ void language_refresh(Language *self, const char *lang) {
     text = "??";
   }
 
-  gtk_label_set_text(self, text);
+  gtk_label_set_text(GTK_LABEL(self), text);
 }

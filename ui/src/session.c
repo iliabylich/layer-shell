@@ -1,91 +1,84 @@
 #include "ui/include/session.h"
+#include "gtk/gtk.h"
+#include "session.xml.xxd"
 #include "ui/include/macros.h"
+#include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
-struct _Session {
-  BaseWindow parent_instance;
+typedef struct {
+  on_lock_clicked_f lock_clicked_callback;
+  on_reboot_clicked_f reboot_clicked_callback;
+  on_shutdown_clicked_f shutdown_clicked_callback;
+  on_logout_clicked_f logout_clicked_callback;
+} data_t;
+#define DATA_KEY "data"
 
-  GtkWidget *lock;
-  GtkWidget *reboot;
-  GtkWidget *shutdown;
-  GtkWidget *logout;
-};
+BLP_BUILDER(session)
 
-G_DEFINE_TYPE(Session, session, BASE_WINDOW_TYPE)
+static void on_lock(GtkButton *, GtkWidget *self);
+static void on_reboot(GtkButton *, GtkWidget *self);
+static void on_shutdown(GtkButton *, GtkWidget *self);
+static void on_logout(GtkButton *, GtkWidget *self);
 
-enum {
-  LOCK = 0,
-  REBOOT,
-  SHUTDOWN,
-  LOGOUT,
-  N_SIGNALS,
-};
-static guint signals[N_SIGNALS] = {0};
+GtkWidget *session_init(GtkApplication *app,
+                        on_lock_clicked_f lock_clicked_callback,
+                        on_reboot_clicked_f reboot_clicked_callback,
+                        on_shutdown_clicked_f shutdown_clicked_callback,
+                        on_logout_clicked_f logout_clicked_callback) {
+  GtkWidget *self = builder_get_object("SESSION");
+  gtk_window_set_application(GTK_WINDOW(self), app);
+  window_set_toggle_on_escape(GTK_WINDOW(self));
+  gtk_layer_init_for_window(GTK_WINDOW(self));
+  gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_TOP, true);
+  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_RIGHT, true);
+  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, true);
+  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_LEFT, true);
+  gtk_layer_set_namespace(GTK_WINDOW(self), "LayerShell/SessionScreen");
+  gtk_layer_set_keyboard_mode(GTK_WINDOW(self),
+                              GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-static void session_class_init(SessionClass *klass) {
-#define SIGNAL(name, signal)                                                   \
-  signals[signal] =                                                            \
-      g_signal_new(name, G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL, \
-                   NULL, NULL, G_TYPE_NONE, 0);
+  data_t *data = malloc(sizeof(data_t));
+  data->lock_clicked_callback = lock_clicked_callback;
+  data->reboot_clicked_callback = reboot_clicked_callback;
+  data->shutdown_clicked_callback = shutdown_clicked_callback;
+  data->logout_clicked_callback = logout_clicked_callback;
+  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
 
-  SIGNAL("lock", LOCK);
-  SIGNAL("reboot", REBOOT);
-  SIGNAL("shutdown", SHUTDOWN);
-  SIGNAL("logout", LOGOUT);
-#undef SIGNAL
+  GtkWidget *lock = builder_get_object("LOCK");
+  g_signal_connect(lock, "clicked", G_CALLBACK(on_lock), self);
+
+  GtkWidget *reboot = builder_get_object("REBOOT");
+  g_signal_connect(reboot, "clicked", G_CALLBACK(on_reboot), self);
+
+  GtkWidget *shutdown = builder_get_object("SHUTDOWN");
+  g_signal_connect(shutdown, "clicked", G_CALLBACK(on_shutdown), self);
+
+  GtkWidget *logout = builder_get_object("LOGOUT");
+  g_signal_connect(logout, "clicked", G_CALLBACK(on_logout), self);
+
+  return self;
 }
 
-#define HANDLER(name, signal)                                                  \
-  static void name(GtkButton *, Session *session) {                            \
-    window_toggle(GTK_WINDOW(session));                                        \
-    g_signal_emit(session, signals[signal], 0);                                \
-  }
+void session_toggle(GtkWidget *self) { window_toggle(GTK_WINDOW(self)); }
 
-HANDLER(lock, LOCK)
-HANDLER(reboot, REBOOT)
-HANDLER(shutdown, SHUTDOWN)
-HANDLER(logout, LOGOUT)
-#undef HANDLER
-
-static void session_init(Session *self) {
-  // clang-format off
-  GtkWidget *layout = g_object_new(
-      GTK_TYPE_BOX,
-      "orientation", GTK_ORIENTATION_HORIZONTAL,
-      "spacing", 200,
-      "homogeneous", true,
-      "css-classes", CSS("wrapper"),
-      NULL);
-  // clang-format on
-  gtk_window_set_child(GTK_WINDOW(self), layout);
-
-#define BUTTON(name, label)                                                    \
-  self->name = gtk_button_new_with_label(label);                               \
-  g_signal_connect(self->name, "clicked", G_CALLBACK(name), self);             \
-  gtk_box_append(GTK_BOX(layout), self->name);
-
-  BUTTON(lock, "Lock");
-  BUTTON(reboot, "Reboot");
-  BUTTON(shutdown, "Shutdown");
-  BUTTON(logout, "Logout");
-#undef BUTTON
+static void on_lock(GtkButton *, GtkWidget *self) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+  session_toggle(self);
+  data->lock_clicked_callback();
 }
-
-GtkWidget *session_new(GtkApplication *app) {
-  // clang-format off
-  return g_object_new(
-      SESSION_TYPE,
-      "application", app,
-      "name", "SessionWindow",
-      "css-classes", CSS("session-window"),
-      "toggle-on-escape", true,
-      "layer", GTK_LAYER_SHELL_LAYER_OVERLAY,
-      "layer-anchor-top", true,
-      "layer-anchor-right", true,
-      "layer-anchor-bottom", true,
-      "layer-anchor-left", true,
-      "layer-namespace", "LayerShell/SessionScreen",
-      "layer-keyboard-mode", GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE,
-      NULL);
-  // clang-format on
+static void on_reboot(GtkButton *, GtkWidget *self) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+  session_toggle(self);
+  data->reboot_clicked_callback();
+}
+static void on_shutdown(GtkButton *, GtkWidget *self) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+  session_toggle(self);
+  data->shutdown_clicked_callback();
+}
+static void on_logout(GtkButton *, GtkWidget *self) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+  session_toggle(self);
+  data->logout_clicked_callback();
 }

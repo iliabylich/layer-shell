@@ -1,5 +1,4 @@
 sources += files(
-    'src/base_window.c',
     'src/buffer.c',
     'src/css.c',
     'src/htop.c',
@@ -38,8 +37,10 @@ sources += files(
     'src/weather/temperature_icon.c',
     'src/weather/temperature_label.c',
     'src/weather_helper.c',
+    'src/window_helper.c',
     'main.c',
 )
 
 subdir('css')
 subdir('icons')
+subdir('blueprint')
