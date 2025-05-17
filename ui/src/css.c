@@ -16,8 +16,7 @@ static buffer_t theme_css(void) {
 }
 
 static buffer_t main_css(void) {
-  return buffer_from_const_string((const char *)layer_shell_p_main_scss,
-                                  layer_shell_p_main_scss_len);
+  return buffer_from_const_string((const char *)main_scss, main_scss_len);
 }
 
 GtkCssProvider *provider = NULL;

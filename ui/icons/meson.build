@@ -2,7 +2,7 @@ xxd = find_program('xxd')
 xxd = generator(
     xxd,
     output: '@PLAINNAME@.xxd',
-    arguments: ['-i', '@INPUT@', '@OUTPUT@'],
+    arguments: ['-n', '@PLAINNAME@', '-i', '@INPUT@', '@OUTPUT@'],
 )
 cat = find_program('cat')
 

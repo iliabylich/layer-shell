@@ -14,9 +14,7 @@ static GIcon *load_texture(const uint8_t *icon, size_t len) {
 #undef X
 
 void init_icons(void) {
-#define X(name)                                                                \
-  name##_icon =                                                                \
-      load_texture(___ui_icons_##name##_png, ___ui_icons_##name##_png_len);
+#define X(name) name##_icon = load_texture(name##_png, name##_png_len);
 #include "x-icons.h"
 #undef X
 }
