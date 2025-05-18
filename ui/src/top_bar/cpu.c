@@ -1,6 +1,5 @@
 #include "ui/include/top_bar/cpu.h"
-#include "ui/include/macros.h"
-#include "ui/include/top_bar.h"
+#include "ui/include/builder.h"
 #include "ui/include/top_bar/cpu_label.h"
 
 typedef struct {
@@ -10,7 +9,7 @@ typedef struct {
 #define DATA_KEY "data"
 
 GtkWidget *cpu_init() {
-  GtkWidget *self = top_bar_get_widget_by_id("CPU");
+  GtkWidget *self = top_bar_get_widget("CPU");
 
   data_t *data = malloc(sizeof(data_t));
   data->labels = NULL;

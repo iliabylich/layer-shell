@@ -1,12 +1,9 @@
 #include "ui/include/top_bar.h"
-#include "top_bar.xml.xxd"
-#include "ui/include/macros.h"
+#include "ui/include/builder.h"
 #include <gtk4-layer-shell.h>
 
-BLP_BUILDER(top_bar)
-
 GtkWidget *top_bar_init(GtkApplication *app) {
-  GtkWidget *self = builder_get_object("TOP_BAR");
+  GtkWidget *self = top_bar_get_widget("TOP_BAR");
   gtk_window_set_application(GTK_WINDOW(self), app);
 
   gtk_layer_init_for_window(GTK_WINDOW(self));
@@ -19,8 +16,4 @@ GtkWidget *top_bar_init(GtkApplication *app) {
   gtk_layer_auto_exclusive_zone_enable(GTK_WINDOW(self));
 
   return self;
-}
-
-GtkWidget *top_bar_get_widget_by_id(const char *id) {
-  return builder_get_object(id);
 }

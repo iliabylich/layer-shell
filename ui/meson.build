@@ -1,5 +1,6 @@
 sources += files(
     'src/buffer.c',
+    'src/builder.c',
     'src/css.c',
     'src/htop.c',
     'src/icons.c',

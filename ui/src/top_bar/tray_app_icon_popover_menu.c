@@ -1,6 +1,6 @@
 #include "ui/include/top_bar/tray_app_icon_popover_menu.h"
-#include "ui/include/macros.h"
 #include "ui/include/top_bar/tray.h"
+#include "ui/include/top_bar/tray_helper.h"
 
 static GMenuItem *visit(IO_TrayItem tray_item, const char *name);
 static GMenuItem *visit_nested(IO_TrayItem tray_item, const char *name);

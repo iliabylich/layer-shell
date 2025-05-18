@@ -1,10 +1,9 @@
 #include "ui/include/top_bar/weather_button.h"
-#include "ui/include/macros.h"
-#include "ui/include/top_bar.h"
+#include "ui/include/builder.h"
 #include "ui/include/weather_helper.h"
 
 GtkWidget *weather_button_init(weather_button_clicked_f callback) {
-  GtkWidget *self = top_bar_get_widget_by_id("WEATHER_BUTTON");
+  GtkWidget *self = top_bar_get_widget("WEATHER_BUTTON");
   g_signal_connect(self, "clicked", callback, NULL);
   return self;
 }

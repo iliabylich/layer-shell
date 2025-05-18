@@ -1,5 +1,4 @@
 #include "ui/include/launcher/row.h"
-#include "ui/include/macros.h"
 
 typedef struct {
   GtkWidget *image;

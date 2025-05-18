@@ -1,9 +1,8 @@
 #include "ui/include/launcher.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkshortcut.h"
-#include "launcher.xml.xxd"
+#include "ui/include/builder.h"
 #include "ui/include/launcher/row.h"
-#include "ui/include/macros.h"
 #include <gtk4-layer-shell.h>
 
 #define ROWS_COUNT 5
@@ -20,8 +19,6 @@ typedef struct {
 } data_t;
 #define DATA_KEY "data"
 
-BLP_BUILDER(launcher)
-
 static void on_submit(GtkEntry *, GtkWidget *self);
 static void on_input_changed(GtkEditable *input, GtkWidget *self);
 static bool on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
@@ -34,7 +31,7 @@ launcher_init(GtkApplication *app,
               launcher_go_down_f launcher_go_down_callback,
               launcher_reset_f launcher_reset_callback,
               launcher_set_search_f launcher_set_search_callback) {
-  GtkWidget *self = builder_get_object("LAUNCHER");
+  GtkWidget *self = launcher_get_widget("LAUNCHER");
   gtk_window_set_application(GTK_WINDOW(self), app);
   gtk_layer_init_for_window(GTK_WINDOW(self));
   gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_OVERLAY);
@@ -42,9 +39,9 @@ launcher_init(GtkApplication *app,
   gtk_layer_set_keyboard_mode(GTK_WINDOW(self),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  GtkWidget *input = builder_get_object("INPUT");
-  GtkWidget *scroll = builder_get_object("SCROLL");
-  GtkWidget *content = builder_get_object("CONTENT");
+  GtkWidget *input = launcher_get_widget("INPUT");
+  GtkWidget *scroll = launcher_get_widget("SCROLL");
+  GtkWidget *content = launcher_get_widget("CONTENT");
 
   data_t *data = malloc(sizeof(data_t));
   data->input = input;

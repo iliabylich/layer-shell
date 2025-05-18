@@ -1,8 +1,8 @@
 #include "ui/include/top_bar/memory.h"
-#include "ui/include/top_bar.h"
+#include "ui/include/builder.h"
 
 GtkWidget *memory_init(memory_clicked_f callback) {
-  GtkWidget *self = top_bar_get_widget_by_id("MEMORY");
+  GtkWidget *self = top_bar_get_widget("MEMORY");
   g_signal_connect(self, "clicked", callback, NULL);
   return self;
 }

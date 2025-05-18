@@ -1,4 +1,5 @@
 #include "bindings.h"
+#include "ui/include/builder.h"
 #include "ui/include/css.h"
 #include "ui/include/htop.h"
 #include "ui/include/icons.h"
@@ -193,6 +194,7 @@ static void on_launcher_set_search(const uint8_t *search) {
 
 static void on_app_activate() {
   init_icons();
+  init_builders();
 
   top_bar = top_bar_init(app);
   weather = weather_init(app);

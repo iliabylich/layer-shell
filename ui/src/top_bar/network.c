@@ -1,8 +1,7 @@
 #include "ui/include/top_bar/network.h"
 #include "gtk/gtk.h"
+#include "ui/include/builder.h"
 #include "ui/include/icons.h"
-#include "ui/include/macros.h"
-#include "ui/include/top_bar.h"
 #include "ui/include/top_bar/network_popover.h"
 
 typedef struct {
@@ -28,17 +27,17 @@ static void on_click(GtkWidget *self) {
 GtkWidget *network_init(network_settings_clicked_f on_settings_clicked,
                         network_ping_clicked_f on_ping_clicked,
                         network_address_clicked_f on_address_clicked) {
-  GtkWidget *self = top_bar_get_widget_by_id("NETWORK");
-  GtkWidget *label = top_bar_get_widget_by_id("NETWORK_NAME_LABEL");
-  GtkWidget *image = top_bar_get_widget_by_id("NETWORK_IMAGE");
+  GtkWidget *self = top_bar_get_widget("NETWORK");
+  GtkWidget *label = top_bar_get_widget("NETWORK_NAME_LABEL");
+  GtkWidget *image = top_bar_get_widget("NETWORK_IMAGE");
   GtkWidget *download_speed_label =
-      top_bar_get_widget_by_id("NETWORK_DOWNLOAD_SPEED_LABEL");
+      top_bar_get_widget("NETWORK_DOWNLOAD_SPEED_LABEL");
   GtkWidget *download_speed_icon =
-      top_bar_get_widget_by_id("NETWORK_DOWNLOAD_SPEED_ICON");
+      top_bar_get_widget("NETWORK_DOWNLOAD_SPEED_ICON");
   GtkWidget *upload_speed_label =
-      top_bar_get_widget_by_id("NETWORK_UPLOAD_SPEED_LABEL");
+      top_bar_get_widget("NETWORK_UPLOAD_SPEED_LABEL");
   GtkWidget *upload_speed_icon =
-      top_bar_get_widget_by_id("NETWORK_UPLOAD_SPEED_ICON");
+      top_bar_get_widget("NETWORK_UPLOAD_SPEED_ICON");
   GtkWidget *popover = network_popover_new(self);
 
   data_t *data = malloc(sizeof(data_t));

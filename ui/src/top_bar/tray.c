@@ -1,8 +1,6 @@
 #include "ui/include/top_bar/tray.h"
-#include "ui/include/macros.h"
-#include "ui/include/top_bar.h"
+#include "ui/include/builder.h"
 #include "ui/include/top_bar/tray_app_icon.h"
-#include <stdint.h>
 
 typedef struct {
   GList *icons;
@@ -12,7 +10,7 @@ typedef struct {
 #define MAX_ICONS_COUNT 10
 
 GtkWidget *tray_init(tray_triggered_f callback) {
-  GtkWidget *self = top_bar_get_widget_by_id("TRAY");
+  GtkWidget *self = top_bar_get_widget("TRAY");
 
   data_t *data = malloc(sizeof(data_t));
   data->icons = NULL;

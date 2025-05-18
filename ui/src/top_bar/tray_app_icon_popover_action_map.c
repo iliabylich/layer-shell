@@ -1,8 +1,8 @@
 #include "ui/include/top_bar/tray_app_icon_popover_action_map.h"
 #include "bindings.h"
-#include "ui/include/macros.h"
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_app_icon_context.h"
+#include "ui/include/top_bar/tray_helper.h"
 
 typedef tray_app_icon_context_t context_t;
 #define context_new_root tray_app_icon_context_new_root

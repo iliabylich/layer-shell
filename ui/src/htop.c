@@ -1,13 +1,10 @@
 #include "ui/include/htop.h"
-#include "htop.xml.xxd"
-#include "ui/include/macros.h"
+#include "ui/include/builder.h"
 #include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
-BLP_BUILDER(htop)
-
 GtkWidget *htop_init(GtkApplication *app) {
-  GtkWidget *self = builder_get_object("HTOP");
+  GtkWidget *self = htop_get_widget("HTOP");
   gtk_window_set_application(GTK_WINDOW(self), app);
   window_set_toggle_on_escape(GTK_WINDOW(self));
   gtk_layer_init_for_window(GTK_WINDOW(self));

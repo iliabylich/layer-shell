@@ -1,6 +1,5 @@
 #include "ui/include/top_bar/sound.h"
-#include "ui/include/macros.h"
-#include "ui/include/top_bar.h"
+#include "ui/include/builder.h"
 
 typedef struct {
   GtkWidget *image;
@@ -8,8 +7,8 @@ typedef struct {
 #define DATA_KEY "data"
 
 GtkWidget *sound_init() {
-  GtkWidget *self = top_bar_get_widget_by_id("SOUND");
-  GtkWidget *image = top_bar_get_widget_by_id("SOUND_IMAGE");
+  GtkWidget *self = top_bar_get_widget("SOUND");
+  GtkWidget *image = top_bar_get_widget("SOUND_IMAGE");
 
   data_t *data = malloc(sizeof(data_t));
   data->image = image;

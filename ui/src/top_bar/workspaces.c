@@ -1,6 +1,5 @@
 #include "ui/include/top_bar/workspaces.h"
-#include "ui/include/macros.h"
-#include "ui/include/top_bar.h"
+#include "ui/include/builder.h"
 #include "ui/include/top_bar/workspaces_button.h"
 
 #define WORKSPACES_COUNT 10
@@ -12,7 +11,7 @@ typedef struct {
 #define DATA_KEY "data"
 
 GtkWidget *workspaces_init(workspace_change_f callback) {
-  GtkWidget *self = top_bar_get_widget_by_id("WORKSPACES");
+  GtkWidget *self = top_bar_get_widget("WORKSPACES");
 
   data_t *data = malloc(sizeof(data_t));
   data->callback = callback;
