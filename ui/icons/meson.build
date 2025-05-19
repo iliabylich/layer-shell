@@ -11,7 +11,6 @@ icons = files(
     'download_speed.png',
     'foggy.png',
     'partly_cloudy.png',
-    'power.png',
     'question_mark.png',
     'rainy.png',
     'snowy.png',

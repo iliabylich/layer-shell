@@ -16,7 +16,7 @@
     color: var(--theme-text-color);
     text-decoration: none;
 
-    font-family: "Inter Variable", serif;
+    font-family: "Inter Nerd Font Propo", serif;
     font-weight: 400;
     font-style: normal;
     font-size: 12px;
@@ -147,6 +147,13 @@ popover {
                 border-left: 1px solid var(--accent-color);
                 margin-left: 10px;
                 margin-right: 10px;
+            }
+        }
+
+        &.power {
+            label {
+                font-size: 18px;
+                padding: 0 5px;
             }
         }
     }
