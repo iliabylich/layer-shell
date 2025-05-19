@@ -7,13 +7,7 @@ xxd = generator(
 cat = find_program('cat')
 
 icons = files(
-    'foggy.png',
-    'partly_cloudy.png',
     'question_mark.png',
-    'rainy.png',
-    'snowy.png',
-    'sunny.png',
-    'thunderstorm.png',
 )
 
 embedded_icons = xxd.process(icons)

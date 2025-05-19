@@ -1,5 +1,4 @@
 #include "ui/include/weather_helper.h"
-#include "ui/include/icons.h"
 
 const char *weather_code_to_description(IO_WeatherCode code) {
   switch (code) {
@@ -66,17 +65,17 @@ const char *weather_code_to_description(IO_WeatherCode code) {
   return NULL;
 }
 
-GIcon *weather_code_to_icon(IO_WeatherCode code) {
+const char *weather_code_to_icon(IO_WeatherCode code) {
   switch (code) {
   case IO_WeatherCode_ClearSky:
   case IO_WeatherCode_MainlyClear:
-    return get_sunny_icon();
+    return "󰖙";
   case IO_WeatherCode_PartlyCloudy:
   case IO_WeatherCode_Overcast:
-    return get_partly_cloudy_icon();
+    return "󰖐";
   case IO_WeatherCode_FogDepositingRime:
   case IO_WeatherCode_FogNormal:
-    return get_foggy_icon();
+    return "󰖑";
   case IO_WeatherCode_DrizzleDense:
   case IO_WeatherCode_DrizzleLight:
   case IO_WeatherCode_DrizzleModerate:
@@ -90,21 +89,19 @@ GIcon *weather_code_to_icon(IO_WeatherCode code) {
   case IO_WeatherCode_RainShowersSlight:
   case IO_WeatherCode_RainShowersModerate:
   case IO_WeatherCode_RainShowersViolent:
-    return get_rainy_icon();
+    return "󰖗";
   case IO_WeatherCode_SnowFallSlight:
   case IO_WeatherCode_SnowFallModerate:
   case IO_WeatherCode_SnowFallHeavy:
   case IO_WeatherCode_SnowGrains:
   case IO_WeatherCode_SnowShowersSlight:
   case IO_WeatherCode_SnowShowersHeavy:
-    return get_snowy_icon();
+    return "󰖘";
   case IO_WeatherCode_Thunderstorm:
   case IO_WeatherCode_ThunderstormWithHailSight:
   case IO_WeatherCode_ThunderstormWithHailHeavy:
-    return get_thunderstorm_icon();
+    return "";
   case IO_WeatherCode_Unknown:
-    return get_question_mark_icon();
+    return "";
   }
-
-  return NULL;
 }
