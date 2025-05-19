@@ -20,6 +20,8 @@
     font-weight: 400;
     font-style: normal;
     font-size: 12px;
+
+    --icon-font-size: 18px;
 }
 
 popover {
@@ -148,11 +150,15 @@ popover {
                 margin-left: 10px;
                 margin-right: 10px;
             }
+
+            .network-icon {
+                font-size: var(--icon-font-size);
+            }
         }
 
         &.power {
             label {
-                font-size: 18px;
+                font-size: var(--icon-font-size);
                 padding: 0 5px;
             }
         }

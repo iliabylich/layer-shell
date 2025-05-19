@@ -92,26 +92,35 @@ Gtk.Window TOP_BAR {
                 cursor: Gdk.Cursor { name: "pointer"; };
 
                 Gtk.Box {
-                    Gtk.Label NETWORK_NAME_LABEL {
+                    Gtk.Label NETWORK_NAME {
                         label: "-- ";
                     }
-                    Gtk.Image NETWORK_IMAGE {}
+                    Gtk.Label {
+                        styles ["network-icon"]
+                        label: "";
+                    }
 
                     Gtk.Separator {
                         orientation: vertical;
                     }
 
-                    Gtk.Label NETWORK_DOWNLOAD_SPEED_LABEL {
+                    Gtk.Label NETWORK_DOWNLOAD_SPEED {
                         styles ["network-speed-label"]
                         label: "??";
                     }
-                    Gtk.Image NETWORK_DOWNLOAD_SPEED_ICON {}
+                    Gtk.Label {
+                        styles ["network-icon"]
+                        label: "󰇚";
+                    }
 
-                    Gtk.Label NETWORK_UPLOAD_SPEED_LABEL {
+                    Gtk.Label NETWORK_UPLOAD_SPEED {
                         styles ["network-speed-label"]
                         label: "??";
                     }
-                    Gtk.Image NETWORK_UPLOAD_SPEED_ICON {}
+                    Gtk.Label {
+                        styles ["network-icon"]
+                        label: "󰕒";
+                    }
                 }
             }
 

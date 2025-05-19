@@ -8,7 +8,6 @@ cat = find_program('cat')
 
 icons = files(
     'change_theme.png',
-    'download_speed.png',
     'foggy.png',
     'partly_cloudy.png',
     'question_mark.png',
@@ -16,8 +15,6 @@ icons = files(
     'snowy.png',
     'sunny.png',
     'thunderstorm.png',
-    'upload_speed.png',
-    'wifi.png',
 )
 
 embedded_icons = xxd.process(icons)
