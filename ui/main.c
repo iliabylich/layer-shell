@@ -3,7 +3,6 @@
 #include "ui/include/css.h"
 #include "ui/include/htop.h"
 #include "ui/include/icons.h"
-#include "ui/include/launcher.h"
 #include "ui/include/ping.h"
 #include "ui/include/session.h"
 #include "ui/include/top_bar.h"
@@ -32,7 +31,6 @@ GtkWidget *weather;
 GtkWidget *htop;
 GtkWidget *ping;
 GtkWidget *session;
-GtkWidget *launcher;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
@@ -117,14 +115,6 @@ int poll_events(void) {
       session_toggle(session);
       break;
     }
-    case IO_Event_Launcher: {
-      launcher_refresn(launcher, event.launcher.apps);
-      break;
-    }
-    case IO_Event_ToggleLauncher: {
-      launcher_toggle_and_reset(launcher);
-      break;
-    }
     case IO_Event_Exit: {
       fprintf(stderr, "[UI] Received exit...\n");
       io_finalize(ui_ctx, io_thread);
@@ -134,7 +124,6 @@ int poll_events(void) {
       drop_window(GTK_WINDOW(htop));
       drop_window(GTK_WINDOW(ping));
       drop_window(GTK_WINDOW(session));
-      drop_window(GTK_WINDOW(launcher));
       g_application_quit(G_APPLICATION(app));
       fprintf(stderr, "[UI] Quit done.\n");
       keep_processing = false;
@@ -184,14 +173,6 @@ static void on_reboot_clicked() { io_reboot(ui_ctx); }
 static void on_shutdown_clicked() { io_shutdown(ui_ctx); }
 static void on_logout_clicked() { io_logout(ui_ctx); }
 
-static void on_launcher_exec_selected() { io_launcher_exec_selected(ui_ctx); }
-static void on_launcher_go_up() { io_launcher_go_up(ui_ctx); }
-static void on_launcher_go_down() { io_launcher_go_down(ui_ctx); }
-static void on_launcher_reset() { io_launcher_reset(ui_ctx); }
-static void on_launcher_set_search(const uint8_t *search) {
-  io_launcher_set_search(ui_ctx, search);
-}
-
 static void on_app_activate() {
   init_icons();
   init_builders();
@@ -202,9 +183,6 @@ static void on_app_activate() {
   ping = ping_init(app);
   session = session_init(app, on_lock_clicked, on_reboot_clicked,
                          on_shutdown_clicked, on_logout_clicked);
-  launcher = launcher_init(app, on_launcher_exec_selected, on_launcher_go_up,
-                           on_launcher_go_down, on_launcher_reset,
-                           on_launcher_set_search);
 
   workspaces = workspaces_init(on_workspace_change_clicked);
   change_theme = change_theme_init(on_theme_change_clicked);

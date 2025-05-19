@@ -1,6 +1,5 @@
 #include "ui/include/builder.h"
 #include "htop.xml.xxd"
-#include "launcher.xml.xxd"
 #include "ping.xml.xxd"
 #include "session.xml.xxd"
 #include "top_bar.xml.xxd"
@@ -17,7 +16,6 @@
   }
 
 IMPL_BUILDER(htop)
-IMPL_BUILDER(launcher)
 IMPL_BUILDER(ping)
 IMPL_BUILDER(session)
 IMPL_BUILDER(top_bar)
@@ -27,7 +25,6 @@ IMPL_BUILDER(weather)
 
 void init_builders() {
   init_htop_builder();
-  init_launcher_builder();
   init_ping_builder();
   init_session_builder();
   init_top_bar_builder();

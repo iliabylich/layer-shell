@@ -158,45 +158,6 @@ tooltip {
     border: 1px solid var(--theme-accent-color);
 }
 
-.launcher-window {
-    .wrapper {
-        border: 5px solid var(--theme-accent-color);
-        border-radius: 10px;
-    }
-
-    .scroll-list {
-        min-width: 500px;
-        min-height: 260px;
-        background-color: var(--theme-solid-bg-color);
-        padding: 30px;
-    }
-
-    .search-box {
-        background-color: var(--theme-solid-bg-color);
-        padding: 20px 30px;
-        border-bottom: 5px solid var(--theme-accent-color);
-
-        image {
-            margin-right: 10px;
-        }
-    }
-
-    .row {
-        min-width: 500px;
-        padding: 10px;
-
-        &.active {
-            background-color: var(--theme-solid-bg-color-hover);
-        }
-
-        image {
-            min-width: 32px;
-            min-height: 32px;
-            margin-right: 10px;
-        }
-    }
-}
-
 .session-window {
     background-color: var(--theme-solid-bg-color);
 

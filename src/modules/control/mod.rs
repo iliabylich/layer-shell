@@ -71,11 +71,6 @@ struct DBusService {
 }
 
 impl OrgMeLayerShellControl for DBusService {
-    fn toggle_launcher(&mut self) -> std::result::Result<(), dbus::MethodErr> {
-        self.tx.send(Event::ToggleLauncher);
-        Ok(())
-    }
-
     fn toggle_session_screen(&mut self) -> std::result::Result<(), dbus::MethodErr> {
         self.tx.send(Event::ToggleSessionScreen);
         Ok(())

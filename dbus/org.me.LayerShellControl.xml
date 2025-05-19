@@ -2,7 +2,6 @@
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node name="/Control">
 <interface name="org.me.LayerShellControl">
-    <method name="ToggleLauncher" />
     <method name="ToggleSessionScreen" />
     <method name="ReloadStyles" />
     <method name="Exit" />

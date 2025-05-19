@@ -6,8 +6,6 @@ pub(crate) enum FdId {
     Command,
     ControlDBus,
     PipewireDBus,
-    LauncherGlobalDirInotify,
-    LauncherUserDirInotify,
     NetworkDBus,
     TrayDBus,
     Weather,

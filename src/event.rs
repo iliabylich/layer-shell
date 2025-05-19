@@ -24,9 +24,6 @@ pub enum Event {
     Language {
         lang: CString,
     },
-    Launcher {
-        apps: CArray<LauncherApp>,
-    },
     Volume {
         volume: u32,
         muted: bool,
@@ -52,28 +49,12 @@ pub enum Event {
     Tray {
         apps: CArray<TrayApp>,
     },
-    ToggleLauncher,
     ToggleSessionScreen,
     ReloadStyles,
     Exit,
 }
 
 unsafe impl Sync for Event {}
-
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub struct LauncherApp {
-    pub name: CString,
-    pub selected: bool,
-    pub icon: LauncherAppIcon,
-}
-
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub enum LauncherAppIcon {
-    IconPath(CString),
-    IconName(CString),
-}
 
 #[derive(Debug, Clone)]
 #[repr(C)]

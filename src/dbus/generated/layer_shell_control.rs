@@ -5,7 +5,6 @@ use dbus::arg;
 use dbus_crossroads as crossroads;
 
 pub trait OrgMeLayerShellControl {
-    fn toggle_launcher(&mut self) -> Result<(), dbus::MethodErr>;
     fn toggle_session_screen(&mut self) -> Result<(), dbus::MethodErr>;
     fn reload_styles(&mut self) -> Result<(), dbus::MethodErr>;
     fn exit(&mut self) -> Result<(), dbus::MethodErr>;
@@ -15,9 +14,6 @@ pub fn register_org_me_layer_shell_control<T>(cr: &mut crossroads::Crossroads) -
 where T: OrgMeLayerShellControl + Send + 'static
 {
     cr.register("org.me.LayerShellControl", |b| {
-        b.method("ToggleLauncher", (), (), |_, t: &mut T, ()| {
-            t.toggle_launcher()
-        });
         b.method("ToggleSessionScreen", (), (), |_, t: &mut T, ()| {
             t.toggle_session_screen()
         });

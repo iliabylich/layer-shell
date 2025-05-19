@@ -4,8 +4,6 @@ sources += files(
     'src/css.c',
     'src/htop.c',
     'src/icons.c',
-    'src/launcher.c',
-    'src/launcher/row.c',
     'src/ping.c',
     'src/session.c',
     'src/top_bar.c',

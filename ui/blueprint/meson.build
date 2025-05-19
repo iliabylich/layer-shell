@@ -14,7 +14,6 @@ xxd = generator(
 
 inputs = files(
     'htop.blp',
-    'launcher.blp',
     'ping.blp',
     'session.blp',
     'top_bar.blp',

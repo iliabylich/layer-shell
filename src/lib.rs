@@ -120,28 +120,6 @@ pub extern "C" fn io_hyprland_go_to_workspace(ui_ctx: &mut UiCtx, idx: usize) {
     ui_ctx.rx.send(Command::HyprlandGoToWorkspace { idx });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_launcher_reset(ui_ctx: &mut UiCtx) {
-    ui_ctx.rx.send(Command::LauncherReset);
-}
-#[unsafe(no_mangle)]
-pub extern "C" fn io_launcher_go_up(ui_ctx: &mut UiCtx) {
-    ui_ctx.rx.send(Command::LauncherGoUp);
-}
-#[unsafe(no_mangle)]
-pub extern "C" fn io_launcher_go_down(ui_ctx: &mut UiCtx) {
-    ui_ctx.rx.send(Command::LauncherGoDown);
-}
-#[unsafe(no_mangle)]
-pub extern "C" fn io_launcher_set_search(ui_ctx: &mut UiCtx, search: *const u8) {
-    ui_ctx.rx.send(Command::LauncherSetSearch {
-        search: CString::from(search).into(),
-    });
-}
-#[unsafe(no_mangle)]
-pub extern "C" fn io_launcher_exec_selected(ui_ctx: &mut UiCtx) {
-    ui_ctx.rx.send(Command::LauncherExecSelected);
-}
-#[unsafe(no_mangle)]
 pub extern "C" fn io_lock(ui_ctx: &mut UiCtx) {
     ui_ctx.rx.send(Command::Lock);
 }
