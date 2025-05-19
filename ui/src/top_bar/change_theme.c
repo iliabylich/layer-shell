@@ -1,6 +1,5 @@
 #include "ui/include/top_bar/change_theme.h"
 #include "ui/include/builder.h"
-#include "ui/include/icons.h"
 
 typedef struct {
   change_theme_clicked_f callback;
@@ -14,9 +13,6 @@ static void on_click(GtkWidget *self) {
 
 GtkWidget *change_theme_init(change_theme_clicked_f callback) {
   GtkWidget *self = top_bar_get_widget("CHANGE_THEME");
-
-  GtkWidget *image = top_bar_get_widget("CHANGE_THEME_IMAGE");
-  gtk_image_set_from_gicon(GTK_IMAGE(image), get_change_theme_icon());
 
   data_t *data = malloc(sizeof(data_t));
   data->callback = callback;

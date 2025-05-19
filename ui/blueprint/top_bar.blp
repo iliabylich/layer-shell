@@ -24,8 +24,7 @@ Gtk.Window TOP_BAR {
                 styles ["widget", "change-theme", "padded", "clickable"]
                 name: "ChangeTheme";
                 cursor: Gdk.Cursor { name: "pointer"; };
-
-                Gtk.Image CHANGE_THEME_IMAGE {}
+                label: "";
             }
         }
 
@@ -101,6 +100,7 @@ Gtk.Window TOP_BAR {
                     }
 
                     Gtk.Separator {
+                        styles ["separator"]
                         orientation: vertical;
                     }
 
@@ -134,7 +134,7 @@ Gtk.Window TOP_BAR {
                 styles ["widget", "power", "padded", "clickable"]
                 name: "Power";
                 cursor: Gdk.Cursor { name: "pointer"; };
-                label: "󰐥";
+                label: "";
             }
         }
     }

@@ -89,6 +89,10 @@ popover {
                 color: var(--theme-bg-color);
             }
 
+            separator.vertical {
+                border-color: var(--theme-bg-color);
+            }
+
             popover {
                 label {
                     color: var(--text-color);
@@ -99,14 +103,16 @@ popover {
                     color: var(--theme-solid-bg-color);
                 }
             }
-
-            image {
-                filter: invert(100%);
-            }
         }
 
         &.padded {
             padding: 0 10px;
+        }
+
+        &.change-theme {
+            label {
+                font-size: var(--icon-font-size);
+            }
         }
 
         &.workspaces {

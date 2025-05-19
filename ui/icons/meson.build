@@ -7,7 +7,6 @@ xxd = generator(
 cat = find_program('cat')
 
 icons = files(
-    'change_theme.png',
     'foggy.png',
     'partly_cloudy.png',
     'question_mark.png',
