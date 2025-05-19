@@ -14,7 +14,6 @@
 #include "ui/include/top_bar/memory.h"
 #include "ui/include/top_bar/network.h"
 #include "ui/include/top_bar/power.h"
-#include "ui/include/top_bar/sound.h"
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/weather_button.h"
 #include "ui/include/top_bar/workspaces.h"
@@ -38,7 +37,6 @@ GtkWidget *tray;
 GtkWidget *weather_button;
 GtkWidget *htop_button;
 GtkWidget *language;
-GtkWidget *sound;
 GtkWidget *cpu;
 GtkWidget *memory;
 GtkWidget *network;
@@ -80,10 +78,6 @@ int poll_events(void) {
     }
     case IO_Event_Language: {
       language_refresh(language, event.language.lang);
-      break;
-    }
-    case IO_Event_Volume: {
-      sound_refresh(sound, event.volume.volume, event.volume.muted);
       break;
     }
     case IO_Event_CpuUsage: {
@@ -191,7 +185,6 @@ static void on_app_activate() {
   weather_button = weather_button_init(on_weather_button_clicked);
   htop_button = htop_button_init(on_htop_button_clicked);
   language = language_init();
-  sound = sound_init();
   cpu = cpu_init();
   memory = memory_init(on_memory_clicked);
   network = network_init(on_network_settings_clicked, on_network_ping_clicked,

@@ -31,5 +31,3 @@ pub(crate) mod status_notifier_item;
 pub(crate) mod dbus_menu;
 
 pub(crate) mod layer_shell_control;
-
-pub(crate) mod pipewire_dbus;

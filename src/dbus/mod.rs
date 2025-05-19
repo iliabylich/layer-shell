@@ -24,5 +24,3 @@ pub(crate) use generated::dbus_menu::{
 pub(crate) use generated::layer_shell_control::{
     OrgMeLayerShellControl, register_org_me_layer_shell_control,
 };
-
-pub(crate) use generated::pipewire_dbus::{OrgLocalPipewireDBus, OrgLocalPipewireDBusDataChanged};

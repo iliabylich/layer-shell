@@ -5,8 +5,8 @@ use crate::{
     channel::{CommandReceiver, EventSender},
     modules::{
         MaybeModule, MaybeTickingModule, Module, clock::Clock, control::Control, cpu::CPU,
-        hyprland::Hyprland, memory::Memory, network::Network, pipewire::Pipewire, session::Session,
-        tray::Tray, weather::Weather,
+        hyprland::Hyprland, memory::Memory, network::Network, session::Session, tray::Tray,
+        weather::Weather,
     },
     poll::Poll,
     timer::Timer,
@@ -25,7 +25,6 @@ pub(crate) struct Loop {
     timer: Option<Timer>,
     hyprland: Option<Hyprland>,
     control: Option<Control>,
-    pipewire: Option<Pipewire>,
     network: Option<Network>,
     tray: Option<Tray>,
 
@@ -45,14 +44,12 @@ impl Loop {
         let timer = Timer::try_new(&tx);
         let hyprland = Hyprland::try_new(&tx);
         let control = Control::try_new(&tx);
-        let pipewire = Pipewire::try_new(&tx);
         let network = Network::try_new(&tx);
         let tray = Tray::try_new(&tx);
 
         poll.add_maybe_reader(&timer);
         poll.add_maybe_reader(&hyprland);
         poll.add_maybe_reader(&control);
-        poll.add_maybe_reader(&pipewire);
         poll.add_maybe_reader(&network);
         poll.add_maybe_reader(&tray);
         poll.add_reader(&rx);
@@ -68,7 +65,6 @@ impl Loop {
             timer,
             hyprland,
             control,
-            pipewire,
             network,
             tray,
 
@@ -109,10 +105,6 @@ impl Loop {
 
                 Control::TOKEN => {
                     self.control.read_events_or_unregister(&self.poll);
-                }
-
-                Pipewire::TOKEN => {
-                    self.pipewire.read_events_or_unregister(&self.poll);
                 }
 
                 Network::TOKEN => {

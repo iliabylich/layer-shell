@@ -28,5 +28,3 @@ dbus-codegen-rust --client blocking < dbus/org.kde.StatusNotifierItem.xml -o src
 dbus-codegen-rust --client blocking < dbus/com.canonical.dbusmenu.xml -o src/dbus/generated/dbus_menu.rs
 
 dbus-codegen-rust --crossroads < dbus/org.me.LayerShellControl.xml -o src/dbus/generated/layer_shell_control.rs
-
-dbus-codegen-rust --client blocking < dbus/org.local.PipewireDBus.xml -o src/dbus/generated/pipewire_dbus.rs

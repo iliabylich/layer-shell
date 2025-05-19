@@ -24,10 +24,6 @@ pub enum Event {
     Language {
         lang: CString,
     },
-    Volume {
-        volume: u32,
-        muted: bool,
-    },
     CurrentWeather {
         temperature: f32,
         code: WeatherCode,

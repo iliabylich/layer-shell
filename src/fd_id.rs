@@ -5,7 +5,6 @@ pub(crate) enum FdId {
     HyprlandSocket,
     Command,
     ControlDBus,
-    PipewireDBus,
     NetworkDBus,
     TrayDBus,
     Weather,
