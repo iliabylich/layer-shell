@@ -104,4 +104,6 @@ const char *weather_code_to_icon(IO_WeatherCode code) {
   case IO_WeatherCode_Unknown:
     return "";
   }
+
+  return "";
 }

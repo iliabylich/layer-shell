@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/tray_app_icon.h"
-#include "ui/include/icons.h"
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_app_icon_context.h"
 #include "ui/include/top_bar/tray_app_icon_popover.h"
@@ -38,7 +37,7 @@ static GtkWidget *icon_new(IO_TrayIcon tray_icon) {
     return image_from_pixmap_variant(tray_icon.pixmap_variant);
   }
   case IO_TrayIcon_Unset: {
-    return gtk_image_new_from_gicon(get_question_mark_icon());
+    return gtk_image_new_from_icon_name("process-stop");
   }
   default: {
     fprintf(stderr, "Unknown tray app icon tag\n");

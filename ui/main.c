@@ -2,7 +2,6 @@
 #include "ui/include/builder.h"
 #include "ui/include/css.h"
 #include "ui/include/htop.h"
-#include "ui/include/icons.h"
 #include "ui/include/ping.h"
 #include "ui/include/session.h"
 #include "ui/include/top_bar.h"
@@ -168,7 +167,6 @@ static void on_shutdown_clicked() { io_shutdown(ui_ctx); }
 static void on_logout_clicked() { io_logout(ui_ctx); }
 
 static void on_app_activate() {
-  init_icons();
   init_builders();
 
   top_bar = top_bar_init(app);

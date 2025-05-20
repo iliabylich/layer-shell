@@ -3,7 +3,6 @@ sources += files(
     'src/builder.c',
     'src/css.c',
     'src/htop.c',
-    'src/icons.c',
     'src/ping.c',
     'src/session.c',
     'src/top_bar.c',
@@ -40,5 +39,4 @@ sources += files(
 )
 
 subdir('css')
-subdir('icons')
 subdir('blueprint')
