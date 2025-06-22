@@ -41,6 +41,8 @@ serde = { version = "1", default-features = false, features = [
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 
+zbus = { version = "3", default-features = false, features = ["tokio"] }
+
 # [profile.release]
 # opt-level = "z"
 # lto = true
