@@ -39,7 +39,7 @@ impl Stream for ClockStream {
 
         let now = chrono::Local::now();
         Ready(Some(Event {
-            time: now.format("%H:%M:%S | %b %e | %a").to_string().into(),
+            time: now.format("%H:%M:%S | %b %e | %a").to_string(),
         }))
     }
 }

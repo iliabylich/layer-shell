@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["clock", "cpu", "ffi", "hyprland", "io", "memory"]
+members = ["clock", "control", "cpu", "ffi", "hyprland", "io", "memory"]
 
 # [package]
 # name = "layer-shell-io"
@@ -41,7 +41,7 @@ serde = { version = "1", default-features = false, features = [
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 
-zbus = { version = "3", default-features = false, features = ["tokio"] }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
 
 # [profile.release]
 # opt-level = "z"

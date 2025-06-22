@@ -83,3 +83,13 @@ impl From<clock::Event> for Event {
         }
     }
 }
+
+impl From<control::Event> for Event {
+    fn from(event: control::Event) -> Self {
+        match event {
+            control::Event::ToggleSessionScreen => Self::ToggleSessionScreen,
+            control::Event::ReloadStyles => Self::ReloadStyles,
+            control::Event::Exit => Self::Exit,
+        }
+    }
+}

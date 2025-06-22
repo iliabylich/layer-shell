@@ -1,6 +1,7 @@
 use crate::{command::Command, event::Event};
 use anyhow::{Result, anyhow, bail};
 use clock::Clock;
+use control::Control;
 use cpu::Cpu;
 use futures_util::{StreamExt as _, stream::Fuse};
 use hyprland::Hyprland;
@@ -15,6 +16,7 @@ pub(crate) struct MainLoop {
     cpu: Fuse<Cpu>,
     memory: Fuse<Memory>,
     clock: Fuse<Clock>,
+    control: Fuse<Control>,
 }
 
 impl MainLoop {
@@ -23,6 +25,7 @@ impl MainLoop {
         let cpu = Cpu::new().fuse();
         let memory = Memory::new().fuse();
         let clock = Clock::new().fuse();
+        let control = Control::new().await?.fuse();
 
         Ok(Self {
             etx,
@@ -31,6 +34,7 @@ impl MainLoop {
             cpu,
             memory,
             clock,
+            control,
         })
     }
 
@@ -51,6 +55,10 @@ impl MainLoop {
 
                 Some(e) = self.clock.next() => {
                     self.emit("Clock", e).await?;
+                }
+
+                Some(e) = self.control.next() => {
+                    self.emit("Control", e).await?;
                 }
 
                 Some(cmd) = self.crx.recv() => {
