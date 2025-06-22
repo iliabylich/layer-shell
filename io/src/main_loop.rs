@@ -1,5 +1,6 @@
 use crate::{command::Command, event::Event};
 use anyhow::{Result, anyhow, bail};
+use clock::Clock;
 use cpu::Cpu;
 use futures_util::{StreamExt as _, stream::Fuse};
 use hyprland::Hyprland;
@@ -13,6 +14,7 @@ pub(crate) struct MainLoop {
     hyprland: Fuse<Hyprland>,
     cpu: Fuse<Cpu>,
     memory: Fuse<Memory>,
+    clock: Fuse<Clock>,
 }
 
 impl MainLoop {
@@ -20,6 +22,7 @@ impl MainLoop {
         let hyprland = Hyprland::new().await?.fuse();
         let cpu = Cpu::new().fuse();
         let memory = Memory::new().fuse();
+        let clock = Clock::new().fuse();
 
         Ok(Self {
             etx,
@@ -27,33 +30,39 @@ impl MainLoop {
             hyprland,
             cpu,
             memory,
+            clock,
         })
     }
 
     pub(crate) async fn start(&mut self) -> Result<()> {
         loop {
-            self.tick().await?;
+            tokio::select! {
+                Some(e) = self.hyprland.next() => {
+                    self.emit("Hyprland", e).await?;
+                }
+
+                Some(e) = self.cpu.next() => {
+                    self.emit("CPU", e).await?;
+                }
+
+                Some(e) = self.memory.next() => {
+                    self.emit("Memory", e).await?;
+                }
+
+                Some(e) = self.clock.next() => {
+                    self.emit("Clock", e).await?;
+                }
+
+                Some(cmd) = self.crx.recv() => {
+                    if matches!(cmd, Command::FinishIoThread) {
+                        return Ok(());
+                    }
+                    self.on_command(cmd).await;
+                }
+
+                else => bail!("all streams are dead"),
+            }
         }
-    }
-
-    async fn tick(&mut self) -> Result<()> {
-        tokio::select! {
-            Some(e) = self.hyprland.next() => {
-                self.emit("Hyprland", e).await?;
-            }
-
-            Some(e) = self.cpu.next() => {
-                self.emit("CPU", e).await?;
-            }
-
-            Some(e) = self.memory.next() => {
-                self.emit("Memory", e).await?;
-            }
-
-            else => bail!("all streams are dead"),
-        }
-
-        Ok(())
     }
 
     async fn emit(&self, module: &str, e: impl Into<Event>) -> Result<()> {
@@ -64,5 +73,45 @@ impl MainLoop {
             .send(e)
             .await
             .map_err(|_| anyhow!("failed to emit Event, channel is closed"))
+    }
+
+    async fn hyprctl_dispatch(&mut self, cmd: impl AsRef<str>) {
+        if let Err(err) = self.hyprland.get_mut().hyprctl_dispatch(cmd).await {
+            log::error!("{err:?}");
+        }
+    }
+
+    async fn on_command(&mut self, cmd: Command) {
+        match cmd {
+            Command::FinishIoThread => unreachable!("handled by the caller"),
+
+            Command::HyprlandGoToWorkspace { idx } => {
+                self.hyprctl_dispatch(format!("workspace {}", idx + 1))
+                    .await;
+            }
+            Command::Lock => {
+                self.hyprctl_dispatch("exec hyprlock").await;
+            }
+            Command::Reboot => {
+                self.hyprctl_dispatch("exec systemctl reboot").await;
+            }
+            Command::Shutdown => {
+                self.hyprctl_dispatch("exec systemctl poweroff").await;
+            }
+            Command::Logout => {
+                self.hyprctl_dispatch("exit").await;
+            }
+            Command::TriggerTray { uuid } => todo!(),
+            Command::SpawnNetworkEditor => {
+                self.hyprctl_dispatch("exec iwmenu --launcher fuzzel").await;
+            }
+            Command::SpawnSystemMonitor => {
+                self.hyprctl_dispatch("exec gnome-system-monitor").await;
+            }
+            Command::ChangeTheme => {
+                self.hyprctl_dispatch("exec ~/.config/hypr/wallpaper-change.sh")
+                    .await
+            }
+        }
     }
 }

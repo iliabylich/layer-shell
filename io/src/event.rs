@@ -75,3 +75,11 @@ impl From<memory::Event> for Event {
         }
     }
 }
+
+impl From<clock::Event> for Event {
+    fn from(event: clock::Event) -> Self {
+        Self::Time {
+            time: event.time.into(),
+        }
+    }
+}

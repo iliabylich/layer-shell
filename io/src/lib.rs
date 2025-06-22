@@ -137,12 +137,7 @@ pub extern "C" fn io_drop_events(events: CArray<Event>) {
 #[unsafe(no_mangle)]
 pub extern "C" fn io_finalize() {
     fn try_io_finalize() -> Result<()> {
-        unsafe {
-            CTX.get()
-                .context("no CTX, did you call io_init()?")?
-                .blocking_send(Command::FinishIoThread)
-                .context("failed to send Command, channel is closed")?;
-        };
+        send_command(Command::FinishIoThread);
         log::info!("Waiting for IO thread to finish...");
         unsafe {
             THREAD_HANDLE
@@ -161,41 +156,54 @@ pub extern "C" fn io_finalize() {
     }
 }
 
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_hyprland_go_to_workspace(ui_ctx: &mut UiCtx, idx: usize) {
-//     ui_ctx.rx.send(Command::HyprlandGoToWorkspace { idx });
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_lock(ui_ctx: &mut UiCtx) {
-//     ui_ctx.rx.send(Command::Lock);
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_reboot(ui_ctx: &mut UiCtx) {
-//     ui_ctx.rx.send(Command::Reboot);
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_shutdown(ui_ctx: &mut UiCtx) {
-//     ui_ctx.rx.send(Command::Shutdown);
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_logout(ui_ctx: &mut UiCtx) {
-//     ui_ctx.rx.send(Command::Logout);
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_trigger_tray(ui_ctx: &mut UiCtx, uuid: *const u8) {
-//     ui_ctx.rx.send(Command::TriggerTray {
-//         uuid: CString::from(uuid).into(),
-//     });
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_spawn_network_editor(ui_ctx: &mut UiCtx) {
-//     ui_ctx.rx.send(Command::SpawnNetworkEditor);
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_spawn_system_monitor(ui_ctx: &mut UiCtx) {
-//     ui_ctx.rx.send(Command::SpawnSystemMonitor);
-// }
-// #[unsafe(no_mangle)]
-// pub extern "C" fn io_change_theme(ui_ctx: &mut UiCtx) {
-//     ui_ctx.rx.send(Command::ChangeTheme);
-// }
+fn send_command(cmd: Command) {
+    unsafe {
+        let Some(ctx) = CTX.get() else {
+            log::error!("no CTX, did you call io_init()?");
+            std::process::exit(1);
+        };
+        if ctx.blocking_send(cmd).is_err() {
+            log::error!("failed to send Command, channel is closed");
+            std::process::exit(1);
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn io_hyprland_go_to_workspace(idx: usize) {
+    send_command(Command::HyprlandGoToWorkspace { idx });
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_lock() {
+    send_command(Command::Lock);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_reboot() {
+    send_command(Command::Reboot);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_shutdown() {
+    send_command(Command::Shutdown);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_logout() {
+    send_command(Command::Logout);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_trigger_tray(uuid: *const u8) {
+    send_command(Command::TriggerTray {
+        uuid: CString::from(uuid).into(),
+    });
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_spawn_network_editor() {
+    send_command(Command::SpawnNetworkEditor);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_spawn_system_monitor() {
+    send_command(Command::SpawnSystemMonitor);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_change_theme() {
+    send_command(Command::ChangeTheme);
+}
