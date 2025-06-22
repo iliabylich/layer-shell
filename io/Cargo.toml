@@ -12,3 +12,4 @@ futures-util = { workspace = true }
 ffi = { path = "../ffi" }
 
 hyprland = { path = "../hyprland" }
+cpu = { path = "../cpu" }

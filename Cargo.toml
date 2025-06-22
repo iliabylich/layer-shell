@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["ffi", "hyprland", "io"]
+members = ["cpu", "ffi", "hyprland", "io"]
 
 # [package]
 # name = "layer-shell-io"

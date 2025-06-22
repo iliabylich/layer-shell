@@ -1,5 +1,6 @@
 use crate::{command::Command, event::Event};
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Result, anyhow, bail};
+use cpu::Cpu;
 use futures_util::{StreamExt as _, stream::Fuse};
 use hyprland::Hyprland;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -9,13 +10,20 @@ pub(crate) struct MainLoop {
     crx: Receiver<Command>,
 
     hyprland: Fuse<Hyprland>,
+    cpu: Fuse<Cpu>,
 }
 
 impl MainLoop {
     pub(crate) async fn new(etx: Sender<Event>, crx: Receiver<Command>) -> Result<Self> {
         let hyprland = Hyprland::new().await?.fuse();
+        let cpu = Cpu::new().fuse();
 
-        Ok(Self { etx, crx, hyprland })
+        Ok(Self {
+            etx,
+            crx,
+            hyprland,
+            cpu,
+        })
     }
 
     pub(crate) async fn start(&mut self) -> Result<()> {
@@ -28,6 +36,10 @@ impl MainLoop {
         tokio::select! {
             Some(e) = self.hyprland.next() => {
                 self.emit("Hyprland", e).await?;
+            }
+
+            Some(e) = self.cpu.next() => {
+                self.emit("CPU", e).await?;
             }
 
             else => bail!("all streams are dead"),
