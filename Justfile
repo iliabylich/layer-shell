@@ -29,3 +29,6 @@ perf-io:
 strace-io:
     cargo build --bin just-io
     strace target/debug/just-io
+
+io:
+    RUST_LOG=trace cargo run --bin just-io

@@ -1,0 +1,17 @@
+# cbindgen --crate io --config io/cbindgen.toml
+
+language = "C"
+
+pragma_once = true
+usize_is_size_t = true
+style = "both"
+
+[parse]
+parse_deps = true
+include = ["ffi"]
+
+[export]
+prefix = "IO_"
+
+[enum]
+prefix_with_name = true
