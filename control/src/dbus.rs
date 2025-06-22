@@ -1,22 +1,14 @@
 use crate::Event;
-use anyhow::Result;
-use tokio::sync::mpsc::{Receiver, Sender};
-use zbus::{Connection, interface};
+use tokio::sync::mpsc::Sender;
+use zbus::interface;
 
 pub(crate) struct DBus {
     tx: Sender<Event>,
 }
 
 impl DBus {
-    pub(crate) async fn connect() -> Result<(Connection, Receiver<Event>)> {
-        let (tx, rx) = tokio::sync::mpsc::channel(256);
-
-        let connection = Connection::session().await?;
-        let control = DBus { tx };
-        connection.object_server().at("/Control", control).await?;
-        connection.request_name("org.me.LayerShellControl").await?;
-
-        Ok((connection, rx))
+    pub(crate) fn new(tx: Sender<Event>) -> Self {
+        Self { tx }
     }
 
     async fn send(&self, event: Event) {

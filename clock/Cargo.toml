@@ -8,3 +8,5 @@ tokio = { workspace = true }
 futures-util = { workspace = true }
 pin-project-lite = { workspace = true }
 chrono = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }

@@ -1,18 +1,12 @@
 use crate::env::{hyprland_instance_signature, xdg_runtime_dir};
-use anyhow::{Context as _, Result};
-use futures_util::{Stream, ready};
-use pin_project_lite::pin_project;
-use std::task::Poll::*;
+use anyhow::{Context as _, Result, bail};
 use tokio::{
     io::{AsyncBufReadExt, BufReader, Lines},
     net::UnixStream,
 };
 
-pin_project! {
-    pub(crate) struct Reader {
-        #[pin]
-        socket: Lines<BufReader<UnixStream>>,
-    }
+pub(crate) struct Reader {
+    socket: Lines<BufReader<UnixStream>>,
 }
 
 impl Reader {
@@ -29,6 +23,22 @@ impl Reader {
             socket: BufReader::new(socket).lines(),
         })
     }
+
+    pub(crate) async fn next_event(&mut self) -> Result<ReaderEvent> {
+        loop {
+            let Some(line) = self.socket.next_line().await? else {
+                bail!("Hyprland reader socket is closed, exiting");
+            };
+
+            match parse_event(&line) {
+                Ok(Some(event)) => return Ok(event),
+                Ok(None) => continue, // event that we are not interested in
+                Err(err) => {
+                    log::error!("{err:?}")
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -39,40 +49,10 @@ pub(crate) enum ReaderEvent {
     LanguageChanged(String),
 }
 
-impl Stream for Reader {
-    type Item = ReaderEvent;
-
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let mut this = self.project();
-
-        loop {
-            let line = match ready!(this.socket.as_mut().poll_next_line(cx)) {
-                Ok(Some(line)) => line,
-                Ok(None) => return Ready(None),
-                Err(err) => {
-                    log::error!("failed to read line from Hyprland reader socket: {err:?}");
-                    continue;
-                }
-            };
-
-            match parse_event(&line) {
-                Ok(Some(event)) => return Ready(Some(event)),
-                Ok(None) => continue, // event that we are not interested in
-                Err(err) => {
-                    log::error!("{err:?}")
-                }
-            }
-        }
-    }
-}
-
 fn parse_event(line: &str) -> Result<Option<ReaderEvent>> {
-    let (event, payload) = line.split_once(">>").with_context(|| {
-        format!("malformed line from Hyprland reader socket: {line:?} (expected >> separator)")
-    })?;
+    let Some((event, payload)) = line.split_once(">>") else {
+        bail!("malformed line from Hyprland reader socket: {line:?} (expected >> separator)")
+    };
 
     let num_payload = || {
         payload

@@ -1,9 +1,10 @@
 mod env;
 mod event;
+mod hyprland;
 mod reader;
 mod state;
-mod stream;
+mod task;
 mod writer;
 
 pub use event::Event;
-pub use stream::HyprlandStream as Hyprland;
+pub use hyprland::Hyprland;

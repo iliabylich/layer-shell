@@ -1,5 +1,6 @@
 mod event;
-mod stream;
+mod memory;
+mod task;
 
 pub use event::Event;
-pub use stream::MemoryStream as Memory;
+pub use memory::Memory;

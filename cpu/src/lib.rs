@@ -1,7 +1,8 @@
 mod core;
+mod cpu;
 mod event;
 mod store;
-mod stream;
+mod task;
 
+pub use cpu::CPU;
 pub use event::Event;
-pub use stream::CpuStream as Cpu;

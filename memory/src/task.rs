@@ -1,51 +1,40 @@
-use crate::event::Event;
+use crate::Event;
 use anyhow::{Context as _, Result};
-use futures_util::{Stream, ready};
-use pin_project_lite::pin_project;
-use std::{io::Read as _, task::Poll::*, time::Duration};
-use tokio::time::{Interval, interval};
+use std::{io::Read as _, time::Duration};
+use tokio::{
+    sync::mpsc::{Receiver, Sender},
+    task::JoinHandle,
+};
 
-pin_project! {
-    pub struct MemoryStream {
-        #[pin]
-        timer: Interval,
-
-        buf: Vec<u8>,
-    }
+pub(crate) struct Task {
+    tx: Sender<Event>,
 }
 
-impl MemoryStream {
-    pub fn new() -> Self {
-        Self {
-            timer: interval(Duration::from_secs(1)),
-            buf: vec![0; 1_024],
-        }
-    }
-}
+impl Task {
+    pub(crate) fn spawn() -> (Receiver<Event>, JoinHandle<()>) {
+        let (tx, rx) = tokio::sync::mpsc::channel(256);
 
-impl Default for MemoryStream {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Stream for MemoryStream {
-    type Item = Event;
-
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let mut this = self.project();
-
-        let _ = ready!(this.timer.poll_tick(cx));
-
-        match parse(this.buf) {
-            Ok(event) => Ready(Some(event)),
-            Err(err) => {
+        let handle = tokio::spawn(async move {
+            let task = Self { tx };
+            if let Err(err) = task.start().await {
                 log::error!("{err:?}");
-                Ready(None)
             }
+        });
+
+        (rx, handle)
+    }
+
+    async fn start(&self) -> Result<()> {
+        let mut buf = vec![0; 1_024];
+
+        loop {
+            let event = parse(&mut buf)?;
+            self.tx
+                .send(event)
+                .await
+                .context("failed to send event, channel is closed")?;
+
+            tokio::time::sleep(Duration::from_secs(1)).await
         }
     }
 }
