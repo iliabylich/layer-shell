@@ -13,3 +13,4 @@ ffi = { path = "../ffi" }
 
 hyprland = { path = "../hyprland" }
 cpu = { path = "../cpu" }
+memory = { path = "../memory" }

@@ -2,21 +2,21 @@ use crate::core::Core;
 use anyhow::{Result, ensure};
 
 pub(crate) struct Store {
-    buffer: Vec<u8>,
+    buf: Vec<u8>,
     state: Option<Vec<Core>>,
 }
 
 impl Store {
     pub(crate) fn new() -> Self {
         Self {
-            buffer: vec![0; 1_024],
+            buf: vec![0; 1_024],
             state: None,
         }
     }
 
     pub(crate) fn update(&mut self) -> Result<Vec<u8>> {
         let previous = self.state.take();
-        let next = Core::read_and_parse_all(&mut self.buffer)?;
+        let next = Core::read_and_parse_all(&mut self.buf)?;
 
         let usage = if let Some(previous) = previous {
             ensure!(

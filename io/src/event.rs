@@ -66,3 +66,12 @@ impl From<cpu::Event> for Event {
         }
     }
 }
+
+impl From<memory::Event> for Event {
+    fn from(event: memory::Event) -> Self {
+        Self::Memory {
+            used: event.used,
+            total: event.total,
+        }
+    }
+}

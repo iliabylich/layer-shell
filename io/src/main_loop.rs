@@ -3,6 +3,7 @@ use anyhow::{Result, anyhow, bail};
 use cpu::Cpu;
 use futures_util::{StreamExt as _, stream::Fuse};
 use hyprland::Hyprland;
+use memory::Memory;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 pub(crate) struct MainLoop {
@@ -11,18 +12,21 @@ pub(crate) struct MainLoop {
 
     hyprland: Fuse<Hyprland>,
     cpu: Fuse<Cpu>,
+    memory: Fuse<Memory>,
 }
 
 impl MainLoop {
     pub(crate) async fn new(etx: Sender<Event>, crx: Receiver<Command>) -> Result<Self> {
         let hyprland = Hyprland::new().await?.fuse();
         let cpu = Cpu::new().fuse();
+        let memory = Memory::new().fuse();
 
         Ok(Self {
             etx,
             crx,
             hyprland,
             cpu,
+            memory,
         })
     }
 
@@ -40,6 +44,10 @@ impl MainLoop {
 
             Some(e) = self.cpu.next() => {
                 self.emit("CPU", e).await?;
+            }
+
+            Some(e) = self.memory.next() => {
+                self.emit("Memory", e).await?;
             }
 
             else => bail!("all streams are dead"),

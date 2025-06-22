@@ -22,6 +22,12 @@ impl CpuStream {
     }
 }
 
+impl Default for CpuStream {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Stream for CpuStream {
     type Item = Event;
 

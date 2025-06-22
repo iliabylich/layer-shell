@@ -14,7 +14,7 @@ pin_project! {
         #[pin]
         reader: Reader,
 
-        buffer: Vec<Event>,
+        buf: Vec<Event>,
         state: State,
     }
 }
@@ -27,13 +27,9 @@ impl HyprlandStream {
         let active_workspace_id = Writer::get_active_workspace().await?;
         let lang = Writer::get_language().await?;
 
-        let (state, buffer) = State::new(workspace_ids, active_workspace_id, lang);
+        let (state, buf) = State::new(workspace_ids, active_workspace_id, lang);
 
-        Ok(Self {
-            reader,
-            buffer,
-            state,
-        })
+        Ok(Self { reader, buf, state })
     }
 
     pub async fn hyprctl_dispatch(&mut self, cmd: impl AsRef<str>) -> Result<()> {
@@ -50,7 +46,7 @@ impl Stream for HyprlandStream {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
 
-        if let Some(event) = this.buffer.pop() {
+        if let Some(event) = this.buf.pop() {
             return Ready(Some(event));
         }
 
