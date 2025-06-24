@@ -8,8 +8,6 @@ log = { workspace = true }
 env_logger = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
-futures-util = { workspace = true }
-console-subscriber = { workspace = true }
 
 ffi = { path = "../ffi" }
 

@@ -8,7 +8,8 @@ members = [
     "hyprland",
     "io",
     "memory",
-    "network", "utils",
+    "network",
+    "utils",
 ]
 
 
@@ -21,21 +22,13 @@ anyhow = { version = "1", default-features = false }
 log = { version = "0.4", default-features = false }
 env_logger = { version = "0.11", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-# dbus = "0.9"
-# dbus-crossroads = "0.5"
 nanoserde = { version = "0.2", default-features = false, features = [
     "std",
     "json",
 ] }
-# mio = { version = "1", features = ["os-poll", "net", "os-ext"] }
-# rustix = { version = "1", features = ["time"] }
-tokio = { version = "1", default-features = false, features = [
-    "full",
-    "tracing",
-] }
-console-subscriber = { version = "0.4" }
-futures-util = { version = "0.3", default-features = false }
-pin-project-lite = "0.2"
+tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
+futures = { version = "0.3", default-features = false, features = ["std"] }
+tokio-stream = { version = "0.1", default-features = false }
 
 serde = { version = "1", default-features = false, features = [
     "std",

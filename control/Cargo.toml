@@ -5,8 +5,6 @@ edition = "2024"
 
 [dependencies]
 tokio = { workspace = true }
-futures-util = { workspace = true }
-pin-project-lite = { workspace = true }
 zbus = { workspace = true }
 anyhow = { workspace = true }
 log = { workspace = true }

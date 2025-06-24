@@ -44,8 +44,6 @@ pub fn io_run_in_place() -> Result<()> {
         });
 
     rt.block_on(async move {
-        console_subscriber::init();
-
         let Some(etx) = (unsafe { ETX.take() }) else {
             log::error!("ETX is not set, did you call io_init()?");
             std::process::exit(1);
