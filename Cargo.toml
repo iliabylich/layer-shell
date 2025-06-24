@@ -1,11 +1,16 @@
 [workspace]
 resolver = "2"
-members = ["clock", "control", "cpu", "ffi", "hyprland", "io", "memory"]
+members = [
+    "clock",
+    "control",
+    "cpu",
+    "ffi",
+    "hyprland",
+    "io",
+    "memory",
+    "network", "utils",
+]
 
-# [package]
-# name = "layer-shell-io"
-# version = "0.1.0"
-# edition = "2024"
 
 # [lib]
 # crate-type = ["staticlib", "lib"]
@@ -25,13 +30,10 @@ nanoserde = { version = "0.2", default-features = false, features = [
 # mio = { version = "1", features = ["os-poll", "net", "os-ext"] }
 # rustix = { version = "1", features = ["time"] }
 tokio = { version = "1", default-features = false, features = [
-    "time",
-    "rt",
-    "macros",
-    "sync",
-    "net",
-    "io-util",
+    "full",
+    "tracing",
 ] }
+console-subscriber = { version = "0.4" }
 futures-util = { version = "0.3", default-features = false }
 pin-project-lite = "0.2"
 
@@ -42,6 +44,7 @@ serde = { version = "1", default-features = false, features = [
 serde_json = { version = "1", default-features = false, features = ["std"] }
 
 zbus = { version = "5", default-features = false, features = ["tokio"] }
+
 
 # [profile.release]
 # opt-level = "z"

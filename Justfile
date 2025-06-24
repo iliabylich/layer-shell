@@ -31,4 +31,4 @@ strace-io:
     strace target/debug/just-io
 
 io:
-    RUST_LOG=trace cargo run --bin just-io
+    RUSTFLAGS="--cfg tokio_unstable" RUST_LOG=info cargo run --bin just-io

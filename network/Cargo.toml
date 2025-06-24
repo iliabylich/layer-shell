@@ -1,0 +1,15 @@
+[package]
+name = "network"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true }
+futures-util = { workspace = true }
+pin-project-lite = { workspace = true }
+zbus = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+utils = { path = "../utils" }
+futures = "0.3.31"
+tokio-stream = "0.1.17"

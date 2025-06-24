@@ -4,10 +4,13 @@ pub enum COption<T> {
     Some(T),
 }
 
-impl<T> From<Option<T>> for COption<T> {
+impl<T, U> From<Option<T>> for COption<U>
+where
+    U: From<T>,
+{
     fn from(v: Option<T>) -> Self {
         match v {
-            Some(value) => Self::Some(value),
+            Some(value) => Self::Some(value.into()),
             None => Self::None,
         }
     }

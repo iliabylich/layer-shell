@@ -2,30 +2,35 @@ use crate::{command::Command, event::Event};
 use anyhow::{Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
-use cpu::Cpu;
-use futures_util::{StreamExt as _, stream::Fuse};
+use cpu::CPU;
 use hyprland::Hyprland;
 use memory::Memory;
-use tokio::sync::mpsc::{Receiver, Sender};
+use network::Network;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 pub(crate) struct MainLoop {
-    etx: Sender<Event>,
-    crx: Receiver<Command>,
+    etx: UnboundedSender<Event>,
+    crx: UnboundedReceiver<Command>,
 
-    hyprland: Fuse<Hyprland>,
-    cpu: Fuse<Cpu>,
-    memory: Fuse<Memory>,
-    clock: Fuse<Clock>,
-    control: Fuse<Control>,
+    hyprland: Hyprland,
+    cpu: CPU,
+    memory: Memory,
+    clock: Clock,
+    control: Control,
+    network: Network,
 }
 
 impl MainLoop {
-    pub(crate) async fn new(etx: Sender<Event>, crx: Receiver<Command>) -> Result<Self> {
-        let hyprland = Hyprland::new().await?.fuse();
-        let cpu = Cpu::new().fuse();
-        let memory = Memory::new().fuse();
-        let clock = Clock::new().fuse();
-        let control = Control::new().await?.fuse();
+    pub(crate) async fn new(
+        etx: UnboundedSender<Event>,
+        crx: UnboundedReceiver<Command>,
+    ) -> Result<Self> {
+        let hyprland = Hyprland::start();
+        let cpu = CPU::start();
+        let memory = Memory::start();
+        let clock = Clock::start();
+        let control = Control::start();
+        let network = Network::start();
 
         Ok(Self {
             etx,
@@ -35,30 +40,35 @@ impl MainLoop {
             memory,
             clock,
             control,
+            network,
         })
     }
 
     pub(crate) async fn start(&mut self) -> Result<()> {
         loop {
             tokio::select! {
-                Some(e) = self.hyprland.next() => {
+                Some(e) = self.hyprland.recv() => {
                     self.emit("Hyprland", e).await?;
                 }
 
-                Some(e) = self.cpu.next() => {
+                Some(e) = self.cpu.recv() => {
                     self.emit("CPU", e).await?;
                 }
 
-                Some(e) = self.memory.next() => {
+                Some(e) = self.memory.recv() => {
                     self.emit("Memory", e).await?;
                 }
 
-                Some(e) = self.clock.next() => {
+                Some(e) = self.clock.recv() => {
                     self.emit("Clock", e).await?;
                 }
 
-                Some(e) = self.control.next() => {
+                Some(e) = self.control.recv() => {
                     self.emit("Control", e).await?;
+                }
+
+                Some(e) = self.network.recv() => {
+                    self.emit("Network", e).await?;
                 }
 
                 Some(cmd) = self.crx.recv() => {
@@ -79,12 +89,11 @@ impl MainLoop {
 
         self.etx
             .send(e)
-            .await
             .map_err(|_| anyhow!("failed to emit Event, channel is closed"))
     }
 
     async fn hyprctl_dispatch(&mut self, cmd: impl AsRef<str>) {
-        if let Err(err) = self.hyprland.get_mut().hyprctl_dispatch(cmd).await {
+        if let Err(err) = self.hyprland.hyprctl_dispatch(cmd).await {
             log::error!("{err:?}");
         }
     }

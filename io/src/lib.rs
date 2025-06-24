@@ -23,20 +23,17 @@ use main_loop::MainLoop;
 
 use tokio::sync::{
     OnceCell,
-    mpsc::{Receiver, Sender},
+    mpsc::{UnboundedReceiver, UnboundedSender},
 };
 
-static mut ETX: OnceCell<Sender<Event>> = OnceCell::const_new();
-static mut ERX: OnceCell<Receiver<Event>> = OnceCell::const_new();
+static mut ETX: OnceCell<UnboundedSender<Event>> = OnceCell::const_new();
+static mut ERX: OnceCell<UnboundedReceiver<Event>> = OnceCell::const_new();
 
-static mut CTX: OnceCell<Sender<Command>> = OnceCell::const_new();
-static mut CRX: OnceCell<Receiver<Command>> = OnceCell::const_new();
+static mut CTX: OnceCell<UnboundedSender<Command>> = OnceCell::const_new();
+static mut CRX: OnceCell<UnboundedReceiver<Command>> = OnceCell::const_new();
 
 static mut THREAD_HANDLE: OnceCell<std::thread::JoinHandle<()>> = OnceCell::const_new();
 
-/// # Safety
-///
-/// This function must be called at most once.
 pub fn io_run_in_place() -> Result<()> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -47,6 +44,8 @@ pub fn io_run_in_place() -> Result<()> {
         });
 
     rt.block_on(async move {
+        console_subscriber::init();
+
         let Some(etx) = (unsafe { ETX.take() }) else {
             log::error!("ETX is not set, did you call io_init()?");
             std::process::exit(1);
@@ -79,8 +78,8 @@ pub extern "C" fn io_init() {
     env_logger::init();
 
     fn try_io_init() -> Result<()> {
-        let (etx, erx) = tokio::sync::mpsc::channel::<Event>(100);
-        let (ctx, crx) = tokio::sync::mpsc::channel::<Command>(100);
+        let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<Event>();
+        let (ctx, crx) = tokio::sync::mpsc::unbounded_channel::<Command>();
 
         unsafe {
             const ERR: &str = "io_init must be called once";
@@ -162,7 +161,7 @@ fn send_command(cmd: Command) {
             log::error!("no CTX, did you call io_init()?");
             std::process::exit(1);
         };
-        if ctx.blocking_send(cmd).is_err() {
+        if ctx.send(cmd).is_err() {
             log::error!("failed to send Command, channel is closed");
             std::process::exit(1);
         }

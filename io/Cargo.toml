@@ -9,6 +9,8 @@ env_logger = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 futures-util = { workspace = true }
+console-subscriber = { workspace = true }
+
 ffi = { path = "../ffi" }
 
 hyprland = { path = "../hyprland" }
@@ -16,3 +18,4 @@ cpu = { path = "../cpu" }
 memory = { path = "../memory" }
 clock = { path = "../clock" }
 control = { path = "../control" }
+network = { path = "../network" }

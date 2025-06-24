@@ -1,4 +1,4 @@
-use ffi::{CArray, CString};
+use ffi::{CArray, COption, CString};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -30,14 +30,16 @@ pub enum Event {
         // daily: CArray<WeatherOnDay>,
     },
     WifiStatus {
-        // wifi_status: COption<WifiStatus>,
+        wifi_status: COption<WifiStatus>,
     },
-    NetworkSpeed {
-        upload_speed: CString,
-        download_speed: CString,
+    UploadSpeed {
+        speed: CString,
+    },
+    DownloadSpeed {
+        speed: CString,
     },
     NetworkList {
-        // list: CArray<Network>,
+        list: CArray<Network>,
     },
     Tray {
         // apps: CArray<TrayApp>,
@@ -90,6 +92,55 @@ impl From<control::Event> for Event {
             control::Event::ToggleSessionScreen => Self::ToggleSessionScreen,
             control::Event::ReloadStyles => Self::ReloadStyles,
             control::Event::Exit => Self::Exit,
+        }
+    }
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct Network {
+    pub iface: CString,
+    pub address: CString,
+}
+
+impl From<network::NetworkData> for Network {
+    fn from(input: network::NetworkData) -> Self {
+        Self {
+            iface: input.iface.into(),
+            address: input.address.into(),
+        }
+    }
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct WifiStatus {
+    pub ssid: CString,
+    pub strength: u8,
+}
+
+impl From<network::WifiStatus> for WifiStatus {
+    fn from(input: network::WifiStatus) -> Self {
+        Self {
+            ssid: input.ssid.into(),
+            strength: input.strength,
+        }
+    }
+}
+
+impl From<network::Event> for Event {
+    fn from(event: network::Event) -> Self {
+        match event {
+            network::Event::WifiStatus { wifi_status } => Self::WifiStatus {
+                wifi_status: wifi_status.into(),
+            },
+            network::Event::UploadSpeed { speed } => Self::UploadSpeed {
+                speed: speed.into(),
+            },
+            network::Event::DownloadSpeed { speed } => Self::DownloadSpeed {
+                speed: speed.into(),
+            },
+            network::Event::NetworkList { list } => Self::NetworkList { list: list.into() },
         }
     }
 }

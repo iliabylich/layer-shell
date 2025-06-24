@@ -4,8 +4,12 @@ pub struct CArray<T> {
     pub len: usize,
 }
 
-impl<T> From<Vec<T>> for CArray<T> {
+impl<T, U> From<Vec<T>> for CArray<U>
+where
+    U: From<T>,
+{
     fn from(value: Vec<T>) -> Self {
+        let value = value.into_iter().map(|e| U::from(e)).collect::<Vec<_>>();
         let mut boxed_slice = value.into_boxed_slice();
         let len = boxed_slice.len();
         let ptr = boxed_slice.as_mut_ptr();

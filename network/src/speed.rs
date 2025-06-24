@@ -2,23 +2,23 @@ use crate::Event;
 
 #[derive(Debug)]
 enum OneWaySpeed {
-    Uninitialized,
-    Initialized(u64),
+    Unset,
+    Set(u64),
 }
 
-const THREASHOLD: u64 = 5_000;
-
 impl OneWaySpeed {
+    const THRESHOLD: u64 = 5_000;
+
     fn update(&mut self, current: u64) -> u64 {
         match self {
-            Self::Uninitialized => {
-                *self = Self::Initialized(current);
+            Self::Unset => {
+                *self = Self::Set(current);
                 0
             }
-            Self::Initialized(prev) => {
-                let mut d = current - *prev;
-                *self = Self::Initialized(current);
-                if d < THREASHOLD {
+            Self::Set(prev) => {
+                let mut d = current.saturating_sub(*prev);
+                *self = Self::Set(current);
+                if d < Self::THRESHOLD {
                     d = 0;
                 }
                 d
@@ -27,34 +27,34 @@ impl OneWaySpeed {
     }
 }
 
-pub(crate) struct NetworkSpeed {
+pub(crate) struct Speed {
     // transmitted
     tx: OneWaySpeed,
     // received
     rx: OneWaySpeed,
 }
 
-impl NetworkSpeed {
+impl Speed {
     pub(crate) fn new() -> Self {
         Self {
-            tx: OneWaySpeed::Uninitialized,
-            rx: OneWaySpeed::Uninitialized,
+            tx: OneWaySpeed::Unset,
+            rx: OneWaySpeed::Unset,
         }
     }
 
     pub(crate) fn reset(&mut self) {
-        self.tx = OneWaySpeed::Uninitialized;
-        self.rx = OneWaySpeed::Uninitialized;
+        self.tx = OneWaySpeed::Unset;
+        self.rx = OneWaySpeed::Unset;
     }
 
-    pub(crate) fn update(&mut self, tx: u64, rx: u64) -> Event {
-        let upload_speed = self.tx.update(tx);
-        let download_speed = self.rx.update(rx);
+    pub(crate) fn update_tx(&mut self, tx: u64) -> Event {
+        let d = self.tx.update(tx);
+        Event::UploadSpeed { speed: fmt(d) }
+    }
 
-        Event::NetworkSpeed {
-            upload_speed: fmt(upload_speed).into(),
-            download_speed: fmt(download_speed).into(),
-        }
+    pub(crate) fn update_rx(&mut self, rx: u64) -> Event {
+        let d = self.rx.update(rx);
+        Event::DownloadSpeed { speed: fmt(d) }
     }
 }
 
