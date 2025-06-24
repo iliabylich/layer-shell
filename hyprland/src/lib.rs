@@ -3,7 +3,6 @@ mod event;
 mod hyprland;
 mod reader;
 mod state;
-mod task;
 mod writer;
 
 pub use event::Event;

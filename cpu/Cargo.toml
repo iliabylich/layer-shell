@@ -9,3 +9,5 @@ log = { workspace = true }
 tokio = { workspace = true }
 futures-util = { workspace = true }
 pin-project-lite = { workspace = true }
+
+utils = { path = "../utils" }

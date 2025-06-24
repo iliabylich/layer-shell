@@ -10,3 +10,5 @@ pin-project-lite = { workspace = true }
 zbus = { workspace = true }
 anyhow = { workspace = true }
 log = { workspace = true }
+
+utils = { path = "../utils" }

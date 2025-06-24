@@ -1,22 +1,47 @@
-use crate::{Event, task::Task};
-use tokio::{sync::mpsc::Receiver, task::JoinHandle};
+use crate::Event;
+use anyhow::Result;
+use std::time::Duration;
+use utils::{Emitter, service};
 
-pub struct Clock {
-    rx: Receiver<Event>,
-    handle: JoinHandle<()>,
+struct Task {
+    emitter: Emitter<Event>,
+    exit: tokio::sync::oneshot::Receiver<()>,
+    timer: tokio::time::Interval,
 }
 
-impl Clock {
-    pub fn new() -> Self {
-        let (rx, handle) = Task::spawn();
-        Self { rx, handle }
+impl Task {
+    async fn start(
+        emitter: Emitter<Event>,
+        exit: tokio::sync::oneshot::Receiver<()>,
+    ) -> Result<()> {
+        Self {
+            emitter,
+            exit,
+            timer: tokio::time::interval(Duration::from_secs(1)),
+        }
+        .r#loop()
+        .await
     }
 
-    pub async fn recv(&mut self) -> Option<Event> {
-        self.rx.recv().await
+    async fn r#loop(mut self) -> Result<()> {
+        loop {
+            tokio::select! {
+                _ = self.timer.tick() => self.tick().await?,
+
+                _ = &mut self.exit => {
+                    log::info!(target: "Clock", "exiting...");
+                    return Ok(())
+                },
+            }
+        }
     }
 
-    pub fn abort(&self) {
-        self.handle.abort();
+    async fn tick(&self) -> Result<()> {
+        let time = chrono::Local::now()
+            .format("%H:%M:%S | %b %e | %a")
+            .to_string();
+        self.emitter.emit(Event { time }).await
     }
 }
+
+service!(Clock, Event, Task::start);

@@ -1,22 +1,30 @@
-use crate::{event::Event, task::Task};
-use tokio::{sync::mpsc::Receiver, task::JoinHandle};
+use crate::{dbus::DBus, event::Event};
+use anyhow::Result;
+use utils::{Emitter, service};
+use zbus::Connection;
 
-pub struct Control {
-    rx: Receiver<Event>,
-    handle: JoinHandle<()>,
+struct Task {
+    emitter: Emitter<Event>,
+    exit: tokio::sync::oneshot::Receiver<()>,
 }
 
-impl Control {
-    pub fn new() -> Self {
-        let (rx, handle) = Task::spawn();
-        Self { rx, handle }
+impl Task {
+    async fn start(
+        emitter: Emitter<Event>,
+        exit: tokio::sync::oneshot::Receiver<()>,
+    ) -> Result<()> {
+        Self { emitter, exit }.r#loop().await
     }
 
-    pub async fn recv(&mut self) -> Option<Event> {
-        self.rx.recv().await
-    }
+    async fn r#loop(self) -> Result<()> {
+        let connection = Connection::session().await?;
+        let control = DBus::new(self.emitter);
+        connection.object_server().at("/Control", control).await?;
+        connection.request_name("org.me.LayerShellControl").await?;
 
-    pub async fn abort(&self) {
-        self.handle.abort();
+        self.exit.await?;
+        Ok(())
     }
 }
+
+service!(Control, Event, Task::start);
