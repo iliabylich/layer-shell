@@ -1,23 +1,18 @@
 use crate::event::Event;
 use anyhow::{Context as _, Result};
 use std::{io::Read as _, time::Duration};
-use utils::{Emitter, service};
+use utils::{TaskCtx, service};
 
 struct Task {
-    emitter: Emitter<Event>,
-    exit: tokio::sync::oneshot::Receiver<()>,
+    ctx: TaskCtx<Event>,
     timer: tokio::time::Interval,
     buf: Vec<u8>,
 }
 
 impl Task {
-    async fn start(
-        emitter: Emitter<Event>,
-        exit: tokio::sync::oneshot::Receiver<()>,
-    ) -> Result<()> {
+    async fn start(ctx: TaskCtx<Event>) -> Result<()> {
         Self {
-            emitter,
-            exit,
+            ctx,
             timer: tokio::time::interval(Duration::from_secs(1)),
             buf: vec![0; 1_024],
         }
@@ -30,7 +25,7 @@ impl Task {
             tokio::select! {
                 _ = self.timer.tick() => self.tick().await?,
 
-                _ = &mut self.exit => {
+                _ = &mut self.ctx.exit => {
                     log::info!(target: "Memory", "exiting...");
                     return Ok(())
                 }
@@ -40,7 +35,7 @@ impl Task {
 
     async fn tick(&mut self) -> Result<()> {
         let event = self.parse().await?;
-        self.emitter.emit(event).await
+        self.ctx.emitter.emit(event).await
     }
 
     async fn parse(&mut self) -> Result<Event> {

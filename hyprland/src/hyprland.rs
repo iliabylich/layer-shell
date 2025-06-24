@@ -5,20 +5,16 @@ use crate::{
     writer::Writer,
 };
 use anyhow::Result;
-use utils::{Emitter, service};
+use utils::{TaskCtx, service};
 
 struct Task {
-    emitter: Emitter<Event>,
-    exit: tokio::sync::oneshot::Receiver<()>,
+    ctx: TaskCtx<Event>,
     reader: Reader,
     state: State,
 }
 
 impl Task {
-    async fn start(
-        emitter: Emitter<Event>,
-        exit: tokio::sync::oneshot::Receiver<()>,
-    ) -> Result<()> {
+    async fn start(ctx: TaskCtx<Event>) -> Result<()> {
         let reader = Reader::new().await?;
 
         let workspace_ids = Writer::get_workspaces_list().await?;
@@ -28,17 +24,10 @@ impl Task {
         let (state, events) = State::new(workspace_ids, active_workspace_id, lang);
 
         for event in events {
-            emitter.emit(event).await?;
+            ctx.emitter.emit(event).await?;
         }
 
-        Self {
-            emitter,
-            exit,
-            reader,
-            state,
-        }
-        .r#loop()
-        .await
+        Self { ctx, reader, state }.r#loop().await
     }
 
     async fn r#loop(mut self) -> Result<()> {
@@ -46,7 +35,7 @@ impl Task {
             tokio::select! {
                 event = self.reader.next_event() => self.on_event(event?).await?,
 
-                _ = &mut self.exit => {
+                _ = &mut self.ctx.exit => {
                     log::info!(target: "Hyprland", "exiting...");
                     return Ok(())
                 }
@@ -61,7 +50,7 @@ impl Task {
             ReaderEvent::Workspace(id) => self.state.set_active_workspace(id),
             ReaderEvent::LanguageChanged(lang) => self.state.set_language(lang),
         };
-        self.emitter.emit(event).await
+        self.ctx.emitter.emit(event).await
     }
 }
 

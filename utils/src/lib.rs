@@ -1,10 +1,12 @@
 mod emitter;
 mod service;
 mod service_ref;
+mod task_ctx;
 
 pub use emitter::Emitter;
 pub use service::Service;
 pub use service_ref::ServiceRef;
+pub use task_ctx::TaskCtx;
 
 #[macro_export]
 macro_rules! service {

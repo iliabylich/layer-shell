@@ -1,23 +1,18 @@
 use crate::{Event, store::Store};
 use anyhow::Result;
 use std::time::Duration;
-use utils::{Emitter, service};
+use utils::{TaskCtx, service};
 
 struct Task {
-    emitter: Emitter<Event>,
-    exit: tokio::sync::oneshot::Receiver<()>,
+    ctx: TaskCtx<Event>,
     timer: tokio::time::Interval,
     store: Store,
 }
 
 impl Task {
-    async fn start(
-        emitter: Emitter<Event>,
-        exit: tokio::sync::oneshot::Receiver<()>,
-    ) -> Result<()> {
+    async fn start(ctx: TaskCtx<Event>) -> Result<()> {
         Self {
-            emitter,
-            exit,
+            ctx,
             timer: tokio::time::interval(Duration::from_secs(1)),
             store: Store::new(),
         }
@@ -30,7 +25,7 @@ impl Task {
             tokio::select! {
                 _ = self.timer.tick() => self.tick().await?,
 
-                _ = &mut self.exit => {
+                _ = &mut self.ctx.exit => {
                     log::info!(target: "CPU", "exiting...");
                     return Ok(())
                 }
@@ -41,7 +36,7 @@ impl Task {
     async fn tick(&mut self) -> Result<()> {
         let usage_per_core = self.store.update()?;
 
-        self.emitter.emit(Event { usage_per_core }).await
+        self.ctx.emitter.emit(Event { usage_per_core }).await
     }
 }
 

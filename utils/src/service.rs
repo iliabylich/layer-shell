@@ -1,4 +1,4 @@
-use crate::{Emitter, ServiceRef};
+use crate::{Emitter, ServiceRef, TaskCtx};
 use anyhow::Result;
 
 pub struct Service;
@@ -8,15 +8,19 @@ impl Service {
     where
         E: Send + std::fmt::Debug + 'static,
         Fut: Future<Output = Result<()>> + Send + 'static,
-        F: Send + 'static + FnOnce(Emitter<E>, tokio::sync::oneshot::Receiver<()>) -> Fut,
+        F: Send + 'static + FnOnce(TaskCtx<E>) -> Fut,
     {
         let (tx, rx) = tokio::sync::mpsc::channel::<E>(256);
         let emitter = Emitter::new(tx);
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<()>();
+        let task_ctx = TaskCtx {
+            emitter,
+            exit: exit_rx,
+        };
 
         let handle = tokio::spawn(async move {
-            if let Err(err) = (f)(emitter, exit_rx).await {
+            if let Err(err) = (f)(task_ctx).await {
                 log::error!("{err:?}");
             }
         });
