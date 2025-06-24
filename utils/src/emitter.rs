@@ -1,25 +1,24 @@
 use anyhow::{Result, anyhow};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 
 pub struct Emitter<E>
 where
     E: std::fmt::Debug,
 {
-    tx: Sender<E>,
+    tx: UnboundedSender<E>,
 }
 
 impl<E> Emitter<E>
 where
     E: std::fmt::Debug,
 {
-    pub(crate) fn new(tx: Sender<E>) -> Self {
+    pub(crate) fn new(tx: UnboundedSender<E>) -> Self {
         Self { tx }
     }
 
-    pub async fn emit(&self, event: E) -> Result<()> {
+    pub fn emit(&self, event: E) -> Result<()> {
         self.tx
             .send(event)
-            .await
             .map_err(|err| anyhow!("failed to send event {:?}; channel is closed", err.0))
     }
 }

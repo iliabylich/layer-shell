@@ -10,7 +10,7 @@ impl Service {
         Fut: Future<Output = Result<()>> + Send + 'static,
         F: Send + 'static + FnOnce(TaskCtx<E>) -> Fut,
     {
-        let (tx, rx) = tokio::sync::mpsc::channel::<E>(256);
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<E>();
         let emitter = Emitter::new(tx);
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<()>();

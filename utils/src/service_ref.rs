@@ -1,17 +1,17 @@
 use anyhow::{Context as _, Result};
 use tokio::{
-    sync::{mpsc::Receiver, oneshot::Sender},
+    sync::{mpsc::UnboundedReceiver, oneshot::Sender},
     task::JoinHandle,
 };
 
 pub struct ServiceRef<E> {
     handle: JoinHandle<()>,
-    rx: Receiver<E>,
+    rx: UnboundedReceiver<E>,
     exit: Sender<()>,
 }
 
 impl<E> ServiceRef<E> {
-    pub(crate) fn new(handle: JoinHandle<()>, rx: Receiver<E>, exit: Sender<()>) -> Self {
+    pub(crate) fn new(handle: JoinHandle<()>, rx: UnboundedReceiver<E>, exit: Sender<()>) -> Self {
         Self { handle, rx, exit }
     }
 

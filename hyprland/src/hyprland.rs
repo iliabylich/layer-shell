@@ -24,7 +24,7 @@ impl Task {
         let (state, events) = State::new(workspace_ids, active_workspace_id, lang);
 
         for event in events {
-            ctx.emitter.emit(event).await?;
+            ctx.emitter.emit(event)?;
         }
 
         Self { ctx, reader, state }.r#loop().await
@@ -33,7 +33,7 @@ impl Task {
     async fn r#loop(mut self) -> Result<()> {
         loop {
             tokio::select! {
-                event = self.reader.next_event() => self.on_event(event?).await?,
+                event = self.reader.next_event() => self.on_event(event?)?,
 
                 _ = &mut self.ctx.exit => {
                     log::info!(target: "Hyprland", "exiting...");
@@ -43,14 +43,14 @@ impl Task {
         }
     }
 
-    async fn on_event(&mut self, event: ReaderEvent) -> Result<()> {
+    fn on_event(&mut self, event: ReaderEvent) -> Result<()> {
         let event = match event {
             ReaderEvent::CreateWorkspace(id) => self.state.add_workspace(id),
             ReaderEvent::DestroyWorkspace(id) => self.state.remove_workspace(id),
             ReaderEvent::Workspace(id) => self.state.set_active_workspace(id),
             ReaderEvent::LanguageChanged(lang) => self.state.set_language(lang),
         };
-        self.ctx.emitter.emit(event).await
+        self.ctx.emitter.emit(event)
     }
 }
 

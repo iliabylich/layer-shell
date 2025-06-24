@@ -11,8 +11,8 @@ impl DBus {
         Self { emitter }
     }
 
-    async fn emit(&self, event: Event) {
-        if let Err(err) = self.emitter.emit(event).await {
+    fn emit(&self, event: Event) {
+        if let Err(err) = self.emitter.emit(event) {
             log::error!("{err:?}");
         }
     }
@@ -21,14 +21,14 @@ impl DBus {
 #[interface(name = "org.me.LayerShellControl")]
 impl DBus {
     async fn toggle_session_screen(&self) {
-        self.emit(Event::ToggleSessionScreen).await
+        self.emit(Event::ToggleSessionScreen)
     }
 
     async fn reload_styles(&self) {
-        self.emit(Event::ReloadStyles).await
+        self.emit(Event::ReloadStyles)
     }
 
     async fn exit(&self) {
-        self.emit(Event::Exit).await
+        self.emit(Event::Exit)
     }
 }

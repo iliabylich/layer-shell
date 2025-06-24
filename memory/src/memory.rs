@@ -35,7 +35,7 @@ impl Task {
 
     async fn tick(&mut self) -> Result<()> {
         let event = self.parse().await?;
-        self.ctx.emitter.emit(event).await
+        self.ctx.emitter.emit(event)
     }
 
     async fn parse(&mut self) -> Result<Event> {

@@ -21,7 +21,7 @@ impl Task {
     async fn r#loop(mut self) -> Result<()> {
         loop {
             tokio::select! {
-                _ = self.timer.tick() => self.tick().await?,
+                _ = self.timer.tick() => self.tick()?,
 
                 _ = &mut self.ctx.exit => {
                     log::info!(target: "Clock", "exiting...");
@@ -31,11 +31,11 @@ impl Task {
         }
     }
 
-    async fn tick(&self) -> Result<()> {
+    fn tick(&self) -> Result<()> {
         let time = chrono::Local::now()
             .format("%H:%M:%S | %b %e | %a")
             .to_string();
-        self.ctx.emitter.emit(Event { time }).await
+        self.ctx.emitter.emit(Event { time })
     }
 }
 
