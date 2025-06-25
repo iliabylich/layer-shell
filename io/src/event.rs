@@ -26,9 +26,11 @@ pub enum Event {
         temperature: f32,
         code: WeatherCode,
     },
-    ForecastWeather {
-        hourly: CArray<WeatherOnHour>,
-        daily: CArray<WeatherOnDay>,
+    HourlyWeatherForecast {
+        forecast: CArray<WeatherOnHour>,
+    },
+    DailyWeatherForecast {
+        forecast: CArray<WeatherOnDay>,
     },
     WifiStatus {
         wifi_status: COption<WifiStatus>,
@@ -190,9 +192,11 @@ impl From<weather::Event> for Event {
             weather::Event::CurrentWeather { temperature, code } => {
                 Self::CurrentWeather { temperature, code }
             }
-            weather::Event::ForecastWeather { hourly, daily } => Self::ForecastWeather {
-                hourly: hourly.into(),
-                daily: daily.into(),
+            weather::Event::HourlyWeatherForecast { forecast } => Self::HourlyWeatherForecast {
+                forecast: forecast.into(),
+            },
+            weather::Event::DailyWeatherForecast { forecast } => Self::DailyWeatherForecast {
+                forecast: forecast.into(),
             },
         }
     }

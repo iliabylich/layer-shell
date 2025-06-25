@@ -2,14 +2,9 @@ use crate::WeatherCode;
 
 #[derive(Debug)]
 pub enum Event {
-    CurrentWeather {
-        temperature: f32,
-        code: WeatherCode,
-    },
-    ForecastWeather {
-        hourly: Vec<WeatherOnHour>,
-        daily: Vec<WeatherOnDay>,
-    },
+    CurrentWeather { temperature: f32, code: WeatherCode },
+    HourlyWeatherForecast { forecast: Vec<WeatherOnHour> },
+    DailyWeatherForecast { forecast: Vec<WeatherOnDay> },
 }
 
 #[derive(Debug)]

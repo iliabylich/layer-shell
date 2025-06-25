@@ -58,10 +58,11 @@ impl Task {
             .await?
             .json::<Response>()
             .await?;
-        let (current, forecast) = response.into_events()?;
+        let events = response.into_events()?;
 
-        self.ctx.emitter.emit(current)?;
-        self.ctx.emitter.emit(forecast)?;
+        for event in events {
+            self.ctx.emitter.emit(event)?;
+        }
 
         Ok(())
     }
