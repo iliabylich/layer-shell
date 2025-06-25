@@ -3,7 +3,7 @@ use anyhow::{Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
 use cpu::CPU;
-use futures::StreamExt as _;
+use futures::{StreamExt as _, stream::Fuse};
 use hyprland::Hyprland;
 use memory::Memory;
 use network::Network;
@@ -15,9 +15,9 @@ pub(crate) struct MainLoop {
     crx: UnboundedReceiver<Command>,
 
     hyprland: Hyprland,
-    cpu: CPU,
+    cpu: Fuse<CPU>,
     memory: Memory,
-    clock: Clock,
+    clock: Fuse<Clock>,
     control: Control,
     network: Network,
     weather: Weather,
@@ -29,9 +29,9 @@ impl MainLoop {
         crx: UnboundedReceiver<Command>,
     ) -> Result<Self> {
         let hyprland = Hyprland::start();
-        let cpu = CPU::start();
+        let cpu = CPU::new().fuse();
         let memory = Memory::start();
-        let clock = Clock::new();
+        let clock = Clock::new().fuse();
         let control = Control::start();
         let network = Network::start();
         let weather = Weather::start();
@@ -56,7 +56,7 @@ impl MainLoop {
                     self.emit("Hyprland", e).await?;
                 }
 
-                Some(e) = self.cpu.recv() => {
+                Some(e) = self.cpu.next() => {
                     self.emit("CPU", e).await?;
                 }
 

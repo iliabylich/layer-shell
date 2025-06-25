@@ -7,5 +7,5 @@ edition = "2024"
 anyhow = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true }
-
-utils = { path = "../utils" }
+pin-project-lite = { workspace = true }
+futures = { workspace = true }

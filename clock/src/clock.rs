@@ -18,6 +18,12 @@ impl Clock {
     }
 }
 
+impl Default for Clock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Stream for Clock {
     type Item = Event;
 
