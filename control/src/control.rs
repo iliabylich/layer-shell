@@ -15,24 +15,18 @@ pin_project! {
         rx: UnboundedReceiver<Event>,
         #[pin]
         handle: JoinHandle<()>,
-        token: CancellationToken,
     }
 }
 
 impl Control {
     pub fn new(token: CancellationToken) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
-
-        let handle = {
-            let token = token.clone();
-            tokio::task::spawn(async move {
-                if let Err(err) = Self::r#loop(tx, token).await {
-                    log::error!("Control crashed: {err:?}");
-                }
-            })
-        };
-
-        Self { rx, handle, token }
+        let handle = tokio::task::spawn(async move {
+            if let Err(err) = Self::r#loop(tx, token).await {
+                log::error!("Control crashed: {err:?}");
+            }
+        });
+        Self { rx, handle }
     }
 
     async fn r#loop(tx: UnboundedSender<Event>, token: CancellationToken) -> Result<()> {

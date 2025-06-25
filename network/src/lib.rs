@@ -2,6 +2,7 @@ mod access_point;
 mod devices;
 mod event;
 mod network;
+mod network_task;
 mod nm_event;
 mod primary_connection;
 mod primary_device;

@@ -38,7 +38,7 @@ impl MainLoop {
         let memory = Memory::new();
         let clock = Clock::new();
         let control = Control::new(token.clone());
-        let network = Network::start();
+        let network = Network::new(token.clone());
         let weather = Weather::start();
 
         Ok(Self {
@@ -80,7 +80,7 @@ impl MainLoop {
                     self.emit("Control", e).await?;
                 }
 
-                Some(e) = self.network.recv() => {
+                Some(e) = self.network.next() => {
                     self.emit("Network", e).await?;
                 }
 
@@ -105,6 +105,7 @@ impl MainLoop {
         self.token.cancel();
         self.control.await;
         self.hyprland.await;
+        self.network.await
     }
 
     async fn emit(&self, module: &str, e: impl Into<Event>) -> Result<()> {
