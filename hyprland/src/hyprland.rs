@@ -1,41 +1,65 @@
-use crate::{
-    Event,
-    reader::{Reader, ReaderEvent},
-    state::State,
-    writer::Writer,
-};
+use crate::{Event, reader::Reader, state::State, writer::Writer};
 use anyhow::Result;
-use utils::{TaskCtx, service};
+use futures::Stream;
+use pin_project_lite::pin_project;
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
+use tokio_util::sync::CancellationToken;
 
-struct Task {
-    ctx: TaskCtx<Event>,
-    reader: Reader,
-    state: State,
+pin_project! {
+    pub struct Hyprland {
+        #[pin]
+        rx: UnboundedReceiver<Event>,
+        handle: JoinHandle<()>,
+        token: CancellationToken
+    }
 }
 
-impl Task {
-    async fn start(ctx: TaskCtx<Event>) -> Result<()> {
-        let reader = Reader::new().await?;
+impl Hyprland {
+    pub fn new() -> Self {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
+        let token = CancellationToken::new();
+        let handle = {
+            let token = token.clone();
+            tokio::task::spawn(async move {
+                if let Err(err) = Self::r#loop(tx, token).await {
+                    log::error!("Hyprland crashed: {err:?}");
+                }
+            })
+        };
+        Self { rx, handle, token }
+    }
+
+    pub async fn stop(self) -> Result<()> {
+        self.token.cancel();
+        self.handle.await?;
+        Ok(())
+    }
+
+    async fn r#loop(tx: UnboundedSender<Event>, token: CancellationToken) -> Result<()> {
+        let mut reader = Reader::new().await?;
 
         let workspace_ids = Writer::get_workspaces_list().await?;
         let active_workspace_id = Writer::get_active_workspace().await?;
         let lang = Writer::get_language().await?;
 
-        let (state, events) = State::new(workspace_ids, active_workspace_id, lang);
+        let mut state = State::new(workspace_ids, active_workspace_id, lang);
 
-        for event in events {
-            ctx.emitter.emit(event)?;
+        for event in state.initial_events() {
+            tx.send(event)?;
         }
 
-        Self { ctx, reader, state }.r#loop().await
-    }
-
-    async fn r#loop(mut self) -> Result<()> {
         loop {
             tokio::select! {
-                event = self.reader.next_event() => self.on_event(event?)?,
+                event = reader.next_event() => {
+                    let event = event?;
+                    let event = state.apply(event);
+                    tx.send(event)?;
+                },
 
-                _ = &mut self.ctx.exit => {
+                _ = token.cancelled() => {
                     log::info!(target: "Hyprland", "exiting...");
                     return Ok(())
                 }
@@ -43,21 +67,19 @@ impl Task {
         }
     }
 
-    fn on_event(&mut self, event: ReaderEvent) -> Result<()> {
-        let event = match event {
-            ReaderEvent::CreateWorkspace(id) => self.state.add_workspace(id),
-            ReaderEvent::DestroyWorkspace(id) => self.state.remove_workspace(id),
-            ReaderEvent::Workspace(id) => self.state.set_active_workspace(id),
-            ReaderEvent::LanguageChanged(lang) => self.state.set_language(lang),
-        };
-        self.ctx.emitter.emit(event)
+    pub async fn hyprctl_dispatch(&self, cmd: impl AsRef<str>) -> Result<()> {
+        Writer::dispatch(cmd).await
     }
 }
 
-service!(Hyprland, Event, Task::start);
+impl Stream for Hyprland {
+    type Item = Event;
 
-impl Hyprland {
-    pub async fn hyprctl_dispatch(&mut self, cmd: impl AsRef<str>) -> Result<()> {
-        Writer::dispatch(cmd).await
+    fn poll_next(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        let mut this = self.project();
+        this.rx.poll_recv(cx)
     }
 }

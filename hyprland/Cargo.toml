@@ -9,5 +9,6 @@ log = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-
-utils = { path = "../utils" }
+tokio-util = { workspace = true }
+futures = { workspace = true }
+pin-project-lite = { workspace = true }

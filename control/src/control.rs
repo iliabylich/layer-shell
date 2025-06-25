@@ -48,6 +48,7 @@ impl Control {
         connection.request_name("org.me.LayerShellControl").await?;
 
         token.cancelled().await;
+        log::info!(target: "Control", "exiting...");
 
         Ok(())
     }

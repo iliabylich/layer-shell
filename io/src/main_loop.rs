@@ -14,7 +14,7 @@ pub(crate) struct MainLoop {
     etx: UnboundedSender<Event>,
     crx: UnboundedReceiver<Command>,
 
-    hyprland: Hyprland,
+    hyprland: Fuse<Hyprland>,
     cpu: Fuse<CPU>,
     memory: Memory,
     clock: Fuse<Clock>,
@@ -28,7 +28,7 @@ impl MainLoop {
         etx: UnboundedSender<Event>,
         crx: UnboundedReceiver<Command>,
     ) -> Result<Self> {
-        let hyprland = Hyprland::start();
+        let hyprland = Hyprland::new().fuse();
         let cpu = CPU::new().fuse();
         let memory = Memory::start();
         let clock = Clock::new().fuse();
@@ -52,7 +52,7 @@ impl MainLoop {
     pub(crate) async fn start(mut self) -> Result<()> {
         loop {
             tokio::select! {
-                Some(e) = self.hyprland.recv() => {
+                Some(e) = self.hyprland.next() => {
                     self.emit("Hyprland", e).await?;
                 }
 
@@ -97,6 +97,9 @@ impl MainLoop {
         if let Err(err) = self.control.into_inner().stop().await {
             log::error!("failed to stop Control: {err:?}");
         }
+        if let Err(err) = self.hyprland.into_inner().stop().await {
+            log::error!("failed to stop Hyprland: {err:?}");
+        }
     }
 
     async fn emit(&self, module: &str, e: impl Into<Event>) -> Result<()> {
@@ -108,8 +111,8 @@ impl MainLoop {
             .map_err(|_| anyhow!("failed to emit Event, channel is closed"))
     }
 
-    async fn hyprctl_dispatch(&mut self, cmd: impl AsRef<str>) {
-        if let Err(err) = self.hyprland.hyprctl_dispatch(cmd).await {
+    async fn hyprctl_dispatch(&self, cmd: impl AsRef<str>) {
+        if let Err(err) = self.hyprland.get_ref().hyprctl_dispatch(cmd).await {
             log::error!("{err:?}");
         }
     }
