@@ -7,6 +7,7 @@ use hyprland::Hyprland;
 use memory::Memory;
 use network::Network;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use weather::Weather;
 
 pub(crate) struct MainLoop {
     etx: UnboundedSender<Event>,
@@ -18,6 +19,7 @@ pub(crate) struct MainLoop {
     clock: Clock,
     control: Control,
     network: Network,
+    weather: Weather,
 }
 
 impl MainLoop {
@@ -31,6 +33,7 @@ impl MainLoop {
         let clock = Clock::start();
         let control = Control::start();
         let network = Network::start();
+        let weather = Weather::start();
 
         Ok(Self {
             etx,
@@ -41,6 +44,7 @@ impl MainLoop {
             clock,
             control,
             network,
+            weather,
         })
     }
 
@@ -69,6 +73,10 @@ impl MainLoop {
 
                 Some(e) = self.network.recv() => {
                     self.emit("Network", e).await?;
+                }
+
+                Some(e) = self.weather.recv() => {
+                    self.emit("Weather", e).await?;
                 }
 
                 Some(cmd) = self.crx.recv() => {

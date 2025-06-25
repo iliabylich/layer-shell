@@ -1,4 +1,5 @@
 use ffi::{CArray, COption, CString};
+use weather::WeatherCode;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -23,11 +24,11 @@ pub enum Event {
     },
     CurrentWeather {
         temperature: f32,
-        // code: WeatherCode,
+        code: WeatherCode,
     },
     ForecastWeather {
-        // hourly: CArray<WeatherOnHour>,
-        // daily: CArray<WeatherOnDay>,
+        hourly: CArray<WeatherOnHour>,
+        daily: CArray<WeatherOnDay>,
     },
     WifiStatus {
         wifi_status: COption<WifiStatus>,
@@ -141,6 +142,58 @@ impl From<network::Event> for Event {
                 speed: speed.into(),
             },
             network::Event::NetworkList { list } => Self::NetworkList { list: list.into() },
+        }
+    }
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct WeatherOnHour {
+    pub hour: CString,
+    pub temperature: f32,
+    pub code: WeatherCode,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct WeatherOnDay {
+    pub day: CString,
+    pub temperature_min: f32,
+    pub temperature_max: f32,
+    pub code: WeatherCode,
+}
+
+impl From<weather::WeatherOnHour> for WeatherOnHour {
+    fn from(input: weather::WeatherOnHour) -> Self {
+        Self {
+            hour: input.hour.into(),
+            temperature: input.temperature,
+            code: input.code,
+        }
+    }
+}
+
+impl From<weather::WeatherOnDay> for WeatherOnDay {
+    fn from(input: weather::WeatherOnDay) -> Self {
+        Self {
+            day: input.day.into(),
+            temperature_min: input.temperature_min,
+            temperature_max: input.temperature_max,
+            code: input.code,
+        }
+    }
+}
+
+impl From<weather::Event> for Event {
+    fn from(event: weather::Event) -> Self {
+        match event {
+            weather::Event::CurrentWeather { temperature, code } => {
+                Self::CurrentWeather { temperature, code }
+            }
+            weather::Event::ForecastWeather { hourly, daily } => Self::ForecastWeather {
+                hourly: hourly.into(),
+                daily: daily.into(),
+            },
         }
     }
 }

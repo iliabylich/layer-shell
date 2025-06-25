@@ -17,3 +17,4 @@ memory = { path = "../memory" }
 clock = { path = "../clock" }
 control = { path = "../control" }
 network = { path = "../network" }
+weather = { path = "../weather" }
