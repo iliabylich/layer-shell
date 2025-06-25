@@ -13,15 +13,15 @@ pin_project! {
     pub struct Control {
         #[pin]
         rx: UnboundedReceiver<Event>,
+        #[pin]
         handle: JoinHandle<()>,
         token: CancellationToken,
     }
 }
 
 impl Control {
-    pub fn new() -> Self {
+    pub fn new(token: CancellationToken) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
-        let token = CancellationToken::new();
 
         let handle = {
             let token = token.clone();
@@ -33,12 +33,6 @@ impl Control {
         };
 
         Self { rx, handle, token }
-    }
-
-    pub async fn stop(self) -> Result<()> {
-        self.token.cancel();
-        self.handle.await?;
-        Ok(())
     }
 
     async fn r#loop(tx: UnboundedSender<Event>, token: CancellationToken) -> Result<()> {
@@ -63,5 +57,19 @@ impl Stream for Control {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
         this.rx.poll_recv(cx)
+    }
+}
+
+impl Future for Control {
+    type Output = ();
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        if let Err(err) = futures::ready!(self.project().handle.poll(cx)) {
+            log::error!("failed to await Control task: {err:?}")
+        }
+        std::task::Poll::Ready(())
     }
 }

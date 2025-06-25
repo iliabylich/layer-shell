@@ -9,6 +9,7 @@ env_logger = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 futures = { workspace = true }
+tokio-util = { workspace = true }
 
 ffi = { path = "../ffi" }
 

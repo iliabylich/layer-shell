@@ -3,22 +3,25 @@ use anyhow::{Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
 use cpu::CPU;
-use futures::{StreamExt as _, stream::Fuse};
+use futures::StreamExt as _;
 use hyprland::Hyprland;
 use memory::Memory;
 use network::Network;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio_util::sync::CancellationToken;
 use weather::Weather;
 
 pub(crate) struct MainLoop {
+    token: CancellationToken,
+
     etx: UnboundedSender<Event>,
     crx: UnboundedReceiver<Command>,
 
-    hyprland: Fuse<Hyprland>,
-    cpu: Fuse<CPU>,
+    hyprland: Hyprland,
+    cpu: CPU,
     memory: Memory,
-    clock: Fuse<Clock>,
-    control: Fuse<Control>,
+    clock: Clock,
+    control: Control,
     network: Network,
     weather: Weather,
 }
@@ -28,17 +31,22 @@ impl MainLoop {
         etx: UnboundedSender<Event>,
         crx: UnboundedReceiver<Command>,
     ) -> Result<Self> {
-        let hyprland = Hyprland::new().fuse();
-        let cpu = CPU::new().fuse();
+        let token = CancellationToken::new();
+
+        let hyprland = Hyprland::new(token.clone());
+        let cpu = CPU::new();
         let memory = Memory::start();
-        let clock = Clock::new().fuse();
-        let control = Control::new().fuse();
+        let clock = Clock::new();
+        let control = Control::new(token.clone());
         let network = Network::start();
         let weather = Weather::start();
 
         Ok(Self {
+            token,
+
             etx,
             crx,
+
             hyprland,
             cpu,
             memory,
@@ -94,12 +102,9 @@ impl MainLoop {
     }
 
     async fn stop(self) {
-        if let Err(err) = self.control.into_inner().stop().await {
-            log::error!("failed to stop Control: {err:?}");
-        }
-        if let Err(err) = self.hyprland.into_inner().stop().await {
-            log::error!("failed to stop Hyprland: {err:?}");
-        }
+        self.token.cancel();
+        self.control.await;
+        self.hyprland.await;
     }
 
     async fn emit(&self, module: &str, e: impl Into<Event>) -> Result<()> {
@@ -112,7 +117,7 @@ impl MainLoop {
     }
 
     async fn hyprctl_dispatch(&self, cmd: impl AsRef<str>) {
-        if let Err(err) = self.hyprland.get_ref().hyprctl_dispatch(cmd).await {
+        if let Err(err) = self.hyprland.hyprctl_dispatch(cmd).await {
             log::error!("{err:?}");
         }
     }
