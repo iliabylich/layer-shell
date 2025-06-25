@@ -39,7 +39,7 @@ impl MainLoop {
         let clock = Clock::new();
         let control = Control::new(token.clone());
         let network = Network::new(token.clone());
-        let weather = Weather::start();
+        let weather = Weather::new(token.clone());
 
         Ok(Self {
             token,
@@ -84,7 +84,7 @@ impl MainLoop {
                     self.emit("Network", e).await?;
                 }
 
-                Some(e) = self.weather.recv() => {
+                Some(e) = self.weather.next() => {
                     self.emit("Weather", e).await?;
                 }
 

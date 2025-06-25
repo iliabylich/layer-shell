@@ -1,71 +1,86 @@
-use std::time::Duration;
-
-use crate::{Event, response::Response};
+use crate::{Event, client::Client};
 use anyhow::Result;
-use tokio::time::Interval;
-use utils::{TaskCtx, service};
+use futures::Stream;
+use pin_project_lite::pin_project;
+use std::time::Duration;
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
+use tokio_util::sync::CancellationToken;
 
-struct Task {
-    ctx: TaskCtx<Event>,
-    timer: Interval,
-    client: reqwest::Client,
+pin_project! {
+    pub struct Weather {
+        #[pin]
+        rx: UnboundedReceiver<Event>,
+        #[pin]
+        handle: JoinHandle<()>
+    }
 }
 
-impl Task {
-    async fn start(ctx: TaskCtx<Event>) -> Result<()> {
-        Self {
-            ctx,
-            timer: tokio::time::interval(Duration::from_secs(120)),
-            client: reqwest::ClientBuilder::new()
-                .connect_timeout(Duration::from_secs(2))
-                .read_timeout(Duration::from_secs(2))
-                .timeout(Duration::from_secs(5))
-                .build()?,
-        }
-        .r#loop()
-        .await
+impl Weather {
+    pub fn new(token: CancellationToken) -> Self {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
+        let handle = tokio::task::spawn(async move {
+            if let Err(err) = Self::r#loop(tx, token).await {
+                log::error!("Network crashed: {err:?}");
+            }
+        });
+        Self { rx, handle }
     }
 
-    async fn r#loop(mut self) -> Result<()> {
+    async fn r#loop(tx: UnboundedSender<Event>, token: CancellationToken) -> Result<()> {
+        let mut timer = tokio::time::interval(Duration::from_secs(120));
+        let client = Client::new()?;
+
         loop {
             tokio::select! {
-                _ = self.timer.tick() => self.tick().await?,
+                _ = timer.tick() => {
+                    let events = get_weather(&client).await;
+                    for event in events {
+                        tx.send(event)?;
+                    }
+                }
 
-                _ = &mut self.ctx.exit => {
+                _ = token.cancelled() => {
                     log::info!(target: "Weather", "exiting...");
                     return Ok(())
                 }
             }
         }
     }
+}
 
-    async fn tick(&mut self) -> Result<()> {
-        let response = self
-            .client
-            .get("https://api.open-meteo.com/v1/forecast")
-            .query(&[
-                ("latitude", "52.2298"),
-                ("longitude", "21.0118"),
-                ("current", "temperature_2m,weather_code"),
-                ("hourly", "temperature_2m,weather_code"),
-                (
-                    "daily",
-                    "temperature_2m_min,temperature_2m_max,weather_code",
-                ),
-                ("timezone", "Europe/Warsaw"),
-            ])
-            .send()
-            .await?
-            .json::<Response>()
-            .await?;
-        let events = response.into_events()?;
+impl Stream for Weather {
+    type Item = Event;
 
-        for event in events {
-            self.ctx.emitter.emit(event)?;
-        }
-
-        Ok(())
+    fn poll_next(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.project().rx.poll_recv(cx)
     }
 }
 
-service!(Weather, Event, Task::start);
+impl Future for Weather {
+    type Output = ();
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        if let Err(err) = futures::ready!(self.project().handle.poll(cx)) {
+            log::error!("failed to await Weather task: {err:?}")
+        }
+        std::task::Poll::Ready(())
+    }
+}
+
+async fn get_weather(client: &Client) -> Vec<Event> {
+    if let Ok(response) = client.get().await {
+        if let Ok(events) = response.into_events() {
+            return events;
+        }
+    }
+    vec![]
+}

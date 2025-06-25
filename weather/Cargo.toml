@@ -10,4 +10,6 @@ tokio = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 chrono = { workspace = true }
-utils = { path = "../utils" }
+futures = { workspace = true }
+tokio-util = { workspace = true }
+pin-project-lite = { workspace = true }

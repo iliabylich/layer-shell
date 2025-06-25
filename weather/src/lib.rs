@@ -1,3 +1,4 @@
+mod client;
 mod event;
 mod response;
 mod weather;

@@ -35,14 +35,14 @@ pub(crate) struct DailyResponse {
 }
 
 impl Response {
-    pub(crate) fn into_events(self) -> Result<[Event; 3]> {
+    pub(crate) fn into_events(self) -> Result<Vec<Event>> {
         let Self {
             current,
             hourly,
             daily,
         } = self;
 
-        Ok([
+        Ok(vec![
             Event::from(current),
             Event::try_from(hourly)?,
             Event::try_from(daily)?,
