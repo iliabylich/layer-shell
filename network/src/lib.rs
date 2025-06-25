@@ -9,5 +9,8 @@ mod primary_device;
 mod speed;
 mod stream_map;
 
-pub use event::{Event, NetworkData, WifiStatus};
+pub use event::{
+    DownloadSpeedEvent, NetworkData, NetworkEvent, NetworkListEvent, UploadSpeedEvent, WifiStatus,
+    WifiStatusEvent,
+};
 pub use network::Network;

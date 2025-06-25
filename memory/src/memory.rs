@@ -1,4 +1,4 @@
-use crate::event::Event;
+use crate::MemoryEvent;
 use anyhow::{Context as _, Result};
 use futures::{Stream, ready};
 use pin_project_lite::pin_project;
@@ -29,7 +29,7 @@ impl Default for Memory {
 }
 
 impl Stream for Memory {
-    type Item = Event;
+    type Item = MemoryEvent;
 
     fn poll_next(
         self: std::pin::Pin<&mut Self>,
@@ -48,7 +48,7 @@ impl Stream for Memory {
     }
 }
 
-fn parse(buf: &mut [u8]) -> Result<Event> {
+fn parse(buf: &mut [u8]) -> Result<MemoryEvent> {
     let mut file = std::fs::File::open("/proc/meminfo").context("failed to open")?;
     let len = file.read(buf).context("failed to read")?;
     let contents = std::str::from_utf8(&buf[..len]).context("non-utf8 content")?;
@@ -75,7 +75,7 @@ fn parse(buf: &mut [u8]) -> Result<Event> {
 
     let used_kb = total_kb - available_kb;
 
-    Ok(Event {
+    Ok(MemoryEvent {
         used: (used_kb as f64) / 1024.0 / 1024.0,
         total: (total_kb as f64) / 1024.0 / 1024.0,
     })

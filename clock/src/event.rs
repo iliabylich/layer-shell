@@ -1,4 +1,7 @@
+use ffi::CString;
+
 #[derive(Debug)]
-pub struct Event {
-    pub time: String,
+#[repr(C)]
+pub struct ClockEvent {
+    pub time: CString,
 }

@@ -1,4 +1,4 @@
-use crate::{Event, store::Store};
+use crate::{CpuUsageEvent, store::Store};
 use futures::{Stream, ready};
 use pin_project_lite::pin_project;
 use std::time::Duration;
@@ -28,7 +28,7 @@ impl Default for CPU {
 }
 
 impl Stream for CPU {
-    type Item = Event;
+    type Item = CpuUsageEvent;
 
     fn poll_next(
         self: std::pin::Pin<&mut Self>,
@@ -38,7 +38,9 @@ impl Stream for CPU {
         let _ = ready!(this.timer.poll_tick(cx));
 
         match this.store.update() {
-            Ok(usage_per_core) => std::task::Poll::Ready(Some(Event { usage_per_core })),
+            Ok(usage_per_core) => std::task::Poll::Ready(Some(CpuUsageEvent {
+                usage_per_core: usage_per_core.into(),
+            })),
             Err(err) => {
                 log::error!("CPU stream has crashes: {err:?}");
                 std::task::Poll::Ready(None)

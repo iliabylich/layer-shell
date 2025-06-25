@@ -1,4 +1,4 @@
-use crate::{Event, reader::Reader, state::State, writer::Writer};
+use crate::{HyprlandEvent, reader::Reader, state::State, writer::Writer};
 use anyhow::Result;
 use futures::Stream;
 use pin_project_lite::pin_project;
@@ -11,7 +11,7 @@ use tokio_util::sync::CancellationToken;
 pin_project! {
     pub struct Hyprland {
         #[pin]
-        rx: UnboundedReceiver<Event>,
+        rx: UnboundedReceiver<HyprlandEvent>,
         #[pin]
         handle: JoinHandle<()>,
     }
@@ -19,7 +19,7 @@ pin_project! {
 
 impl Hyprland {
     pub fn new(token: CancellationToken) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<HyprlandEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
                 log::error!("Hyprland crashed: {err:?}");
@@ -28,7 +28,7 @@ impl Hyprland {
         Self { rx, handle }
     }
 
-    async fn r#loop(tx: UnboundedSender<Event>, token: CancellationToken) -> Result<()> {
+    async fn r#loop(tx: UnboundedSender<HyprlandEvent>, token: CancellationToken) -> Result<()> {
         let mut reader = Reader::new().await?;
 
         let workspace_ids = Writer::get_workspaces_list().await?;
@@ -63,7 +63,7 @@ impl Hyprland {
 }
 
 impl Stream for Hyprland {
-    type Item = Event;
+    type Item = HyprlandEvent;
 
     fn poll_next(
         self: std::pin::Pin<&mut Self>,

@@ -4,4 +4,4 @@ mod event;
 mod store;
 
 pub use cpu::CPU;
-pub use event::Event;
+pub use event::CpuUsageEvent;

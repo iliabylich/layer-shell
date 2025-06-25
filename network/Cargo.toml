@@ -12,3 +12,4 @@ futures = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 pin-project-lite = { workspace = true }
+ffi = { path = "../ffi" }

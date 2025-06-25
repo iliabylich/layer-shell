@@ -3,4 +3,4 @@ mod dbus;
 mod event;
 
 pub use control::Control;
-pub use event::Event;
+pub use event::ControlEvent;

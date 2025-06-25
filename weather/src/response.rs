@@ -1,5 +1,6 @@
 use crate::{
-    Event, WeatherCode,
+    CurrentWeatherEvent, DailyWeatherForecastEvent, HourlyWeatherForecastEvent, WeatherCode,
+    WeatherEvent,
     event::{WeatherOnDay, WeatherOnHour},
 };
 use anyhow::{Context as _, Result, ensure};
@@ -35,7 +36,7 @@ pub(crate) struct DailyResponse {
 }
 
 impl Response {
-    pub(crate) fn into_events(self) -> Result<Vec<Event>> {
+    pub(crate) fn into_events(self) -> Result<Vec<WeatherEvent>> {
         let Self {
             current,
             hourly,
@@ -43,23 +44,23 @@ impl Response {
         } = self;
 
         Ok(vec![
-            Event::from(current),
-            Event::try_from(hourly)?,
-            Event::try_from(daily)?,
+            WeatherEvent::from(current),
+            WeatherEvent::try_from(hourly)?,
+            WeatherEvent::try_from(daily)?,
         ])
     }
 }
 
-impl From<CurrentResponse> for Event {
+impl From<CurrentResponse> for WeatherEvent {
     fn from(res: CurrentResponse) -> Self {
-        Event::CurrentWeather {
+        WeatherEvent::CurrentWeather(CurrentWeatherEvent {
             temperature: res.temperature_2m,
             code: WeatherCode::from(res.weather_code),
-        }
+        })
     }
 }
 
-impl TryFrom<HourlyResponse> for Event {
+impl TryFrom<HourlyResponse> for WeatherEvent {
     type Error = anyhow::Error;
 
     fn try_from(response: HourlyResponse) -> Result<Self> {
@@ -78,7 +79,7 @@ impl TryFrom<HourlyResponse> for Event {
 
             if time > now {
                 forecast.push(WeatherOnHour {
-                    hour: time.format("%H:%M").to_string(),
+                    hour: time.format("%H:%M").to_string().into(),
                     temperature: temp,
                     code,
                 });
@@ -89,11 +90,13 @@ impl TryFrom<HourlyResponse> for Event {
         }
 
         ensure!(forecast.len() == 10, "bug");
-        Ok(Self::HourlyWeatherForecast { forecast })
+        Ok(Self::HourlyWeatherForecast(HourlyWeatherForecastEvent {
+            forecast: forecast.into(),
+        }))
     }
 }
 
-impl TryFrom<DailyResponse> for Event {
+impl TryFrom<DailyResponse> for WeatherEvent {
     type Error = anyhow::Error;
 
     fn try_from(response: DailyResponse) -> Result<Self> {
@@ -118,7 +121,7 @@ impl TryFrom<DailyResponse> for Event {
                 NaiveDate::parse_from_str(&time, "%Y-%m-%d").context("invalid date format")?;
             if date > today {
                 forecast.push(WeatherOnDay {
-                    day: date.format("%b-%d").to_string(),
+                    day: date.format("%b-%d").to_string().into(),
                     temperature_min: min,
                     temperature_max: max,
                     code,
@@ -130,6 +133,10 @@ impl TryFrom<DailyResponse> for Event {
         }
 
         ensure!(forecast.len() == 6, "bug");
-        Ok(Event::DailyWeatherForecast { forecast })
+        Ok(WeatherEvent::DailyWeatherForecast(
+            DailyWeatherForecastEvent {
+                forecast: forecast.into(),
+            },
+        ))
     }
 }

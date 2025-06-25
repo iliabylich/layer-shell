@@ -1,4 +1,7 @@
-use crate::{Event, event::NetworkData, nm_event::NetworkManagerEvent, stream_map::StreamMap};
+use crate::{
+    NetworkEvent, NetworkListEvent, event::NetworkData, nm_event::NetworkManagerEvent,
+    stream_map::StreamMap,
+};
 use anyhow::{Context as _, Result};
 use futures::StreamExt;
 use zbus::zvariant::OwnedObjectPath;
@@ -72,7 +75,10 @@ impl Devices {
         Ok(())
     }
 
-    pub(crate) async fn changed(paths: Vec<OwnedObjectPath>, conn: &zbus::Connection) -> Event {
+    pub(crate) async fn changed(
+        paths: Vec<OwnedObjectPath>,
+        conn: &zbus::Connection,
+    ) -> NetworkEvent {
         let mut list = vec![];
 
         for path in paths {
@@ -82,7 +88,7 @@ impl Devices {
             }
         }
 
-        Event::NetworkList { list }
+        NetworkEvent::NetworkList(NetworkListEvent { list: list.into() })
     }
 
     async fn get_device_network(
@@ -107,6 +113,9 @@ impl Devices {
         let address = address_data.remove("address").context("no address data")?;
         let address = String::try_from(address).context("address is not a string")?;
 
-        Ok(NetworkData { iface, address })
+        Ok(NetworkData {
+            iface: iface.into(),
+            address: address.into(),
+        })
     }
 }

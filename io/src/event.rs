@@ -1,49 +1,31 @@
-use ffi::{CArray, COption, CString};
-use weather::WeatherCode;
+use clock::ClockEvent;
+use control::ControlEvent;
+use cpu::CpuUsageEvent;
+use hyprland::{HyprlandEvent, LanguageEvent, WorkspacesEvent};
+use memory::MemoryEvent;
+use network::{
+    DownloadSpeedEvent, NetworkEvent, NetworkListEvent, UploadSpeedEvent, WifiStatusEvent,
+};
+use weather::{
+    CurrentWeatherEvent, DailyWeatherForecastEvent, HourlyWeatherForecastEvent, WeatherEvent,
+};
 
 #[derive(Debug)]
 #[repr(C)]
 #[must_use]
 pub enum Event {
-    Memory {
-        used: f64,
-        total: f64,
-    },
-    CpuUsage {
-        usage_per_core: CArray<u8>,
-    },
-    Time {
-        time: CString,
-    },
-    Workspaces {
-        ids: CArray<usize>,
-        active_id: usize,
-    },
-    Language {
-        lang: CString,
-    },
-    CurrentWeather {
-        temperature: f32,
-        code: WeatherCode,
-    },
-    HourlyWeatherForecast {
-        forecast: CArray<WeatherOnHour>,
-    },
-    DailyWeatherForecast {
-        forecast: CArray<WeatherOnDay>,
-    },
-    WifiStatus {
-        wifi_status: COption<WifiStatus>,
-    },
-    UploadSpeed {
-        speed: CString,
-    },
-    DownloadSpeed {
-        speed: CString,
-    },
-    NetworkList {
-        list: CArray<Network>,
-    },
+    Memory(MemoryEvent),
+    CpuUsage(CpuUsageEvent),
+    Clock(ClockEvent),
+    Workspaces(WorkspacesEvent),
+    Language(LanguageEvent),
+    CurrentWeather(CurrentWeatherEvent),
+    HourlyWeatherForecast(HourlyWeatherForecastEvent),
+    DailyWeatherForecast(DailyWeatherForecastEvent),
+    WifiStatus(WifiStatusEvent),
+    UploadSpeed(UploadSpeedEvent),
+    DownloadSpeed(DownloadSpeedEvent),
+    NetworkList(NetworkListEvent),
     Tray {
         // apps: CArray<TrayApp>,
     },
@@ -52,152 +34,60 @@ pub enum Event {
     Exit,
 }
 
-impl From<hyprland::Event> for Event {
-    fn from(event: hyprland::Event) -> Self {
+impl From<HyprlandEvent> for Event {
+    fn from(event: HyprlandEvent) -> Self {
         match event {
-            hyprland::Event::Workspaces { ids, active_id } => Self::Workspaces {
-                ids: ids.into(),
-                active_id,
-            },
-            hyprland::Event::Language { lang } => Self::Language { lang: lang.into() },
+            HyprlandEvent::Workspaces(e) => Self::Workspaces(e),
+            HyprlandEvent::Language(e) => Self::Language(e),
         }
     }
 }
 
-impl From<cpu::Event> for Event {
-    fn from(event: cpu::Event) -> Self {
-        Self::CpuUsage {
-            usage_per_core: event.usage_per_core.into(),
-        }
+impl From<CpuUsageEvent> for Event {
+    fn from(event: CpuUsageEvent) -> Self {
+        Self::CpuUsage(event)
     }
 }
 
-impl From<memory::Event> for Event {
-    fn from(event: memory::Event) -> Self {
-        Self::Memory {
-            used: event.used,
-            total: event.total,
-        }
+impl From<MemoryEvent> for Event {
+    fn from(event: MemoryEvent) -> Self {
+        Self::Memory(event)
     }
 }
 
-impl From<clock::Event> for Event {
-    fn from(event: clock::Event) -> Self {
-        Self::Time {
-            time: event.time.into(),
-        }
+impl From<ClockEvent> for Event {
+    fn from(event: ClockEvent) -> Self {
+        Self::Clock(event)
     }
 }
 
-impl From<control::Event> for Event {
-    fn from(event: control::Event) -> Self {
+impl From<ControlEvent> for Event {
+    fn from(event: ControlEvent) -> Self {
         match event {
-            control::Event::ToggleSessionScreen => Self::ToggleSessionScreen,
-            control::Event::ReloadStyles => Self::ReloadStyles,
-            control::Event::Exit => Self::Exit,
+            ControlEvent::ToggleSessionScreen => Self::ToggleSessionScreen,
+            ControlEvent::ReloadStyles => Self::ReloadStyles,
+            ControlEvent::Exit => Self::Exit,
         }
     }
 }
 
-#[derive(Debug)]
-#[repr(C)]
-pub struct Network {
-    pub iface: CString,
-    pub address: CString,
-}
-
-impl From<network::NetworkData> for Network {
-    fn from(input: network::NetworkData) -> Self {
-        Self {
-            iface: input.iface.into(),
-            address: input.address.into(),
-        }
-    }
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct WifiStatus {
-    pub ssid: CString,
-    pub strength: u8,
-}
-
-impl From<network::WifiStatus> for WifiStatus {
-    fn from(input: network::WifiStatus) -> Self {
-        Self {
-            ssid: input.ssid.into(),
-            strength: input.strength,
-        }
-    }
-}
-
-impl From<network::Event> for Event {
-    fn from(event: network::Event) -> Self {
+impl From<NetworkEvent> for Event {
+    fn from(event: NetworkEvent) -> Self {
         match event {
-            network::Event::WifiStatus { wifi_status } => Self::WifiStatus {
-                wifi_status: wifi_status.into(),
-            },
-            network::Event::UploadSpeed { speed } => Self::UploadSpeed {
-                speed: speed.into(),
-            },
-            network::Event::DownloadSpeed { speed } => Self::DownloadSpeed {
-                speed: speed.into(),
-            },
-            network::Event::NetworkList { list } => Self::NetworkList { list: list.into() },
+            NetworkEvent::WifiStatus(e) => Self::WifiStatus(e),
+            NetworkEvent::UploadSpeed(e) => Self::UploadSpeed(e),
+            NetworkEvent::DownloadSpeed(e) => Self::DownloadSpeed(e),
+            NetworkEvent::NetworkList(e) => Self::NetworkList(e),
         }
     }
 }
 
-#[derive(Debug)]
-#[repr(C)]
-pub struct WeatherOnHour {
-    pub hour: CString,
-    pub temperature: f32,
-    pub code: WeatherCode,
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct WeatherOnDay {
-    pub day: CString,
-    pub temperature_min: f32,
-    pub temperature_max: f32,
-    pub code: WeatherCode,
-}
-
-impl From<weather::WeatherOnHour> for WeatherOnHour {
-    fn from(input: weather::WeatherOnHour) -> Self {
-        Self {
-            hour: input.hour.into(),
-            temperature: input.temperature,
-            code: input.code,
-        }
-    }
-}
-
-impl From<weather::WeatherOnDay> for WeatherOnDay {
-    fn from(input: weather::WeatherOnDay) -> Self {
-        Self {
-            day: input.day.into(),
-            temperature_min: input.temperature_min,
-            temperature_max: input.temperature_max,
-            code: input.code,
-        }
-    }
-}
-
-impl From<weather::Event> for Event {
-    fn from(event: weather::Event) -> Self {
+impl From<WeatherEvent> for Event {
+    fn from(event: WeatherEvent) -> Self {
         match event {
-            weather::Event::CurrentWeather { temperature, code } => {
-                Self::CurrentWeather { temperature, code }
-            }
-            weather::Event::HourlyWeatherForecast { forecast } => Self::HourlyWeatherForecast {
-                forecast: forecast.into(),
-            },
-            weather::Event::DailyWeatherForecast { forecast } => Self::DailyWeatherForecast {
-                forecast: forecast.into(),
-            },
+            WeatherEvent::CurrentWeather(e) => Self::CurrentWeather(e),
+            WeatherEvent::HourlyWeatherForecast(e) => Self::HourlyWeatherForecast(e),
+            WeatherEvent::DailyWeatherForecast(e) => Self::DailyWeatherForecast(e),
         }
     }
 }

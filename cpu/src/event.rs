@@ -1,4 +1,7 @@
+use ffi::CArray;
+
 #[derive(Debug)]
-pub struct Event {
-    pub usage_per_core: Vec<u8>,
+#[repr(C)]
+pub struct CpuUsageEvent {
+    pub usage_per_core: CArray<u8>,
 }

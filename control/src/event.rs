@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum Event {
+pub enum ControlEvent {
     ToggleSessionScreen,
     ReloadStyles,
     Exit,

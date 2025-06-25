@@ -1,4 +1,4 @@
-use crate::Event;
+use crate::ClockEvent;
 use futures::{Stream, ready};
 use pin_project_lite::pin_project;
 use std::time::Duration;
@@ -25,7 +25,7 @@ impl Default for Clock {
 }
 
 impl Stream for Clock {
-    type Item = Event;
+    type Item = ClockEvent;
 
     fn poll_next(
         self: std::pin::Pin<&mut Self>,
@@ -38,6 +38,6 @@ impl Stream for Clock {
             .format("%H:%M:%S | %b %e | %a")
             .to_string();
 
-        std::task::Poll::Ready(Some(Event { time }))
+        std::task::Poll::Ready(Some(ClockEvent { time: time.into() }))
     }
 }

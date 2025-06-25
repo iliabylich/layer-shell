@@ -1,6 +1,6 @@
 use crate::{
-    Event, devices::Devices, nm_event::NetworkManagerEvent, primary_connection::PrimaryConnection,
-    stream_map::StreamMap,
+    NetworkEvent, devices::Devices, nm_event::NetworkManagerEvent,
+    primary_connection::PrimaryConnection, stream_map::StreamMap,
 };
 use anyhow::{Result, bail};
 use tokio::sync::mpsc::UnboundedSender;
@@ -8,7 +8,7 @@ use tokio_util::sync::CancellationToken;
 use zbus::Connection;
 
 pub(crate) struct NetworkTask {
-    tx: UnboundedSender<Event>,
+    tx: UnboundedSender<NetworkEvent>,
     token: CancellationToken,
 
     conn: Connection,
@@ -19,7 +19,10 @@ pub(crate) struct NetworkTask {
 }
 
 impl NetworkTask {
-    pub(crate) async fn start(tx: UnboundedSender<Event>, token: CancellationToken) -> Result<()> {
+    pub(crate) async fn start(
+        tx: UnboundedSender<NetworkEvent>,
+        token: CancellationToken,
+    ) -> Result<()> {
         let conn = Connection::system().await?;
 
         let mut stream_map = StreamMap::new();

@@ -2,4 +2,4 @@ mod clock;
 mod event;
 
 pub use clock::Clock;
-pub use event::Event;
+pub use event::ClockEvent;

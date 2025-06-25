@@ -59,3 +59,4 @@ where
 }
 
 unsafe impl<T> Send for CArray<T> {}
+unsafe impl<T> Sync for CArray<T> {}

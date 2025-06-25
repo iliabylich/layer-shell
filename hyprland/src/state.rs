@@ -1,4 +1,4 @@
-use crate::{Event, reader::ReaderEvent};
+use crate::{HyprlandEvent, LanguageEvent, WorkspacesEvent, reader::ReaderEvent};
 use std::collections::HashSet;
 
 pub(crate) struct State {
@@ -20,23 +20,28 @@ impl State {
         }
     }
 
-    pub(crate) fn initial_events(&self) -> [Event; 2] {
+    pub(crate) fn initial_events(&self) -> [HyprlandEvent; 2] {
         [self.workspaces_event(), self.language_event()]
     }
 
-    fn workspaces_event(&self) -> Event {
-        Event::Workspaces {
-            ids: self.workspace_ids.iter().copied().collect(),
+    fn workspaces_event(&self) -> HyprlandEvent {
+        HyprlandEvent::Workspaces(WorkspacesEvent {
+            ids: self
+                .workspace_ids
+                .iter()
+                .copied()
+                .collect::<Vec<_>>()
+                .into(),
             active_id: self.active_workspace_id,
-        }
+        })
     }
-    fn language_event(&self) -> Event {
-        Event::Language {
-            lang: self.lang.clone(),
-        }
+    fn language_event(&self) -> HyprlandEvent {
+        HyprlandEvent::Language(LanguageEvent {
+            lang: self.lang.clone().into(),
+        })
     }
 
-    pub(crate) fn apply(&mut self, event: ReaderEvent) -> Event {
+    pub(crate) fn apply(&mut self, event: ReaderEvent) -> HyprlandEvent {
         match event {
             ReaderEvent::CreateWorkspace(id) => self.add_workspace(id),
             ReaderEvent::DestroyWorkspace(id) => self.remove_workspace(id),
@@ -45,19 +50,19 @@ impl State {
         }
     }
 
-    fn add_workspace(&mut self, id: usize) -> Event {
+    fn add_workspace(&mut self, id: usize) -> HyprlandEvent {
         self.workspace_ids.insert(id);
         self.workspaces_event()
     }
-    fn remove_workspace(&mut self, id: usize) -> Event {
+    fn remove_workspace(&mut self, id: usize) -> HyprlandEvent {
         self.workspace_ids.remove(&id);
         self.workspaces_event()
     }
-    fn set_active_workspace(&mut self, id: usize) -> Event {
+    fn set_active_workspace(&mut self, id: usize) -> HyprlandEvent {
         self.active_workspace_id = id;
         self.workspaces_event()
     }
-    fn set_language(&mut self, lang: String) -> Event {
+    fn set_language(&mut self, lang: String) -> HyprlandEvent {
         self.lang = lang;
         self.language_event()
     }

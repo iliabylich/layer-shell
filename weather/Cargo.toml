@@ -13,3 +13,4 @@ chrono = { workspace = true }
 futures = { workspace = true }
 tokio-util = { workspace = true }
 pin-project-lite = { workspace = true }
+ffi = { path = "../ffi" }

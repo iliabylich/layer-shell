@@ -1,5 +1,9 @@
-use crate::{Event, event::WifiStatus, nm_event::NetworkManagerEvent, stream_map::StreamMap};
+use crate::{
+    NetworkEvent, WifiStatusEvent, event::WifiStatus, nm_event::NetworkManagerEvent,
+    stream_map::StreamMap,
+};
 use anyhow::Result;
+use ffi::COption;
 use futures::StreamExt;
 use zbus::{Connection, zvariant::OwnedObjectPath};
 
@@ -93,23 +97,23 @@ impl AccessPoint {
         Ok(())
     }
 
-    fn as_wifi_status_event(&self) -> Option<Event> {
+    fn as_wifi_status_event(&self) -> Option<NetworkEvent> {
         let (ssid, strength) = self.ssid.as_ref().zip(self.strength.as_ref())?;
-        Some(Event::WifiStatus {
-            wifi_status: Some(WifiStatus {
-                ssid: ssid.clone(),
+        Some(NetworkEvent::WifiStatus(WifiStatusEvent {
+            wifi_status: COption::Some(WifiStatus {
+                ssid: ssid.clone().into(),
                 strength: *strength,
             }),
-        })
+        }))
     }
 
-    pub(crate) fn ssid_changed(&mut self, ssid: Vec<u8>) -> Option<Event> {
+    pub(crate) fn ssid_changed(&mut self, ssid: Vec<u8>) -> Option<NetworkEvent> {
         let ssid = String::from_utf8_lossy(&ssid).to_string();
         self.ssid = Some(ssid);
         self.as_wifi_status_event()
     }
 
-    pub(crate) fn strength_changed(&mut self, strength: u8) -> Option<Event> {
+    pub(crate) fn strength_changed(&mut self, strength: u8) -> Option<NetworkEvent> {
         self.strength = Some(strength);
         self.as_wifi_status_event()
     }

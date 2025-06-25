@@ -8,3 +8,4 @@ tokio = { workspace = true }
 chrono = { workspace = true }
 futures = { workspace = true }
 pin-project-lite = { workspace = true }
+ffi = { path = "../ffi" }
