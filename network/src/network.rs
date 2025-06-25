@@ -8,20 +8,20 @@ pin_project! {
     pub struct Network {
         #[pin]
         rx: UnboundedReceiver<NetworkEvent>,
-        #[pin]
-        handle: JoinHandle<()>,
     }
 }
 
+const NAME: &str = "Network";
+
 impl Network {
-    pub fn new(token: CancellationToken) -> Self {
+    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<NetworkEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = NetworkTask::start(tx, token).await {
-                log::error!("Network crashed: {err:?}");
+                log::error!("{NAME} crashed: {err:?}");
             }
         });
-        Self { rx, handle }
+        (NAME, Self { rx }, handle)
     }
 }
 
@@ -34,19 +34,5 @@ impl Stream for Network {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
         this.rx.poll_recv(cx)
-    }
-}
-
-impl Future for Network {
-    type Output = ();
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = futures::ready!(self.project().handle.poll(cx)) {
-            log::error!("failed to await Network task: {err:?}")
-        }
-        std::task::Poll::Ready(())
     }
 }

@@ -13,20 +13,20 @@ pin_project! {
     pub struct Control {
         #[pin]
         rx: UnboundedReceiver<ControlEvent>,
-        #[pin]
-        handle: JoinHandle<()>,
     }
 }
 
+const NAME: &str = "Control";
+
 impl Control {
-    pub fn new(token: CancellationToken) -> Self {
+    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ControlEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
-                log::error!("Control crashed: {err:?}");
+                log::error!("{NAME} crashed: {err:?}");
             }
         });
-        Self { rx, handle }
+        (NAME, Self { rx }, handle)
     }
 
     async fn r#loop(tx: UnboundedSender<ControlEvent>, token: CancellationToken) -> Result<()> {
@@ -36,7 +36,7 @@ impl Control {
         connection.request_name("org.me.LayerShellControl").await?;
 
         token.cancelled().await;
-        log::info!(target: "Control", "exiting...");
+        log::info!(target: NAME, "exiting...");
 
         Ok(())
     }
@@ -51,19 +51,5 @@ impl Stream for Control {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
         this.rx.poll_recv(cx)
-    }
-}
-
-impl Future for Control {
-    type Output = ();
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = futures::ready!(self.project().handle.poll(cx)) {
-            log::error!("failed to await Control task: {err:?}")
-        }
-        std::task::Poll::Ready(())
     }
 }

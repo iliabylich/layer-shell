@@ -13,20 +13,20 @@ pin_project! {
     pub struct Weather {
         #[pin]
         rx: UnboundedReceiver<WeatherEvent>,
-        #[pin]
-        handle: JoinHandle<()>
     }
 }
 
+const NAME: &str = "Weather";
+
 impl Weather {
-    pub fn new(token: CancellationToken) -> Self {
+    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WeatherEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
-                log::error!("Network crashed: {err:?}");
+                log::error!("{NAME} crashed: {err:?}");
             }
         });
-        Self { rx, handle }
+        (NAME, Self { rx }, handle)
     }
 
     async fn r#loop(tx: UnboundedSender<WeatherEvent>, token: CancellationToken) -> Result<()> {
@@ -43,7 +43,7 @@ impl Weather {
                 }
 
                 _ = token.cancelled() => {
-                    log::info!(target: "Weather", "exiting...");
+                    log::info!(target: NAME, "exiting...");
                     return Ok(())
                 }
             }
@@ -59,20 +59,6 @@ impl Stream for Weather {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         self.project().rx.poll_recv(cx)
-    }
-}
-
-impl Future for Weather {
-    type Output = ();
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = futures::ready!(self.project().handle.poll(cx)) {
-            log::error!("failed to await Weather task: {err:?}")
-        }
-        std::task::Poll::Ready(())
     }
 }
 

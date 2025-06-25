@@ -3,27 +3,27 @@ use anyhow::{Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
 use cpu::CPU;
-use futures::StreamExt as _;
+use futures::{Stream, StreamExt as _};
 use hyprland::Hyprland;
 use memory::Memory;
 use network::Network;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use std::{collections::HashMap, pin::Pin};
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
+use tokio_stream::StreamMap;
 use tokio_util::sync::CancellationToken;
 use weather::Weather;
 
 pub(crate) struct MainLoop {
     token: CancellationToken,
+    handles: HashMap<&'static str, JoinHandle<()>>,
 
     etx: UnboundedSender<Event>,
     crx: UnboundedReceiver<Command>,
 
-    hyprland: Hyprland,
-    cpu: CPU,
-    memory: Memory,
-    clock: Clock,
-    control: Control,
-    network: Network,
-    weather: Weather,
+    streams: StreamMap<&'static str, Pin<Box<dyn Stream<Item = Event> + Send + 'static>>>,
 }
 
 impl MainLoop {
@@ -33,59 +33,47 @@ impl MainLoop {
     ) -> Result<Self> {
         let token = CancellationToken::new();
 
-        let hyprland = Hyprland::new(token.clone());
-        let cpu = CPU::new();
-        let memory = Memory::new();
-        let clock = Clock::new();
-        let control = Control::new(token.clone());
-        let network = Network::new(token.clone());
-        let weather = Weather::new(token.clone());
+        let mut handles = HashMap::new();
+        let mut streams = StreamMap::new();
+
+        macro_rules! register_stream {
+            ($t:ty) => {{
+                let (name, stream) = <$t>::new();
+                streams.insert(name, stream.map(Event::from).boxed());
+            }};
+        }
+        macro_rules! register_task {
+            ($t:ty) => {
+                let (name, stream, handle) = <$t>::new(token.clone());
+                handles.insert(name, handle);
+                streams.insert(name, stream.map(Event::from).boxed());
+            };
+        }
+
+        register_stream!(Clock);
+        register_stream!(CPU);
+        register_stream!(Memory);
+        register_task!(Control);
+        register_task!(Hyprland);
+        register_task!(Network);
+        register_task!(Weather);
 
         Ok(Self {
             token,
+            handles,
 
             etx,
             crx,
 
-            hyprland,
-            cpu,
-            memory,
-            clock,
-            control,
-            network,
-            weather,
+            streams,
         })
     }
 
     pub(crate) async fn start(mut self) -> Result<()> {
         loop {
             tokio::select! {
-                Some(e) = self.hyprland.next() => {
-                    self.emit("Hyprland", e).await?;
-                }
-
-                Some(e) = self.cpu.next() => {
-                    self.emit("CPU", e).await?;
-                }
-
-                Some(e) = self.memory.next() => {
-                    self.emit("Memory", e).await?;
-                }
-
-                Some(e) = self.clock.next() => {
-                    self.emit("Clock", e).await?;
-                }
-
-                Some(e) = self.control.next() => {
-                    self.emit("Control", e).await?;
-                }
-
-                Some(e) = self.network.next() => {
-                    self.emit("Network", e).await?;
-                }
-
-                Some(e) = self.weather.next() => {
-                    self.emit("Weather", e).await?;
+                Some((name, event)) = self.streams.next() => {
+                    self.emit(name, event).await?;
                 }
 
                 Some(cmd) = self.crx.recv() => {
@@ -103,9 +91,12 @@ impl MainLoop {
 
     async fn stop(self) {
         self.token.cancel();
-        self.control.await;
-        self.hyprland.await;
-        self.network.await
+
+        for (name, handle) in self.handles {
+            if let Err(err) = handle.await {
+                log::error!("failed to await for {name} completion: {err:?}");
+            }
+        }
     }
 
     async fn emit(&self, module: &str, e: impl Into<Event>) -> Result<()> {
@@ -118,7 +109,7 @@ impl MainLoop {
     }
 
     async fn hyprctl_dispatch(&self, cmd: impl AsRef<str>) {
-        if let Err(err) = self.hyprland.hyprctl_dispatch(cmd).await {
+        if let Err(err) = Hyprland::hyprctl_dispatch(cmd).await {
             log::error!("{err:?}");
         }
     }

@@ -10,17 +10,16 @@ pin_project! {
     }
 }
 
-impl Clock {
-    pub fn new() -> Self {
-        Self {
-            timer: tokio::time::interval(Duration::from_secs(1)),
-        }
-    }
-}
+const NAME: &str = "Clock";
 
-impl Default for Clock {
-    fn default() -> Self {
-        Self::new()
+impl Clock {
+    pub fn new() -> (&'static str, Self) {
+        (
+            NAME,
+            Self {
+                timer: tokio::time::interval(Duration::from_secs(1)),
+            },
+        )
     }
 }
 

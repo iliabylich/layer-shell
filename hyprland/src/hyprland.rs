@@ -12,20 +12,20 @@ pin_project! {
     pub struct Hyprland {
         #[pin]
         rx: UnboundedReceiver<HyprlandEvent>,
-        #[pin]
-        handle: JoinHandle<()>,
     }
 }
 
+const NAME: &str = "Hyprland";
+
 impl Hyprland {
-    pub fn new(token: CancellationToken) -> Self {
+    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<HyprlandEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
                 log::error!("Hyprland crashed: {err:?}");
             }
         });
-        Self { rx, handle }
+        (NAME, Self { rx }, handle)
     }
 
     async fn r#loop(tx: UnboundedSender<HyprlandEvent>, token: CancellationToken) -> Result<()> {
@@ -50,16 +50,22 @@ impl Hyprland {
                 },
 
                 _ = token.cancelled() => {
-                    log::info!(target: "Hyprland", "exiting...");
+                    log::info!(target: NAME, "exiting...");
                     return Ok(())
                 }
             }
         }
     }
 
-    pub async fn hyprctl_dispatch(&self, cmd: impl AsRef<str>) -> Result<()> {
+    pub async fn hyprctl_dispatch(cmd: impl AsRef<str>) -> Result<()> {
         Writer::dispatch(cmd).await
     }
+
+    // pub async fn stop(self) {
+    //     if let Err(err) = self.handle.await {
+    //         log::error!("failed to await Hyprland task: {err:?}")
+    //     }
+    // }
 }
 
 impl Stream for Hyprland {
@@ -71,19 +77,5 @@ impl Stream for Hyprland {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
         this.rx.poll_recv(cx)
-    }
-}
-
-impl Future for Hyprland {
-    type Output = ();
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = futures::ready!(self.project().handle.poll(cx)) {
-            log::error!("failed to await Hyprland task: {err:?}")
-        }
-        std::task::Poll::Ready(())
     }
 }

@@ -12,18 +12,17 @@ pin_project! {
     }
 }
 
-impl CPU {
-    pub fn new() -> Self {
-        Self {
-            timer: interval(Duration::from_secs(1)),
-            store: Store::new(),
-        }
-    }
-}
+const NAME: &str = "CPU";
 
-impl Default for CPU {
-    fn default() -> Self {
-        Self::new()
+impl CPU {
+    pub fn new() -> (&'static str, Self) {
+        (
+            NAME,
+            Self {
+                timer: interval(Duration::from_secs(1)),
+                store: Store::new(),
+            },
+        )
     }
 }
 
@@ -42,7 +41,7 @@ impl Stream for CPU {
                 usage_per_core: usage_per_core.into(),
             })),
             Err(err) => {
-                log::error!("CPU stream has crashes: {err:?}");
+                log::error!("{NAME} stream has crashed: {err:?}");
                 std::task::Poll::Ready(None)
             }
         }

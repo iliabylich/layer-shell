@@ -13,18 +13,17 @@ pin_project! {
     }
 }
 
-impl Memory {
-    pub fn new() -> Self {
-        Self {
-            timer: interval(Duration::from_secs(1)),
-            buf: vec![0; 1_024],
-        }
-    }
-}
+const NAME: &str = "Memory";
 
-impl Default for Memory {
-    fn default() -> Self {
-        Self::new()
+impl Memory {
+    pub fn new() -> (&'static str, Self) {
+        (
+            NAME,
+            Self {
+                timer: interval(Duration::from_secs(1)),
+                buf: vec![0; 1_024],
+            },
+        )
     }
 }
 
@@ -41,7 +40,7 @@ impl Stream for Memory {
         match parse(this.buf) {
             Ok(event) => std::task::Poll::Ready(Some(event)),
             Err(err) => {
-                log::error!("Memory stream has crashes: {err:?}");
+                log::error!("{NAME} stream has crashes: {err:?}");
                 std::task::Poll::Ready(None)
             }
         }
