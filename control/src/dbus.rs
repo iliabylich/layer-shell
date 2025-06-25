@@ -1,18 +1,18 @@
 use crate::Event;
-use utils::Emitter;
+use tokio::sync::mpsc::UnboundedSender;
 use zbus::interface;
 
 pub(crate) struct DBus {
-    emitter: Emitter<Event>,
+    sender: UnboundedSender<Event>,
 }
 
 impl DBus {
-    pub(crate) fn new(emitter: Emitter<Event>) -> Self {
-        Self { emitter }
+    pub(crate) fn new(sender: UnboundedSender<Event>) -> Self {
+        Self { sender }
     }
 
     fn emit(&self, event: Event) {
-        if let Err(err) = self.emitter.emit(event) {
+        if let Err(err) = self.sender.send(event) {
             log::error!("{err:?}");
         }
     }

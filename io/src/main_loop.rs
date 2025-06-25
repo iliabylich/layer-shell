@@ -18,7 +18,7 @@ pub(crate) struct MainLoop {
     cpu: Fuse<CPU>,
     memory: Memory,
     clock: Fuse<Clock>,
-    control: Control,
+    control: Fuse<Control>,
     network: Network,
     weather: Weather,
 }
@@ -32,7 +32,7 @@ impl MainLoop {
         let cpu = CPU::new().fuse();
         let memory = Memory::start();
         let clock = Clock::new().fuse();
-        let control = Control::start();
+        let control = Control::new().fuse();
         let network = Network::start();
         let weather = Weather::start();
 
@@ -49,7 +49,7 @@ impl MainLoop {
         })
     }
 
-    pub(crate) async fn start(&mut self) -> Result<()> {
+    pub(crate) async fn start(mut self) -> Result<()> {
         loop {
             tokio::select! {
                 Some(e) = self.hyprland.recv() => {
@@ -68,7 +68,7 @@ impl MainLoop {
                     self.emit("Clock", e).await?;
                 }
 
-                Some(e) = self.control.recv() => {
+                Some(e) = self.control.next() => {
                     self.emit("Control", e).await?;
                 }
 
@@ -82,6 +82,7 @@ impl MainLoop {
 
                 Some(cmd) = self.crx.recv() => {
                     if matches!(cmd, Command::FinishIoThread) {
+                        self.stop().await;
                         return Ok(());
                     }
                     self.on_command(cmd).await;
@@ -89,6 +90,12 @@ impl MainLoop {
 
                 else => bail!("all streams are dead"),
             }
+        }
+    }
+
+    async fn stop(self) {
+        if let Err(err) = self.control.into_inner().stop().await {
+            log::error!("failed to stop Control: {err:?}");
         }
     }
 

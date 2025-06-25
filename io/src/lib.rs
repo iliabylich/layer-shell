@@ -53,7 +53,7 @@ pub fn io_run_in_place() -> Result<()> {
             std::process::exit(1);
         };
 
-        let mut main_loop = match MainLoop::new(etx, crx).await {
+        let main_loop = match MainLoop::new(etx, crx).await {
             Ok(main_loop) => main_loop,
             Err(err) => {
                 log::error!("failed to instantiate main loop, exiting: {err:?}");
