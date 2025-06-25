@@ -9,7 +9,6 @@ members = [
     "io",
     "memory",
     "network",
-    "utils",
     "weather",
 ]
 
