@@ -4,7 +4,7 @@ use clock::Clock;
 use control::Control;
 use cpu::CPU;
 use futures::{Stream, StreamExt as _};
-use hyprland::Hyprland;
+use hyprland::{Hyprland, hyprctl};
 use memory::Memory;
 use network::Network;
 use std::{collections::HashMap, pin::Pin};
@@ -99,8 +99,7 @@ impl MainLoop {
         }
     }
 
-    async fn emit(&self, module: &str, e: impl Into<Event>) -> Result<()> {
-        let e: Event = e.into();
+    async fn emit(&self, module: &str, e: Event) -> Result<()> {
         log::info!(target: module, "{e:?}");
 
         self.etx
@@ -108,42 +107,34 @@ impl MainLoop {
             .map_err(|_| anyhow!("failed to emit Event, channel is closed"))
     }
 
-    async fn hyprctl_dispatch(&self, cmd: impl AsRef<str>) {
-        if let Err(err) = Hyprland::hyprctl_dispatch(cmd).await {
-            log::error!("{err:?}");
-        }
-    }
-
     async fn on_command(&mut self, cmd: Command) {
         match cmd {
             Command::FinishIoThread => unreachable!("handled by the caller"),
 
             Command::HyprlandGoToWorkspace { idx } => {
-                self.hyprctl_dispatch(format!("workspace {}", idx + 1))
-                    .await;
+                hyprctl!("workspace {}", idx + 1);
             }
             Command::Lock => {
-                self.hyprctl_dispatch("exec hyprlock").await;
+                hyprctl!("exec hyprlock");
             }
             Command::Reboot => {
-                self.hyprctl_dispatch("exec systemctl reboot").await;
+                hyprctl!("exec systemctl reboot");
             }
             Command::Shutdown => {
-                self.hyprctl_dispatch("exec systemctl poweroff").await;
+                hyprctl!("exec systemctl poweroff");
             }
             Command::Logout => {
-                self.hyprctl_dispatch("exit").await;
+                hyprctl!("exit");
             }
             Command::TriggerTray { uuid } => todo!(),
             Command::SpawnNetworkEditor => {
-                self.hyprctl_dispatch("exec iwmenu --launcher fuzzel").await;
+                hyprctl!("exec iwmenu --launcher fuzzel");
             }
             Command::SpawnSystemMonitor => {
-                self.hyprctl_dispatch("exec gnome-system-monitor").await;
+                hyprctl!("exec gnome-system-monitor");
             }
             Command::ChangeTheme => {
-                self.hyprctl_dispatch("exec ~/.config/hypr/wallpaper-change.sh")
-                    .await
+                hyprctl!("exec ~/.config/hypr/wallpaper-change.sh");
             }
         }
     }
