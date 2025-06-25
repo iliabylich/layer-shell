@@ -3,6 +3,7 @@ use anyhow::{Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
 use cpu::CPU;
+use futures::StreamExt as _;
 use hyprland::Hyprland;
 use memory::Memory;
 use network::Network;
@@ -30,7 +31,7 @@ impl MainLoop {
         let hyprland = Hyprland::start();
         let cpu = CPU::start();
         let memory = Memory::start();
-        let clock = Clock::start();
+        let clock = Clock::new();
         let control = Control::start();
         let network = Network::start();
         let weather = Weather::start();
@@ -63,7 +64,7 @@ impl MainLoop {
                     self.emit("Memory", e).await?;
                 }
 
-                Some(e) = self.clock.recv() => {
+                Some(e) = self.clock.next() => {
                     self.emit("Clock", e).await?;
                 }
 

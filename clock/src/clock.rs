@@ -1,42 +1,37 @@
 use crate::Event;
-use anyhow::Result;
+use futures::{Stream, ready};
+use pin_project_lite::pin_project;
 use std::time::Duration;
-use utils::{TaskCtx, service};
 
-struct Task {
-    ctx: TaskCtx<Event>,
-    timer: tokio::time::Interval,
+pin_project! {
+    pub struct Clock {
+        #[pin]
+        timer: tokio::time::Interval,
+    }
 }
 
-impl Task {
-    async fn start(ctx: TaskCtx<Event>) -> Result<()> {
+impl Clock {
+    pub fn new() -> Self {
         Self {
-            ctx,
             timer: tokio::time::interval(Duration::from_secs(1)),
         }
-        .r#loop()
-        .await
     }
+}
 
-    async fn r#loop(mut self) -> Result<()> {
-        loop {
-            tokio::select! {
-                _ = self.timer.tick() => self.tick()?,
+impl Stream for Clock {
+    type Item = Event;
 
-                _ = &mut self.ctx.exit => {
-                    log::info!(target: "Clock", "exiting...");
-                    return Ok(())
-                },
-            }
-        }
-    }
+    fn poll_next(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        let mut this = self.project();
+        let _ = ready!(this.timer.poll_tick(cx));
 
-    fn tick(&self) -> Result<()> {
         let time = chrono::Local::now()
             .format("%H:%M:%S | %b %e | %a")
             .to_string();
-        self.ctx.emitter.emit(Event { time })
+
+        std::task::Poll::Ready(Some(Event { time }))
     }
 }
-
-service!(Clock, Event, Task::start);

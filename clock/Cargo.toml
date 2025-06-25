@@ -6,7 +6,5 @@ edition = "2024"
 [dependencies]
 tokio = { workspace = true }
 chrono = { workspace = true }
-log = { workspace = true }
-anyhow = { workspace = true }
-
-utils = { path = "../utils" }
+futures = { workspace = true }
+pin-project-lite = { workspace = true }

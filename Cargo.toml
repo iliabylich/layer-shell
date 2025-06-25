@@ -23,13 +23,10 @@ anyhow = { version = "1", default-features = false }
 log = { version = "0.4", default-features = false }
 env_logger = { version = "0.11", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-nanoserde = { version = "0.2", default-features = false, features = [
-    "std",
-    "json",
-] }
 tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 tokio-stream = { version = "0.1", default-features = false }
+pin-project-lite = { version = "0.2" }
 
 serde = { version = "1", default-features = false, features = [
     "std",
