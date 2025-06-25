@@ -40,7 +40,7 @@ impl Stream for CPU {
         match this.store.update() {
             Ok(usage_per_core) => std::task::Poll::Ready(Some(Event { usage_per_core })),
             Err(err) => {
-                log::error!("{err:?}");
+                log::error!("CPU stream has crashes: {err:?}");
                 std::task::Poll::Ready(None)
             }
         }

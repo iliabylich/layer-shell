@@ -35,7 +35,7 @@ impl MainLoop {
 
         let hyprland = Hyprland::new(token.clone());
         let cpu = CPU::new();
-        let memory = Memory::start();
+        let memory = Memory::new();
         let clock = Clock::new();
         let control = Control::new(token.clone());
         let network = Network::start();
@@ -68,7 +68,7 @@ impl MainLoop {
                     self.emit("CPU", e).await?;
                 }
 
-                Some(e) = self.memory.recv() => {
+                Some(e) = self.memory.next() => {
                     self.emit("Memory", e).await?;
                 }
 
