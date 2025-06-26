@@ -5,4 +5,4 @@
 
 GtkWidget *network_popover_new(GtkWidget *network);
 void network_popover_refresh(GtkWidget *network_popover,
-                             IO_CArray_Network list);
+                             IO_CArray_NetworkData list);

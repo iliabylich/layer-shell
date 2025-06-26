@@ -7,8 +7,8 @@ GtkWidget *memory_init(memory_clicked_f callback) {
   return self;
 }
 
-void memory_refresh(GtkWidget *self, double used, double total) {
+void memory_refresh(GtkWidget *self, IO_MemoryEvent event) {
   char buffer[100];
-  sprintf(buffer, "RAM %.1fG/%.1fG", used, total);
+  sprintf(buffer, "RAM %.1fG/%.1fG", event.used, event.total);
   gtk_button_set_label(GTK_BUTTON(self), buffer);
 }

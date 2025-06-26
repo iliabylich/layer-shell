@@ -4,5 +4,8 @@
 #include <gtk/gtk.h>
 
 GtkWidget *weather_init(GtkApplication *app);
-void weather_refresh(GtkWidget *weather, IO_Event_IO_ForecastWeather_Body data);
+void weather_refresh_hourly_forecast(GtkWidget *weather,
+                                     IO_HourlyWeatherForecastEvent event);
+void weather_refresh_daily_forecast(GtkWidget *weather,
+                                    IO_DailyWeatherForecastEvent event);
 void weather_toggle(GtkWidget *weather);

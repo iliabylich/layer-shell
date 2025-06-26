@@ -10,4 +10,5 @@ typedef void (*tray_triggered_f)(const uint8_t *uuid);
 
 GtkWidget *tray_init(tray_triggered_f callback);
 void tray_emit_triggered(GtkWidget *tray, char *uuid);
-void tray_refresh(GtkWidget *tray, IO_CArray_TrayApp apps);
+void tray_update_app(GtkWidget *tray, IO_TrayAppUpdatedEvent event);
+void tray_remove_app(GtkWidget *tray, IO_TrayAppRemovedEvent event);

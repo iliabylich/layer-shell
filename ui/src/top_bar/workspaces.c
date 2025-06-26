@@ -31,20 +31,19 @@ void workspaces_emit_switched(GtkWidget *self, size_t idx) {
   data->callback(idx);
 }
 
-void workspaces_refresh(GtkWidget *self, IO_CArray_usize ids,
-                        size_t active_id) {
+void workspaces_refresh(GtkWidget *self, IO_WorkspacesEvent event) {
   data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
 
   for (size_t i = 0; i < WORKSPACES_COUNT; i++) {
     GtkWidget *button = data->buttons[i];
     bool visible = i < 5;
-    for (size_t j = 0; j < ids.len; j++) {
-      if (ids.ptr[j] == i + 1) {
+    for (size_t j = 0; j < event.ids.len; j++) {
+      if (event.ids.ptr[j] == i + 1) {
         visible = true;
       }
     }
     gtk_widget_set_visible(button, visible);
-    if (i + 1 == active_id) {
+    if (i + 1 == event.active_id) {
       workspaces_button_make_active(button);
     } else {
       workspaces_button_make_inactive(button);

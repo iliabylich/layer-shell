@@ -5,5 +5,5 @@
 
 void network_popover_menu_add_settings(GMenu *menu);
 void network_popover_menu_add_ping(GMenu *menu);
-void network_popover_menu_add_network(GMenu *menu, IO_Network network);
+void network_popover_menu_add_network(GMenu *menu, IO_NetworkData network);
 GMenu *network_popover_menu_new(void);

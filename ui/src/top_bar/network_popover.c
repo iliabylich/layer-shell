@@ -17,7 +17,7 @@ GtkWidget *network_popover_new(GtkWidget *parent) {
   return self;
 }
 
-void network_popover_refresh(GtkWidget *self, IO_CArray_Network list) {
+void network_popover_refresh(GtkWidget *self, IO_CArray_NetworkData list) {
   GMenuModel *menu = gtk_popover_menu_get_menu_model(GTK_POPOVER_MENU(self));
   g_menu_remove_all(G_MENU(menu));
   for (size_t i = 0; i < list.len; i++) {

@@ -16,7 +16,7 @@ void network_popover_menu_add_ping(GMenu *menu) {
   add(menu, NETWORK_PING_LABEL, NETWORK_PING_DETAILED_ACTION, NULL);
 }
 
-void network_popover_menu_add_network(GMenu *menu, IO_Network network) {
+void network_popover_menu_add_network(GMenu *menu, IO_NetworkData network) {
   char label[100];
   sprintf(label, "%s: %s", network.iface, network.address);
   GVariant *target_value = g_variant_new_string(network.address);

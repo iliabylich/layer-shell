@@ -1,54 +1,53 @@
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/builder.h"
 #include "ui/include/top_bar/tray_app_icon.h"
+#include "ui/include/top_bar/tray_store.h"
 
-typedef struct {
-  GList *icons;
-  tray_triggered_f callback;
-} data_t;
-#define DATA_KEY "data"
-#define MAX_ICONS_COUNT 10
+#define ICONS_KEY "icons"
+#define TRIGGERED_CALLBACK_KEY "icons"
+
+static tray_triggered_f tray_get_triggered_callback(GtkWidget *self) {
+  return (tray_triggered_f)(size_t)g_object_get_data(G_OBJECT(self), ICONS_KEY);
+}
+static void tray_set_triggered_callback(GtkWidget *self,
+                                        tray_triggered_f callback) {
+  g_object_set_data(G_OBJECT(self), TRIGGERED_CALLBACK_KEY,
+                    (void *)(size_t)callback);
+}
 
 GtkWidget *tray_init(tray_triggered_f callback) {
   GtkWidget *self = top_bar_get_widget("TRAY");
 
-  data_t *data = malloc(sizeof(data_t));
-  data->icons = NULL;
-  data->callback = callback;
-  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
+  tray_store_init(self);
+  tray_set_triggered_callback(self, callback);
 
   return self;
 }
 
 void tray_emit_triggered(GtkWidget *self, char *uuid) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  data->callback((const uint8_t *)uuid);
+  tray_triggered_f cb = tray_get_triggered_callback(self);
+  cb((const uint8_t *)uuid);
 }
 
-static void cleanup(GtkWidget *);
+static void tray_remove_store_entry_and_child(GtkWidget *self,
+                                              const char *service) {
+  GtkWidget *existing = tray_store_remove(self, service);
 
-void tray_refresh(GtkWidget *self, IO_CArray_TrayApp apps) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  cleanup(self);
-
-  data->icons = NULL;
-  for (size_t i = 0; i < apps.len && i < MAX_ICONS_COUNT; i++) {
-    GtkWidget *icon = tray_app_icon_new(apps.ptr[i], self);
-    data->icons = g_list_append(data->icons, icon);
-    gtk_box_append(GTK_BOX(self), icon);
+  if (existing) {
+    tray_app_icon_cleanup(existing);
   }
 }
 
-static void cleanup(GtkWidget *self) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  if (data->icons == NULL) {
-    return;
-  }
+void tray_update_app(GtkWidget *self, IO_TrayAppUpdatedEvent event) {
+  tray_remove_store_entry_and_child(self, event.service);
 
-  for (GList *ptr = data->icons; ptr != NULL; ptr = ptr->next) {
-    GtkWidget *icon = GTK_WIDGET(ptr->data);
-    tray_app_icon_cleanup(icon);
-  }
-  g_list_free(data->icons);
-  data->icons = NULL;
+  GtkWidget *new =
+      tray_app_icon_new(event.service, event.root_item, event.icon, self);
+
+  tray_store_insert(self, event.service, new);
+  gtk_box_append(GTK_BOX(self), new);
+}
+
+void tray_remove_app(GtkWidget *self, IO_TrayAppRemovedEvent event) {
+  tray_remove_store_entry_and_child(self, event.service);
 }

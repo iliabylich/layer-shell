@@ -41,16 +41,16 @@ static void create_labels(GtkWidget *self, size_t count) {
   data->labels_count = count;
 }
 
-void cpu_refresh(GtkWidget *self, IO_CArray_usize usage_per_core) {
+void cpu_refresh(GtkWidget *self, IO_CpuUsageEvent event) {
   data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
 
   if (first_time_init_p(data)) {
-    create_labels(self, usage_per_core.len);
+    create_labels(self, event.usage_per_core.len);
   } else {
-    assert_cpu_count_is(data, usage_per_core.len);
+    assert_cpu_count_is(data, event.usage_per_core.len);
   }
 
-  for (size_t i = 0; i < usage_per_core.len; i++) {
-    cpu_label_set_load(data->labels[i], usage_per_core.ptr[i]);
+  for (size_t i = 0; i < event.usage_per_core.len; i++) {
+    cpu_label_set_load(data->labels[i], event.usage_per_core.ptr[i]);
   }
 }

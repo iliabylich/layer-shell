@@ -35,12 +35,15 @@ GtkWidget *weather_init(GtkApplication *app) {
   return self;
 }
 
-void weather_refresh(GtkWidget *self,
-                     IO_Event_IO_ForecastWeather_Body weather) {
+void weather_refresh_hourly_forecast(GtkWidget *self,
+                                     IO_HourlyWeatherForecastEvent event) {
   data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-
-  hourly_grid_refresh(data->hourly_grid, weather.hourly);
-  daily_grid_refresh(data->daily_grid, weather.daily);
+  hourly_grid_refresh(data->hourly_grid, event.forecast);
+}
+void weather_refresh_daily_forecast(GtkWidget *self,
+                                    IO_DailyWeatherForecastEvent event) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+  daily_grid_refresh(data->daily_grid, event.forecast);
 }
 
 void weather_toggle(GtkWidget *self) { window_toggle(GTK_WINDOW(self)); }

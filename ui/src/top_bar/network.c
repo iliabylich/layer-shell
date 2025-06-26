@@ -45,32 +45,33 @@ GtkWidget *network_init(network_settings_clicked_f on_settings_clicked,
   return self;
 }
 
-void network_refresh_wifi_status(GtkWidget *self,
-                                 IO_COption_WifiStatus wifi_status) {
+void network_refresh_wifi_status(GtkWidget *self, IO_WifiStatusEvent event) {
   data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
 
-  if (wifi_status.tag == IO_COption_WifiStatus_None_WifiStatus) {
+  if (event.wifi_status.tag == IO_COption_WifiStatus_None_WifiStatus) {
     gtk_label_set_label(GTK_LABEL(data->label), "Not connected");
   } else {
     char buffer[100];
-    sprintf(buffer, "%s (%d)%% ", wifi_status.some.ssid,
-            wifi_status.some.strength);
+    sprintf(buffer, "%s (%d)%% ", event.wifi_status.some.ssid,
+            event.wifi_status.some.strength);
     gtk_label_set_label(GTK_LABEL(data->label), buffer);
   }
 }
 
-void network_refresh_network_speed(GtkWidget *self, const char *upload_speed,
-                                   const char *download_speed) {
+void network_refresh_upload_speed(GtkWidget *self, IO_UploadSpeedEvent event) {
   data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-
-  gtk_label_set_label(GTK_LABEL(data->upload_speed), upload_speed);
-  gtk_label_set_label(GTK_LABEL(data->download_speed), download_speed);
+  gtk_label_set_label(GTK_LABEL(data->upload_speed), event.speed);
+}
+void network_refresh_download_speed(GtkWidget *self,
+                                    IO_DownloadSpeedEvent event) {
+  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
+  gtk_label_set_label(GTK_LABEL(data->download_speed), event.speed);
 }
 
-void network_refresh_network_list(GtkWidget *self, IO_CArray_Network list) {
+void network_refresh_network_list(GtkWidget *self, IO_NetworkListEvent event) {
   data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
 
-  network_popover_refresh(data->popover, list);
+  network_popover_refresh(data->popover, event.list);
 }
 
 void network_emit_settings_clicked(GtkWidget *self) {
