@@ -1,6 +1,6 @@
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/builder.h"
-#include "ui/include/top_bar/tray_app_icon.h"
+#include "ui/include/top_bar/tray_icon.h"
 #include "ui/include/top_bar/tray_store.h"
 
 #define ICONS_KEY "icons"
@@ -28,15 +28,15 @@ static void tray_remove_service(GtkWidget *self, const char *service) {
   GtkWidget *existing = tray_store_remove(self, service);
 
   if (existing) {
-    tray_app_icon_cleanup(existing);
+    tray_icon_cleanup(existing);
   }
 }
 
 void tray_update_app(GtkWidget *self, IO_TrayAppUpdatedEvent event) {
   tray_remove_service(self, event.service);
 
-  GtkWidget *new = tray_app_icon_new(event.icon, event.root_item,
-                                     tray_get_triggered_callback(self));
+  GtkWidget *new = tray_icon_new(event.icon, event.root_item,
+                                 tray_get_triggered_callback(self));
 
   tray_store_insert(self, event.service, new);
   gtk_box_append(GTK_BOX(self), new);

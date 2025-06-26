@@ -1,12 +1,9 @@
-#include "ui/include/top_bar/tray_app_icon_popover_action_map.h"
 #include "bindings.h"
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_helper.h"
+#include "ui/include/top_bar/tray_icon_popover_action_map.h"
 #include "ui/include/utils/fmt.h"
 #include "ui/include/utils/strclone.h"
-
-#define context_new_root tray_app_icon_context_new_root
-#define context_new_child tray_app_icon_context_new_child
 
 #define UUID_KEY "uuid"
 static void set_uuid(GSimpleAction *action, const char *uuid) {
@@ -107,8 +104,8 @@ static void visit_regular(IO_TrayItem tray_item, GActionGroup *action_group,
   g_action_map_add_action(G_ACTION_MAP(action_group), G_ACTION(action));
 }
 
-GActionGroup *tray_app_icon_popover_action_map_new(IO_TrayItem tray_item,
-                                                   tray_triggered_f cb) {
+GActionGroup *tray_icon_popover_action_map_new(IO_TrayItem tray_item,
+                                               tray_triggered_f cb) {
   GActionGroup *action_group = G_ACTION_GROUP(g_simple_action_group_new());
 
   visit_nested(tray_item, action_group, cb);

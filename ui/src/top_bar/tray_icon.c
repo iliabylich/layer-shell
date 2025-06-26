@@ -1,6 +1,6 @@
-#include "ui/include/top_bar/tray_app_icon.h"
 #include "ui/include/top_bar/tray.h"
-#include "ui/include/top_bar/tray_app_icon_popover.h"
+#include "ui/include/top_bar/tray_icon.h"
+#include "ui/include/top_bar/tray_icon_popover.h"
 
 #define POPOVER "popover"
 static void tray_icon_set_popover(GtkWidget *self, GtkWidget *popover) {
@@ -50,11 +50,11 @@ static void on_click(GtkGestureClick *, gint, gdouble, gdouble,
   gtk_popover_popup(GTK_POPOVER(popover));
 }
 
-GtkWidget *tray_app_icon_new(IO_TrayIcon icon, IO_TrayItem item,
-                             tray_triggered_f cb) {
+GtkWidget *tray_icon_new(IO_TrayIcon icon, IO_TrayItem item,
+                         tray_triggered_f cb) {
   GtkWidget *self = icon_new(icon);
 
-  GtkWidget *popover = tray_app_icon_popover_new(item, cb);
+  GtkWidget *popover = tray_icon_popover_new(item, cb);
   gtk_widget_set_parent(popover, self);
   tray_icon_set_popover(self, popover);
 
@@ -65,7 +65,7 @@ GtkWidget *tray_app_icon_new(IO_TrayIcon icon, IO_TrayItem item,
   return self;
 }
 
-void tray_app_icon_cleanup(GtkWidget *self) {
+void tray_icon_cleanup(GtkWidget *self) {
   GtkWidget *popover = tray_icon_get_popover(self);
   gtk_widget_unparent(popover);
   gtk_widget_unparent(GTK_WIDGET(self));
