@@ -13,11 +13,6 @@ members = [
     "weather",
 ]
 
-
-# [lib]
-# crate-type = ["staticlib", "lib"]
-# name = "layer_shell_io"
-
 [workspace.dependencies]
 anyhow = { version = "1", default-features = false }
 log = { version = "0.4", default-features = false }

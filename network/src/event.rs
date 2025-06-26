@@ -17,13 +17,13 @@ pub struct WifiStatusEvent {
 #[derive(Debug)]
 #[repr(C)]
 pub struct UploadSpeedEvent {
-    pub speed: String,
+    pub speed: CString,
 }
 
 #[derive(Debug)]
 #[repr(C)]
 pub struct DownloadSpeedEvent {
-    pub speed: String,
+    pub speed: CString,
 }
 
 #[derive(Debug)]

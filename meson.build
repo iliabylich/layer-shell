@@ -10,7 +10,7 @@ project(
 
 sources = []
 subdir('ui')
-subdir('src')
+subdir('io')
 
 prefix = get_option('prefix')
 bindir = get_option('bindir')

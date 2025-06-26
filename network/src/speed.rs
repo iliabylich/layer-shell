@@ -49,12 +49,16 @@ impl Speed {
 
     pub(crate) fn update_tx(&mut self, tx: u64) -> NetworkEvent {
         let d = self.tx.update(tx);
-        NetworkEvent::UploadSpeed(UploadSpeedEvent { speed: fmt(d) })
+        NetworkEvent::UploadSpeed(UploadSpeedEvent {
+            speed: fmt(d).into(),
+        })
     }
 
     pub(crate) fn update_rx(&mut self, rx: u64) -> NetworkEvent {
         let d = self.rx.update(rx);
-        NetworkEvent::DownloadSpeed(DownloadSpeedEvent { speed: fmt(d) })
+        NetworkEvent::DownloadSpeed(DownloadSpeedEvent {
+            speed: fmt(d).into(),
+        })
     }
 }
 

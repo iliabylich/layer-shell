@@ -8,7 +8,17 @@ style = "both"
 
 [parse]
 parse_deps = true
-include = ["ffi"]
+include = [
+    "clock",
+    "control",
+    "cpu",
+    "ffi",
+    "hyprland",
+    "memory",
+    "network",
+    "tray",
+    "weather",
+]
 
 [export]
 prefix = "IO_"
