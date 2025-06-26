@@ -35,7 +35,6 @@ executable(
         dependency('gtk4'),
         dependency('gtk4-layer-shell-0'),
         dependency('vte-2.91-gtk4'),
-        dependency('dbus-1'),
     ],
     link_args: ['-lm'] + asan_options,
     c_pch: 'ui/pch/pch.h',
