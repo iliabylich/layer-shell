@@ -1,8 +1,8 @@
 use anyhow::{Context as _, Result};
 
-pub(crate) struct UUID;
+pub(crate) struct Uuid;
 
-impl UUID {
+impl Uuid {
     pub(crate) fn encode(service: &str, menu: &str, id: i32) -> String {
         format!("{}**{}**{}", service, menu, id)
     }

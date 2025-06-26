@@ -1,4 +1,4 @@
-use crate::{TrayItem, dbusmenu::proxy::DBusMenuProxy, uuid::UUID};
+use crate::{TrayItem, dbusmenu::proxy::DBusMenuProxy, uuid::Uuid};
 use anyhow::{Context as _, Result};
 use ffi::CString;
 use std::collections::HashMap;
@@ -87,7 +87,7 @@ impl<'a> Layout<'a> {
 
         Ok(TrayItem {
             id,
-            uuid: UUID::encode(self.service, self.menu, id).into(),
+            uuid: Uuid::encode(self.service, self.menu, id).into(),
             type_: props.type_,
             label: props.label,
             enabled: props.enabled,

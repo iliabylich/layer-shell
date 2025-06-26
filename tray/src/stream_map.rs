@@ -46,7 +46,7 @@ impl StreamMap {
             }
         }
         for id in ids_to_remove.iter() {
-            self.remove(&id);
+            self.remove(id);
         }
         let count = ids_to_remove.len();
         if count > 0 { Some(count) } else { None }

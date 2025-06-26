@@ -8,7 +8,7 @@ use crate::{
     store::Store,
     stream_id::StreamId,
     stream_map::StreamMap,
-    uuid::UUID,
+    uuid::Uuid,
 };
 use anyhow::Result;
 use futures::StreamExt;
@@ -152,7 +152,7 @@ impl TrayTask {
     }
 
     fn on_service_removed(&mut self, service: &str) -> Result<()> {
-        let Some(count_removed) = self.stream_map.remove_service(&service) else {
+        let Some(count_removed) = self.stream_map.remove_service(service) else {
             return Ok(());
         };
 
@@ -248,7 +248,7 @@ impl TrayTask {
     }
 
     async fn trigger(&mut self, uuid: String) -> Result<()> {
-        let (service, menu, id) = UUID::decode(&uuid)?;
+        let (service, menu, id) = Uuid::decode(&uuid)?;
         trigger_tray_item(self.conn.clone(), service, menu, id).await?;
         Ok(())
     }
