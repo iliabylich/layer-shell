@@ -1,24 +1,14 @@
 #include "ui/include/top_bar/change_theme.h"
 #include "ui/include/builder.h"
+#include "ui/include/utils/has_callback.h"
 
-typedef struct {
-  change_theme_clicked_f callback;
-} data_t;
-#define DATA_KEY "data"
+WIDGET_HAS_CALLBACK(on_click_callback, change_theme_clicked_f)
 
-static void on_click(GtkWidget *self) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  data->callback();
-}
+static void on_click(GtkWidget *self) { get_on_click_callback(self)(); }
 
 GtkWidget *change_theme_init(change_theme_clicked_f callback) {
   GtkWidget *self = top_bar_get_widget("CHANGE_THEME");
-
-  data_t *data = malloc(sizeof(data_t));
-  data->callback = callback;
-  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
-
-  g_signal_connect(self, "clicked", G_CALLBACK(on_click), data);
-
+  set_on_click_callback(self, callback);
+  g_signal_connect(self, "clicked", G_CALLBACK(on_click), NULL);
   return self;
 }

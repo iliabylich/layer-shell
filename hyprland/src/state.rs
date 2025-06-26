@@ -26,13 +26,13 @@ impl State {
 
     fn workspaces_event(&self) -> HyprlandEvent {
         HyprlandEvent::Workspaces(WorkspacesEvent {
-            ids: self
+            workspaces: self
                 .workspace_ids
                 .iter()
                 .copied()
                 .collect::<Vec<_>>()
                 .into(),
-            active_id: self.active_workspace_id,
+            active_workspace: self.active_workspace_id,
         })
     }
     fn language_event(&self) -> HyprlandEvent {

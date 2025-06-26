@@ -126,8 +126,8 @@ impl MainLoop {
         match cmd {
             Command::FinishIoThread => unreachable!("handled by the caller"),
 
-            Command::HyprlandGoToWorkspace { idx } => {
-                hyprctl!("workspace {}", idx + 1);
+            Command::HyprlandGoToWorkspace { workspace } => {
+                hyprctl!("workspace {}", workspace);
             }
             Command::Lock => {
                 hyprctl!("exec hyprlock");

@@ -1,10 +1,14 @@
 #include "ui/include/weather.h"
 #include "gtk/gtk.h"
 #include "ui/include/builder.h"
+#include "ui/include/utils/has_callback.h"
 #include "ui/include/weather/daily_grid.h"
 #include "ui/include/weather/hourly_grid.h"
 #include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
+
+WIDGET_HAS_PROP(hourly_grid, GtkWidget *)
+WIDGET_HAS_PROP(daily_grid, GtkWidget *)
 
 typedef struct {
   GtkWidget *hourly_grid;
@@ -24,26 +28,23 @@ GtkWidget *weather_init(GtkApplication *app) {
 
   GtkWidget *hourly_grid = weather_get_widget("HOURLY");
   hourly_grid_init(hourly_grid);
+  set_hourly_grid(self, hourly_grid);
+
   GtkWidget *daily_grid = weather_get_widget("DAILY");
   daily_grid_init(daily_grid);
-
-  data_t *data = malloc(sizeof(data_t));
-  data->hourly_grid = hourly_grid;
-  data->daily_grid = daily_grid;
-  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
+  set_daily_grid(self, daily_grid);
 
   return self;
 }
 
 void weather_refresh_hourly_forecast(GtkWidget *self,
                                      IO_HourlyWeatherForecastEvent event) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  hourly_grid_refresh(data->hourly_grid, event.forecast);
+
+  hourly_grid_refresh(get_hourly_grid(self), event.forecast);
 }
 void weather_refresh_daily_forecast(GtkWidget *self,
                                     IO_DailyWeatherForecastEvent event) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  daily_grid_refresh(data->daily_grid, event.forecast);
+  daily_grid_refresh(get_daily_grid(self), event.forecast);
 }
 
 void weather_toggle(GtkWidget *self) { window_toggle(GTK_WINDOW(self)); }

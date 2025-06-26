@@ -1,27 +1,19 @@
 #include "ui/include/session.h"
 #include "gtk/gtk.h"
 #include "ui/include/builder.h"
+#include "ui/include/utils/has_callback.h"
 #include "ui/include/window_helper.h"
 #include <gtk4-layer-shell.h>
 
-typedef struct {
-  on_lock_clicked_f lock_clicked_callback;
-  on_reboot_clicked_f reboot_clicked_callback;
-  on_shutdown_clicked_f shutdown_clicked_callback;
-  on_logout_clicked_f logout_clicked_callback;
-} data_t;
-#define DATA_KEY "data"
+WIDGET_HAS_CALLBACK(on_click_callback, on_session_btn_clicked_f)
 
-static void on_lock(GtkButton *, GtkWidget *self);
-static void on_reboot(GtkButton *, GtkWidget *self);
-static void on_shutdown(GtkButton *, GtkWidget *self);
-static void on_logout(GtkButton *, GtkWidget *self);
+static void on_click(GtkWidget *button, GtkWidget *session);
 
 GtkWidget *session_init(GtkApplication *app,
-                        on_lock_clicked_f lock_clicked_callback,
-                        on_reboot_clicked_f reboot_clicked_callback,
-                        on_shutdown_clicked_f shutdown_clicked_callback,
-                        on_logout_clicked_f logout_clicked_callback) {
+                        on_session_btn_clicked_f lock_clicked_callback,
+                        on_session_btn_clicked_f reboot_clicked_callback,
+                        on_session_btn_clicked_f shutdown_clicked_callback,
+                        on_session_btn_clicked_f logout_clicked_callback) {
   GtkWidget *self = session_get_widget("SESSION");
   gtk_window_set_application(GTK_WINDOW(self), app);
   window_set_toggle_on_escape(GTK_WINDOW(self));
@@ -35,47 +27,28 @@ GtkWidget *session_init(GtkApplication *app,
   gtk_layer_set_keyboard_mode(GTK_WINDOW(self),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  data_t *data = malloc(sizeof(data_t));
-  data->lock_clicked_callback = lock_clicked_callback;
-  data->reboot_clicked_callback = reboot_clicked_callback;
-  data->shutdown_clicked_callback = shutdown_clicked_callback;
-  data->logout_clicked_callback = logout_clicked_callback;
-  g_object_set_data_full(G_OBJECT(self), DATA_KEY, data, free);
-
   GtkWidget *lock = session_get_widget("LOCK");
-  g_signal_connect(lock, "clicked", G_CALLBACK(on_lock), self);
+  set_on_click_callback(lock, lock_clicked_callback);
+  g_signal_connect(lock, "clicked", G_CALLBACK(on_click), self);
 
   GtkWidget *reboot = session_get_widget("REBOOT");
-  g_signal_connect(reboot, "clicked", G_CALLBACK(on_reboot), self);
+  set_on_click_callback(reboot, reboot_clicked_callback);
+  g_signal_connect(reboot, "clicked", G_CALLBACK(on_click), self);
 
   GtkWidget *shutdown = session_get_widget("SHUTDOWN");
-  g_signal_connect(shutdown, "clicked", G_CALLBACK(on_shutdown), self);
+  set_on_click_callback(shutdown, shutdown_clicked_callback);
+  g_signal_connect(shutdown, "clicked", G_CALLBACK(on_click), self);
 
   GtkWidget *logout = session_get_widget("LOGOUT");
-  g_signal_connect(logout, "clicked", G_CALLBACK(on_logout), self);
+  set_on_click_callback(logout, logout_clicked_callback);
+  g_signal_connect(logout, "clicked", G_CALLBACK(on_click), self);
 
   return self;
 }
 
 void session_toggle(GtkWidget *self) { window_toggle(GTK_WINDOW(self)); }
 
-static void on_lock(GtkButton *, GtkWidget *self) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  session_toggle(self);
-  data->lock_clicked_callback();
-}
-static void on_reboot(GtkButton *, GtkWidget *self) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  session_toggle(self);
-  data->reboot_clicked_callback();
-}
-static void on_shutdown(GtkButton *, GtkWidget *self) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  session_toggle(self);
-  data->shutdown_clicked_callback();
-}
-static void on_logout(GtkButton *, GtkWidget *self) {
-  data_t *data = g_object_get_data(G_OBJECT(self), DATA_KEY);
-  session_toggle(self);
-  data->logout_clicked_callback();
+static void on_click(GtkWidget *button, GtkWidget *session) {
+  session_toggle(session);
+  get_on_click_callback(button)();
 }

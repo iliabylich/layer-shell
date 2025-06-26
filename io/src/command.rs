@@ -3,7 +3,7 @@
 pub(crate) enum Command {
     FinishIoThread,
 
-    HyprlandGoToWorkspace { idx: usize },
+    HyprlandGoToWorkspace { workspace: usize },
 
     Lock,
     Reboot,

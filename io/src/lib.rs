@@ -167,8 +167,8 @@ fn send_command(cmd: Command) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_hyprland_go_to_workspace(idx: usize) {
-    send_command(Command::HyprlandGoToWorkspace { idx });
+pub extern "C" fn io_hyprland_go_to_workspace(workspace: usize) {
+    send_command(Command::HyprlandGoToWorkspace { workspace });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_lock() {
