@@ -1,0 +1,15 @@
+[package]
+name = "tray"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }
+tokio-stream = { workspace = true }
+tokio-util = { workspace = true }
+pin-project-lite = { workspace = true }
+zbus = { workspace = true }
+ffi = { path = "../ffi" }

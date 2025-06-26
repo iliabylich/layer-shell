@@ -14,6 +14,7 @@ use tokio::{
 };
 use tokio_stream::StreamMap;
 use tokio_util::sync::CancellationToken;
+use tray::Tray;
 use weather::Weather;
 
 pub(crate) struct MainLoop {
@@ -57,6 +58,7 @@ impl MainLoop {
         register_task!(Hyprland);
         register_task!(Network);
         register_task!(Weather);
+        register_task!(Tray);
 
         Ok(Self {
             token,

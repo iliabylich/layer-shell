@@ -3,6 +3,7 @@ use crate::{
     primary_connection::PrimaryConnection, stream_map::StreamMap,
 };
 use anyhow::{Result, bail};
+use futures::StreamExt;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_util::sync::CancellationToken;
 use zbus::Connection;

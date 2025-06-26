@@ -1,6 +1,7 @@
 use crate::nm_event::NetworkManagerEvent;
 use anyhow::{Context as _, Result};
 use futures::{Stream, StreamExt};
+use pin_project_lite::pin_project;
 use std::pin::Pin;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -10,11 +11,13 @@ type InnerMap = tokio_stream::StreamMap<
     Pin<Box<dyn Stream<Item = NetworkManagerEvent> + Send + 'static>>,
 >;
 
-pub(crate) struct StreamMap {
-    map: InnerMap,
-    tx: UnboundedSender<NetworkManagerEvent>,
+pin_project! {
+    pub(crate) struct StreamMap {
+        #[pin]
+        map: InnerMap,
+        tx: UnboundedSender<NetworkManagerEvent>,
+    }
 }
-unsafe impl Sync for StreamMap {}
 
 const MANUAL: &str = "MANUAL";
 
@@ -39,13 +42,20 @@ impl StreamMap {
         self.map.remove(name);
     }
 
-    pub(crate) async fn next(&mut self) -> Option<(&'static str, NetworkManagerEvent)> {
-        self.map.next().await
-    }
-
     pub(crate) fn emit(&self, event: NetworkManagerEvent) -> Result<()> {
         self.tx
             .send(event)
             .context("failed to self-send message; closed stream")
+    }
+}
+
+impl Stream for StreamMap {
+    type Item = (&'static str, NetworkManagerEvent);
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.project().map.poll_next(cx)
     }
 }

@@ -72,3 +72,9 @@ impl Clone for CString {
         out
     }
 }
+
+impl Default for CString {
+    fn default() -> Self {
+        Self::from(String::default())
+    }
+}

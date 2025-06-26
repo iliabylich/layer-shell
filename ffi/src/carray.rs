@@ -60,3 +60,9 @@ where
 
 unsafe impl<T> Send for CArray<T> {}
 unsafe impl<T> Sync for CArray<T> {}
+
+impl<T> Default for CArray<T> {
+    fn default() -> Self {
+        Self::from(Vec::default())
+    }
+}
