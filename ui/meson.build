@@ -6,6 +6,7 @@ sources += files(
     'src/ping.c',
     'src/session.c',
     'src/top_bar.c',
+    'src/top_bar/bluetooth.c',
     'src/top_bar/change_theme.c',
     'src/top_bar/clock.c',
     'src/top_bar/cpu.c',

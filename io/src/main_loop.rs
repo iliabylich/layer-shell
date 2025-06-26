@@ -144,8 +144,11 @@ impl MainLoop {
             Command::TriggerTray { uuid } => {
                 self.trayctl.trigger(uuid);
             }
-            Command::SpawnNetworkEditor => {
+            Command::SpawnWiFiEditor => {
                 hyprctl!("exec iwmenu --launcher fuzzel");
+            }
+            Command::SpawnBluetoothEditor => {
+                hyprctl!("exec bzmenu --launcher fuzzel");
             }
             Command::SpawnSystemMonitor => {
                 hyprctl!("exec gnome-system-monitor");

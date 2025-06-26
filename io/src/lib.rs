@@ -193,8 +193,12 @@ pub extern "C" fn io_trigger_tray(uuid: *const u8) {
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_network_editor() {
-    send_command(Command::SpawnNetworkEditor);
+pub extern "C" fn io_spawn_wifi_editor() {
+    send_command(Command::SpawnWiFiEditor);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_spawn_bluetooh_editor() {
+    send_command(Command::SpawnBluetoothEditor);
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_system_monitor() {

@@ -5,6 +5,7 @@
 #include "ui/include/ping.h"
 #include "ui/include/session.h"
 #include "ui/include/top_bar.h"
+#include "ui/include/top_bar/bluetooth.h"
 #include "ui/include/top_bar/change_theme.h"
 #include "ui/include/top_bar/clock.h"
 #include "ui/include/top_bar/cpu.h"
@@ -36,6 +37,7 @@ GtkWidget *language;
 GtkWidget *cpu;
 GtkWidget *memory;
 GtkWidget *network;
+GtkWidget *bluetooth;
 GtkWidget *clock_;
 GtkWidget *power;
 
@@ -148,7 +150,7 @@ static void on_htop_button_clicked() { htop_toggle(htop); }
 
 static void on_memory_clicked() { io_spawn_system_monitor(); }
 
-static void on_network_settings_clicked() { io_spawn_network_editor(); }
+static void on_network_settings_clicked() { io_spawn_wifi_editor(); }
 
 static void on_network_ping_clicked() { ping_toggle(ping); }
 
@@ -162,6 +164,8 @@ static void on_nework_address_clicked(const char *ip) {
   GNotification *notification = g_notification_new(format);
   g_application_send_notification(G_APPLICATION(app), NULL, notification);
 }
+
+static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(); }
 
 static void on_power_clicked() { session_toggle(session); }
 
@@ -191,6 +195,7 @@ static void on_app_activate() {
   memory = memory_init(on_memory_clicked);
   network = network_init(on_network_settings_clicked, on_network_ping_clicked,
                          on_nework_address_clicked);
+  bluetooth = bluetooth_init(on_bluetooth_clicked);
   clock_ = clock_init();
   power = power_init(on_power_clicked);
 

@@ -162,6 +162,13 @@ popover {
             }
         }
 
+        &.bluetooth {
+            label {
+                font-size: var(--icon-font-size);
+                padding: 0 5px;
+            }
+        }
+
         &.power {
             label {
                 font-size: var(--icon-font-size);
