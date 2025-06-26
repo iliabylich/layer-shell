@@ -1,5 +1,4 @@
 #include "ui/include/weather.h"
-#include "gtk/gtk.h"
 #include "ui/include/builder.h"
 #include "ui/include/utils/has_prop.h"
 #include "ui/include/weather/daily_grid.h"

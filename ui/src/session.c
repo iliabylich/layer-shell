@@ -1,5 +1,4 @@
 #include "ui/include/session.h"
-#include "gtk/gtk.h"
 #include "ui/include/builder.h"
 #include "ui/include/utils/has_callback.h"
 #include "ui/include/window_helper.h"

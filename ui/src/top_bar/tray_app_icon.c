@@ -1,5 +1,4 @@
 #include "ui/include/top_bar/tray_app_icon.h"
-#include "glib-object.h"
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_app_icon_popover.h"
 
