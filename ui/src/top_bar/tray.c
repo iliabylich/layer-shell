@@ -29,8 +29,7 @@ void tray_emit_triggered(GtkWidget *self, char *uuid) {
   cb((const uint8_t *)uuid);
 }
 
-static void tray_remove_store_entry_and_child(GtkWidget *self,
-                                              const char *service) {
+static void tray_remove_service(GtkWidget *self, const char *service) {
   GtkWidget *existing = tray_store_remove(self, service);
 
   if (existing) {
@@ -39,7 +38,7 @@ static void tray_remove_store_entry_and_child(GtkWidget *self,
 }
 
 void tray_update_app(GtkWidget *self, IO_TrayAppUpdatedEvent event) {
-  tray_remove_store_entry_and_child(self, event.service);
+  tray_remove_service(self, event.service);
 
   GtkWidget *new =
       tray_app_icon_new(event.service, event.root_item, event.icon, self);
@@ -49,5 +48,5 @@ void tray_update_app(GtkWidget *self, IO_TrayAppUpdatedEvent event) {
 }
 
 void tray_remove_app(GtkWidget *self, IO_TrayAppRemovedEvent event) {
-  tray_remove_store_entry_and_child(self, event.service);
+  tray_remove_service(self, event.service);
 }
