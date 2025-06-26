@@ -2,15 +2,23 @@ use ffi::{CArray, CString};
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct TrayEvent {
-    pub apps: CArray<TrayApp>,
+pub enum TrayEvent {
+    AppUpdated(TrayAppUpdatedEvent),
+    AppRemoved(TrayAppRemovedEvent),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[repr(C)]
-pub struct TrayApp {
+pub struct TrayAppUpdatedEvent {
+    pub service: CString,
     pub root_item: TrayItem,
     pub icon: TrayIcon,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct TrayAppRemovedEvent {
+    pub service: CString,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -51,6 +59,30 @@ impl std::fmt::Debug for TrayIcon {
                 .field("bytes", &format!("[...{} bytes]", bytes.len))
                 .finish(),
             TrayIcon::Unset => write!(f, "None"),
+        }
+    }
+}
+
+impl From<String> for TrayIcon {
+    fn from(name_or_path: String) -> Self {
+        if name_or_path.starts_with("/") {
+            Self::Path {
+                path: name_or_path.into(),
+            }
+        } else {
+            Self::Name {
+                name: name_or_path.into(),
+            }
+        }
+    }
+}
+
+impl From<(i32, i32, Vec<u8>)> for TrayIcon {
+    fn from((w, h, bytes): (i32, i32, Vec<u8>)) -> Self {
+        Self::PixmapVariant {
+            w: w as u32,
+            h: h as u32,
+            bytes: bytes.into(),
         }
     }
 }

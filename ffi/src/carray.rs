@@ -4,6 +4,12 @@ pub struct CArray<T> {
     pub len: usize,
 }
 
+impl<T> CArray<T> {
+    pub fn as_slice(&self) -> &[T] {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+}
+
 impl<T, U> From<Vec<T>> for CArray<U>
 where
     U: From<T>,
@@ -66,3 +72,14 @@ impl<T> Default for CArray<T> {
         Self::from(Vec::default())
     }
 }
+
+impl<T> PartialEq for CArray<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
+impl<T> Eq for CArray<T> where T: Eq {}

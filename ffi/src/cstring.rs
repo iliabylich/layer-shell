@@ -3,6 +3,17 @@ pub struct CString {
     pub ptr: *mut std::ffi::c_char,
 }
 
+impl CString {
+    pub fn as_str(&self) -> &str {
+        unsafe { std::ffi::CStr::from_ptr(self.ptr.cast()) }
+            .to_str()
+            .unwrap_or_else(|err| {
+                log::error!("{:?}", err);
+                std::process::exit(1)
+            })
+    }
+}
+
 impl From<String> for CString {
     fn from(s: String) -> Self {
         let cstring = std::ffi::CString::new(s).unwrap_or_else(|err| {
@@ -78,3 +89,11 @@ impl Default for CString {
         Self::from(String::default())
     }
 }
+
+impl PartialEq for CString {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for CString {}

@@ -1,17 +1,17 @@
-use std::sync::Arc;
-
 use crate::{
-    TrayEvent, TrayItem,
+    TrayEvent, TrayIcon, TrayItem,
     dbus::{NameLostEvent, NameOwnerChangedEvent},
     dbus_event::DBusEvent,
     dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated},
     status_notifier_item::{IconNameUpdated, IconPixmapUpdate, MenuUpdated},
     status_notifier_watcher::StatusNotifierWatcher,
+    store::Store,
     stream_id::StreamId,
     stream_map::StreamMap,
 };
 use anyhow::Result;
 use futures::StreamExt;
+use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_util::sync::CancellationToken;
 use zbus::{Connection, zvariant::OwnedObjectPath};
@@ -20,6 +20,7 @@ pub(crate) struct TrayTask {
     stream_map: StreamMap,
     token: CancellationToken,
     conn: Connection,
+    store: Store,
     tx: UnboundedSender<TrayEvent>,
 }
 
@@ -49,6 +50,7 @@ impl TrayTask {
             stream_map,
             token,
             conn,
+            store: Store::new(),
             tx,
         }
         .r#loop()
@@ -73,11 +75,11 @@ impl TrayTask {
     async fn on_event(&mut self, event: DBusEvent) -> Result<()> {
         match event {
             DBusEvent::NameLost(name) => {
-                self.on_service_removed(&name);
+                self.on_service_removed(&name)?;
             }
             DBusEvent::NameOwnerChanged { name, new_owner } => {
                 if new_owner.is_none() {
-                    self.on_service_removed(&name);
+                    self.on_service_removed(&name)?;
                 }
             }
 
@@ -101,23 +103,15 @@ impl TrayTask {
                 self.on_menu_changed(service, menu).await?;
             }
 
-            DBusEvent::LayoutUpdated {
-                service,
-                menu,
-                parent_id,
-            } => {
-                self.on_layout_updated(service, menu, parent_id).await?;
+            DBusEvent::LayoutUpdated { service, menu } => {
+                self.on_layout_updated(service, menu).await?;
             }
             DBusEvent::ItemsPropertiesUpdated { service, menu } => {
                 self.on_items_properties_updated(service, menu).await?;
             }
 
-            DBusEvent::LayoutReceived {
-                service,
-                parent_id,
-                item,
-            } => {
-                self.on_layout_received(service, parent_id, item).await?;
+            DBusEvent::LayoutReceived { service, item } => {
+                self.on_layout_received(service, item).await?;
             }
         }
         Ok(())
@@ -145,15 +139,25 @@ impl TrayTask {
         Ok(())
     }
 
-    fn on_service_removed(&mut self, service: &str) {
-        let count_removed = self.stream_map.remove_service(&service);
-        if count_removed > 0 {
-            log::info!(target: "Tray", "lost service {service}, removed {count_removed} streams");
+    fn on_service_removed(&mut self, service: &str) -> Result<()> {
+        let Some(count_removed) = self.stream_map.remove_service(&service) else {
+            return Ok(());
+        };
+
+        log::info!(target: "Tray", "{service} exited, removed {count_removed} streams");
+
+        let service = Arc::from(service.to_string().into_boxed_str());
+        if let Some(event) = self.store.remove(service) {
+            self.tx.send(event)?;
         }
+        Ok(())
     }
 
     async fn on_icon_name_changed(&mut self, service: Arc<str>, icon_name: String) -> Result<()> {
-        log::info!("icon name changed: {service} {icon_name}");
+        let icon = TrayIcon::from(icon_name);
+        if let Some(event) = self.store.update_icon(service, icon) {
+            self.tx.send(event)?;
+        }
         Ok(())
     }
 
@@ -164,10 +168,10 @@ impl TrayTask {
         height: i32,
         bytes: Vec<u8>,
     ) -> Result<()> {
-        log::info!(
-            "icon pixmap changed: {service} {width}x{height} ({} bytes)",
-            bytes.len()
-        );
+        let icon = TrayIcon::from((width, height, bytes));
+        if let Some(event) = self.store.update_icon(service, icon) {
+            self.tx.send(event)?;
+        }
         Ok(())
     }
 
@@ -200,11 +204,9 @@ impl TrayTask {
         &mut self,
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
-        parent_id: i32,
     ) -> Result<()> {
-        match Layout::get(self.conn.clone(), &service, &menu, parent_id).await {
+        match Layout::get(self.conn.clone(), &service, &menu).await {
             Ok(item) => self.stream_map.emit(DBusEvent::LayoutReceived {
-                parent_id: 0,
                 item,
                 service: Arc::clone(&service),
             })?,
@@ -222,21 +224,14 @@ impl TrayTask {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
     ) -> Result<()> {
-        self.stream_map.emit(DBusEvent::LayoutUpdated {
-            service,
-            menu,
-            parent_id: 0,
-        })
+        self.stream_map
+            .emit(DBusEvent::LayoutUpdated { service, menu })
     }
 
-    async fn on_layout_received(
-        &mut self,
-        service: Arc<str>,
-        parent_id: i32,
-        item: TrayItem,
-    ) -> Result<()> {
-        log::info!("layout received on {service}/{parent_id} {item:?}");
-
+    async fn on_layout_received(&mut self, service: Arc<str>, item: TrayItem) -> Result<()> {
+        if let Some(event) = self.store.update_item(service, item) {
+            self.tx.send(event)?;
+        }
         Ok(())
     }
 }

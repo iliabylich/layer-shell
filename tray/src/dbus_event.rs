@@ -33,7 +33,6 @@ pub(crate) enum DBusEvent {
     LayoutUpdated {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
-        parent_id: i32,
     },
     ItemsPropertiesUpdated {
         service: Arc<str>,
@@ -43,7 +42,6 @@ pub(crate) enum DBusEvent {
     // custom
     LayoutReceived {
         service: Arc<str>,
-        parent_id: i32,
         item: TrayItem,
     },
 }

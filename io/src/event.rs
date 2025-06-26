@@ -6,7 +6,7 @@ use memory::MemoryEvent;
 use network::{
     DownloadSpeedEvent, NetworkEvent, NetworkListEvent, UploadSpeedEvent, WifiStatusEvent,
 };
-use tray::TrayEvent;
+use tray::{TrayAppRemovedEvent, TrayAppUpdatedEvent, TrayEvent};
 use weather::{
     CurrentWeatherEvent, DailyWeatherForecastEvent, HourlyWeatherForecastEvent, WeatherEvent,
 };
@@ -27,7 +27,8 @@ pub enum Event {
     UploadSpeed(UploadSpeedEvent),
     DownloadSpeed(DownloadSpeedEvent),
     NetworkList(NetworkListEvent),
-    Tray(TrayEvent),
+    TrayAppUpdated(TrayAppUpdatedEvent),
+    TrayAppRemoved(TrayAppRemovedEvent),
     ToggleSessionScreen,
     ReloadStyles,
     Exit,
@@ -93,6 +94,9 @@ impl From<WeatherEvent> for Event {
 
 impl From<TrayEvent> for Event {
     fn from(event: TrayEvent) -> Self {
-        Self::Tray(event)
+        match event {
+            TrayEvent::AppUpdated(e) => Self::TrayAppUpdated(e),
+            TrayEvent::AppRemoved(e) => Self::TrayAppRemoved(e),
+        }
     }
 }

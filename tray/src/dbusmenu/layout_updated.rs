@@ -21,23 +21,19 @@ impl LayoutUpdated {
         let event = Some(DBusEvent::LayoutUpdated {
             service: Arc::clone(&service),
             menu: Arc::clone(&menu),
-            parent_id: 0,
         });
 
         let stream_id = StreamId::LayoutUpdated {
             service: Arc::clone(&service),
         };
 
-        let stream = proxy.receive_layout_updated().await?.filter_map(move |e| {
+        let stream = proxy.receive_layout_updated().await?.filter_map(move |_| {
             let service = Arc::clone(&service);
             let menu = Arc::clone(&menu);
             async move {
-                let args = e.args().ok()?;
-                let parent_id = args.parent;
                 Some(DBusEvent::LayoutUpdated {
                     service: Arc::clone(&service),
                     menu: Arc::clone(&menu),
-                    parent_id,
                 })
             }
         });

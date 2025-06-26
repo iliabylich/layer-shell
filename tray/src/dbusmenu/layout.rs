@@ -18,7 +18,6 @@ impl<'a> Layout<'a> {
         conn: Connection,
         service: &'a str,
         menu: &OwnedObjectPath,
-        parent_id: i32,
     ) -> Result<TrayItem> {
         let dbus_menu_proxy = DBusMenuProxy::builder(&conn)
             .destination(service.to_string())?
@@ -28,7 +27,7 @@ impl<'a> Layout<'a> {
 
         let input = dbus_menu_proxy
             .get_layout(
-                parent_id,
+                0,
                 10,
                 &[
                     "type",

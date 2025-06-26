@@ -38,7 +38,7 @@ impl StreamMap {
         self.map.remove(id);
     }
 
-    pub(crate) fn remove_service(&mut self, service: &str) -> usize {
+    pub(crate) fn remove_service(&mut self, service: &str) -> Option<usize> {
         let mut ids_to_remove = vec![];
         for id in self.map.keys() {
             if id.is_related_to(service) {
@@ -48,7 +48,8 @@ impl StreamMap {
         for id in ids_to_remove.iter() {
             self.remove(&id);
         }
-        ids_to_remove.len()
+        let count = ids_to_remove.len();
+        if count > 0 { Some(count) } else { None }
     }
 
     pub(crate) fn emit(&self, event: DBusEvent) -> Result<()> {
