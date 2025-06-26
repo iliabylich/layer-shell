@@ -9,6 +9,7 @@ use zbus::{
 
 pub(crate) struct Layout<'a> {
     service: &'a str,
+    menu: &'a str,
 }
 
 type Input = (u32, (i32, HashMap<String, OwnedValue>, Vec<OwnedValue>));
@@ -17,7 +18,7 @@ impl<'a> Layout<'a> {
     pub(crate) async fn get(
         conn: Connection,
         service: &'a str,
-        menu: &OwnedObjectPath,
+        menu: &'a OwnedObjectPath,
     ) -> Result<TrayItem> {
         let dbus_menu_proxy = DBusMenuProxy::builder(&conn)
             .destination(service.to_string())?
@@ -44,11 +45,11 @@ impl<'a> Layout<'a> {
             )
             .await?;
 
-        Self::parse(service, input)
+        Self::parse(service, menu.as_str(), input)
     }
 
-    fn parse(service: &'a str, input: Input) -> Result<TrayItem> {
-        Self { service }.parse_input(input)
+    fn parse(service: &'a str, menu: &'a str, input: Input) -> Result<TrayItem> {
+        Self { service, menu }.parse_input(input)
     }
 
     fn parse_input(&self, input: Input) -> Result<TrayItem> {
@@ -86,7 +87,7 @@ impl<'a> Layout<'a> {
 
         Ok(TrayItem {
             id,
-            uuid: UUID::encode(self.service, id).into(),
+            uuid: UUID::encode(self.service, self.menu, id).into(),
             type_: props.type_,
             label: props.label,
             enabled: props.enabled,

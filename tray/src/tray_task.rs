@@ -2,17 +2,18 @@ use crate::{
     TrayEvent, TrayIcon, TrayItem,
     dbus::{NameLostEvent, NameOwnerChangedEvent},
     dbus_event::DBusEvent,
-    dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated},
+    dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated, trigger_tray_item},
     status_notifier_item::{IconNameUpdated, IconPixmapUpdate, MenuUpdated},
     status_notifier_watcher::StatusNotifierWatcher,
     store::Store,
     stream_id::StreamId,
     stream_map::StreamMap,
+    uuid::UUID,
 };
 use anyhow::Result;
 use futures::StreamExt;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 use zbus::{Connection, zvariant::OwnedObjectPath};
 
@@ -21,12 +22,14 @@ pub(crate) struct TrayTask {
     token: CancellationToken,
     conn: Connection,
     store: Store,
-    tx: UnboundedSender<TrayEvent>,
+    etx: UnboundedSender<TrayEvent>,
+    crx: UnboundedReceiver<String>,
 }
 
 impl TrayTask {
     pub(crate) async fn start(
-        tx: UnboundedSender<TrayEvent>,
+        etx: UnboundedSender<TrayEvent>,
+        crx: UnboundedReceiver<String>,
         token: CancellationToken,
     ) -> Result<()> {
         let mut stream_map = StreamMap::new();
@@ -51,7 +54,8 @@ impl TrayTask {
             token,
             conn,
             store: Store::new(),
-            tx,
+            etx,
+            crx,
         }
         .r#loop()
         .await
@@ -61,7 +65,15 @@ impl TrayTask {
         loop {
             tokio::select! {
                 Some((_stream_id, event)) = self.stream_map.next() => {
-                    self.on_event(event).await?;
+                    if let Err(err) = self.on_event(event).await {
+                        log::error!("{err:?}");
+                    }
+                }
+
+                Some(uuid) = self.crx.recv() => {
+                    if let Err(err) = self.trigger(uuid).await {
+                        log::error!("{err:?}");
+                    }
                 }
 
                 _ = self.token.cancelled() => {
@@ -148,7 +160,7 @@ impl TrayTask {
 
         let service = Arc::from(service.to_string().into_boxed_str());
         if let Some(event) = self.store.remove(service) {
-            self.tx.send(event)?;
+            self.etx.send(event)?;
         }
         Ok(())
     }
@@ -156,7 +168,7 @@ impl TrayTask {
     async fn on_icon_name_changed(&mut self, service: Arc<str>, icon_name: String) -> Result<()> {
         let icon = TrayIcon::from(icon_name);
         if let Some(event) = self.store.update_icon(service, icon) {
-            self.tx.send(event)?;
+            self.etx.send(event)?;
         }
         Ok(())
     }
@@ -170,7 +182,7 @@ impl TrayTask {
     ) -> Result<()> {
         let icon = TrayIcon::from((width, height, bytes));
         if let Some(event) = self.store.update_icon(service, icon) {
-            self.tx.send(event)?;
+            self.etx.send(event)?;
         }
         Ok(())
     }
@@ -230,8 +242,14 @@ impl TrayTask {
 
     async fn on_layout_received(&mut self, service: Arc<str>, item: TrayItem) -> Result<()> {
         if let Some(event) = self.store.update_item(service, item) {
-            self.tx.send(event)?;
+            self.etx.send(event)?;
         }
+        Ok(())
+    }
+
+    async fn trigger(&mut self, uuid: String) -> Result<()> {
+        let (service, menu, id) = UUID::decode(&uuid)?;
+        trigger_tray_item(self.conn.clone(), service, menu, id).await?;
         Ok(())
     }
 }

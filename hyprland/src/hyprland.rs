@@ -18,14 +18,14 @@ pin_project! {
 const NAME: &str = "Hyprland";
 
 impl Hyprland {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>) {
+    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, Hyprctl) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<HyprlandEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
                 log::error!("Hyprland crashed: {err:?}");
             }
         });
-        (NAME, Self { rx }, handle)
+        (NAME, Self { rx }, handle, Hyprctl)
     }
 
     async fn r#loop(tx: UnboundedSender<HyprlandEvent>, token: CancellationToken) -> Result<()> {
@@ -56,16 +56,6 @@ impl Hyprland {
             }
         }
     }
-
-    pub async fn hyprctl_dispatch(cmd: impl AsRef<str>) -> Result<()> {
-        Writer::dispatch(cmd).await
-    }
-
-    // pub async fn stop(self) {
-    //     if let Err(err) = self.handle.await {
-    //         log::error!("failed to await Hyprland task: {err:?}")
-    //     }
-    // }
 }
 
 impl Stream for Hyprland {
@@ -77,5 +67,15 @@ impl Stream for Hyprland {
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
         this.rx.poll_recv(cx)
+    }
+}
+
+pub struct Hyprctl;
+
+impl Hyprctl {
+    pub async fn dispatch(&self, cmd: impl AsRef<str>) {
+        if let Err(err) = Writer::dispatch(cmd).await {
+            log::error!("failed to dispatch hyprctl: {err:?}");
+        }
     }
 }

@@ -19,14 +19,14 @@ pin_project! {
 const NAME: &str = "Control";
 
 impl Control {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>) {
+    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, ()) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ControlEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
                 log::error!("{NAME} crashed: {err:?}");
             }
         });
-        (NAME, Self { rx }, handle)
+        (NAME, Self { rx }, handle, ())
     }
 
     async fn r#loop(tx: UnboundedSender<ControlEvent>, token: CancellationToken) -> Result<()> {

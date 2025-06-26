@@ -12,4 +12,4 @@ mod tray_task;
 mod uuid;
 
 pub use event::{TrayAppRemovedEvent, TrayAppUpdatedEvent, TrayEvent, TrayIcon, TrayItem};
-pub use tray::Tray;
+pub use tray::{Tray, TrayCtl};

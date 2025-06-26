@@ -12,4 +12,5 @@ tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 pin-project-lite = { workspace = true }
 zbus = { workspace = true }
+chrono = { workspace = true }
 ffi = { path = "../ffi" }

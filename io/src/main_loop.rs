@@ -4,7 +4,7 @@ use clock::Clock;
 use control::Control;
 use cpu::CPU;
 use futures::{Stream, StreamExt as _};
-use hyprland::{Hyprland, hyprctl};
+use hyprland::{Hyprctl, Hyprland};
 use memory::Memory;
 use network::Network;
 use std::{collections::HashMap, pin::Pin};
@@ -14,7 +14,7 @@ use tokio::{
 };
 use tokio_stream::StreamMap;
 use tokio_util::sync::CancellationToken;
-use tray::Tray;
+use tray::{Tray, TrayCtl};
 use weather::Weather;
 
 pub(crate) struct MainLoop {
@@ -25,6 +25,9 @@ pub(crate) struct MainLoop {
     crx: UnboundedReceiver<Command>,
 
     streams: StreamMap<&'static str, Pin<Box<dyn Stream<Item = Event> + Send + 'static>>>,
+
+    hyprctl: Hyprctl,
+    trayctl: TrayCtl,
 }
 
 impl MainLoop {
@@ -44,21 +47,22 @@ impl MainLoop {
             }};
         }
         macro_rules! register_task {
-            ($t:ty) => {
-                let (name, stream, handle) = <$t>::new(token.clone());
+            ($t:ty) => {{
+                let (name, stream, handle, out) = <$t>::new(token.clone());
                 handles.insert(name, handle);
                 streams.insert(name, stream.map(Event::from).boxed());
-            };
+                out
+            }};
         }
 
         register_stream!(Clock);
         register_stream!(CPU);
         register_stream!(Memory);
         register_task!(Control);
-        register_task!(Hyprland);
         register_task!(Network);
         register_task!(Weather);
-        register_task!(Tray);
+        let hyprctl = register_task!(Hyprland);
+        let trayctl = register_task!(Tray);
 
         Ok(Self {
             token,
@@ -68,6 +72,9 @@ impl MainLoop {
             crx,
 
             streams,
+
+            hyprctl,
+            trayctl,
         })
     }
 
@@ -110,6 +117,12 @@ impl MainLoop {
     }
 
     async fn on_command(&mut self, cmd: Command) {
+        macro_rules! hyprctl {
+            ($($arg:tt)*) => {
+                self.hyprctl.dispatch(format!($($arg)*)).await
+            };
+        }
+
         match cmd {
             Command::FinishIoThread => unreachable!("handled by the caller"),
 
@@ -128,7 +141,9 @@ impl MainLoop {
             Command::Logout => {
                 hyprctl!("exit");
             }
-            Command::TriggerTray { uuid } => todo!(),
+            Command::TriggerTray { uuid } => {
+                self.trayctl.trigger(uuid);
+            }
             Command::SpawnNetworkEditor => {
                 hyprctl!("exec iwmenu --launcher fuzzel");
             }
