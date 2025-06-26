@@ -3,7 +3,7 @@
 GtkWidget *cpu_label_new() {
   GtkWidget *label = gtk_label_new("");
   gtk_label_set_use_markup(GTK_LABEL(label), true);
-  cpu_label_set_load(GTK_LABEL(label), 0);
+  cpu_label_set_load(label, 0);
   return label;
 }
 
@@ -16,7 +16,7 @@ static const char *INDICATORS[] = {
 static const size_t INDICATORS_COUNT =
     sizeof(INDICATORS) / sizeof(const char *);
 
-void cpu_label_set_load(CpuLabel *label, float load) {
+void cpu_label_set_load(GtkWidget *label, float load) {
   size_t indicator_idx = floor(load / 100.0 * INDICATORS_COUNT);
 
   if (indicator_idx == INDICATORS_COUNT) {
@@ -24,5 +24,5 @@ void cpu_label_set_load(CpuLabel *label, float load) {
   }
 
   const char *markup = INDICATORS[indicator_idx];
-  gtk_label_set_label(label, markup);
+  gtk_label_set_label(GTK_LABEL(label), markup);
 }

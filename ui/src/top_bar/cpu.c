@@ -3,7 +3,7 @@
 #include "ui/include/top_bar/cpu_label.h"
 #include "ui/include/utils/has_prop.h"
 
-WIDGET_HAS_PROP(labels_list, CpuLabel **)
+WIDGET_HAS_PROP(labels_list, GList *)
 WIDGET_HAS_PROP(labels_count, size_t)
 
 GtkWidget *cpu_init() {
@@ -26,10 +26,10 @@ static void assert_cpu_count_is(size_t next, size_t prev) {
 }
 
 static void create_labels(GtkWidget *self, size_t count) {
-  CpuLabel **labels = calloc(count, sizeof(GtkWidget *));
+  GList *labels = NULL;
   for (size_t i = 0; i < count; i++) {
     GtkWidget *label = cpu_label_new();
-    labels[i] = CPU_LABEL(label);
+    labels = g_list_append(labels, label);
     gtk_box_append(GTK_BOX(self), label);
   }
   set_labels_list(self, labels);
@@ -43,9 +43,9 @@ void cpu_refresh(GtkWidget *self, IO_CpuUsageEvent event) {
     assert_cpu_count_is(get_labels_count(self), event.usage_per_core.len);
   }
 
-  CpuLabel **labels = get_labels_list(self);
-
-  for (size_t i = 0; i < event.usage_per_core.len; i++) {
-    cpu_label_set_load(labels[i], event.usage_per_core.ptr[i]);
+  size_t i = 0;
+  for (GList *ptr = get_labels_list(self); ptr != NULL; ptr = ptr->next) {
+    cpu_label_set_load(GTK_WIDGET(ptr->data), event.usage_per_core.ptr[i]);
+    i++;
   }
 }
