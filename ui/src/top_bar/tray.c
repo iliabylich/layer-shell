@@ -24,11 +24,6 @@ GtkWidget *tray_init(tray_triggered_f callback) {
   return self;
 }
 
-void tray_emit_triggered(GtkWidget *self, char *uuid) {
-  tray_triggered_f cb = tray_get_triggered_callback(self);
-  cb((const uint8_t *)uuid);
-}
-
 static void tray_remove_service(GtkWidget *self, const char *service) {
   GtkWidget *existing = tray_store_remove(self, service);
 
@@ -40,8 +35,8 @@ static void tray_remove_service(GtkWidget *self, const char *service) {
 void tray_update_app(GtkWidget *self, IO_TrayAppUpdatedEvent event) {
   tray_remove_service(self, event.service);
 
-  GtkWidget *new =
-      tray_app_icon_new(event.service, event.root_item, event.icon, self);
+  GtkWidget *new = tray_app_icon_new(event.icon, event.root_item,
+                                     tray_get_triggered_callback(self));
 
   tray_store_insert(self, event.service, new);
   gtk_box_append(GTK_BOX(self), new);

@@ -1,5 +1,5 @@
+#include "ui/include/top_bar/network_popover_action_map.h"
 #include "ui/include/top_bar/network.h"
-#include <ui/include/top_bar/network_popover_action_map.h>
 
 static void emit_settings_clicked(GSimpleAction *, GVariant *,
                                   GtkWidget *parent) {

@@ -1,9 +1,8 @@
 #pragma once
 
 #include "bindings.h"
-#include <gtk/gtk.h>
+#include "ui/include/top_bar/tray.h"
 
-GtkWidget *tray_app_icon_new(const char *service, IO_TrayItem item,
-                             IO_TrayIcon icon, GtkWidget *tray);
-const char *tray_app_icon_service(GtkWidget *tray_app_icon);
+GtkWidget *tray_app_icon_new(IO_TrayIcon icon, IO_TrayItem item,
+                             tray_triggered_f cb);
 void tray_app_icon_cleanup(GtkWidget *tray_app_icon);
