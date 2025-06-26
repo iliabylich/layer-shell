@@ -1,8 +1,7 @@
 #include "ui/include/top_bar/network.h"
-#include "gtk/gtk.h"
 #include "ui/include/builder.h"
 #include "ui/include/top_bar/network_popover.h"
-#include "ui/include/utils/has_callback.h"
+#include "ui/include/utils/has_prop.h"
 
 WIDGET_HAS_PROP(status_label, GtkWidget *)
 WIDGET_HAS_PROP(download_speed_label, GtkWidget *)

@@ -1,7 +1,7 @@
 #include "ui/include/top_bar/workspaces.h"
 #include "ui/include/builder.h"
 #include "ui/include/top_bar/workspaces_button.h"
-#include "ui/include/utils/has_callback.h"
+#include "ui/include/utils/has_prop.h"
 
 WIDGET_HAS_PROP(buttons, GList *)
 

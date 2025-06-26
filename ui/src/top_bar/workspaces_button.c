@@ -1,5 +1,6 @@
 #include "ui/include/top_bar/workspaces_button.h"
 #include "ui/include/utils/has_callback.h"
+#include "ui/include/utils/has_prop.h"
 
 WIDGET_HAS_CALLBACK(callback, workspace_change_f)
 WIDGET_HAS_PROP(num, size_t)

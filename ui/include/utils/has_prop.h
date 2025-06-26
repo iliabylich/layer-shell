@@ -2,12 +2,12 @@
 
 #define stringify(s) #s
 
-#define WIDGET_HAS_CALLBACK(name, Type)                                        \
+#define WIDGET_HAS_PROP(name, Type)                                            \
   static void __free__##name(void *) {}                                        \
                                                                                \
   static void set_##name(GtkWidget *self, Type value) {                        \
-    g_object_set_data_full(G_OBJECT(self), stringify(name),                    \
-                           (void *)(size_t)value, __free__##name);             \
+    g_object_set_data_full(G_OBJECT(self), stringify(name), (void *)value,     \
+                           __free__##name);                                    \
   }                                                                            \
                                                                                \
   static Type get_##name(GtkWidget *self) {                                    \

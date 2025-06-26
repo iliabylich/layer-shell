@@ -1,7 +1,7 @@
 #include "ui/include/top_bar/cpu.h"
 #include "ui/include/builder.h"
 #include "ui/include/top_bar/cpu_label.h"
-#include "ui/include/utils/has_callback.h"
+#include "ui/include/utils/has_prop.h"
 
 WIDGET_HAS_PROP(labels_list, CpuLabel **)
 WIDGET_HAS_PROP(labels_count, size_t)
