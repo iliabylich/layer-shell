@@ -4,4 +4,3 @@ src/dbus/interfaces
 .vscode
 *.o
 *.data
-Cargo.lock
