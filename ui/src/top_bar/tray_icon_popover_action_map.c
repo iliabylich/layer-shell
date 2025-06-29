@@ -1,7 +1,7 @@
+#include "ui/include/top_bar/tray_icon_popover_action_map.h"
 #include "bindings.h"
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_helper.h"
-#include "ui/include/top_bar/tray_icon_popover_action_map.h"
 #include "ui/include/utils/fmt.h"
 #include "ui/include/utils/strclone.h"
 
@@ -25,7 +25,7 @@ static tray_triggered_f get_cb(GSimpleAction *action) {
 static void on_activate(GSimpleAction *action, GVariant *) {
   tray_triggered_f cb = get_cb(action);
   const char *uuid = get_uuid(action);
-  cb((const uint8_t *)uuid);
+  cb(uuid);
 }
 
 static void visit(IO_TrayItem tray_item, GActionGroup *action_group,

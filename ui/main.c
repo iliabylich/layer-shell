@@ -142,7 +142,7 @@ static void on_workspace_change_clicked(size_t idx) {
 
 static void on_theme_change_clicked() { io_change_theme(); }
 
-static void on_tray_triggered(const uint8_t *uuid) { io_trigger_tray(uuid); }
+static void on_tray_triggered(const char *uuid) { io_trigger_tray(uuid); }
 
 static void on_weather_button_clicked() { weather_toggle(weather); }
 

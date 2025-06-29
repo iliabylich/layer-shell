@@ -187,7 +187,7 @@ pub extern "C" fn io_logout() {
     send_command(Command::Logout);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_trigger_tray(uuid: *const u8) {
+pub extern "C" fn io_trigger_tray(uuid: *const std::ffi::c_char) {
     send_command(Command::TriggerTray {
         uuid: CString::from(uuid).into(),
     });
