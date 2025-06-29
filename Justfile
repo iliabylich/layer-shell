@@ -31,4 +31,4 @@ strace-io:
     strace target/debug/just-io
 
 io:
-    RUST_LOG=info cargo run --bin just-io
+    RUST_LOG=info RUST_BACKTRACE=1 cargo run --bin just-io
