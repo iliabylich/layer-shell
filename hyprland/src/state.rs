@@ -1,4 +1,4 @@
-use crate::{HyprlandEvent, LanguageEvent, WorkspacesEvent, reader::ReaderEvent};
+use crate::{HyprlandEvent, LanguageEvent, WorkspacesEvent, event::Workspace, reader::ReaderEvent};
 use std::collections::HashSet;
 
 pub(crate) struct State {
@@ -25,15 +25,15 @@ impl State {
     }
 
     fn workspaces_event(&self) -> HyprlandEvent {
-        HyprlandEvent::Workspaces(WorkspacesEvent {
-            workspaces: self
-                .workspace_ids
-                .iter()
-                .copied()
-                .collect::<Vec<_>>()
-                .into(),
-            active_workspace: self.active_workspace_id,
-        })
+        let workspaces = (1..=10)
+            .map(|id| Workspace {
+                visible: id <= 5 || self.workspace_ids.contains(&id),
+                active: self.active_workspace_id == id,
+            })
+            .collect::<Vec<_>>()
+            .into();
+
+        HyprlandEvent::Workspaces(WorkspacesEvent { workspaces })
     }
     fn language_event(&self) -> HyprlandEvent {
         HyprlandEvent::Language(LanguageEvent {

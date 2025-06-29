@@ -22,21 +22,20 @@ GtkWidget *workspaces_init(workspace_change_f callback) {
 }
 
 void workspaces_refresh(GtkWidget *self, IO_WorkspacesEvent event) {
-  for (GList *ptr = get_buttons(self); ptr != NULL; ptr = ptr->next) {
+  size_t i = 0;
+  GList *ptr = get_buttons(self);
+  while (ptr != NULL) {
     GtkWidget *button = GTK_WIDGET(ptr->data);
-    size_t num = workspaces_button_get_number(button);
+    IO_Workspace workspace = event.workspaces.ptr[i];
 
-    bool visible = num <= 5;
-    for (size_t j = 0; j < event.workspaces.len; j++) {
-      if (event.workspaces.ptr[j] == num) {
-        visible = true;
-      }
-    }
-    gtk_widget_set_visible(button, visible);
-    if (num == event.active_workspace) {
+    gtk_widget_set_visible(button, workspace.visible);
+    if (workspace.active) {
       workspaces_button_make_active(button);
     } else {
       workspaces_button_make_inactive(button);
     }
+
+    i++;
+    ptr = ptr->next;
   }
 }

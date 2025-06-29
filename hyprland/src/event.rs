@@ -9,8 +9,14 @@ pub enum HyprlandEvent {
 #[derive(Debug)]
 #[repr(C)]
 pub struct WorkspacesEvent {
-    pub workspaces: CArray<usize>,
-    pub active_workspace: usize,
+    pub workspaces: CArray<Workspace>,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct Workspace {
+    pub visible: bool,
+    pub active: bool,
 }
 
 #[derive(Debug)]
