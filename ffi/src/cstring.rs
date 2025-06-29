@@ -42,14 +42,17 @@ impl From<CString> for String {
 
 impl From<*const std::ffi::c_char> for CString {
     fn from(ptr: *const std::ffi::c_char) -> Self {
-        unsafe { std::ffi::CStr::from_ptr(ptr) }
-            .to_str()
-            .unwrap_or_else(|err| {
-                log::error!("{:?}", err);
-                std::process::exit(1)
-            })
-            .to_string()
-            .into()
+        fn ptr_to_self(ptr: *const std::ffi::c_char) -> CString {
+            unsafe { std::ffi::CStr::from_ptr(ptr) }
+                .to_str()
+                .unwrap_or_else(|err| {
+                    log::error!("{:?}", err);
+                    std::process::exit(1)
+                })
+                .to_string()
+                .into()
+        }
+        ptr_to_self(ptr)
     }
 }
 

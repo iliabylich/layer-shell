@@ -1,7 +1,7 @@
-use layer_shell_io::{io_init, io_run_in_place};
+use layer_shell_io::{io_init, io_spawn_thread};
 
 fn main() {
     io_init();
 
-    io_run_in_place().unwrap()
+    io_spawn_thread();
 }
