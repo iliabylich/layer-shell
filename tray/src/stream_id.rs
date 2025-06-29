@@ -13,6 +13,7 @@ pub(crate) enum StreamId {
     MenuUpdated { service: Arc<str> },
     LayoutUpdated { service: Arc<str> },
     ItemsPropertiesUpdated { service: Arc<str> },
+    NewIconNotified { service: Arc<str> },
 }
 
 impl StreamId {
@@ -27,7 +28,8 @@ impl StreamId {
             | StreamId::IconPixmapUpdated { service }
             | StreamId::MenuUpdated { service }
             | StreamId::LayoutUpdated { service }
-            | StreamId::ItemsPropertiesUpdated { service } => Some(service.as_ref()),
+            | StreamId::ItemsPropertiesUpdated { service }
+            | StreamId::NewIconNotified { service } => Some(service.as_ref()),
         }
     }
 

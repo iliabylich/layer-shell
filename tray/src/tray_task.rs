@@ -3,7 +3,7 @@ use crate::{
     dbus::{NameLostEvent, NameOwnerChangedEvent},
     dbus_event::DBusEvent,
     dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated, trigger_tray_item},
-    status_notifier_item::{IconNameUpdated, IconPixmapUpdate, MenuUpdated},
+    status_notifier_item::{IconNameUpdated, IconPixmapUpdated, MenuUpdated, NewIcon},
     status_notifier_watcher::StatusNotifierWatcher,
     store::Store,
     stream_id::StreamId,
@@ -114,6 +114,9 @@ impl TrayTask {
             DBusEvent::MenuChanged { service, menu } => {
                 self.on_menu_changed(service, menu).await?;
             }
+            DBusEvent::NewIconNotified { service } => {
+                self.on_new_icon_notifier(service).await?;
+            }
 
             DBusEvent::LayoutUpdated { service, menu } => {
                 self.on_layout_updated(service, menu).await?;
@@ -145,8 +148,12 @@ impl TrayTask {
         }
 
         subscribe!(IconNameUpdated);
-        subscribe!(IconPixmapUpdate);
+        subscribe!(IconPixmapUpdated);
         subscribe!(MenuUpdated);
+
+        let (stream_id, stream) =
+            NewIcon::into_stream(self.conn.clone(), Arc::clone(&service)).await?;
+        self.stream_map.add(stream_id, stream);
 
         Ok(())
     }
@@ -209,6 +216,22 @@ impl TrayTask {
         subscribe!(LayoutUpdated);
         subscribe!(ItemsPropertiesUpdated);
 
+        Ok(())
+    }
+
+    async fn on_new_icon_notifier(&mut self, service: Arc<str>) -> Result<()> {
+        let (e1, e2) = tokio::join!(
+            IconNameUpdated::get_current(self.conn.clone(), Arc::clone(&service)),
+            IconPixmapUpdated::get_current(self.conn.clone(), Arc::clone(&service))
+        );
+
+        let Ok(event) = e1.or(e2) else {
+            log::error!(
+                "got notification about new icon but neither IconName nor IconPixmap can be received"
+            );
+            return Ok(());
+        };
+        self.stream_map.emit(event)?;
         Ok(())
     }
 

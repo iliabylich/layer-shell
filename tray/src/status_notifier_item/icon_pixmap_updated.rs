@@ -7,19 +7,16 @@ use futures::{Stream, StreamExt};
 use std::sync::Arc;
 use zbus::Connection;
 
-pub(crate) struct IconPixmapUpdate;
+pub(crate) struct IconPixmapUpdated;
 
-impl IconPixmapUpdate {
-    pub(crate) async fn split(
-        conn: Connection,
-        service: Arc<str>,
-    ) -> Result<(Result<DBusEvent>, StreamId, impl Stream<Item = DBusEvent>)> {
+impl IconPixmapUpdated {
+    pub(crate) async fn get_current(conn: Connection, service: Arc<str>) -> Result<DBusEvent> {
         let proxy = StatusNotifierItemProxy::builder(&conn)
             .destination(service.to_string())?
             .build()
             .await?;
 
-        let event = proxy
+        proxy
             .icon_pixmap()
             .await
             .context("failed to get IconPixmap")
@@ -29,7 +26,19 @@ impl IconPixmapUpdate {
                 width,
                 height,
                 bytes,
-            });
+            })
+    }
+
+    pub(crate) async fn split(
+        conn: Connection,
+        service: Arc<str>,
+    ) -> Result<(Result<DBusEvent>, StreamId, impl Stream<Item = DBusEvent>)> {
+        let proxy = StatusNotifierItemProxy::builder(&conn)
+            .destination(service.to_string())?
+            .build()
+            .await?;
+
+        let event = Self::get_current(conn.clone(), Arc::clone(&service)).await;
 
         let stream_id = StreamId::IconPixmapUpdated {
             service: Arc::clone(&service),

@@ -28,6 +28,9 @@ pub(crate) enum DBusEvent {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
     },
+    NewIconNotified {
+        service: Arc<str>,
+    },
 
     // DBusMenu
     LayoutUpdated {
