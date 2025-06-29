@@ -41,11 +41,6 @@ GtkWidget *bluetooth;
 GtkWidget *clock_;
 GtkWidget *power;
 
-static void drop_window(GtkWindow *win) {
-  gtk_application_remove_window(app, GTK_WINDOW(win));
-  g_object_unref(G_OBJECT(win));
-}
-
 int poll_events(void) {
   IO_CArray_Event events = io_poll_events();
   bool keep_processing = true;
@@ -120,11 +115,6 @@ int poll_events(void) {
       fprintf(stderr, "[UI] Received exit...\n");
       io_finalize();
       fprintf(stderr, "[UI] Removing windows...\n");
-      drop_window(GTK_WINDOW(top_bar));
-      drop_window(GTK_WINDOW(weather));
-      drop_window(GTK_WINDOW(htop));
-      drop_window(GTK_WINDOW(ping));
-      drop_window(GTK_WINDOW(session));
       g_application_quit(G_APPLICATION(app));
       fprintf(stderr, "[UI] Quit done.\n");
       keep_processing = false;

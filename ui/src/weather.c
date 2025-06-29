@@ -9,12 +9,6 @@
 WIDGET_HAS_PROP(hourly_grid, GtkWidget *)
 WIDGET_HAS_PROP(daily_grid, GtkWidget *)
 
-typedef struct {
-  GtkWidget *hourly_grid;
-  GtkWidget *daily_grid;
-} data_t;
-#define DATA_KEY "data"
-
 GtkWidget *weather_init(GtkApplication *app) {
   GtkWidget *self = weather_get_widget("WEATHER");
   gtk_window_set_application(GTK_WINDOW(self), app);

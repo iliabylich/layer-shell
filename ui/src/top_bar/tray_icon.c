@@ -1,5 +1,5 @@
-#include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_icon.h"
+#include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_icon_popover.h"
 
 #define POPOVER "popover"

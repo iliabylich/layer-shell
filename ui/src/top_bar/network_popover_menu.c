@@ -5,6 +5,7 @@ static void add(GMenu *menu, const char *label, const char *action,
   GMenuItem *item = g_menu_item_new(label, NULL);
   g_menu_item_set_action_and_target_value(item, action, target_value);
   g_menu_append_item(menu, item);
+  g_object_unref(item);
 }
 
 void network_popover_menu_add_settings(GMenu *menu) {

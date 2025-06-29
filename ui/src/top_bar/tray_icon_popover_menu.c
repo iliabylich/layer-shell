@@ -1,5 +1,5 @@
-#include "ui/include/top_bar/tray_helper.h"
 #include "ui/include/top_bar/tray_icon_popover_menu.h"
+#include "ui/include/top_bar/tray_helper.h"
 #include "ui/include/utils/fmt.h"
 
 static GMenuItem *visit(IO_TrayItem tray_item);
@@ -69,6 +69,7 @@ static GMenu *visit_nested_as_submenu(IO_TrayItem tray_item) {
 
     GMenuItem *menu_item = visit(child);
     g_menu_append_item(menu, menu_item);
+    g_object_unref(menu_item);
   }
 
   return menu;
