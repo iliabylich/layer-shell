@@ -5,6 +5,9 @@
     --theme-bg-color: var(--bg-color, blue);
     --theme-solid-bg-color: var(--solid-bg-color, black);
     --theme-solid-bg-color-hover: var(--solid-bg-color-hover, gray);
+    --theme-popover-bg-color: var(--popover-bg-color, pink);
+    --theme-popover-bg-color-on-hover: var(--popover-bg-color-on-hover, azure);
+    --theme-popover-bg-color-disabled: var(--popover-bg-color-disabled, brown);
 }
 
 // reset
@@ -26,19 +29,23 @@
 
 popover {
     border: 2px solid var(--theme-accent-color);
-    background-color: black;
+    background-color: var(--theme-popover-bg-color);
 
     modelbutton {
         border-bottom: 1px solid var(--theme-accent-color);
         padding: 10px;
 
-        &:disabled label {
-            text-decoration: line-through;
-            color: var(--theme-solid-bg-color);
+        &:disabled {
+            background-color: var(--theme-popover-bg-color-disabled);
+
+            label {
+                text-decoration: line-through;
+                color: var(--theme-popover-text-color);
+            }
         }
 
         &:hover {
-            background-color: var(--theme-solid-bg-color-hover);
+            background-color: var(--theme-popover-bg-color-on-hover);
         }
     }
 
@@ -80,7 +87,7 @@ popover {
     .widget {
         border: 2px var(--theme-accent-color) solid;
         border-radius: 10px;
-        background-color: var(--solid-bg-color);
+        background-color: var(--theme-solid-bg-color);
 
         &.clickable:hover {
             background-color: var(--theme-accent-color);
@@ -95,7 +102,7 @@ popover {
 
             popover {
                 label {
-                    color: var(--text-color);
+                    color: var(--theme-text-color);
                 }
 
                 modelbutton:disabled label {
@@ -152,7 +159,7 @@ popover {
             }
 
             separator.vertical {
-                border-left: 1px solid var(--accent-color);
+                border-left: 1px solid var(--theme-accent-color);
                 margin-left: 10px;
                 margin-right: 10px;
             }
