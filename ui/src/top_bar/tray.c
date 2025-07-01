@@ -35,8 +35,8 @@ static void tray_remove_service(GtkWidget *self, const char *service) {
 void tray_update_app(GtkWidget *self, IO_TrayAppUpdatedEvent event) {
   tray_remove_service(self, event.service);
 
-  GtkWidget *new = tray_icon_new(event.icon, event.root_item,
-                                 tray_get_triggered_callback(self));
+  GtkWidget *new =
+      tray_icon_new(event.icon, event.items, tray_get_triggered_callback(self));
 
   tray_store_insert(self, event.service, new);
   gtk_box_append(GTK_BOX(self), new);

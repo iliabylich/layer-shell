@@ -11,7 +11,7 @@ pub enum TrayEvent {
 #[repr(C)]
 pub struct TrayAppUpdatedEvent {
     pub service: CString,
-    pub root_item: TrayItem,
+    pub items: CArray<TrayItem>,
     pub icon: TrayIcon,
 }
 
@@ -21,21 +21,40 @@ pub struct TrayAppRemovedEvent {
     pub service: CString,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 #[repr(C)]
-pub struct TrayItem {
-    pub id: i32,
-    pub uuid: CString,
-    pub type_: CString,
-    pub label: CString,
-    pub enabled: bool,
-    pub visible: bool,
-    pub icon_name: CString,
-    pub icon_data: CString,
-    pub toggle_type: CString,
-    pub toggle_state: i32,
-    pub children_display: CString,
-    pub children: CArray<TrayItem>,
+pub enum TrayItem {
+    Regular {
+        id: i32,
+        uuid: CString,
+        label: CString,
+    },
+    Disabled {
+        id: i32,
+        uuid: CString,
+        label: CString,
+    },
+    Checkbox {
+        id: i32,
+        uuid: CString,
+        label: CString,
+        checked: bool,
+    },
+    Radio {
+        id: i32,
+        uuid: CString,
+        label: CString,
+        selected: bool,
+    },
+    Nested {
+        id: i32,
+        uuid: CString,
+        label: CString,
+        children: CArray<TrayItem>,
+    },
+    Section {
+        children: CArray<TrayItem>,
+    },
 }
 
 #[derive(Clone)]

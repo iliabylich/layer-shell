@@ -6,6 +6,8 @@ pragma_once = true
 usize_is_size_t = true
 style = "both"
 
+includes = ["io/bindgen-fix.h"]
+
 [parse]
 parse_deps = true
 include = [
@@ -22,6 +24,8 @@ include = [
 
 [export]
 prefix = "IO_"
+exclude = ["CArray_TrayItem"]
+include = ["TrayItem"]
 
 [enum]
 prefix_with_name = true

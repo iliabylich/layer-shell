@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 #[derive(Default)]
 pub(crate) struct Store {
     icons: HashMap<Arc<str>, TrayIcon>,
-    items: HashMap<Arc<str>, TrayItem>,
+    items: HashMap<Arc<str>, Vec<TrayItem>>,
 }
 
 impl Store {
@@ -17,18 +17,22 @@ impl Store {
         self.event_if_service_has_complete_def(service)
     }
 
-    pub(crate) fn update_item(&mut self, service: Arc<str>, item: TrayItem) -> Option<TrayEvent> {
-        self.items.insert(Arc::clone(&service), item);
+    pub(crate) fn update_item(
+        &mut self,
+        service: Arc<str>,
+        items: Vec<TrayItem>,
+    ) -> Option<TrayEvent> {
+        self.items.insert(Arc::clone(&service), items);
         self.event_if_service_has_complete_def(service)
     }
 
     fn event_if_service_has_complete_def(&self, service: Arc<str>) -> Option<TrayEvent> {
         let icon = self.icons.get(&service)?.clone();
-        let item = self.items.get(&service)?.clone();
+        let items = self.items.get(&service)?.clone();
 
         Some(TrayEvent::AppUpdated(TrayAppUpdatedEvent {
             service: service.to_string().into(),
-            root_item: item,
+            items: items.into(),
             icon,
         }))
     }

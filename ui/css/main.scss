@@ -31,6 +31,10 @@ popover {
     border: 2px solid var(--theme-accent-color);
     background-color: var(--theme-popover-bg-color);
 
+    separator.horizontal {
+        border-bottom: 5px solid var(--theme-accent-color);
+    }
+
     modelbutton {
         border-bottom: 1px solid var(--theme-accent-color);
         padding: 10px;
@@ -94,10 +98,6 @@ popover {
 
             label {
                 color: var(--theme-bg-color);
-            }
-
-            separator.vertical {
-                border-color: var(--theme-bg-color);
             }
 
             popover {

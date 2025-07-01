@@ -45,6 +45,6 @@ pub(crate) enum DBusEvent {
     // custom
     LayoutReceived {
         service: Arc<str>,
-        item: TrayItem,
+        items: Vec<TrayItem>,
     },
 }

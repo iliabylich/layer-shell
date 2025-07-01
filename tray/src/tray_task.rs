@@ -125,8 +125,8 @@ impl TrayTask {
                 self.on_items_properties_updated(service, menu).await?;
             }
 
-            DBusEvent::LayoutReceived { service, item } => {
-                self.on_layout_received(service, item).await?;
+            DBusEvent::LayoutReceived { service, items } => {
+                self.on_layout_received(service, items).await?;
             }
         }
         Ok(())
@@ -241,8 +241,8 @@ impl TrayTask {
         menu: Arc<OwnedObjectPath>,
     ) -> Result<()> {
         match Layout::get(self.conn.clone(), &service, &menu).await {
-            Ok(item) => self.stream_map.emit(DBusEvent::LayoutReceived {
-                item,
+            Ok(items) => self.stream_map.emit(DBusEvent::LayoutReceived {
+                items,
                 service: Arc::clone(&service),
             })?,
             Err(err) => {
@@ -263,8 +263,8 @@ impl TrayTask {
             .emit(DBusEvent::LayoutUpdated { service, menu })
     }
 
-    async fn on_layout_received(&mut self, service: Arc<str>, item: TrayItem) -> Result<()> {
-        if let Some(event) = self.store.update_item(service, item) {
+    async fn on_layout_received(&mut self, service: Arc<str>, items: Vec<TrayItem>) -> Result<()> {
+        if let Some(event) = self.store.update_item(service, items) {
             self.etx.send(event)?;
         }
         Ok(())

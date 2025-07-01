@@ -9,7 +9,7 @@ static void add(GMenu *menu, const char *label, const char *action,
 }
 
 void network_popover_menu_add_settings(GMenu *menu) {
-  add(menu, "Settings (nmtui)", "network.settings-row", NULL);
+  add(menu, "Settings (iwmenu)", "network.settings-row", NULL);
 }
 
 void network_popover_menu_add_ping(GMenu *menu) {

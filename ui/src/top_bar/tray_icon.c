@@ -1,4 +1,5 @@
 #include "ui/include/top_bar/tray_icon.h"
+#include "gtk/gtk.h"
 #include "ui/include/top_bar/tray.h"
 #include "ui/include/top_bar/tray_icon_popover.h"
 
@@ -21,7 +22,11 @@ image_from_pixmap_variant(IO_TrayIcon_IO_PixmapVariant_Body pixmap_variant) {
   GdkPixbuf *pixbuf = gdk_pixbuf_new_from_bytes(bytes, GDK_COLORSPACE_RGB, true,
                                                 8, w, h, 4 * w);
   GdkTexture *texture = gdk_texture_new_for_pixbuf(pixbuf);
-  return gtk_image_new_from_paintable(GDK_PAINTABLE(texture));
+  GtkWidget *image = gtk_image_new_from_paintable(GDK_PAINTABLE(texture));
+
+  gtk_widget_set_cursor_from_name(image, "pointer");
+
+  return image;
 }
 
 static GtkWidget *icon_new(IO_TrayIcon tray_icon) {
@@ -50,13 +55,14 @@ static void on_click(GtkGestureClick *, gint, gdouble, gdouble,
   gtk_popover_popup(GTK_POPOVER(popover));
 }
 
-GtkWidget *tray_icon_new(IO_TrayIcon icon, IO_TrayItem item,
+GtkWidget *tray_icon_new(IO_TrayIcon icon, IO_CArray_TrayItem items,
                          tray_triggered_f cb) {
   GtkWidget *self = icon_new(icon);
 
-  GtkWidget *popover = tray_icon_popover_new(item, cb);
+  GtkWidget *popover = tray_icon_popover_new(items, cb);
   gtk_widget_set_parent(popover, self);
   tray_icon_set_popover(self, popover);
+  gtk_widget_set_cursor_from_name(popover, "pointer");
 
   GtkGesture *gesture = gtk_gesture_click_new();
   g_signal_connect(gesture, "pressed", G_CALLBACK(on_click), popover);
