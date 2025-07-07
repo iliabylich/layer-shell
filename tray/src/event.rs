@@ -3,13 +3,15 @@ use ffi::{CArray, CString};
 #[derive(Debug)]
 #[repr(C)]
 pub enum TrayEvent {
-    AppUpdated(TrayAppUpdatedEvent),
+    AppAdded(TrayAppAddedEvent),
     AppRemoved(TrayAppRemovedEvent),
+    AppIconUpdated(TrayAppIconUpdatedEvent),
+    AppMenuUpdated(TrayAppMenuUpdatedEvent),
 }
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct TrayAppUpdatedEvent {
+pub struct TrayAppAddedEvent {
     pub service: CString,
     pub items: CArray<TrayItem>,
     pub icon: TrayIcon,
@@ -19,6 +21,20 @@ pub struct TrayAppUpdatedEvent {
 #[repr(C)]
 pub struct TrayAppRemovedEvent {
     pub service: CString,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct TrayAppIconUpdatedEvent {
+    pub service: CString,
+    pub icon: TrayIcon,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct TrayAppMenuUpdatedEvent {
+    pub service: CString,
+    pub items: CArray<TrayItem>,
 }
 
 #[derive(Debug, Clone)]

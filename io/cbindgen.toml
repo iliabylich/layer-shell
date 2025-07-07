@@ -1,5 +1,3 @@
-# cbindgen --crate io --config io/cbindgen.toml
-
 language = "C"
 
 pragma_once = true

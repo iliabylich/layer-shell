@@ -1,38 +1,40 @@
 #include "bindings.h"
-#include "ui/include/builder.h"
-#include "ui/include/css.h"
-#include "ui/include/htop.h"
-#include "ui/include/ping.h"
-#include "ui/include/session.h"
-#include "ui/include/top_bar.h"
-#include "ui/include/top_bar/bluetooth.h"
-#include "ui/include/top_bar/change_theme.h"
-#include "ui/include/top_bar/clock.h"
-#include "ui/include/top_bar/cpu.h"
-#include "ui/include/top_bar/htop_button.h"
-#include "ui/include/top_bar/language.h"
-#include "ui/include/top_bar/memory.h"
-#include "ui/include/top_bar/network.h"
-#include "ui/include/top_bar/power.h"
-#include "ui/include/top_bar/tray.h"
-#include "ui/include/top_bar/weather_button.h"
-#include "ui/include/top_bar/workspaces.h"
-#include "ui/include/weather.h"
+#include "ui/bluetooth.h"
+#include "ui/change_theme.h"
+#include "ui/clock.h"
+#include "ui/cpu.h"
+#include "ui/css.h"
+#include "ui/htop.h"
+#include "ui/htop_window.h"
+#include "ui/language.h"
+#include "ui/logger.h"
+#include "ui/memory.h"
+#include "ui/network.h"
+#include "ui/ping_window.h"
+#include "ui/power.h"
+#include "ui/session_window.h"
+#include "ui/top_bar.h"
+#include "ui/tray.h"
+#include "ui/weather.h"
+#include "ui/weather_window.h"
+#include "ui/workspaces.h"
 #include <gtk/gtk.h>
+
+LOGGER("main.c", 0)
 
 GtkApplication *app;
 
 GtkWidget *top_bar;
-GtkWidget *weather;
-GtkWidget *htop;
-GtkWidget *ping;
-GtkWidget *session;
+GtkWidget *weather_window;
+GtkWidget *htop_window;
+GtkWidget *ping_window;
+GtkWidget *session_window;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
 GtkWidget *tray;
-GtkWidget *weather_button;
-GtkWidget *htop_button;
+GtkWidget *weather;
+GtkWidget *htop;
 GtkWidget *language;
 GtkWidget *cpu;
 GtkWidget *memory;
@@ -41,6 +43,11 @@ GtkWidget *bluetooth;
 GtkWidget *clock_;
 GtkWidget *power;
 
+void remove_window(GtkWidget **win) {
+  gtk_application_remove_window(app, GTK_WINDOW(*win));
+  g_clear_pointer(win, g_object_unref);
+}
+
 int poll_events(void) {
   IO_CArray_Event events = io_poll_events();
   bool keep_processing = true;
@@ -48,75 +55,90 @@ int poll_events(void) {
     IO_Event event = events.ptr[i];
     switch (event.tag) {
     case IO_Event_Workspaces: {
-      workspaces_refresh(workspaces, event.workspaces);
+      workspaces_refresh(WORKSPACES(workspaces), event.workspaces);
       break;
     }
     case IO_Event_ReloadStyles: {
       css_reload();
       break;
     }
-    case IO_Event_TrayAppUpdated: {
-      tray_update_app(tray, event.tray_app_updated);
+    case IO_Event_TrayAppAdded: {
+      tray_add_app(TRAY(tray), event.tray_app_added);
       break;
     }
     case IO_Event_TrayAppRemoved: {
-      tray_remove_app(tray, event.tray_app_removed);
+      tray_remove_app(TRAY(tray), event.tray_app_removed);
+      break;
+    }
+    case IO_Event_TrayAppIconUpdated: {
+      tray_update_icon(TRAY(tray), event.tray_app_icon_updated);
+      break;
+    }
+    case IO_Event_TrayAppMenuUpdated: {
+      tray_update_menu(TRAY(tray), event.tray_app_menu_updated);
       break;
     }
     case IO_Event_CurrentWeather: {
-      weather_button_refresh(weather_button, event.current_weather);
+      weather_refresh(WEATHER(weather), event.current_weather);
       break;
     }
     case IO_Event_HourlyWeatherForecast: {
-      weather_refresh_hourly_forecast(weather, event.hourly_weather_forecast);
+      weather_window_refresh_hourly_forecast(WEATHER_WINDOW(weather_window),
+                                             event.hourly_weather_forecast);
       break;
     }
     case IO_Event_DailyWeatherForecast: {
-      weather_refresh_daily_forecast(weather, event.daily_weather_forecast);
+      weather_window_refresh_daily_forecast(WEATHER_WINDOW(weather_window),
+                                            event.daily_weather_forecast);
       break;
     }
     case IO_Event_Language: {
-      language_refresh(language, event.language.lang);
+      language_refresh(LANGUAGE(language), event.language);
       break;
     }
     case IO_Event_CpuUsage: {
-      cpu_refresh(cpu, event.cpu_usage);
+      cpu_refresh(CPU(cpu), event.cpu_usage);
       break;
     }
     case IO_Event_Memory: {
-      memory_refresh(memory, event.memory);
+      memory_refresh(MEMORY(memory), event.memory);
       break;
     }
     case IO_Event_WifiStatus: {
-      network_refresh_wifi_status(network, event.wifi_status);
+      network_refresh_wifi_status(NETWORK(network), event.wifi_status);
       break;
     }
     case IO_Event_DownloadSpeed: {
-      network_refresh_download_speed(network, event.download_speed);
+      network_refresh_download_speed(NETWORK(network), event.download_speed);
       break;
     }
     case IO_Event_UploadSpeed: {
-      network_refresh_upload_speed(network, event.upload_speed);
+      network_refresh_upload_speed(NETWORK(network), event.upload_speed);
       break;
     }
     case IO_Event_NetworkList: {
-      network_refresh_network_list(network, event.network_list);
+      network_refresh_network_list(NETWORK(network), event.network_list);
       break;
     }
     case IO_Event_Clock: {
-      clock_refresh(clock_, event.clock);
+      clock_refresh(CLOCK(clock_), event.clock);
       break;
     }
     case IO_Event_ToggleSessionScreen: {
-      session_toggle(session);
+      session_window_toggle(SESSION_WINDOW(session_window));
       break;
     }
     case IO_Event_Exit: {
-      fprintf(stderr, "[UI] Received exit...\n");
+      LOG("Received exit...");
       io_finalize();
-      fprintf(stderr, "[UI] Removing windows...\n");
+      LOG("Removing windows...");
+      remove_window(&top_bar);
+      remove_window(&weather_window);
+      remove_window(&htop_window);
+      remove_window(&ping_window);
+      remove_window(&session_window);
       g_application_quit(G_APPLICATION(app));
-      fprintf(stderr, "[UI] Quit done.\n");
+      LOG("Quit done.");
       keep_processing = false;
       break;
     }
@@ -126,25 +148,31 @@ int poll_events(void) {
   return 1;
 }
 
-static void on_workspace_change_clicked(size_t idx) {
+static void on_workspace_switched(Workspaces *, guint idx) {
   io_hyprland_go_to_workspace(idx);
 }
 
 static void on_theme_change_clicked() { io_change_theme(); }
 
-static void on_tray_triggered(const char *uuid) { io_trigger_tray(uuid); }
+static void on_tray_triggered(Tray *, const char *uuid) {
+  io_trigger_tray(uuid);
+}
 
-static void on_weather_button_clicked() { weather_toggle(weather); }
+static void on_weather_clicked() {
+  weather_window_toggle(WEATHER_WINDOW(weather_window));
+}
 
-static void on_htop_button_clicked() { htop_toggle(htop); }
+static void on_htop_clicked() { htop_window_toggle(HTOP_WINDOW(htop_window)); }
 
 static void on_memory_clicked() { io_spawn_system_monitor(); }
 
 static void on_network_settings_clicked() { io_spawn_wifi_editor(); }
 
-static void on_network_ping_clicked() { ping_toggle(ping); }
+static void on_network_ping_clicked() {
+  ping_window_toggle(PING_WINDOW(ping_window));
+}
 
-static void on_nework_address_clicked(const char *ip) {
+static void on_network_address_clicked(Network *, const char *ip) {
   GdkDisplay *display = gdk_display_get_default();
   GdkClipboard *clipboard = gdk_display_get_clipboard(display);
   gdk_clipboard_set_text(clipboard, ip);
@@ -157,7 +185,9 @@ static void on_nework_address_clicked(const char *ip) {
 
 static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(); }
 
-static void on_power_clicked() { session_toggle(session); }
+static void on_power_clicked() {
+  session_window_toggle(SESSION_WINDOW(session_window));
+}
 
 static void on_lock_clicked() { io_lock(); }
 static void on_reboot_clicked() { io_reboot(); }
@@ -165,29 +195,68 @@ static void on_shutdown_clicked() { io_shutdown(); }
 static void on_logout_clicked() { io_logout(); }
 
 static void on_app_activate() {
-  init_builders();
+  top_bar = top_bar_new(app);
 
-  top_bar = top_bar_init(app);
-  weather = weather_init(app);
-  htop = htop_init(app);
-  ping = ping_init(app);
-  session = session_init(app, on_lock_clicked, on_reboot_clicked,
-                         on_shutdown_clicked, on_logout_clicked);
+#define CONNECT(widget, signal, callback)                                      \
+  g_signal_connect(widget, signal, G_CALLBACK(callback), NULL)
 
-  workspaces = workspaces_init(on_workspace_change_clicked);
-  change_theme = change_theme_init(on_theme_change_clicked);
+  workspaces = workspaces_new();
+  CONNECT(workspaces, "switched", on_workspace_switched);
+  top_bar_push_left(TOP_BAR(top_bar), workspaces);
 
-  tray = tray_init(on_tray_triggered);
-  weather_button = weather_button_init(on_weather_button_clicked);
-  htop_button = htop_button_init(on_htop_button_clicked);
-  language = language_init();
-  cpu = cpu_init();
-  memory = memory_init(on_memory_clicked);
-  network = network_init(on_network_settings_clicked, on_network_ping_clicked,
-                         on_nework_address_clicked);
-  bluetooth = bluetooth_init(on_bluetooth_clicked);
-  clock_ = clock_init();
-  power = power_init(on_power_clicked);
+  change_theme = change_theme_new();
+  CONNECT(change_theme, "clicked", on_theme_change_clicked);
+  top_bar_push_left(TOP_BAR(top_bar), change_theme);
+
+  tray = tray_new();
+  CONNECT(tray, "triggered", on_tray_triggered);
+  top_bar_push_right(TOP_BAR(top_bar), tray);
+
+  weather = weather_new();
+  CONNECT(weather, "clicked", on_weather_clicked);
+  top_bar_push_right(TOP_BAR(top_bar), weather);
+
+  htop = htop_new();
+  CONNECT(htop, "clicked", on_htop_clicked);
+  top_bar_push_right(TOP_BAR(top_bar), htop);
+
+  language = language_new();
+  top_bar_push_right(TOP_BAR(top_bar), language);
+
+  cpu = cpu_new();
+  top_bar_push_right(TOP_BAR(top_bar), cpu);
+
+  memory = memory_new();
+  CONNECT(memory, "clicked", on_memory_clicked);
+  top_bar_push_right(TOP_BAR(top_bar), memory);
+
+  network = network_new();
+  CONNECT(network, "clicked-settings", on_network_settings_clicked);
+  CONNECT(network, "clicked-ping", on_network_ping_clicked);
+  CONNECT(network, "clicked-address", on_network_address_clicked);
+  top_bar_push_right(TOP_BAR(top_bar), network);
+
+  bluetooth = bluetooth_new();
+  CONNECT(bluetooth, "clicked", on_bluetooth_clicked);
+  top_bar_push_right(TOP_BAR(top_bar), bluetooth);
+
+  clock_ = clock_new();
+  top_bar_push_right(TOP_BAR(top_bar), clock_);
+
+  power = power_new();
+  CONNECT(power, "clicked", on_power_clicked);
+  top_bar_push_right(TOP_BAR(top_bar), power);
+
+  weather_window = weather_window_new(app);
+  htop_window = htop_window_new(app);
+  ping_window = ping_window_new(app);
+  session_window = session_window_new(app);
+  CONNECT(session_window, "clicked-lock", on_lock_clicked);
+  CONNECT(session_window, "clicked-shutdown", on_shutdown_clicked);
+  CONNECT(session_window, "clicked-reboot", on_reboot_clicked);
+  CONNECT(session_window, "clicked-logout", on_logout_clicked);
+
+#undef CONNECT
 
   gtk_window_present(GTK_WINDOW(top_bar));
 

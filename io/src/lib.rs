@@ -94,7 +94,6 @@ pub extern "C" fn io_poll_events() -> CArray<Event> {
     }
 
     while let Ok(event) = try_recv() {
-        log::info!("Received event {:?}", event);
         out.push(event);
     }
     out.into()
