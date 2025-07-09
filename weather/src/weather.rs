@@ -23,7 +23,7 @@ impl Weather {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WeatherEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
-                log::error!("{NAME} crashed: {err:?}");
+                log::error!(target: "Weather", "{err:?}");
             }
         });
         (NAME, Self { rx }, handle, ())
@@ -43,7 +43,7 @@ impl Weather {
                 }
 
                 _ = token.cancelled() => {
-                    log::info!(target: NAME, "exiting...");
+                    log::info!(target: "Weather", "exiting...");
                     return Ok(())
                 }
             }

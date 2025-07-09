@@ -25,7 +25,7 @@ pub(crate) async fn trigger_tray_item(
     let timestamp = match u32::try_from(chrono::Utc::now().timestamp()) {
         Ok(ts) => ts,
         Err(err) => {
-            log::error!("can't construct u32 from chrono timestamp: {err:?}");
+            log::error!(target: "Tray", "can't construct u32 from chrono timestamp: {err:?}");
             1750950284
         }
     };

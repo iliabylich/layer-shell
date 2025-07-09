@@ -34,7 +34,7 @@ impl Reader {
                 Ok(Some(event)) => return Ok(event),
                 Ok(None) => continue, // event that we are not interested in
                 Err(err) => {
-                    log::error!("{err:?}")
+                    log::error!(target: "Hyprland", "{err:?}")
                 }
             }
         }

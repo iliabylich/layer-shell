@@ -127,11 +127,11 @@ fn sole<T>(list: Vec<T>) -> Option<T> {
     let mut iter = list.into_iter();
 
     let Some(item) = iter.next() else {
-        log::error!("got 0 items in vec (expected 1)");
+        log::error!(target: "Network", "got 0 items in vec (expected 1)");
         return None;
     };
     if iter.next().is_some() {
-        log::error!("got multiple in vec (expected 1)");
+        log::error!(target: "Network", "got multiple in vec (expected 1)");
         return None;
     }
     Some(item)

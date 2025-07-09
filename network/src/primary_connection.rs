@@ -91,7 +91,7 @@ impl PrimaryConnection {
             .build()
             .await?;
         if !connection.type_().await?.contains("wireless") {
-            log::error!("primary connection is not wireless");
+            log::error!(target: "Network", "primary connection is not wireless");
             return Ok(());
         }
 

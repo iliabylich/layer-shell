@@ -22,7 +22,7 @@ impl Hyprland {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<HyprlandEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
-                log::error!("Hyprland crashed: {err:?}");
+                log::error!(target: "Hyprland", "{err:?}");
             }
         });
         (NAME, Self { rx }, handle, Hyprctl)
@@ -50,7 +50,7 @@ impl Hyprland {
                 },
 
                 _ = token.cancelled() => {
-                    log::info!(target: NAME, "exiting...");
+                    log::info!(target: "Hyprland", "exiting...");
                     return Ok(())
                 }
             }
@@ -75,7 +75,7 @@ pub struct Hyprctl;
 impl Hyprctl {
     pub async fn dispatch(&self, cmd: impl AsRef<str>) {
         if let Err(err) = Writer::dispatch(cmd).await {
-            log::error!("failed to dispatch hyprctl: {err:?}");
+            log::error!(target: "Hyprland", "failed to dispatch hyprctl: {err:?}");
         }
     }
 }

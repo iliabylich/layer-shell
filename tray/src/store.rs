@@ -27,7 +27,6 @@ impl Store {
     pub(crate) fn update_icon(&mut self, service: Arc<str>, icon: TrayIcon) -> Option<TrayEvent> {
         let had_icon_before = self.icons.insert(Arc::clone(&service), icon).is_some();
         let (icon, items) = self.get_icon_and_items(&service)?;
-        log::info!("had_icon_before = {had_icon_before}");
 
         let service = service.to_string().into();
         let icon = icon.clone();
@@ -53,7 +52,6 @@ impl Store {
     ) -> Option<TrayEvent> {
         let had_items_before = self.items.insert(Arc::clone(&service), items).is_some();
         let (icon, items) = self.get_icon_and_items(&service)?;
-        log::info!("had_items_before = {had_items_before}");
 
         let service = service.to_string().into();
         let items = items.clone().into();

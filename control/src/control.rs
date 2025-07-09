@@ -23,7 +23,7 @@ impl Control {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ControlEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {
-                log::error!("{NAME} crashed: {err:?}");
+                log::error!(target: "Control", "{err:?}");
             }
         });
         (NAME, Self { rx }, handle, ())
@@ -36,7 +36,7 @@ impl Control {
         connection.request_name("org.me.LayerShellControl").await?;
 
         token.cancelled().await;
-        log::info!(target: NAME, "exiting...");
+        log::info!(target: "Control", "exiting...");
 
         Ok(())
     }

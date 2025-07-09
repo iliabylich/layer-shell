@@ -106,7 +106,7 @@ impl MainLoop {
 
         for (name, handle) in self.handles {
             if let Err(err) = handle.await {
-                log::error!("failed to await for {name} completion: {err:?}");
+                log::error!(target: name, "failed to await for completion: {err:?}");
             }
         }
     }

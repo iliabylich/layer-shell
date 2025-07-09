@@ -18,13 +18,11 @@ const NAME: &str = "Tray";
 
 impl Tray {
     pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, TrayCtl) {
-        log::info!("{}", chrono::Utc::now().timestamp());
-
         let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<TrayEvent>();
         let (ctx, crx) = tokio::sync::mpsc::unbounded_channel::<String>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = TrayTask::start(etx, crx, token).await {
-                log::error!("{NAME} crashed: {err:?}");
+                log::error!(target: "Tray", "{err:?}");
             }
         });
         let trigger = TrayCtl { tx: ctx };

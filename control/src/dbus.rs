@@ -13,7 +13,7 @@ impl DBus {
 
     fn emit(&self, event: ControlEvent) {
         if let Err(err) = self.sender.send(event) {
-            log::error!("{err:?}");
+            log::error!(target: "Control", "{err:?}");
         }
     }
 }

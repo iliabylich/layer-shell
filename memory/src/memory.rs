@@ -40,7 +40,7 @@ impl Stream for Memory {
         match parse(this.buf) {
             Ok(event) => std::task::Poll::Ready(Some(event)),
             Err(err) => {
-                log::error!("{NAME} stream has crashes: {err:?}");
+                log::error!(target: "Memory", "{err:?}");
                 std::task::Poll::Ready(None)
             }
         }

@@ -66,13 +66,13 @@ impl TrayTask {
             tokio::select! {
                 Some((_stream_id, event)) = self.stream_map.next() => {
                     if let Err(err) = self.on_event(event).await {
-                        log::error!("{err:?}");
+                        log::error!(target: "Tray", "{err:?}");
                     }
                 }
 
                 Some(uuid) = self.crx.recv() => {
                     if let Err(err) = self.trigger(uuid).await {
-                        log::error!("{err:?}");
+                        log::error!(target: "Tray", "{err:?}");
                     }
                 }
 
@@ -140,7 +140,7 @@ impl TrayTask {
 
                 match event {
                     Ok(event) => self.stream_map.emit(event)?,
-                    Err(err) => log::error!("{err:?}"),
+                    Err(err) => log::error!(target: "Tray", "{err:?}"),
                 }
 
                 self.stream_map.add(stream_id, stream);
@@ -227,6 +227,7 @@ impl TrayTask {
 
         let Ok(event) = e1.or(e2) else {
             log::error!(
+                target: "Tray",
                 "got notification about new icon but neither IconName nor IconPixmap can be received"
             );
             return Ok(());
@@ -246,7 +247,7 @@ impl TrayTask {
                 service: Arc::clone(&service),
             })?,
             Err(err) => {
-                log::error!("failed to get layout of {service}: {err:?}");
+                log::error!(target: "Tray", "failed to get layout of {service}: {err:?}");
                 return Ok(());
             }
         }

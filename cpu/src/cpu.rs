@@ -41,7 +41,7 @@ impl Stream for CPU {
                 usage_per_core: usage_per_core.into(),
             })),
             Err(err) => {
-                log::error!("{NAME} stream has crashed: {err:?}");
+                log::error!(target: "CPU", "{err:?}");
                 std::task::Poll::Ready(None)
             }
         }

@@ -84,7 +84,7 @@ impl Devices {
         for path in paths {
             match Self::get_device_network(path, conn).await {
                 Ok(network) => list.push(network),
-                Err(err) => log::error!("{err:?}"),
+                Err(err) => log::error!(target: "Network", "{err:?}"),
             }
         }
 
