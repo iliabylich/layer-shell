@@ -12,6 +12,12 @@ impl CString {
                 std::process::exit(1)
             })
     }
+
+    pub fn into_raw(self) -> *mut std::ffi::c_char {
+        let ptr = self.ptr;
+        std::mem::forget(self);
+        ptr
+    }
 }
 
 impl From<String> for CString {

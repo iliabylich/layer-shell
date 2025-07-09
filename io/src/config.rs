@@ -1,8 +1,9 @@
 use anyhow::{Context as _, Result};
+use ffi::CString;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub(crate) struct Config {
     pub(crate) lock: String,
     pub(crate) reboot: String,
@@ -11,6 +12,14 @@ pub(crate) struct Config {
     pub(crate) edit_bluetooth: String,
     pub(crate) open_system_monitor: String,
     pub(crate) change_theme: String,
+
+    pub(crate) ping: Vec<String>,
+    pub(crate) terminal: Terminal,
+}
+#[derive(Deserialize, Debug)]
+pub(crate) struct Terminal {
+    label: String,
+    command: Vec<String>,
 }
 
 impl Config {
@@ -20,6 +29,8 @@ impl Config {
             std::fs::read_to_string(&path).with_context(|| format!("failed to read {path:?}"))?;
         let config: Config =
             toml::from_str(&contents).with_context(|| format!("failed to parse {path:?}"))?;
+
+        log::info!("{config:#?}");
 
         Ok(config)
     }
@@ -36,13 +47,21 @@ fn config_dir() -> Result<PathBuf> {
 
 #[repr(C)]
 pub struct IOConfig {
-    pub lock: ffi::CString,
-    pub reboot: ffi::CString,
-    pub shutdown: ffi::CString,
-    pub edit_wifi: ffi::CString,
-    pub edit_bluetooth: ffi::CString,
-    pub open_system_monitor: ffi::CString,
-    pub change_theme: ffi::CString,
+    pub lock: CString,
+    pub reboot: CString,
+    pub shutdown: CString,
+    pub edit_wifi: CString,
+    pub edit_bluetooth: CString,
+    pub open_system_monitor: CString,
+    pub change_theme: CString,
+
+    pub ping: *mut *mut std::ffi::c_char,
+    pub terminal: IOTerminal,
+}
+#[repr(C)]
+pub struct IOTerminal {
+    pub label: CString,
+    pub command: *mut *mut std::ffi::c_char,
 }
 
 impl From<&Config> for IOConfig {
@@ -55,6 +74,30 @@ impl From<&Config> for IOConfig {
             edit_bluetooth: config.edit_bluetooth.clone().into(),
             open_system_monitor: config.open_system_monitor.clone().into(),
             change_theme: config.change_theme.clone().into(),
+
+            ping: vec_of_string_to_null_terminated_c_array(config.ping.clone()),
+            terminal: IOTerminal::from(&config.terminal),
         }
     }
+}
+
+impl From<&Terminal> for IOTerminal {
+    fn from(terminal: &Terminal) -> Self {
+        Self {
+            label: terminal.label.clone().into(),
+            command: vec_of_string_to_null_terminated_c_array(terminal.command.clone()),
+        }
+    }
+}
+
+fn vec_of_string_to_null_terminated_c_array(cmd: Vec<String>) -> *mut *mut std::ffi::c_char {
+    let mut cmd = cmd
+        .into_iter()
+        .map(|s| CString::from(s).into_raw())
+        .collect::<Vec<_>>();
+    cmd.push(std::ptr::null_mut());
+    let mut cmd = cmd.into_boxed_slice();
+    let ptr = cmd.as_mut_ptr();
+    std::mem::forget(cmd);
+    ptr
 }

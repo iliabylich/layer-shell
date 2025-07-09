@@ -1,7 +1,8 @@
-#include "ui/htop.h"
+#include "ui/terminal.h"
+#include "bindings.h"
 #include "ui/logger.h"
 
-LOGGER("HTop", 1)
+LOGGER("Terminal", 1)
 
 enum {
   SIGNAL_CLICKED = 0,
@@ -9,22 +10,22 @@ enum {
 };
 static guint signals[N_SIGNALS] = {0};
 
-struct _HTop {
+struct _Terminal {
   GtkWidget parent_instance;
 
   GtkWidget *root;
 };
 
-G_DEFINE_TYPE(HTop, htop, GTK_TYPE_WIDGET)
+G_DEFINE_TYPE(Terminal, terminal, GTK_TYPE_WIDGET)
 
-static void on_click(GtkWidget *, HTop *self) {
+static void on_click(GtkWidget *, Terminal *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED], 0);
 }
 
-static void htop_init(HTop *self) {
+static void terminal_init(Terminal *self) {
   LOG("init");
 
-  self->root = gtk_button_new_with_label("HTop");
+  self->root = gtk_button_new_with_label(io_config()->terminal.label);
   gtk_widget_add_css_class(self->root, "widget");
   gtk_widget_add_css_class(self->root, "terminal");
   gtk_widget_add_css_class(self->root, "padded");
@@ -35,19 +36,19 @@ static void htop_init(HTop *self) {
   gtk_widget_set_parent(self->root, GTK_WIDGET(self));
 }
 
-static void htop_dispose(GObject *object) {
+static void terminal_dispose(GObject *object) {
   LOG("dispose");
 
-  HTop *self = HTOP(object);
+  Terminal *self = TERMINAL(object);
   g_clear_pointer(&self->root, gtk_widget_unparent);
-  G_OBJECT_CLASS(htop_parent_class)->dispose(object);
+  G_OBJECT_CLASS(terminal_parent_class)->dispose(object);
 }
 
-static void htop_class_init(HTopClass *klass) {
+static void terminal_class_init(TerminalClass *klass) {
   LOG("class init");
 
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
-  object_class->dispose = htop_dispose;
+  object_class->dispose = terminal_dispose;
   signals[SIGNAL_CLICKED] = g_signal_new_class_handler(
       "clicked", G_OBJECT_CLASS_TYPE(object_class), G_SIGNAL_RUN_LAST, NULL,
       NULL, NULL, NULL, G_TYPE_NONE, 0);
@@ -55,4 +56,6 @@ static void htop_class_init(HTopClass *klass) {
                                            GTK_TYPE_BOX_LAYOUT);
 }
 
-GtkWidget *htop_new(void) { return g_object_new(htop_get_type(), NULL); }
+GtkWidget *terminal_new(void) {
+  return g_object_new(terminal_get_type(), NULL);
+}

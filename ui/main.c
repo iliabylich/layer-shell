@@ -4,8 +4,6 @@
 #include "ui/clock.h"
 #include "ui/cpu.h"
 #include "ui/css.h"
-#include "ui/htop.h"
-#include "ui/htop_window.h"
 #include "ui/language.h"
 #include "ui/logger.h"
 #include "ui/memory.h"
@@ -13,6 +11,8 @@
 #include "ui/ping_window.h"
 #include "ui/power.h"
 #include "ui/session_window.h"
+#include "ui/terminal.h"
+#include "ui/terminal_window.h"
 #include "ui/top_bar.h"
 #include "ui/tray.h"
 #include "ui/weather.h"
@@ -26,7 +26,7 @@ GtkApplication *app;
 
 GtkWidget *top_bar;
 GtkWidget *weather_window;
-GtkWidget *htop_window;
+GtkWidget *terminal_window;
 GtkWidget *ping_window;
 GtkWidget *session_window;
 
@@ -34,7 +34,7 @@ GtkWidget *workspaces;
 GtkWidget *change_theme;
 GtkWidget *tray;
 GtkWidget *weather;
-GtkWidget *htop;
+GtkWidget *terminal;
 GtkWidget *language;
 GtkWidget *cpu;
 GtkWidget *memory;
@@ -134,7 +134,7 @@ int poll_events(void) {
       LOG("Removing windows...");
       remove_window(&top_bar);
       remove_window(&weather_window);
-      remove_window(&htop_window);
+      remove_window(&terminal_window);
       remove_window(&ping_window);
       remove_window(&session_window);
       g_application_quit(G_APPLICATION(app));
@@ -162,7 +162,9 @@ static void on_weather_clicked() {
   weather_window_toggle(WEATHER_WINDOW(weather_window));
 }
 
-static void on_htop_clicked() { htop_window_toggle(HTOP_WINDOW(htop_window)); }
+static void on_terminal_clicked() {
+  terminal_window_toggle(TERMINAL_WINDOW(terminal_window));
+}
 
 static void on_memory_clicked() { io_spawn_system_monitor(); }
 
@@ -216,9 +218,9 @@ static void on_app_activate() {
   CONNECT(weather, "clicked", on_weather_clicked);
   top_bar_push_right(TOP_BAR(top_bar), weather);
 
-  htop = htop_new();
-  CONNECT(htop, "clicked", on_htop_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), htop);
+  terminal = terminal_new();
+  CONNECT(terminal, "clicked", on_terminal_clicked);
+  top_bar_push_right(TOP_BAR(top_bar), terminal);
 
   language = language_new();
   top_bar_push_right(TOP_BAR(top_bar), language);
@@ -248,7 +250,7 @@ static void on_app_activate() {
   top_bar_push_right(TOP_BAR(top_bar), power);
 
   weather_window = weather_window_new(app);
-  htop_window = htop_window_new(app);
+  terminal_window = terminal_window_new(app);
   ping_window = ping_window_new(app);
   session_window = session_window_new(app);
   CONNECT(session_window, "clicked-lock", on_lock_clicked);

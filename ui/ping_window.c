@@ -26,9 +26,7 @@ static void ping_window_init(PingWindow *self) {
 
   base_window_set_toggle_on_escape(BASE_WINDOW(self));
 
-  const IO_IOConfig *config = io_config();
-  fprintf(stderr, "change them: %s\n", config->change_theme);
-  base_window_vte(BASE_WINDOW(self), (char *[]){"ping", "8.8.8.8", NULL});
+  base_window_vte(BASE_WINDOW(self), io_config()->ping);
 }
 
 static void ping_window_dispose(GObject *object) {
