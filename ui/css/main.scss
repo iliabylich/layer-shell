@@ -1,22 +1,10 @@
-* {
-    --theme-accent-color: var(--accent-color, red);
-    --theme-accent-dark-color: var(--accent-dark-color, green);
-    --theme-text-color: var(--text-color, yellow);
-    --theme-bg-color: var(--bg-color, blue);
-    --theme-solid-bg-color: var(--solid-bg-color, black);
-    --theme-solid-bg-color-hover: var(--solid-bg-color-hover, gray);
-    --theme-popover-bg-color: var(--popover-bg-color, pink);
-    --theme-popover-bg-color-on-hover: var(--popover-bg-color-on-hover, azure);
-    --theme-popover-bg-color-disabled: var(--popover-bg-color-disabled, brown);
-}
-
 // reset
 * {
     all: unset;
 }
 
 * {
-    color: var(--theme-text-color);
+    color: var(--on_secondary_container);
     text-decoration: none;
 
     font-family: "Inter Nerd Font Propo", serif;
@@ -28,28 +16,28 @@
 }
 
 popover {
-    border: 2px solid var(--theme-accent-color);
-    background-color: var(--theme-popover-bg-color);
+    border: 2px solid var(--inverse_primary);
+    background-color: var(--primary_container);
 
     separator.horizontal {
-        border-bottom: 5px solid var(--theme-accent-color);
+        border-bottom: 5px solid var(--inverse_primary);
     }
 
     modelbutton {
-        border-bottom: 1px solid var(--theme-accent-color);
+        border-bottom: 1px solid var(--inverse_primary);
         padding: 10px;
 
         &:disabled {
-            background-color: var(--theme-popover-bg-color-disabled);
+            background-color: var(--secondary_container);
 
             label {
                 text-decoration: line-through;
-                color: var(--theme-popover-text-color);
+                color: red;
             }
         }
 
         &:hover {
-            background-color: var(--theme-popover-bg-color-on-hover);
+            background-color: var(--inverse_primary);
         }
     }
 
@@ -89,25 +77,25 @@ popover {
     }
 
     .widget {
-        border: 2px var(--theme-accent-color) solid;
+        border: 2px var(--inverse_primary) solid;
         border-radius: 10px;
-        background-color: var(--theme-solid-bg-color);
+        background-color: var(--surface_container-alpha);
 
         &.clickable:hover {
-            background-color: var(--theme-accent-color);
+            background-color: var(--inverse_primary);
 
             label {
-                color: var(--theme-bg-color);
+                color: #151515;
             }
 
             popover {
                 label {
-                    color: var(--theme-text-color);
+                    color: var(--on_secondary_container);
                 }
 
                 modelbutton:disabled label {
                     text-decoration: line-through;
-                    color: var(--theme-solid-bg-color);
+                    color: var(--surface_container);
                 }
             }
         }
@@ -137,7 +125,7 @@ popover {
                 }
 
                 &.active {
-                    background-color: var(--theme-accent-color);
+                    background-color: var(--inverse_primary);
                 }
             }
         }
@@ -159,7 +147,7 @@ popover {
             }
 
             separator.vertical {
-                border-left: 1px solid var(--theme-accent-color);
+                border-left: 1px solid var(--inverse_primary);
                 margin-left: 10px;
                 margin-right: 10px;
             }
@@ -186,37 +174,36 @@ popover {
 }
 
 tooltip {
-    background-color: var(--theme-bg-color);
+    background-color: #151515;
     padding: 2px;
-    border: 1px solid var(--theme-accent-color);
+    border: 1px solid var(--inverse_primary);
 }
 
 .session-window {
-    background-color: var(--theme-solid-bg-color);
-
     .wrapper {
         padding: 300px 100px;
     }
 
     button {
-        border: 5px solid var(--theme-accent-color);
+        border: 5px solid var(--inverse_primary);
         border-radius: 20px;
+        background-color: var(--surface_container-alpha);
 
         &:hover {
-            background-color: var(--theme-solid-bg-color-hover);
+            background-color: var(--inverse_primary);
         }
     }
 }
 
 .terminal-window {
-    border: 5px solid var(--theme-accent-color);
+    border: 5px solid var(--inverse_primary);
     border-radius: 10px;
 }
 
 .weather-window {
-    border: 3px solid var(--theme-accent-color);
+    border: 3px solid var(--inverse_primary);
     border-radius: 10px;
-    background-color: var(--theme-solid-bg-color);
+    background-color: var(--surface_container-alpha);
     padding: 10px;
 
     label {
