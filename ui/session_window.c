@@ -1,4 +1,5 @@
 #include "ui/session_window.h"
+#include "gtk/gtk.h"
 #include "ui/base_window.h"
 #include "ui/logger.h"
 #include <gtk4-layer-shell.h>
@@ -57,18 +58,16 @@ static void session_window_init(SessionWindow *self) {
 
   gtk_layer_init_for_window(GTK_WINDOW(self));
   gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, true);
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_LEFT, true);
   gtk_layer_set_namespace(GTK_WINDOW(self), "LayerShell/SessionScreen");
   gtk_layer_set_keyboard_mode(GTK_WINDOW(self),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
   gtk_widget_add_css_class(GTK_WIDGET(self), "session-window");
+  g_object_set(G_OBJECT(self), "width-request", 400, "height-request", 300,
+               NULL);
 
   base_window_set_toggle_on_escape(BASE_WINDOW(self));
 
-  self->root = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 200);
+  self->root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
   gtk_box_set_homogeneous(GTK_BOX(self->root), true);
   gtk_widget_add_css_class(self->root, "wrapper");
 
