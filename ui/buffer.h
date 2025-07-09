@@ -5,7 +5,6 @@
 typedef struct {
   char *ptr;
   size_t len;
-  bool owned;
 } buffer_t;
 
 buffer_t buffer_from_file(const char *path);
