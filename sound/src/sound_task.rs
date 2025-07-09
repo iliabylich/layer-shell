@@ -1,4 +1,6 @@
-use crate::{MuteChangedEvent, SoundEvent, VolumeChangedEvent, dbus::PipewireDBusProxy};
+use crate::{
+    InitialSoundEvent, MuteChangedEvent, SoundEvent, VolumeChangedEvent, dbus::PipewireDBusProxy,
+};
 use anyhow::{Context as _, Result, bail};
 use futures::StreamExt;
 use tokio::sync::mpsc::UnboundedSender;
@@ -30,31 +32,38 @@ impl SoundTask {
         let mut volume_stream = proxy
             .receive_volume_changed()
             .await
-            .filter_map(async move |e| {
-                let volume = e.get().await.ok()?;
-                Some(SoundEvent::VolumeChangedEvent(VolumeChangedEvent {
-                    volume,
-                }))
-            })
+            .skip(1)
+            .filter_map(async move |e| e.get().await.ok())
             .boxed();
 
         let mut muted_stream = proxy
             .receive_muted_changed()
             .await
-            .filter_map(async move |e| {
-                let muted = e.get().await.ok()?;
-                Some(SoundEvent::MuteChangedEvent(MuteChangedEvent { muted }))
-            })
+            .skip(1)
+            .filter_map(async move |e| e.get().await.ok())
             .boxed();
+
+        let volume = proxy
+            .volume()
+            .await
+            .context("failed to get initial 'volume'")?;
+        let muted = proxy
+            .muted()
+            .await
+            .context("failed to receive initial 'muted'")?;
+        self.emit(SoundEvent::InitialSoundEvent(InitialSoundEvent {
+            volume,
+            muted,
+        }))?;
 
         loop {
             tokio::select! {
-                Some(event) = volume_stream.next() => {
-                    self.emit(event)?;
+                Some(volume) = volume_stream.next() => {
+                    self.emit(SoundEvent::VolumeChangedEvent(VolumeChangedEvent { volume }))?;
                 }
 
-                Some(event) = muted_stream.next() => {
-                    self.emit(event)?;
+                Some(muted) = muted_stream.next() => {
+                    self.emit(SoundEvent::MuteChangedEvent(MuteChangedEvent { muted }))?;
                 }
 
                 _ = self.token.cancelled() => {

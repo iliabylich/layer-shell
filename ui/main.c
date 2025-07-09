@@ -11,6 +11,7 @@
 #include "ui/ping_window.h"
 #include "ui/power.h"
 #include "ui/session_window.h"
+#include "ui/sound_window.h"
 #include "ui/terminal.h"
 #include "ui/terminal_window.h"
 #include "ui/top_bar.h"
@@ -29,6 +30,7 @@ GtkWidget *weather_window;
 GtkWidget *terminal_window;
 GtkWidget *ping_window;
 GtkWidget *session_window;
+GtkWidget *sound_window;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
@@ -126,6 +128,20 @@ int poll_events(void) {
     }
     case IO_Event_ToggleSessionScreen: {
       session_window_toggle(SESSION_WINDOW(session_window));
+      break;
+    }
+    case IO_Event_InitialSound: {
+      sound_window_set_initial_sound(SOUND_WINDOW(sound_window),
+                                     event.initial_sound);
+      break;
+    }
+    case IO_Event_VolumeChanged: {
+      sound_window_refresh_volume(SOUND_WINDOW(sound_window),
+                                  event.volume_changed);
+      break;
+    }
+    case IO_Event_MuteChanged: {
+      sound_window_refresh_mute(SOUND_WINDOW(sound_window), event.mute_changed);
       break;
     }
     case IO_Event_Exit: {
@@ -250,13 +266,18 @@ static void on_app_activate() {
   top_bar_push_right(TOP_BAR(top_bar), power);
 
   weather_window = weather_window_new(app);
+
   terminal_window = terminal_window_new(app);
+
   ping_window = ping_window_new(app);
+
   session_window = session_window_new(app);
   CONNECT(session_window, "clicked-lock", on_lock_clicked);
   CONNECT(session_window, "clicked-shutdown", on_shutdown_clicked);
   CONNECT(session_window, "clicked-reboot", on_reboot_clicked);
   CONNECT(session_window, "clicked-logout", on_logout_clicked);
+
+  sound_window = sound_window_new(app);
 
 #undef CONNECT
 

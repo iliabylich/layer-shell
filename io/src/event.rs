@@ -6,7 +6,7 @@ use memory::MemoryEvent;
 use network::{
     DownloadSpeedEvent, NetworkEvent, NetworkListEvent, UploadSpeedEvent, WifiStatusEvent,
 };
-use sound::{MuteChangedEvent, SoundEvent, VolumeChangedEvent};
+use sound::{InitialSoundEvent, MuteChangedEvent, SoundEvent, VolumeChangedEvent};
 use tray::{
     TrayAppAddedEvent, TrayAppIconUpdatedEvent, TrayAppMenuUpdatedEvent, TrayAppRemovedEvent,
     TrayEvent,
@@ -40,6 +40,7 @@ pub enum Event {
     Exit,
     VolumeChanged(VolumeChangedEvent),
     MuteChanged(MuteChangedEvent),
+    InitialSound(InitialSoundEvent),
 }
 
 impl From<HyprlandEvent> for Event {
@@ -116,6 +117,7 @@ impl From<SoundEvent> for Event {
         match event {
             SoundEvent::MuteChangedEvent(e) => Self::MuteChanged(e),
             SoundEvent::VolumeChangedEvent(e) => Self::VolumeChanged(e),
+            SoundEvent::InitialSoundEvent(e) => Self::InitialSound(e),
         }
     }
 }

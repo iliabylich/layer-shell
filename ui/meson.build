@@ -16,6 +16,7 @@ sources += files(
     'ping_window.c',
     'power.c',
     'session_window.c',
+    'sound_window.c',
     'terminal.c',
     'terminal_window.c',
     'top_bar.c',

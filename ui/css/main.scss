@@ -220,3 +220,31 @@ tooltip {
         font-size: var(--icon-font-size);
     }
 }
+
+.sound-window {
+    border: 3px solid var(--inverse_primary);
+    border-radius: 10px;
+    background-color: var(--surface_container-alpha);
+    padding: 15px;
+
+    label {
+        min-width: 30px;
+        font-size: 30px;
+    }
+
+    scale {
+        trough {
+            min-height: 50px;
+            background-color: var(--tertiary_container-alpha);
+            border-radius: 10px;
+
+            highlight {
+                background-color: var(--tertiary_container);
+            }
+
+            slider {
+                background-color: var(--tertiary_container);
+            }
+        }
+    }
+}

@@ -1,12 +1,14 @@
 #[derive(Debug)]
 pub enum SoundEvent {
-    MuteChangedEvent(MuteChangedEvent),
+    InitialSoundEvent(InitialSoundEvent),
     VolumeChangedEvent(VolumeChangedEvent),
+    MuteChangedEvent(MuteChangedEvent),
 }
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct MuteChangedEvent {
+pub struct InitialSoundEvent {
+    pub volume: u32,
     pub muted: bool,
 }
 
@@ -14,4 +16,10 @@ pub struct MuteChangedEvent {
 #[repr(C)]
 pub struct VolumeChangedEvent {
     pub volume: u32,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct MuteChangedEvent {
+    pub muted: bool,
 }
