@@ -4,3 +4,4 @@ src/dbus/interfaces
 .vscode
 *.o
 *.data
+/test-install

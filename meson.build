@@ -11,6 +11,7 @@ project(
 sources = []
 subdir('ui')
 subdir('io')
+subdir('systemd')
 
 prefix = get_option('prefix')
 bindir = get_option('bindir')
