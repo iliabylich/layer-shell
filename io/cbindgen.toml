@@ -16,6 +16,7 @@ include = [
     "hyprland",
     "memory",
     "network",
+    "sound",
     "tray",
     "weather",
 ]

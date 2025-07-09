@@ -727,6 +727,7 @@ dependencies = [
  "memory",
  "network",
  "serde",
+ "sound",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -1298,6 +1299,19 @@ checksum = "e22376abed350d73dd1cd119b57ffccad95b4e585a7cda43e286245ce23c0678"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "sound"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "log",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util",
+ "zbus",
 ]
 
 [[package]]

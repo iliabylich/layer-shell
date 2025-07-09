@@ -20,11 +20,12 @@ toml = { workspace = true }
 
 ffi = { path = "../ffi" }
 
-hyprland = { path = "../hyprland" }
-cpu = { path = "../cpu" }
-memory = { path = "../memory" }
 clock = { path = "../clock" }
 control = { path = "../control" }
+cpu = { path = "../cpu" }
+hyprland = { path = "../hyprland" }
+memory = { path = "../memory" }
 network = { path = "../network" }
-weather = { path = "../weather" }
+sound = { path = "../sound" }
 tray = { path = "../tray" }
+weather = { path = "../weather" }

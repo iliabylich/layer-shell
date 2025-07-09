@@ -7,6 +7,7 @@ use futures::{Stream, StreamExt as _};
 use hyprland::{Hyprctl, Hyprland};
 use memory::Memory;
 use network::Network;
+use sound::Sound;
 use std::{collections::HashMap, pin::Pin};
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
@@ -63,6 +64,7 @@ impl MainLoop {
         register_task!(Control);
         register_task!(Network);
         register_task!(Weather);
+        register_task!(Sound);
         let hyprctl = register_task!(Hyprland);
         let trayctl = register_task!(Tray);
 
