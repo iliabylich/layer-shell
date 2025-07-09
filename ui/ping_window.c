@@ -1,4 +1,5 @@
 #include "ui/ping_window.h"
+#include "bindings.h"
 #include "ui/base_window.h"
 #include "ui/logger.h"
 #include <gtk4-layer-shell.h>
@@ -24,6 +25,9 @@ static void ping_window_init(PingWindow *self) {
                NULL);
 
   base_window_set_toggle_on_escape(BASE_WINDOW(self));
+
+  const IO_IOConfig *config = io_config();
+  fprintf(stderr, "change them: %s\n", config->change_theme);
   base_window_vte(BASE_WINDOW(self), (char *[]){"ping", "8.8.8.8", NULL});
 }
 

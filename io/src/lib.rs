@@ -1,4 +1,5 @@
 mod command;
+mod config;
 mod event;
 mod main_loop;
 
@@ -10,6 +11,8 @@ use main_loop::MainLoop;
 use std::cell::RefCell;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+use crate::config::{Config, IOConfig};
+
 thread_local! {
     static ETX: RefCell<Option<UnboundedSender<Event>>> = const { RefCell::new(None) };
     static ERX: RefCell<Option<UnboundedReceiver<Event>>> = const { RefCell::new(None) };
@@ -18,9 +21,16 @@ thread_local! {
     static CRX: RefCell<Option<UnboundedReceiver<Command>>> = const { RefCell::new(None) };
 
     static THREAD_HANDLE: RefCell<Option<std::thread::JoinHandle<()>>> = const { RefCell::new(None) };
+
+    static CONFIG: RefCell<Option<Config>> = const { RefCell::new(None) };
+    static IO_CONFIG: RefCell<Option<IOConfig>> = const { RefCell::new(None) };
 }
 
-fn io_run_in_place(etx: UnboundedSender<Event>, crx: UnboundedReceiver<Command>) -> Result<()> {
+fn io_run_in_place(
+    config: Config,
+    etx: UnboundedSender<Event>,
+    crx: UnboundedReceiver<Command>,
+) -> Result<()> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -30,7 +40,7 @@ fn io_run_in_place(etx: UnboundedSender<Event>, crx: UnboundedReceiver<Command>)
         });
 
     rt.block_on(async move {
-        let main_loop = match MainLoop::new(etx, crx).await {
+        let main_loop = match MainLoop::new(config, etx, crx).await {
             Ok(main_loop) => main_loop,
             Err(err) => {
                 log::error!("failed to instantiate main loop, exiting: {err:?}");
@@ -54,11 +64,21 @@ pub extern "C" fn io_init() {
 
     let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<Event>();
     let (ctx, crx) = tokio::sync::mpsc::unbounded_channel::<Command>();
+    let config = match Config::read() {
+        Ok(config) => config,
+        Err(err) => {
+            log::error!("{err:?}");
+            std::process::exit(1);
+        }
+    };
+    let io_config = IOConfig::from(&config);
 
     ETX.set(Some(etx));
     ERX.set(Some(erx));
     CTX.set(Some(ctx));
     CRX.set(Some(crx));
+    CONFIG.set(Some(config));
+    IO_CONFIG.set(Some(io_config));
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_thread() {
@@ -70,14 +90,29 @@ pub extern "C" fn io_spawn_thread() {
         log::error!("CRX is not set, did you call io_init()?");
         std::process::exit(1);
     };
+    let Some(config) = CONFIG.take() else {
+        log::error!("CONFIG is not set, did you call io_init()?");
+        std::process::exit(1);
+    };
 
     let handle = std::thread::spawn(move || {
-        if let Err(err) = io_run_in_place(etx, crx) {
+        if let Err(err) = io_run_in_place(config, etx, crx) {
             log::error!("IO thread has crashed: {:?}", err);
         }
     });
 
     THREAD_HANDLE.set(Some(handle));
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_config() -> *const IOConfig {
+    IO_CONFIG.with(|config| {
+        if let Some(config) = config.borrow().as_ref() {
+            config as *const IOConfig
+        } else {
+            log::error!("IO_CONFIG is not set, did you call io_init() ?");
+            std::process::exit(1)
+        }
+    })
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_poll_events() -> CArray<Event> {

@@ -53,9 +53,7 @@ impl<'a> Layout<'a> {
 
     fn parse_input(&self, input: Input) -> Result<Vec<TrayItem>> {
         let (_, (_, _, items)) = input;
-        let items = self.parse_items(items)?;
-
-        Ok(items.into())
+        self.parse_items(items)
     }
 
     fn parse_items(&self, items: Vec<OwnedValue>) -> Result<Vec<TrayItem>> {
@@ -112,40 +110,40 @@ impl<'a> Layout<'a> {
 
         if props.children_display == "submenu" {
             let children = self.parse_items(children)?;
-            return Ok(ItemOrSeparator::Item(TrayItem::Nested {
+            Ok(ItemOrSeparator::Item(TrayItem::Nested {
                 id,
                 uuid: uuid.into(),
                 label: props.label.into(),
                 children: children.into(),
-            }));
+            }))
         } else if props.type_ == "separator" {
-            return Ok(ItemOrSeparator::Separator);
+            Ok(ItemOrSeparator::Separator)
         } else if !props.enabled {
-            return Ok(ItemOrSeparator::Item(TrayItem::Disabled {
+            Ok(ItemOrSeparator::Item(TrayItem::Disabled {
                 id,
                 uuid: uuid.into(),
                 label: props.label.into(),
-            }));
+            }))
         } else if props.toggle_type == "checkmark" {
-            return Ok(ItemOrSeparator::Item(TrayItem::Checkbox {
+            Ok(ItemOrSeparator::Item(TrayItem::Checkbox {
                 id,
                 uuid: uuid.into(),
                 label: props.label.into(),
                 checked: props.toggle_state == 1,
-            }));
+            }))
         } else if props.toggle_type == "radio" {
-            return Ok(ItemOrSeparator::Item(TrayItem::Radio {
+            Ok(ItemOrSeparator::Item(TrayItem::Radio {
                 id,
                 uuid: uuid.into(),
                 label: props.label.into(),
                 selected: props.toggle_state == 1,
-            }));
+            }))
         } else {
-            return Ok(ItemOrSeparator::Item(TrayItem::Regular {
+            Ok(ItemOrSeparator::Item(TrayItem::Regular {
                 id,
                 uuid: uuid.into(),
                 label: props.label.into(),
-            }));
+            }))
         }
     }
 }

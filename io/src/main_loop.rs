@@ -1,4 +1,4 @@
-use crate::{command::Command, event::Event};
+use crate::{command::Command, config::Config, event::Event};
 use anyhow::{Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
@@ -18,6 +18,7 @@ use tray::{Tray, TrayCtl};
 use weather::Weather;
 
 pub(crate) struct MainLoop {
+    config: Config,
     token: CancellationToken,
     handles: HashMap<&'static str, JoinHandle<()>>,
 
@@ -32,6 +33,7 @@ pub(crate) struct MainLoop {
 
 impl MainLoop {
     pub(crate) async fn new(
+        config: Config,
         etx: UnboundedSender<Event>,
         crx: UnboundedReceiver<Command>,
     ) -> Result<Self> {
@@ -65,6 +67,7 @@ impl MainLoop {
         let trayctl = register_task!(Tray);
 
         Ok(Self {
+            config,
             token,
             handles,
 
@@ -130,13 +133,13 @@ impl MainLoop {
                 hyprctl!("workspace {}", workspace);
             }
             Command::Lock => {
-                hyprctl!("exec hyprlock");
+                hyprctl!("exec {}", self.config.lock);
             }
             Command::Reboot => {
-                hyprctl!("exec systemctl reboot");
+                hyprctl!("exec {}", self.config.reboot);
             }
             Command::Shutdown => {
-                hyprctl!("exec systemctl poweroff");
+                hyprctl!("exec {}", self.config.shutdown);
             }
             Command::Logout => {
                 hyprctl!("exit");
@@ -145,16 +148,16 @@ impl MainLoop {
                 self.trayctl.trigger(uuid);
             }
             Command::SpawnWiFiEditor => {
-                hyprctl!("exec iwmenu --launcher fuzzel");
+                hyprctl!("exec {}", self.config.edit_wifi);
             }
             Command::SpawnBluetoothEditor => {
-                hyprctl!("exec bzmenu --launcher fuzzel");
+                hyprctl!("exec {}", self.config.edit_bluetooth);
             }
             Command::SpawnSystemMonitor => {
-                hyprctl!("exec gnome-system-monitor");
+                hyprctl!("exec {}", self.config.open_system_monitor);
             }
             Command::ChangeTheme => {
-                hyprctl!("exec ~/.config/hypr/wallpaper-change.sh");
+                hyprctl!("exec {}", self.config.change_theme);
             }
         }
     }
