@@ -19,7 +19,7 @@ pin_project! {
 const NAME: &str = "Weather";
 
 impl Weather {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, ()) {
+    pub fn spawn(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, ()) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WeatherEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = Self::r#loop(tx, token).await {

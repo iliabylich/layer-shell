@@ -17,7 +17,7 @@ pin_project! {
 const NAME: &str = "Tray";
 
 impl Tray {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, TrayCtl) {
+    pub fn spawn(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, TrayCtl) {
         let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<TrayEvent>();
         let (ctx, crx) = tokio::sync::mpsc::unbounded_channel::<String>();
         let handle = tokio::task::spawn(async move {

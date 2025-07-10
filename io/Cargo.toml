@@ -19,6 +19,7 @@ serde = { workspace = true }
 toml = { workspace = true }
 
 ffi = { path = "../ffi" }
+module = { path = "../module" }
 
 clock = { path = "../clock" }
 control = { path = "../control" }

@@ -3,12 +3,13 @@ use anyhow::{Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
 use cpu::CPU;
-use futures::{Stream, StreamExt as _};
+use futures::{StreamExt as _, stream::BoxStream};
 use hyprland::{Hyprctl, Hyprland};
 use memory::Memory;
+use module::{Ctl, Module};
 use network::Network;
 use sound::Sound;
-use std::{collections::HashMap, pin::Pin};
+use std::collections::HashMap;
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
@@ -26,7 +27,7 @@ pub(crate) struct MainLoop {
     etx: UnboundedSender<Event>,
     crx: UnboundedReceiver<Command>,
 
-    streams: StreamMap<&'static str, Pin<Box<dyn Stream<Item = Event> + Send + 'static>>>,
+    streams: StreamMap<&'static str, BoxStream<'static, Event>>,
 
     hyprctl: Hyprctl,
     trayctl: TrayCtl,
@@ -51,7 +52,7 @@ impl MainLoop {
         }
         macro_rules! register_task {
             ($t:ty) => {{
-                let (name, stream, handle, out) = <$t>::new(token.clone());
+                let (name, stream, handle, out) = <$t>::spawn(token.clone());
                 handles.insert(name, handle);
                 streams.insert(name, stream.map(Event::from).boxed());
                 out
@@ -124,7 +125,7 @@ impl MainLoop {
     async fn on_command(&mut self, cmd: Command) {
         macro_rules! hyprctl {
             ($($arg:tt)*) => {
-                self.hyprctl.dispatch(format!($($arg)*)).await
+                self.hyprctl.send(format!($($arg)*)).await
             };
         }
 

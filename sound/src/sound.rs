@@ -1,37 +1,92 @@
-use crate::{SoundEvent, sound_task::SoundTask};
-use futures::Stream;
-use pin_project_lite::pin_project;
-use tokio::{sync::mpsc::UnboundedReceiver, task::JoinHandle};
+use crate::{
+    InitialSoundEvent, MuteChangedEvent, SoundEvent, VolumeChangedEvent, dbus::PipewireDBusProxy,
+};
+use anyhow::{Context as _, Result, bail};
+use futures::StreamExt as _;
+use module::Module;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
+use zbus::Connection;
 
-pin_project! {
-    pub struct Sound {
-        #[pin]
-        rx: UnboundedReceiver<SoundEvent>
-    }
+pub struct Sound {
+    etx: UnboundedSender<SoundEvent>,
+    token: CancellationToken,
 }
 
-const NAME: &str = "Sound";
+#[async_trait::async_trait]
+impl Module for Sound {
+    const NAME: &str = "Sound";
+    type Event = SoundEvent;
+    type Command = ();
+    type Ctl = ();
+
+    fn new(
+        etx: UnboundedSender<Self::Event>,
+        _: UnboundedReceiver<Self::Command>,
+        token: CancellationToken,
+    ) -> Self {
+        Self { etx, token }
+    }
+
+    async fn start(&mut self) -> Result<()> {
+        let conn = Connection::session().await?;
+
+        let proxy = PipewireDBusProxy::new(&conn)
+            .await
+            .context("failed to create pipewire-dbus proxy")?;
+
+        let mut volume_stream = proxy
+            .receive_volume_changed()
+            .await
+            .skip(1)
+            .filter_map(async move |e| e.get().await.ok())
+            .boxed();
+
+        let mut muted_stream = proxy
+            .receive_muted_changed()
+            .await
+            .skip(1)
+            .filter_map(async move |e| e.get().await.ok())
+            .boxed();
+
+        let volume = proxy
+            .volume()
+            .await
+            .context("failed to get initial 'volume'")?;
+        let muted = proxy
+            .muted()
+            .await
+            .context("failed to receive initial 'muted'")?;
+        self.emit(SoundEvent::InitialSoundEvent(InitialSoundEvent {
+            volume,
+            muted,
+        }))?;
+
+        loop {
+            tokio::select! {
+                Some(volume) = volume_stream.next() => {
+                    self.emit(SoundEvent::VolumeChangedEvent(VolumeChangedEvent { volume }))?;
+                }
+
+                Some(muted) = muted_stream.next() => {
+                    self.emit(SoundEvent::MuteChangedEvent(MuteChangedEvent { muted }))?;
+                }
+
+                _ = self.token.cancelled() => {
+                    log::info!(target: "Network", "exiting...");
+                    return Ok(())
+                }
+
+                else => bail!("all streams are closed")
+            }
+        }
+    }
+}
 
 impl Sound {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, ()) {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<SoundEvent>();
-        let handle = tokio::task::spawn(async move {
-            if let Err(err) = SoundTask::start(tx, token).await {
-                log::error!(target: "Network", "{err:?}");
-            }
-        });
-        (NAME, Self { rx }, handle, ())
-    }
-}
-
-impl Stream for Sound {
-    type Item = SoundEvent;
-
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        self.project().rx.poll_recv(cx)
+    fn emit(&mut self, event: SoundEvent) -> Result<()> {
+        self.etx
+            .send(event)
+            .context("failed to send Sound event: channel is closed")
     }
 }

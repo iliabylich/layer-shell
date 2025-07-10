@@ -1,34 +1,33 @@
 use crate::{HyprlandEvent, reader::Reader, state::State, writer::Writer};
-use anyhow::Result;
-use futures::Stream;
-use pin_project_lite::pin_project;
-use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
-    task::JoinHandle,
-};
+use anyhow::{Context, Result};
+use module::{Ctl, Module};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
-pin_project! {
-    pub struct Hyprland {
-        #[pin]
-        rx: UnboundedReceiver<HyprlandEvent>,
-    }
+pub struct Hyprland {
+    etx: UnboundedSender<HyprlandEvent>,
+    crx: UnboundedReceiver<String>,
+    token: CancellationToken,
 }
 
-const NAME: &str = "Hyprland";
+#[async_trait::async_trait]
+impl Module for Hyprland {
+    const NAME: &str = "Hyprland";
 
-impl Hyprland {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, Hyprctl) {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<HyprlandEvent>();
-        let handle = tokio::task::spawn(async move {
-            if let Err(err) = Self::r#loop(tx, token).await {
-                log::error!(target: "Hyprland", "{err:?}");
-            }
-        });
-        (NAME, Self { rx }, handle, Hyprctl)
+    type Event = HyprlandEvent;
+    type Command = String;
+
+    type Ctl = Hyprctl;
+
+    fn new(
+        etx: UnboundedSender<Self::Event>,
+        crx: UnboundedReceiver<Self::Command>,
+        token: CancellationToken,
+    ) -> Self {
+        Self { etx, crx, token }
     }
 
-    async fn r#loop(tx: UnboundedSender<HyprlandEvent>, token: CancellationToken) -> Result<()> {
+    async fn start(&mut self) -> Result<()> {
         let mut reader = Reader::new().await?;
 
         let workspace_ids = Writer::get_workspaces_list().await?;
@@ -38,7 +37,7 @@ impl Hyprland {
         let mut state = State::new(workspace_ids, active_workspace_id, lang);
 
         for event in state.initial_events() {
-            tx.send(event)?;
+            self.etx.send(event)?;
         }
 
         loop {
@@ -46,10 +45,14 @@ impl Hyprland {
                 event = reader.next_event() => {
                     let event = event?;
                     let event = state.apply(event);
-                    tx.send(event)?;
+                    self.etx.send(event)?;
                 },
 
-                _ = token.cancelled() => {
+                Some(command) = self.crx.recv() => {
+                    exec_in_place(command).await;
+                }
+
+                _ = self.token.cancelled() => {
                     log::info!(target: "Hyprland", "exiting...");
                     return Ok(())
                 }
@@ -58,24 +61,29 @@ impl Hyprland {
     }
 }
 
-impl Stream for Hyprland {
-    type Item = HyprlandEvent;
-
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let mut this = self.project();
-        this.rx.poll_recv(cx)
+async fn exec_in_place(command: String) {
+    if let Err(err) = Writer::dispatch(command).await {
+        log::error!(target: "Hyprland", "failed to dispatch hyprctl: {err:?}");
     }
 }
 
-pub struct Hyprctl;
+pub struct Hyprctl {
+    ctx: UnboundedSender<String>,
+}
 
-impl Hyprctl {
-    pub async fn dispatch(&self, cmd: impl AsRef<str>) {
-        if let Err(err) = Writer::dispatch(cmd).await {
-            log::error!(target: "Hyprland", "failed to dispatch hyprctl: {err:?}");
-        }
+#[async_trait::async_trait]
+impl Ctl for Hyprctl {
+    const NAME: &str = "Hyprctl";
+
+    type Command = String;
+
+    fn new(ctx: UnboundedSender<Self::Command>) -> Self {
+        Self { ctx }
+    }
+
+    async fn try_send(&self, command: Self::Command) -> Result<()> {
+        self.ctx
+            .send(command)
+            .context("failed to send hyprctl command: channel is closed")
     }
 }

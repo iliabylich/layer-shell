@@ -178,10 +178,12 @@ name = "control"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "futures",
  "log",
- "pin-project-lite",
+ "module",
  "tokio",
+ "tokio-stream",
  "tokio-util",
  "zbus",
 ]
@@ -560,10 +562,11 @@ name = "hyprland"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "ffi",
  "futures",
  "log",
- "pin-project-lite",
+ "module",
  "serde",
  "serde_json",
  "tokio",
@@ -725,6 +728,7 @@ dependencies = [
  "hyprland",
  "log",
  "memory",
+ "module",
  "network",
  "serde",
  "sound",
@@ -853,6 +857,19 @@ dependencies = [
  "libc",
  "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "module"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "futures",
+ "log",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
 ]
 
 [[package]]
@@ -1306,9 +1323,10 @@ name = "sound"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "futures",
  "log",
- "pin-project-lite",
+ "module",
  "tokio",
  "tokio-util",
  "zbus",

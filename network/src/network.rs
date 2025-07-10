@@ -14,7 +14,7 @@ pin_project! {
 const NAME: &str = "Network";
 
 impl Network {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, ()) {
+    pub fn spawn(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, ()) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<NetworkEvent>();
         let handle = tokio::task::spawn(async move {
             if let Err(err) = NetworkTask::start(tx, token).await {

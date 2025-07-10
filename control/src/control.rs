@@ -1,55 +1,39 @@
 use crate::{ControlEvent, dbus::DBus};
-use anyhow::Result;
-use futures::Stream;
-use pin_project_lite::pin_project;
-use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
-    task::JoinHandle,
-};
+use module::Module;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 use zbus::Connection;
 
-pin_project! {
-    pub struct Control {
-        #[pin]
-        rx: UnboundedReceiver<ControlEvent>,
-    }
+pub struct Control {
+    etx: UnboundedSender<ControlEvent>,
+    token: CancellationToken,
 }
 
-const NAME: &str = "Control";
+#[async_trait::async_trait]
+impl Module for Control {
+    const NAME: &str = "Control";
 
-impl Control {
-    pub fn new(token: CancellationToken) -> (&'static str, Self, JoinHandle<()>, ()) {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ControlEvent>();
-        let handle = tokio::task::spawn(async move {
-            if let Err(err) = Self::r#loop(tx, token).await {
-                log::error!(target: "Control", "{err:?}");
-            }
-        });
-        (NAME, Self { rx }, handle, ())
+    type Event = ControlEvent;
+    type Command = ();
+    type Ctl = ();
+
+    fn new(
+        etx: UnboundedSender<Self::Event>,
+        _: UnboundedReceiver<Self::Command>,
+        token: CancellationToken,
+    ) -> Self {
+        Self { etx, token }
     }
 
-    async fn r#loop(tx: UnboundedSender<ControlEvent>, token: CancellationToken) -> Result<()> {
+    async fn start(&mut self) -> anyhow::Result<()> {
         let connection = Connection::session().await?;
-        let control = DBus::new(tx);
+        let control = DBus::new(self.etx.clone());
         connection.object_server().at("/Control", control).await?;
         connection.request_name("org.me.LayerShellControl").await?;
 
-        token.cancelled().await;
+        self.token.cancelled().await;
         log::info!(target: "Control", "exiting...");
 
         Ok(())
-    }
-}
-
-impl Stream for Control {
-    type Item = ControlEvent;
-
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let mut this = self.project();
-        this.rx.poll_recv(cx)
     }
 }
