@@ -32,11 +32,16 @@ pub trait Module: Send {
         let (ctx, crx) = tokio::sync::mpsc::unbounded_channel::<Self::Command>();
 
         let handle = tokio::task::spawn(async move {
-            let mut task = Self::new(etx, crx, token);
+            let mut task = Self::new(etx, crx, token.clone());
 
             loop {
                 if let Err(err) = task.start().await {
                     log::error!(target: Self::NAME, "{err:?}");
+                }
+
+                if token.is_cancelled() {
+                    log::error!(target: Self::NAME, "received exit signal, stopping...");
+                    break;
                 }
 
                 sleep(Duration::from_secs(3)).await;
