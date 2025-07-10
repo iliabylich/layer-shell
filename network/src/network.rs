@@ -1,20 +1,10 @@
 use crate::{
     NetworkData, NetworkListEvent, NetworkSsidEvent, NetworkStrengthEvent,
-    access_point::AccessPoint,
-    access_point_ssid::AccessPointSsid,
-    access_point_strength::AccessPointStrength,
-    device_rx::DeviceRx,
-    device_tx::DeviceTx,
-    event::NetworkEvent,
-    global_devices::GlobalDevices,
-    nm_event::NetworkManagerEvent,
-    primary_connection::PrimaryConnection,
-    primary_devices::PrimaryDevices,
-    speed::Speed,
-    stream_map::{
-        ACCESS_POINT, ACCESS_POINT_SSID, ACCESS_POINT_STRENGTH, DEVICE_RX, DEVICE_TX,
-        GLOBAL_DEVICES, PRIMARY_CONNECTION, PRIMARY_DEVICES, StreamMap,
-    },
+    access_point::AccessPoint, access_point_ssid::AccessPointSsid,
+    access_point_strength::AccessPointStrength, device_rx::DeviceRx, device_tx::DeviceTx,
+    event::NetworkEvent, global_devices::GlobalDevices, multiplexer::Multiplexer,
+    nm_event::NetworkManagerEvent, nm_stream::NmStream, primary_connection::PrimaryConnection,
+    primary_devices::PrimaryDevices, speed::Speed,
 };
 use anyhow::{Result, bail};
 use futures::StreamExt;
@@ -26,7 +16,7 @@ use zbus::Connection;
 pub struct Network {
     etx: UnboundedSender<NetworkEvent>,
     token: CancellationToken,
-    stream_map: StreamMap,
+    multiplexer: Multiplexer,
     speed: Speed,
 }
 
@@ -46,7 +36,7 @@ impl Module for Network {
         Self {
             etx,
             token,
-            stream_map: StreamMap::new(),
+            multiplexer: Multiplexer::new(),
             speed: Speed::new(),
         }
     }
@@ -54,14 +44,12 @@ impl Module for Network {
     async fn start(&mut self) -> Result<()> {
         let conn = Connection::system().await?;
 
-        self.stream_map
-            .add(PRIMARY_CONNECTION, PrimaryConnection::stream(&conn).await?);
-        self.stream_map
-            .add(GLOBAL_DEVICES, GlobalDevices::stream(&conn).await?);
+        self.add::<PrimaryConnection>(&conn, ()).await?;
+        self.add::<GlobalDevices>(&conn, ()).await?;
 
         loop {
             tokio::select! {
-                Some((_name, event)) = self.stream_map.next() => {
+                Some((_name, event)) = self.multiplexer.next() => {
                     if let Err(err) = self.on_event(event, &conn).await {
                         log::error!(target: "Network", "{err:?}");
                     }
@@ -79,48 +67,44 @@ impl Module for Network {
 }
 
 impl Network {
+    async fn add<S: NmStream>(&mut self, conn: &Connection, input: S::Input) -> Result<()> {
+        let stream = S::stream(conn, input).await?;
+        self.multiplexer.add(S::ID, stream);
+        Ok(())
+    }
+    fn remove<S: NmStream>(&mut self) {
+        self.multiplexer.remove_with_children(S::ID);
+    }
+
     async fn on_event(&mut self, event: NetworkManagerEvent, conn: &Connection) -> Result<()> {
         match event {
             NetworkManagerEvent::PrimaryConnection(path) => {
-                self.stream_map.remove_with_children(PRIMARY_DEVICES);
+                self.remove::<PrimaryDevices>();
 
                 if PrimaryConnection::is_wireless(path.clone(), conn).await? {
-                    self.stream_map
-                        .add(PRIMARY_DEVICES, PrimaryDevices::stream(conn, path).await?);
+                    self.add::<PrimaryDevices>(conn, path).await?;
                 };
             }
 
             NetworkManagerEvent::PrimaryDevices(paths) => {
-                self.stream_map.remove_with_children(ACCESS_POINT);
-                self.stream_map.remove_with_children(DEVICE_RX);
-                self.stream_map.remove_with_children(DEVICE_TX);
+                self.remove::<AccessPoint>();
+                self.remove::<DeviceRx>();
+                self.remove::<DeviceTx>();
                 self.speed.reset();
 
                 let path = sole(paths)?;
 
-                self.stream_map
-                    .add(ACCESS_POINT, AccessPoint::stream(conn, path.clone()).await?);
-
-                self.stream_map
-                    .add(DEVICE_RX, DeviceRx::stream(conn, path.clone()).await?);
-
-                self.stream_map
-                    .add(DEVICE_TX, DeviceTx::stream(conn, path.clone()).await?);
+                self.add::<AccessPoint>(conn, path.clone()).await?;
+                self.add::<DeviceRx>(conn, path.clone()).await?;
+                self.add::<DeviceTx>(conn, path.clone()).await?;
             }
 
             NetworkManagerEvent::AccessPoint(path) => {
-                self.stream_map.remove_with_children(ACCESS_POINT_SSID);
-                self.stream_map.remove_with_children(ACCESS_POINT_STRENGTH);
+                self.remove::<AccessPointSsid>();
+                self.remove::<AccessPointStrength>();
 
-                self.stream_map.add(
-                    ACCESS_POINT_SSID,
-                    AccessPointSsid::stream(conn, path.clone()).await?,
-                );
-
-                self.stream_map.add(
-                    ACCESS_POINT_STRENGTH,
-                    AccessPointStrength::stream(conn, path.clone()).await?,
-                );
+                self.add::<AccessPointSsid>(conn, path.clone()).await?;
+                self.add::<AccessPointStrength>(conn, path.clone()).await?;
             }
 
             NetworkManagerEvent::Ssid(ssid) => {

@@ -1,8 +1,11 @@
-use crate::nm_event::NetworkManagerEvent;
+use crate::{
+    access_point::AccessPoint, device_rx::DeviceRx, device_tx::DeviceTx, multiplexer::StreamId,
+    nm_event::NetworkManagerEvent, nm_stream::NmStream,
+};
 use anyhow::Result;
-use futures::{Stream, StreamExt as _};
-use zbus::proxy;
+use futures::{StreamExt as _, stream::BoxStream};
 use zbus::zvariant::OwnedObjectPath;
+use zbus::{Connection, proxy};
 
 #[proxy(
     default_service = "org.freedesktop.NetworkManager",
@@ -16,13 +19,21 @@ trait ActiveConnection {
 
 pub(crate) struct PrimaryDevices;
 
-impl PrimaryDevices {
-    pub(crate) async fn stream(
-        conn: &zbus::Connection,
-        primary_connection_path: OwnedObjectPath,
-    ) -> Result<impl Stream<Item = NetworkManagerEvent> + 'static> {
+#[async_trait::async_trait]
+impl NmStream for PrimaryDevices {
+    const ID: &StreamId = &StreamId {
+        name: "PRIMARY_DEVICES",
+        children: &[AccessPoint::ID, DeviceTx::ID, DeviceRx::ID],
+    };
+
+    type Input = OwnedObjectPath;
+
+    async fn stream(
+        conn: &Connection,
+        path: OwnedObjectPath,
+    ) -> Result<BoxStream<'static, NetworkManagerEvent>> {
         let connection = ActiveConnectionProxy::builder(conn)
-            .path(primary_connection_path.clone())?
+            .path(path.clone())?
             .build()
             .await?;
 
@@ -38,6 +49,6 @@ impl PrimaryDevices {
                 Some(NetworkManagerEvent::PrimaryDevices(devices))
             });
 
-        Ok(pre.chain(post))
+        Ok(pre.chain(post).boxed())
     }
 }

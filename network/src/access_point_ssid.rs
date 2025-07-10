@@ -1,6 +1,6 @@
-use crate::nm_event::NetworkManagerEvent;
+use crate::{multiplexer::StreamId, nm_event::NetworkManagerEvent, nm_stream::NmStream};
 use anyhow::Result;
-use futures::{Stream, StreamExt};
+use futures::{StreamExt, stream::BoxStream};
 use zbus::{Connection, proxy, zvariant::OwnedObjectPath};
 
 #[proxy(
@@ -15,11 +15,19 @@ pub trait AccessPoint {
 
 pub(crate) struct AccessPointSsid;
 
-impl AccessPointSsid {
-    pub(crate) async fn stream(
+#[async_trait::async_trait]
+impl NmStream for AccessPointSsid {
+    const ID: &StreamId = &StreamId {
+        name: "ACCESS_POINT_SSID",
+        children: &[],
+    };
+
+    type Input = OwnedObjectPath;
+
+    async fn stream(
         conn: &Connection,
         path: OwnedObjectPath,
-    ) -> Result<impl Stream<Item = NetworkManagerEvent> + 'static> {
+    ) -> Result<BoxStream<'static, NetworkManagerEvent>> {
         let proxy = AccessPointProxy::builder(conn).path(path)?.build().await?;
 
         let pre = match proxy.ssid().await {
@@ -41,6 +49,6 @@ impl AccessPointSsid {
                 Some(NetworkManagerEvent::Ssid(ssid))
             });
 
-        Ok(pre.chain(post))
+        Ok(pre.chain(post).boxed())
     }
 }

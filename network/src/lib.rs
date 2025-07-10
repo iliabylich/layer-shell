@@ -5,13 +5,14 @@ mod device_rx;
 mod device_tx;
 mod event;
 mod global_devices;
+mod multiplexer;
 mod network;
 mod network_data;
 mod nm_event;
+mod nm_stream;
 mod primary_connection;
 mod primary_devices;
 mod speed;
-mod stream_map;
 
 pub use event::{
     DownloadSpeedEvent, NetworkEvent, NetworkListEvent, NetworkSsidEvent, NetworkStrengthEvent,

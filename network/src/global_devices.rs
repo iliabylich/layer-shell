@@ -1,7 +1,7 @@
-use crate::nm_event::NetworkManagerEvent;
+use crate::{multiplexer::StreamId, nm_event::NetworkManagerEvent, nm_stream::NmStream};
 use anyhow::Result;
-use futures::{Stream, StreamExt};
-use zbus::proxy;
+use futures::{StreamExt, stream::BoxStream};
+use zbus::{Connection, proxy};
 
 #[proxy(
     interface = "org.freedesktop.NetworkManager",
@@ -15,10 +15,19 @@ trait NetworkManager {
 
 pub(crate) struct GlobalDevices;
 
-impl GlobalDevices {
-    pub(crate) async fn stream(
-        conn: &zbus::Connection,
-    ) -> Result<impl Stream<Item = NetworkManagerEvent> + 'static> {
+#[async_trait::async_trait]
+impl NmStream for GlobalDevices {
+    const ID: &StreamId = &StreamId {
+        name: "GLOBAL_DEVICES",
+        children: &[],
+    };
+
+    type Input = ();
+
+    async fn stream(
+        conn: &Connection,
+        _: Self::Input,
+    ) -> Result<BoxStream<'static, NetworkManagerEvent>> {
         let proxy = NetworkManagerProxy::new(conn).await?;
 
         let devices = proxy.devices().await?;
@@ -33,6 +42,6 @@ impl GlobalDevices {
                 Some(NetworkManagerEvent::Devices(paths))
             });
 
-        Ok(pre.chain(post))
+        Ok(pre.chain(post).boxed())
     }
 }

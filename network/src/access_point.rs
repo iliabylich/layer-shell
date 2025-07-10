@@ -1,6 +1,9 @@
-use crate::nm_event::NetworkManagerEvent;
+use crate::{
+    access_point_ssid::AccessPointSsid, access_point_strength::AccessPointStrength,
+    multiplexer::StreamId, nm_event::NetworkManagerEvent, nm_stream::NmStream,
+};
 use anyhow::Result;
-use futures::{Stream, StreamExt};
+use futures::{StreamExt, stream::BoxStream};
 use zbus::proxy;
 use zbus::{Connection, zvariant::OwnedObjectPath};
 
@@ -16,11 +19,19 @@ trait WirelessDevice {
 
 pub(crate) struct AccessPoint;
 
-impl AccessPoint {
-    pub(crate) async fn stream(
+#[async_trait::async_trait]
+impl NmStream for AccessPoint {
+    const ID: &StreamId = &StreamId {
+        name: "ACCESS_POINT",
+        children: &[AccessPointSsid::ID, AccessPointStrength::ID],
+    };
+
+    type Input = OwnedObjectPath;
+
+    async fn stream(
         conn: &Connection,
         path: OwnedObjectPath,
-    ) -> Result<impl Stream<Item = NetworkManagerEvent> + 'static> {
+    ) -> Result<BoxStream<'static, NetworkManagerEvent>> {
         let proxy = WirelessDeviceProxy::builder(conn)
             .path(path)?
             .build()
@@ -45,6 +56,6 @@ impl AccessPoint {
                 Some(NetworkManagerEvent::AccessPoint(path))
             });
 
-        Ok(pre.chain(post))
+        Ok(pre.chain(post).boxed())
     }
 }

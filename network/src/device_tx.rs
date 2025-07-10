@@ -1,6 +1,6 @@
-use crate::nm_event::NetworkManagerEvent;
+use crate::{multiplexer::StreamId, nm_event::NetworkManagerEvent, nm_stream::NmStream};
 use anyhow::Result;
-use futures::{Stream, StreamExt as _};
+use futures::{StreamExt as _, stream::BoxStream};
 use zbus::{Connection, proxy, zvariant::OwnedObjectPath};
 
 #[proxy(
@@ -18,11 +18,19 @@ trait DeviceStatistics {
 
 pub(crate) struct DeviceTx;
 
-impl DeviceTx {
-    pub(crate) async fn stream(
+#[async_trait::async_trait]
+impl NmStream for DeviceTx {
+    const ID: &StreamId = &StreamId {
+        name: "DEVICE_TX",
+        children: &[],
+    };
+
+    type Input = OwnedObjectPath;
+
+    async fn stream(
         conn: &Connection,
         path: OwnedObjectPath,
-    ) -> Result<impl Stream<Item = NetworkManagerEvent> + 'static> {
+    ) -> Result<BoxStream<'static, NetworkManagerEvent>> {
         let proxy = DeviceStatisticsProxy::builder(conn)
             .path(path.clone())?
             .build()
@@ -38,6 +46,6 @@ impl DeviceTx {
                 Some(NetworkManagerEvent::DeviceTxBytes(tx))
             });
 
-        Ok(stream)
+        Ok(stream.boxed())
     }
 }
