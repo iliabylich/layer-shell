@@ -10,7 +10,9 @@ G_DECLARE_FINAL_TYPE(Network, network, NETWORK, WIDGET, GtkWidget)
 
 GtkWidget *network_new(void);
 
-void network_refresh_wifi_status(Network *network, IO_WifiStatusEvent event);
+void network_refresh_network_ssid(Network *network, IO_NetworkSsidEvent event);
+void network_refresh_network_strength(Network *network,
+                                      IO_NetworkStrengthEvent event);
 void network_refresh_upload_speed(Network *network, IO_UploadSpeedEvent event);
 void network_refresh_download_speed(Network *network,
                                     IO_DownloadSpeedEvent event);

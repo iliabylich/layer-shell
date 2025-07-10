@@ -1,6 +1,8 @@
 #include "ui/network.h"
+#include "glib.h"
 #include "ui/logger.h"
 #include "ui/network_popover.h"
+#include <string.h>
 
 LOGGER("Network", 1)
 
@@ -20,6 +22,9 @@ struct _Network {
   GtkWidget *download_speed_label;
   GtkWidget *upload_speed_label;
   GtkWidget *popover;
+
+  char *ssid;
+  uint8_t strength;
 };
 
 G_DEFINE_TYPE(Network, network, GTK_TYPE_WIDGET)
@@ -89,6 +94,9 @@ static void network_init(Network *self) {
                    self);
   g_signal_connect(self->popover, "clicked-address",
                    G_CALLBACK(on_address_clicked), self);
+
+  self->ssid = NULL;
+  self->strength = 0;
 }
 
 static void network_dispose(GObject *object) {
@@ -97,6 +105,7 @@ static void network_dispose(GObject *object) {
 
   g_clear_pointer(&self->popover, gtk_widget_unparent);
   g_clear_pointer(&self->root, gtk_widget_unparent);
+  g_clear_pointer(&self->ssid, free);
 
   G_OBJECT_CLASS(network_parent_class)->dispose(object);
 }
@@ -122,15 +131,27 @@ static void network_class_init(NetworkClass *klass) {
 
 GtkWidget *network_new(void) { return g_object_new(network_get_type(), NULL); }
 
-void network_refresh_wifi_status(Network *self, IO_WifiStatusEvent event) {
-  if (event.wifi_status.tag == IO_COption_WifiStatus_None_WifiStatus) {
+static void refresh_ssid_and_strength(Network *self) {
+  if (self->ssid == NULL) {
     gtk_label_set_label(GTK_LABEL(self->network_name_label), "Not connected");
   } else {
     char buffer[100];
-    sprintf(buffer, "%s (%d)%% ", event.wifi_status.some.ssid,
-            event.wifi_status.some.strength);
+    sprintf(buffer, "%s (%d)%% ", self->ssid, self->strength);
     gtk_label_set_label(GTK_LABEL(self->network_name_label), buffer);
   }
+}
+
+void network_refresh_network_ssid(Network *self, IO_NetworkSsidEvent event) {
+  if (self->ssid != NULL) {
+    free(self->ssid);
+  }
+  self->ssid = strdup(event.ssid);
+  refresh_ssid_and_strength(self);
+}
+void network_refresh_network_strength(Network *self,
+                                      IO_NetworkStrengthEvent event) {
+  self->strength = event.strength;
+  refresh_ssid_and_strength(self);
 }
 
 void network_refresh_upload_speed(Network *self, IO_UploadSpeedEvent event) {

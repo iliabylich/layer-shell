@@ -1,51 +1,60 @@
 use crate::nm_event::NetworkManagerEvent;
-use anyhow::{Context as _, Result};
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, ready, stream::BoxStream};
 use pin_project_lite::pin_project;
 use std::pin::Pin;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio_stream::wrappers::UnboundedReceiverStream;
-
-type InnerMap = tokio_stream::StreamMap<
-    &'static str,
-    Pin<Box<dyn Stream<Item = NetworkManagerEvent> + Send + 'static>>,
->;
+use tokio_stream::StreamMap as TokioStreamMap;
 
 pin_project! {
     pub(crate) struct StreamMap {
         #[pin]
-        map: InnerMap,
-        tx: UnboundedSender<NetworkManagerEvent>,
+        map: TokioStreamMap<&'static StreamId, BoxStream<'static, NetworkManagerEvent>>,
     }
 }
 
-const MANUAL: &str = "MANUAL";
+#[derive(Hash, PartialEq, Eq)]
+pub(crate) struct StreamId {
+    name: &'static str,
+    children: &'static [&'static StreamId],
+}
+
+macro_rules! stream_id {
+    ($name:ident, $children:expr) => {
+        pub(crate) static $name: &StreamId = &StreamId {
+            name: stringify!($name),
+            children: &$children,
+        };
+    };
+}
+
+stream_id!(PRIMARY_CONNECTION, [PRIMARY_DEVICES]);
+stream_id!(PRIMARY_DEVICES, [ACCESS_POINT, DEVICE_TX, DEVICE_RX]);
+stream_id!(ACCESS_POINT, [ACCESS_POINT_SSID, ACCESS_POINT_STRENGTH]);
+stream_id!(ACCESS_POINT_SSID, []);
+stream_id!(ACCESS_POINT_STRENGTH, []);
+stream_id!(DEVICE_TX, []);
+stream_id!(DEVICE_RX, []);
+stream_id!(GLOBAL_DEVICES, []);
 
 impl StreamMap {
     pub(crate) fn new() -> Self {
-        let mut map = InnerMap::new();
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<NetworkManagerEvent>();
-        map.insert(MANUAL, UnboundedReceiverStream::new(rx).boxed());
-
-        Self { map, tx }
+        Self {
+            map: TokioStreamMap::new(),
+        }
     }
 
-    pub(crate) fn add<S>(&mut self, name: &'static str, stream: S)
+    pub(crate) fn add<S>(&mut self, id: &'static StreamId, stream: S)
     where
         S: Stream<Item = NetworkManagerEvent> + Send + 'static,
     {
-        let stream = stream.boxed();
-        self.map.insert(name, stream);
+        self.map.insert(id, stream.boxed());
     }
 
-    pub(crate) fn remove(&mut self, name: &'static str) {
-        self.map.remove(name);
-    }
+    pub(crate) fn remove_with_children(&mut self, id: &'static StreamId) {
+        self.map.remove(id);
 
-    pub(crate) fn emit(&self, event: NetworkManagerEvent) -> Result<()> {
-        self.tx
-            .send(event)
-            .context("failed to self-send message; closed stream")
+        for child in id.children {
+            self.remove_with_children(child);
+        }
     }
 }
 
@@ -56,6 +65,8 @@ impl Stream for StreamMap {
         self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        self.project().map.poll_next(cx)
+        let out = ready!(self.project().map.poll_next(cx))
+            .map(|(stream_id, event)| (stream_id.name, event));
+        std::task::Poll::Ready(out)
     }
 }

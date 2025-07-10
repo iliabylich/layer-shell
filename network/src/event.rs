@@ -1,17 +1,13 @@
-use ffi::{CArray, COption, CString};
+use crate::NetworkData;
+use ffi::{CArray, CString};
 
 #[derive(Debug)]
 pub enum NetworkEvent {
-    WifiStatus(WifiStatusEvent),
+    Ssid(NetworkSsidEvent),
+    Strength(NetworkStrengthEvent),
     UploadSpeed(UploadSpeedEvent),
     DownloadSpeed(DownloadSpeedEvent),
     NetworkList(NetworkListEvent),
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct WifiStatusEvent {
-    pub wifi_status: COption<WifiStatus>,
 }
 
 #[derive(Debug)]
@@ -34,14 +30,12 @@ pub struct NetworkListEvent {
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct NetworkData {
-    pub iface: CString,
-    pub address: CString,
+pub struct NetworkSsidEvent {
+    pub ssid: CString,
 }
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct WifiStatus {
-    pub ssid: CString,
+pub struct NetworkStrengthEvent {
     pub strength: u8,
 }

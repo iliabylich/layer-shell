@@ -1,6 +1,19 @@
 use crate::{
-    NetworkEvent, devices::Devices, nm_event::NetworkManagerEvent,
-    primary_connection::PrimaryConnection, stream_map::StreamMap,
+    NetworkData, NetworkEvent, NetworkListEvent, NetworkSsidEvent, NetworkStrengthEvent,
+    access_point::AccessPoint,
+    access_point_ssid::AccessPointSsid,
+    access_point_strength::AccessPointStrength,
+    device_rx::DeviceRx,
+    device_tx::DeviceTx,
+    global_devices::GlobalDevices,
+    nm_event::NetworkManagerEvent,
+    primary_connection::PrimaryConnection,
+    primary_devices::PrimaryDevices,
+    speed::Speed,
+    stream_map::{
+        ACCESS_POINT, ACCESS_POINT_SSID, ACCESS_POINT_STRENGTH, DEVICE_RX, DEVICE_TX,
+        GLOBAL_DEVICES, PRIMARY_CONNECTION, PRIMARY_DEVICES, StreamMap,
+    },
 };
 use anyhow::{Result, bail};
 use futures::StreamExt;
@@ -16,7 +29,7 @@ pub(crate) struct NetworkTask {
 
     stream_map: StreamMap,
 
-    primary_connection: PrimaryConnection,
+    speed: Speed,
 }
 
 impl NetworkTask {
@@ -28,8 +41,8 @@ impl NetworkTask {
 
         let mut stream_map = StreamMap::new();
 
-        let primary_connection = PrimaryConnection::new(&conn, &mut stream_map).await?;
-        Devices::subscribe(&conn, &mut stream_map).await?;
+        stream_map.add(PRIMARY_CONNECTION, PrimaryConnection::stream(&conn).await?);
+        stream_map.add(GLOBAL_DEVICES, GlobalDevices::stream(&conn).await?);
 
         Self {
             tx,
@@ -39,7 +52,7 @@ impl NetworkTask {
 
             stream_map,
 
-            primary_connection,
+            speed: Speed::new(),
         }
         .r#loop()
         .await
@@ -49,7 +62,9 @@ impl NetworkTask {
         loop {
             tokio::select! {
                 Some((_name, event)) = self.stream_map.next() => {
-                    self.on_event(event).await?;
+                    if let Err(err) = self.on_event(event).await {
+                        log::error!(target: "Network", "{err:?}");
+                    }
                 }
 
                 _ = self.token.cancelled() => {
@@ -65,56 +80,75 @@ impl NetworkTask {
     async fn on_event(&mut self, event: NetworkManagerEvent) -> Result<()> {
         match event {
             NetworkManagerEvent::PrimaryConnection(path) => {
-                self.primary_connection
-                    .changed(path, &self.conn, &mut self.stream_map)
-                    .await?;
-            }
-            NetworkManagerEvent::PrimaryDevices(paths) => {
-                let Some(path) = sole(paths) else {
-                    return Ok(());
+                self.stream_map.remove_with_children(PRIMARY_DEVICES);
+
+                if PrimaryConnection::is_wireless(path.clone(), &self.conn).await? {
+                    self.stream_map.add(
+                        PRIMARY_DEVICES,
+                        PrimaryDevices::stream(&self.conn, path).await?,
+                    );
                 };
-                self.primary_connection
-                    .primary_device
-                    .changed(path, &self.conn, &mut self.stream_map)
-                    .await?;
             }
+
+            NetworkManagerEvent::PrimaryDevices(paths) => {
+                self.stream_map.remove_with_children(ACCESS_POINT);
+                self.stream_map.remove_with_children(DEVICE_RX);
+                self.stream_map.remove_with_children(DEVICE_TX);
+                self.speed.reset();
+
+                let path = sole(paths)?;
+
+                self.stream_map.add(
+                    ACCESS_POINT,
+                    AccessPoint::stream(&self.conn, path.clone()).await?,
+                );
+
+                self.stream_map
+                    .add(DEVICE_RX, DeviceRx::stream(&self.conn, path.clone()).await?);
+
+                self.stream_map
+                    .add(DEVICE_TX, DeviceTx::stream(&self.conn, path.clone()).await?);
+            }
+
             NetworkManagerEvent::AccessPoint(path) => {
-                self.primary_connection
-                    .primary_device
-                    .access_point
-                    .changed(path, &self.conn, &mut self.stream_map)
-                    .await?;
+                self.stream_map.remove_with_children(ACCESS_POINT_SSID);
+                self.stream_map.remove_with_children(ACCESS_POINT_STRENGTH);
+
+                self.stream_map.add(
+                    ACCESS_POINT_SSID,
+                    AccessPointSsid::stream(&self.conn, path.clone()).await?,
+                );
+
+                self.stream_map.add(
+                    ACCESS_POINT_STRENGTH,
+                    AccessPointStrength::stream(&self.conn, path.clone()).await?,
+                );
             }
+
             NetworkManagerEvent::Ssid(ssid) => {
-                if let Some(event) = self
-                    .primary_connection
-                    .primary_device
-                    .access_point
-                    .ssid_changed(ssid)
-                {
-                    self.tx.send(event)?;
-                }
-            }
-            NetworkManagerEvent::Strength(strength) => {
-                if let Some(event) = self
-                    .primary_connection
-                    .primary_device
-                    .access_point
-                    .strength_changed(strength)
-                {
-                    self.tx.send(event)?;
-                }
-            }
-            NetworkManagerEvent::Devices(paths) => {
-                let event = Devices::changed(paths, &self.conn).await;
+                let ssid = String::from_utf8_lossy(&ssid).to_string();
+                let event = NetworkEvent::Ssid(NetworkSsidEvent { ssid: ssid.into() });
                 self.tx.send(event)?;
             }
+            NetworkManagerEvent::Strength(strength) => {
+                let event = NetworkEvent::Strength(NetworkStrengthEvent { strength });
+                self.tx.send(event)?;
+            }
+
+            NetworkManagerEvent::Devices(paths) => {
+                let networks = NetworkData::read_many(&self.conn, paths).await;
+                let event = NetworkEvent::NetworkList(NetworkListEvent {
+                    list: networks.into(),
+                });
+                self.tx.send(event)?;
+            }
+
             NetworkManagerEvent::DeviceTxBytes(tx) => {
-                let event = self.primary_connection.primary_device.speed.update_tx(tx);
+                let event = self.speed.update_tx(tx);
                 self.tx.send(event)?;
             }
             NetworkManagerEvent::DeviceRxBytes(rx) => {
-                let event = self.primary_connection.primary_device.speed.update_rx(rx);
+                let event = self.speed.update_rx(rx);
                 self.tx.send(event)?;
             }
         }
@@ -123,16 +157,14 @@ impl NetworkTask {
     }
 }
 
-fn sole<T>(list: Vec<T>) -> Option<T> {
+fn sole<T>(list: Vec<T>) -> Result<T> {
     let mut iter = list.into_iter();
 
     let Some(item) = iter.next() else {
-        log::error!(target: "Network", "got 0 items in vec (expected 1)");
-        return None;
+        bail!("got 0 items in vec (expected 1)");
     };
     if iter.next().is_some() {
-        log::error!(target: "Network", "got multiple in vec (expected 1)");
-        return None;
+        bail!("got multiple in vec (expected 1)");
     }
-    Some(item)
+    Ok(item)
 }

@@ -106,8 +106,13 @@ int poll_events(void) {
       memory_refresh(MEMORY(memory), event.memory);
       break;
     }
-    case IO_Event_WifiStatus: {
-      network_refresh_wifi_status(NETWORK(network), event.wifi_status);
+    case IO_Event_NetworkSsid: {
+      network_refresh_network_ssid(NETWORK(network), event.network_ssid);
+      break;
+    }
+    case IO_Event_NetworkStrength: {
+      network_refresh_network_strength(NETWORK(network),
+                                       event.network_strength);
       break;
     }
     case IO_Event_DownloadSpeed: {

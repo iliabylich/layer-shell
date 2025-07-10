@@ -1,34 +1,30 @@
 use crate::nm_event::NetworkManagerEvent;
 use anyhow::Result;
 use futures::{Stream, StreamExt};
-use zbus::proxy;
-use zbus::{Connection, zvariant::OwnedObjectPath};
+use zbus::{Connection, proxy, zvariant::OwnedObjectPath};
 
 #[proxy(
     default_service = "org.freedesktop.NetworkManager",
-    interface = "org.freedesktop.NetworkManager.Device.Wireless",
+    interface = "org.freedesktop.NetworkManager.AccessPoint",
     assume_defaults = true
 )]
-trait WirelessDevice {
+pub trait AccessPoint {
     #[zbus(property)]
-    fn active_access_point(&self) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
+    fn strength(&self) -> zbus::Result<u8>;
 }
 
-pub(crate) struct AccessPoint;
+pub(crate) struct AccessPointStrength;
 
-impl AccessPoint {
+impl AccessPointStrength {
     pub(crate) async fn stream(
         conn: &Connection,
         path: OwnedObjectPath,
     ) -> Result<impl Stream<Item = NetworkManagerEvent> + 'static> {
-        let proxy = WirelessDeviceProxy::builder(conn)
-            .path(path)?
-            .build()
-            .await?;
+        let proxy = AccessPointProxy::builder(conn).path(path)?.build().await?;
 
-        let pre = match proxy.active_access_point().await {
-            Ok(path) => {
-                let event = NetworkManagerEvent::AccessPoint(path);
+        let pre = match proxy.strength().await {
+            Ok(strength) => {
+                let event = NetworkManagerEvent::Strength(strength);
                 futures::stream::once(async move { event }).boxed()
             }
             Err(err) => {
@@ -38,11 +34,11 @@ impl AccessPoint {
         };
 
         let post = proxy
-            .receive_active_access_point_changed()
+            .receive_strength_changed()
             .await
             .filter_map(|e| async move {
-                let path = e.get().await.ok()?;
-                Some(NetworkManagerEvent::AccessPoint(path))
+                let strength = e.get().await.ok()?;
+                Some(NetworkManagerEvent::Strength(strength))
             });
 
         Ok(pre.chain(post))

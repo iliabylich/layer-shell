@@ -30,8 +30,8 @@ strace-io:
     cargo build --bin just-io
     strace target/debug/just-io
 
-io:
-    RUST_LOG=info cargo run --bin just-io
+io log="info":
+    RUST_LOG={{log}} cargo run --bin just-io
 
 test-install:
     @just clean

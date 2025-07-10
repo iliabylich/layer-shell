@@ -4,7 +4,8 @@ use cpu::CpuUsageEvent;
 use hyprland::{HyprlandEvent, LanguageEvent, WorkspacesEvent};
 use memory::MemoryEvent;
 use network::{
-    DownloadSpeedEvent, NetworkEvent, NetworkListEvent, UploadSpeedEvent, WifiStatusEvent,
+    DownloadSpeedEvent, NetworkEvent, NetworkListEvent, NetworkSsidEvent, NetworkStrengthEvent,
+    UploadSpeedEvent,
 };
 use sound::{InitialSoundEvent, MuteChangedEvent, SoundEvent, VolumeChangedEvent};
 use tray::{
@@ -27,7 +28,8 @@ pub enum Event {
     CurrentWeather(CurrentWeatherEvent),
     HourlyWeatherForecast(HourlyWeatherForecastEvent),
     DailyWeatherForecast(DailyWeatherForecastEvent),
-    WifiStatus(WifiStatusEvent),
+    NetworkSsid(NetworkSsidEvent),
+    NetworkStrength(NetworkStrengthEvent),
     UploadSpeed(UploadSpeedEvent),
     DownloadSpeed(DownloadSpeedEvent),
     NetworkList(NetworkListEvent),
@@ -83,7 +85,8 @@ impl From<ControlEvent> for Event {
 impl From<NetworkEvent> for Event {
     fn from(event: NetworkEvent) -> Self {
         match event {
-            NetworkEvent::WifiStatus(e) => Self::WifiStatus(e),
+            NetworkEvent::Ssid(e) => Self::NetworkSsid(e),
+            NetworkEvent::Strength(e) => Self::NetworkStrength(e),
             NetworkEvent::UploadSpeed(e) => Self::UploadSpeed(e),
             NetworkEvent::DownloadSpeed(e) => Self::DownloadSpeed(e),
             NetworkEvent::NetworkList(e) => Self::NetworkList(e),

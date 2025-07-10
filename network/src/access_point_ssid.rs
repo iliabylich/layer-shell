@@ -1,34 +1,30 @@
 use crate::nm_event::NetworkManagerEvent;
 use anyhow::Result;
 use futures::{Stream, StreamExt};
-use zbus::proxy;
-use zbus::{Connection, zvariant::OwnedObjectPath};
+use zbus::{Connection, proxy, zvariant::OwnedObjectPath};
 
 #[proxy(
     default_service = "org.freedesktop.NetworkManager",
-    interface = "org.freedesktop.NetworkManager.Device.Wireless",
+    interface = "org.freedesktop.NetworkManager.AccessPoint",
     assume_defaults = true
 )]
-trait WirelessDevice {
+pub trait AccessPoint {
     #[zbus(property)]
-    fn active_access_point(&self) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
+    fn ssid(&self) -> zbus::Result<Vec<u8>>;
 }
 
-pub(crate) struct AccessPoint;
+pub(crate) struct AccessPointSsid;
 
-impl AccessPoint {
+impl AccessPointSsid {
     pub(crate) async fn stream(
         conn: &Connection,
         path: OwnedObjectPath,
     ) -> Result<impl Stream<Item = NetworkManagerEvent> + 'static> {
-        let proxy = WirelessDeviceProxy::builder(conn)
-            .path(path)?
-            .build()
-            .await?;
+        let proxy = AccessPointProxy::builder(conn).path(path)?.build().await?;
 
-        let pre = match proxy.active_access_point().await {
-            Ok(path) => {
-                let event = NetworkManagerEvent::AccessPoint(path);
+        let pre = match proxy.ssid().await {
+            Ok(ssid) => {
+                let event = NetworkManagerEvent::Ssid(ssid);
                 futures::stream::once(async move { event }).boxed()
             }
             Err(err) => {
@@ -38,11 +34,11 @@ impl AccessPoint {
         };
 
         let post = proxy
-            .receive_active_access_point_changed()
+            .receive_ssid_changed()
             .await
             .filter_map(|e| async move {
-                let path = e.get().await.ok()?;
-                Some(NetworkManagerEvent::AccessPoint(path))
+                let ssid = e.get().await.ok()?;
+                Some(NetworkManagerEvent::Ssid(ssid))
             });
 
         Ok(pre.chain(post))
