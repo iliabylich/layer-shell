@@ -7,7 +7,6 @@ mod event;
 mod global_devices;
 mod network;
 mod network_data;
-mod network_task;
 mod nm_event;
 mod primary_connection;
 mod primary_devices;

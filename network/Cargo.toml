@@ -12,4 +12,7 @@ futures = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 pin-project-lite = { workspace = true }
+async-trait = { workspace = true }
+
 ffi = { path = "../ffi" }
+module = { path = "../module" }

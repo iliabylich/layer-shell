@@ -877,9 +877,11 @@ name = "network"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "ffi",
  "futures",
  "log",
+ "module",
  "pin-project-lite",
  "tokio",
  "tokio-stream",
