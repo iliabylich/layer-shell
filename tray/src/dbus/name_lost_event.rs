@@ -1,12 +1,20 @@
-use crate::dbus_event::DBusEvent;
+use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
 use anyhow::Result;
-use futures::{Stream, StreamExt};
+use futures::{StreamExt, stream::BoxStream};
 use zbus::{Connection, fdo::DBusProxy};
 
 pub(crate) struct NameLostEvent;
 
-impl NameLostEvent {
-    pub(crate) async fn into_stream(conn: Connection) -> Result<impl Stream<Item = DBusEvent>> {
+#[async_trait::async_trait]
+impl TrayStream for NameLostEvent {
+    type Input = ();
+
+    async fn stream(
+        conn: &Connection,
+        _: Self::Input,
+    ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
+        let id = StreamId::NameLost;
+
         let dbus_proxy = DBusProxy::new(&conn).await?;
         let stream = dbus_proxy
             .receive_name_lost()
@@ -15,7 +23,9 @@ impl NameLostEvent {
                 let args = e.args().ok()?;
                 let name = args.name.to_string();
                 Some(DBusEvent::NameLost(name))
-            });
-        Ok(stream)
+            })
+            .boxed();
+
+        Ok((id, stream))
     }
 }

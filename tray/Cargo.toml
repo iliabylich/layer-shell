@@ -13,4 +13,6 @@ tokio-util = { workspace = true }
 pin-project-lite = { workspace = true }
 zbus = { workspace = true }
 chrono = { workspace = true }
+async-trait = { workspace = true }
+
 ffi = { path = "../ffi" }

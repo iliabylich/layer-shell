@@ -1,10 +1,27 @@
-use crate::{TrayItem, dbusmenu::proxy::DBusMenuProxy, uuid::Uuid};
+use crate::{TrayItem, uuid::Uuid};
 use anyhow::{Context as _, Result};
 use std::collections::HashMap;
 use zbus::{
-    Connection,
+    Connection, proxy,
     zvariant::{Dict, OwnedObjectPath, OwnedValue, Str, Structure},
 };
+
+#[proxy(interface = "com.canonical.dbusmenu", assume_defaults = true)]
+pub(crate) trait DBusMenu {
+    fn get_layout(
+        &self,
+        parent_id: i32,
+        recursion_depth: i32,
+        property_names: &[&str],
+    ) -> zbus::Result<(
+        u32,
+        (
+            i32,
+            std::collections::HashMap<String, zbus::zvariant::OwnedValue>,
+            Vec<zbus::zvariant::OwnedValue>,
+        ),
+    )>;
+}
 
 pub(crate) struct Layout<'a> {
     service: &'a str,
@@ -154,14 +171,6 @@ enum ItemOrSeparator {
     Skip,
 }
 
-const PROP_TYPE: &Str = &Str::from_static("type");
-const PROP_LABEL: &Str = &Str::from_static("label");
-const PROP_ENABLED: &Str = &Str::from_static("enabled");
-const PROP_VISIBLE: &Str = &Str::from_static("visible");
-const PROP_TOGGLE_TYPE: &Str = &Str::from_static("toggle-type");
-const PROP_TOGGLE_STATE: &Str = &Str::from_static("toggle-state");
-const PROP_CHILDREN_DISPLAY: &Str = &Str::from_static("children-display");
-
 #[derive(Debug)]
 struct Props {
     type_: String,
@@ -199,6 +208,14 @@ impl TryFrom<Dict<'_, '_>> for Props {
                 .with_context(|| format!("failed to get int key {prop}"))?;
             Ok(value.unwrap_or(fallback))
         };
+
+        const PROP_TYPE: &Str = &Str::from_static("type");
+        const PROP_LABEL: &Str = &Str::from_static("label");
+        const PROP_ENABLED: &Str = &Str::from_static("enabled");
+        const PROP_VISIBLE: &Str = &Str::from_static("visible");
+        const PROP_TOGGLE_TYPE: &Str = &Str::from_static("toggle-type");
+        const PROP_TOGGLE_STATE: &Str = &Str::from_static("toggle-state");
+        const PROP_CHILDREN_DISPLAY: &Str = &Str::from_static("children-display");
 
         let type_ = str_prop(PROP_TYPE, "standard")?;
         let label = str_prop(PROP_LABEL, "")?;

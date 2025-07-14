@@ -1,37 +1,55 @@
-use crate::{
-    dbus_event::DBusEvent, status_notifier_item::proxy::StatusNotifierItemProxy,
-    stream_id::StreamId,
-};
+use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
 use anyhow::Result;
-use futures::{Stream, StreamExt};
+use futures::{StreamExt, stream::BoxStream};
 use std::sync::Arc;
 use zbus::Connection;
 
+mod dbus {
+    use zbus::proxy;
+
+    #[proxy(
+        interface = "org.kde.StatusNotifierItem",
+        default_path = "/StatusNotifierItem",
+        assume_defaults = true
+    )]
+    pub(crate) trait StatusNotifierItem {
+        #[zbus(signal)]
+        fn new_icon(&self) -> zbus::Result<()>;
+    }
+}
+
 pub(crate) struct NewIcon;
 
-impl NewIcon {
-    pub(crate) async fn into_stream(
-        conn: Connection,
-        service: Arc<str>,
-    ) -> Result<(StreamId, impl Stream<Item = DBusEvent>)> {
-        let proxy = StatusNotifierItemProxy::builder(&conn)
+#[async_trait::async_trait]
+impl TrayStream for NewIcon {
+    type Input = Arc<str>;
+
+    async fn stream(
+        conn: &Connection,
+        service: Self::Input,
+    ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
+        let proxy = dbus::StatusNotifierItemProxy::builder(conn)
             .destination(service.to_string())?
             .build()
             .await?;
 
-        let stream_id = StreamId::NewIconNotified {
+        let id = StreamId::NewIconNotified {
             service: Arc::clone(&service),
         };
 
-        let stream = proxy.receive_new_icon().await?.filter_map(move |_e| {
-            let service = Arc::clone(&service);
-            async move {
-                Some(DBusEvent::NewIconNotified {
-                    service: Arc::clone(&service),
-                })
-            }
-        });
+        let stream = proxy
+            .receive_new_icon()
+            .await?
+            .filter_map(move |_e| {
+                let service = Arc::clone(&service);
+                async move {
+                    Some(DBusEvent::NewIconNotified {
+                        service: Arc::clone(&service),
+                    })
+                }
+            })
+            .boxed();
 
-        Ok((stream_id, stream))
+        Ok((id, stream))
     }
 }

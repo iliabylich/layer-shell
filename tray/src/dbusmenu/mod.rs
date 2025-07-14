@@ -1,7 +1,6 @@
 mod items_properties_updated;
 mod layout;
 mod layout_updated;
-mod proxy;
 
 pub(crate) use items_properties_updated::ItemsPropertiesUpdated;
 pub(crate) use layout::Layout;
@@ -13,7 +12,18 @@ pub(crate) async fn trigger_tray_item(
     menu: String,
     id: i32,
 ) -> anyhow::Result<()> {
-    use proxy::DBusMenuProxy;
+    use zbus::proxy;
+
+    #[proxy(interface = "com.canonical.dbusmenu", assume_defaults = true)]
+    pub(crate) trait DBusMenu {
+        fn event(
+            &self,
+            id: i32,
+            event_id: &str,
+            data: &zbus::zvariant::Value<'_>,
+            timestamp: u32,
+        ) -> zbus::Result<()>;
+    }
 
     let proxy = DBusMenuProxy::builder(&conn)
         .destination(service.to_string())?

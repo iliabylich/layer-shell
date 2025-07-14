@@ -4,21 +4,21 @@ use crate::{
     dbus_event::DBusEvent,
     dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated, trigger_tray_item},
     multiplexer::Multiplexer,
-    status_notifier_item::{IconNameUpdated, IconPixmapUpdated, MenuUpdated, NewIcon},
+    status_notifier_item::{IconName, IconPixmap, Menu, NewIcon},
     status_notifier_watcher::StatusNotifierWatcher,
     store::Store,
-    stream_id::StreamId,
+    tray_stream::TrayStream,
     uuid::Uuid,
 };
 use anyhow::Result;
-use futures::StreamExt;
+use futures::{StreamExt, TryFutureExt};
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 use zbus::{Connection, zvariant::OwnedObjectPath};
 
 pub(crate) struct TrayTask {
-    stream_map: Multiplexer,
+    multiplexer: Multiplexer,
     token: CancellationToken,
     conn: Connection,
     store: Store,
@@ -32,25 +32,11 @@ impl TrayTask {
         crx: UnboundedReceiver<String>,
         token: CancellationToken,
     ) -> Result<()> {
-        let mut stream_map = Multiplexer::new();
+        let multiplexer = Multiplexer::new();
         let conn = Connection::session().await?;
 
-        stream_map.add(
-            StreamId::ServiceAdded,
-            StatusNotifierWatcher::into_stream(conn.clone()).await?,
-        );
-
-        stream_map.add(
-            StreamId::NameLost,
-            NameLostEvent::into_stream(conn.clone()).await?,
-        );
-        stream_map.add(
-            StreamId::NameOwnedChanged,
-            NameOwnerChangedEvent::into_stream(conn.clone()).await?,
-        );
-
         Self {
-            stream_map,
+            multiplexer,
             token,
             conn,
             store: Store::new(),
@@ -62,9 +48,13 @@ impl TrayTask {
     }
 
     async fn r#loop(mut self) -> Result<()> {
+        self.add::<StatusNotifierWatcher>(()).await?;
+        self.add::<NameLostEvent>(()).await?;
+        self.add::<NameOwnerChangedEvent>(()).await?;
+
         loop {
             tokio::select! {
-                Some((_stream_id, event)) = self.stream_map.next() => {
+                Some((_stream_id, event)) = self.multiplexer.next() => {
                     if let Err(err) = self.on_event(event).await {
                         log::error!(target: "Tray", "{err:?}");
                     }
@@ -133,33 +123,16 @@ impl TrayTask {
     }
 
     async fn on_service_added(&mut self, service: Arc<str>) -> Result<()> {
-        macro_rules! subscribe {
-            ($stream:ident) => {
-                let (event, stream_id, stream) =
-                    $stream::split(self.conn.clone(), Arc::clone(&service)).await?;
-
-                match event {
-                    Ok(event) => self.stream_map.emit(event)?,
-                    Err(err) => log::error!(target: "Tray", "{err:?}"),
-                }
-
-                self.stream_map.add(stream_id, stream);
-            };
-        }
-
-        subscribe!(IconNameUpdated);
-        subscribe!(IconPixmapUpdated);
-        subscribe!(MenuUpdated);
-
-        let (stream_id, stream) =
-            NewIcon::into_stream(self.conn.clone(), Arc::clone(&service)).await?;
-        self.stream_map.add(stream_id, stream);
+        self.add::<IconName>(Arc::clone(&service)).await?;
+        self.add::<IconPixmap>(Arc::clone(&service)).await?;
+        self.add::<Menu>(Arc::clone(&service)).await?;
+        self.add::<NewIcon>(Arc::clone(&service)).await?;
 
         Ok(())
     }
 
     fn on_service_removed(&mut self, service: &str) -> Result<()> {
-        let Some(count_removed) = self.stream_map.remove_service(service) else {
+        let Some(count_removed) = self.multiplexer.remove_service(service) else {
             return Ok(());
         };
 
@@ -173,7 +146,7 @@ impl TrayTask {
     }
 
     async fn on_icon_name_changed(&mut self, service: Arc<str>, icon_name: String) -> Result<()> {
-        let icon = TrayIcon::from(icon_name);
+        let icon = TrayIcon::detect_name_or_path(icon_name);
         if let Some(event) = self.store.update_icon(service, icon) {
             self.etx.send(event)?;
         }
@@ -187,7 +160,7 @@ impl TrayTask {
         height: i32,
         bytes: Vec<u8>,
     ) -> Result<()> {
-        let icon = TrayIcon::from((width, height, bytes));
+        let icon = TrayIcon::new_pixmap(width, height, bytes);
         if let Some(event) = self.store.update_icon(service, icon) {
             self.etx.send(event)?;
         }
@@ -199,40 +172,43 @@ impl TrayTask {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
     ) -> Result<()> {
-        macro_rules! subscribe {
-            ($stream:ident) => {
-                let (event, stream_id, stream) =
-                    $stream::split(self.conn.clone(), Arc::clone(&service), Arc::clone(&menu))
-                        .await?;
+        self.add::<LayoutUpdated>((Arc::clone(&service), Arc::clone(&menu)))
+            .await?;
 
-                if let Some(event) = event {
-                    self.stream_map.emit(event)?;
-                }
-
-                self.stream_map.add(stream_id, stream);
-            };
-        }
-
-        subscribe!(LayoutUpdated);
-        subscribe!(ItemsPropertiesUpdated);
+        self.add::<ItemsPropertiesUpdated>((Arc::clone(&service), Arc::clone(&menu)))
+            .await?;
 
         Ok(())
     }
 
     async fn on_new_icon_notifier(&mut self, service: Arc<str>) -> Result<()> {
-        let (e1, e2) = tokio::join!(
-            IconNameUpdated::get_current(self.conn.clone(), Arc::clone(&service)),
-            IconPixmapUpdated::get_current(self.conn.clone(), Arc::clone(&service))
-        );
+        let fut1 = IconName::get(&self.conn, Arc::clone(&service)).map_ok(|icon_name| {
+            DBusEvent::IconNameChanged {
+                service: Arc::clone(&service),
+                icon_name,
+            }
+        });
+
+        let fut2 =
+            IconPixmap::get(&self.conn, Arc::clone(&service)).map_ok(|(width, height, bytes)| {
+                DBusEvent::IconPixmapChanged {
+                    service: Arc::clone(&service),
+                    width,
+                    height,
+                    bytes,
+                }
+            });
+
+        let (e1, e2) = tokio::join!(fut1, fut2);
 
         let Ok(event) = e1.or(e2) else {
             log::error!(
                 target: "Tray",
-                "got notification about new icon but neither IconName nor IconPixmap can be received"
+                "got notification about new icon but both IconName and IconPixmap are not set"
             );
             return Ok(());
         };
-        self.stream_map.emit(event)?;
+        self.multiplexer.emit(event)?;
         Ok(())
     }
 
@@ -242,7 +218,7 @@ impl TrayTask {
         menu: Arc<OwnedObjectPath>,
     ) -> Result<()> {
         match Layout::get(self.conn.clone(), &service, &menu).await {
-            Ok(items) => self.stream_map.emit(DBusEvent::LayoutReceived {
+            Ok(items) => self.multiplexer.emit(DBusEvent::LayoutReceived {
                 items,
                 service: Arc::clone(&service),
             })?,
@@ -260,7 +236,7 @@ impl TrayTask {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
     ) -> Result<()> {
-        self.stream_map
+        self.multiplexer
             .emit(DBusEvent::LayoutUpdated { service, menu })
     }
 
@@ -268,6 +244,12 @@ impl TrayTask {
         if let Some(event) = self.store.update_item(service, items) {
             self.etx.send(event)?;
         }
+        Ok(())
+    }
+
+    async fn add<S: TrayStream>(&mut self, input: S::Input) -> Result<()> {
+        let (id, stream) = S::stream(&self.conn, input).await?;
+        self.multiplexer.add(id, stream);
         Ok(())
     }
 

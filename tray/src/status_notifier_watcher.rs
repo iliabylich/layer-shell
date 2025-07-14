@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
-use crate::dbus_event::DBusEvent;
+use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
 use anyhow::Result;
-use futures::Stream;
+use futures::{StreamExt, stream::BoxStream};
+use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use zbus::{Connection, interface, object_server::SignalEmitter};
@@ -11,21 +10,26 @@ pub(crate) struct StatusNotifierWatcher {
     tx: UnboundedSender<DBusEvent>,
 }
 
-impl StatusNotifierWatcher {
-    fn new() -> (Self, UnboundedReceiverStream<DBusEvent>) {
+#[async_trait::async_trait]
+impl TrayStream for StatusNotifierWatcher {
+    type Input = ();
+
+    async fn stream(
+        conn: &Connection,
+        _: Self::Input,
+    ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
+        let id = StreamId::ServiceAdded;
+
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let stream = UnboundedReceiverStream::new(rx);
 
-        (Self { tx }, stream)
-    }
-
-    pub(crate) async fn into_stream(conn: Connection) -> Result<impl Stream<Item = DBusEvent>> {
-        let (iface, stream) = StatusNotifierWatcher::new();
         conn.object_server()
-            .at("/StatusNotifierWatcher", iface)
+            .at("/StatusNotifierWatcher", StatusNotifierWatcher { tx })
             .await?;
         conn.request_name("org.kde.StatusNotifierWatcher").await?;
-        Ok(stream)
+
+        let stream = UnboundedReceiverStream::new(rx);
+
+        Ok((id, stream.boxed()))
     }
 }
 

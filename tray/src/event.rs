@@ -98,8 +98,8 @@ impl std::fmt::Debug for TrayIcon {
     }
 }
 
-impl From<String> for TrayIcon {
-    fn from(name_or_path: String) -> Self {
+impl TrayIcon {
+    pub(crate) fn detect_name_or_path(name_or_path: String) -> Self {
         if name_or_path.starts_with("/") {
             Self::Path {
                 path: name_or_path.into(),
@@ -110,10 +110,8 @@ impl From<String> for TrayIcon {
             }
         }
     }
-}
 
-impl From<(i32, i32, Vec<u8>)> for TrayIcon {
-    fn from((w, h, bytes): (i32, i32, Vec<u8>)) -> Self {
+    pub(crate) fn new_pixmap(w: i32, h: i32, bytes: Vec<u8>) -> Self {
         Self::PixmapVariant {
             w: w as u32,
             h: h as u32,

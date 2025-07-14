@@ -23,16 +23,9 @@ impl Multiplexer {
         Self { map, tx }
     }
 
-    pub(crate) fn add<S>(&mut self, id: StreamId, stream: S)
-    where
-        S: Stream<Item = DBusEvent> + Send + 'static,
-    {
+    pub(crate) fn add(&mut self, id: StreamId, stream: BoxStream<'static, DBusEvent>) {
         let stream = stream.boxed();
         self.map.insert(id, stream);
-    }
-
-    pub(crate) fn remove(&mut self, id: &StreamId) {
-        self.map.remove(id);
     }
 
     pub(crate) fn remove_service(&mut self, service: &str) -> Option<usize> {
@@ -43,7 +36,7 @@ impl Multiplexer {
             }
         }
         for id in ids_to_remove.iter() {
-            self.remove(id);
+            self.map.remove(id);
         }
         let count = ids_to_remove.len();
         if count > 0 { Some(count) } else { None }

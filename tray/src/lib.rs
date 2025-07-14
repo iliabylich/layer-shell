@@ -8,6 +8,7 @@ mod status_notifier_watcher;
 mod store;
 mod stream_id;
 mod tray;
+mod tray_stream;
 mod tray_task;
 mod uuid;
 

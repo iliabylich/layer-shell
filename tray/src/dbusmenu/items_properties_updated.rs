@@ -1,26 +1,42 @@
-use crate::{dbus_event::DBusEvent, dbusmenu::proxy::DBusMenuProxy, stream_id::StreamId};
+use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
 use anyhow::Result;
-use futures::{Stream, StreamExt};
+use futures::{StreamExt, stream::BoxStream};
 use std::sync::Arc;
 use zbus::{Connection, zvariant::OwnedObjectPath};
 
+mod dbus {
+    use zbus::proxy;
+    #[proxy(interface = "com.canonical.dbusmenu", assume_defaults = true)]
+    pub(crate) trait DBusMenu {
+        #[zbus(signal)]
+        fn items_properties_updated(
+            &self,
+            updated_props: Vec<(
+                i32,
+                std::collections::HashMap<&str, zbus::zvariant::Value<'_>>,
+            )>,
+            removed_props: Vec<(i32, Vec<&str>)>,
+        ) -> zbus::Result<()>;
+    }
+}
+
 pub(crate) struct ItemsPropertiesUpdated;
 
-impl ItemsPropertiesUpdated {
-    pub(crate) async fn split(
-        conn: Connection,
-        service: Arc<str>,
-        menu: Arc<OwnedObjectPath>,
-    ) -> Result<(Option<DBusEvent>, StreamId, impl Stream<Item = DBusEvent>)> {
-        let proxy = DBusMenuProxy::builder(&conn)
+#[async_trait::async_trait]
+impl TrayStream for ItemsPropertiesUpdated {
+    type Input = (Arc<str>, Arc<OwnedObjectPath>);
+
+    async fn stream(
+        conn: &Connection,
+        (service, menu): Self::Input,
+    ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
+        let proxy = dbus::DBusMenuProxy::builder(&conn)
             .destination(service.to_string())?
             .path(menu.as_ref().to_string())?
             .build()
             .await?;
 
-        let event = None;
-
-        let stream_id = StreamId::ItemsPropertiesUpdated {
+        let id = StreamId::ItemsPropertiesUpdated {
             service: Arc::clone(&service),
         };
 
@@ -36,8 +52,9 @@ impl ItemsPropertiesUpdated {
                         menu: Arc::clone(&menu),
                     })
                 }
-            });
+            })
+            .boxed();
 
-        Ok((event, stream_id, stream))
+        Ok((id, stream))
     }
 }
