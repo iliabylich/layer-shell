@@ -3,11 +3,11 @@ use crate::{
     dbus::{NameLostEvent, NameOwnerChangedEvent},
     dbus_event::DBusEvent,
     dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated, trigger_tray_item},
+    multiplexer::Multiplexer,
     status_notifier_item::{IconNameUpdated, IconPixmapUpdated, MenuUpdated, NewIcon},
     status_notifier_watcher::StatusNotifierWatcher,
     store::Store,
     stream_id::StreamId,
-    stream_map::StreamMap,
     uuid::Uuid,
 };
 use anyhow::Result;
@@ -18,7 +18,7 @@ use tokio_util::sync::CancellationToken;
 use zbus::{Connection, zvariant::OwnedObjectPath};
 
 pub(crate) struct TrayTask {
-    stream_map: StreamMap,
+    stream_map: Multiplexer,
     token: CancellationToken,
     conn: Connection,
     store: Store,
@@ -32,7 +32,7 @@ impl TrayTask {
         crx: UnboundedReceiver<String>,
         token: CancellationToken,
     ) -> Result<()> {
-        let mut stream_map = StreamMap::new();
+        let mut stream_map = Multiplexer::new();
         let conn = Connection::session().await?;
 
         stream_map.add(

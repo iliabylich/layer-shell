@@ -1,25 +1,22 @@
 use crate::{dbus_event::DBusEvent, stream_id::StreamId};
 use anyhow::{Context as _, Result};
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, stream::BoxStream};
 use pin_project_lite::pin_project;
 use std::pin::Pin;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::{StreamMap, wrappers::UnboundedReceiverStream};
 
 pin_project! {
-    pub(crate) struct StreamMap {
+    pub(crate) struct Multiplexer {
         #[pin]
-        map: tokio_stream::StreamMap<
-            StreamId,
-            Pin<Box<dyn Stream<Item = DBusEvent> + Send + 'static>>,
-        >,
+        map: StreamMap<StreamId, BoxStream<'static, DBusEvent>>,
         tx: UnboundedSender<DBusEvent>,
     }
 }
 
-impl StreamMap {
+impl Multiplexer {
     pub(crate) fn new() -> Self {
-        let mut map = tokio_stream::StreamMap::new();
+        let mut map = StreamMap::new();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<DBusEvent>();
         map.insert(StreamId::Manual, UnboundedReceiverStream::new(rx).boxed());
 
@@ -59,7 +56,7 @@ impl StreamMap {
     }
 }
 
-impl Stream for StreamMap {
+impl Stream for Multiplexer {
     type Item = (StreamId, DBusEvent);
 
     fn poll_next(
