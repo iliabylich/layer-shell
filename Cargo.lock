@@ -203,11 +203,13 @@ name = "cpu"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "ffi",
  "futures",
  "log",
- "pin-project-lite",
+ "module",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
