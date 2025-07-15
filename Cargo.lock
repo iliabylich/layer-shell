@@ -1802,11 +1802,12 @@ name = "weather"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "ffi",
  "futures",
  "log",
- "pin-project-lite",
+ "module",
  "reqwest",
  "serde",
  "tokio",
