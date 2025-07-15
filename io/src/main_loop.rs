@@ -59,9 +59,9 @@ impl MainLoop {
             }};
         }
 
-        register_stream!(Clock);
         register_stream!(CPU);
         register_stream!(Memory);
+        register_task!(Clock);
         register_task!(Control);
         register_task!(Network);
         register_task!(Weather);

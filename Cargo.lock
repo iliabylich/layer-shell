@@ -157,11 +157,15 @@ dependencies = [
 name = "clock"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "chrono",
  "ffi",
  "futures",
- "pin-project-lite",
+ "log",
+ "module",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
