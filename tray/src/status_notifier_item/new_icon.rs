@@ -43,7 +43,7 @@ impl TrayStream for NewIcon {
             .filter_map(move |_e| {
                 let service = Arc::clone(&service);
                 async move {
-                    Some(DBusEvent::NewIconNotified {
+                    Some(DBusEvent::NewIconReceived {
                         service: Arc::clone(&service),
                     })
                 }

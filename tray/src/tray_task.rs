@@ -32,13 +32,10 @@ impl TrayTask {
         crx: UnboundedReceiver<String>,
         token: CancellationToken,
     ) -> Result<()> {
-        let multiplexer = Multiplexer::new();
-        let conn = Connection::session().await?;
-
         Self {
-            multiplexer,
+            multiplexer: Multiplexer::new(),
             token,
-            conn,
+            conn: Connection::session().await?,
             store: Store::new(),
             etx,
             crx,
@@ -77,11 +74,11 @@ impl TrayTask {
     async fn on_event(&mut self, event: DBusEvent) -> Result<()> {
         match event {
             DBusEvent::NameLost(name) => {
-                self.on_service_removed(&name)?;
+                self.on_name_lost(&name)?;
             }
             DBusEvent::NameOwnerChanged { name, new_owner } => {
                 if new_owner.is_none() {
-                    self.on_service_removed(&name)?;
+                    self.on_name_lost(&name)?;
                 }
             }
 
@@ -104,8 +101,8 @@ impl TrayTask {
             DBusEvent::MenuChanged { service, menu } => {
                 self.on_menu_changed(service, menu).await?;
             }
-            DBusEvent::NewIconNotified { service } => {
-                self.on_new_icon_notifier(service).await?;
+            DBusEvent::NewIconReceived { service } => {
+                self.on_new_icon_received(service).await?;
             }
 
             DBusEvent::LayoutUpdated { service, menu } => {
@@ -131,7 +128,7 @@ impl TrayTask {
         Ok(())
     }
 
-    fn on_service_removed(&mut self, service: &str) -> Result<()> {
+    fn on_name_lost(&mut self, service: &str) -> Result<()> {
         let Some(count_removed) = self.multiplexer.remove_service(service) else {
             return Ok(());
         };
@@ -181,7 +178,7 @@ impl TrayTask {
         Ok(())
     }
 
-    async fn on_new_icon_notifier(&mut self, service: Arc<str>) -> Result<()> {
+    async fn on_new_icon_received(&mut self, service: Arc<str>) -> Result<()> {
         let fut1 = IconName::get(&self.conn, Arc::clone(&service)).map_ok(|icon_name| {
             DBusEvent::IconNameChanged {
                 service: Arc::clone(&service),
@@ -217,16 +214,11 @@ impl TrayTask {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
     ) -> Result<()> {
-        match Layout::get(self.conn.clone(), &service, &menu).await {
-            Ok(items) => self.multiplexer.emit(DBusEvent::LayoutReceived {
-                items,
-                service: Arc::clone(&service),
-            })?,
-            Err(err) => {
-                log::error!(target: "Tray", "failed to get layout of {service}: {err:?}");
-                return Ok(());
-            }
-        }
+        let items = Layout::get(self.conn.clone(), &service, &menu).await?;
+        self.multiplexer.emit(DBusEvent::LayoutReceived {
+            items,
+            service: Arc::clone(&service),
+        })?;
 
         Ok(())
     }
@@ -259,3 +251,5 @@ impl TrayTask {
         Ok(())
     }
 }
+
+// TODO: ASYNC TRAIT SendEvent with impl for <Event = TrayEvent> and <Event = DBusEvent>

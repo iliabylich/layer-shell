@@ -28,7 +28,7 @@ pub(crate) enum DBusEvent {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
     },
-    NewIconNotified {
+    NewIconReceived {
         service: Arc<str>,
     },
 
