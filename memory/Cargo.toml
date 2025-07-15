@@ -8,4 +8,6 @@ anyhow = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true }
 futures = { workspace = true }
-pin-project-lite = { workspace = true }
+tokio-util = { workspace = true }
+async-trait = { workspace = true }
+module = { path = "../module" }

@@ -1,49 +1,56 @@
 use crate::MemoryEvent;
 use anyhow::{Context as _, Result};
-use futures::{Stream, ready};
-use pin_project_lite::pin_project;
+use module::Module;
 use std::{io::Read as _, time::Duration};
-use tokio::time::{Interval, interval};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio_util::sync::CancellationToken;
 
-pin_project! {
-    pub struct Memory {
-        #[pin]
-        timer: Interval,
-        buf: Vec<u8>,
-    }
+pub struct Memory {
+    etx: UnboundedSender<MemoryEvent>,
+    token: CancellationToken,
 }
 
-const NAME: &str = "Memory";
+#[async_trait::async_trait]
+impl Module for Memory {
+    const NAME: &str = "Memory";
 
-impl Memory {
-    pub fn new() -> (&'static str, Self) {
-        (
-            NAME,
-            Self {
-                timer: interval(Duration::from_secs(1)),
-                buf: vec![0; 1_024],
-            },
-        )
+    type Event = MemoryEvent;
+    type Command = ();
+    type Ctl = ();
+
+    fn new(
+        etx: UnboundedSender<Self::Event>,
+        _: UnboundedReceiver<Self::Command>,
+        token: CancellationToken,
+    ) -> Self {
+        Self { etx, token }
     }
-}
 
-impl Stream for Memory {
-    type Item = MemoryEvent;
+    async fn start(&mut self) -> Result<()> {
+        let mut timer = tokio::time::interval(Duration::from_secs(1));
+        let mut buf = vec![0; 1_024];
 
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let mut this = self.project();
-        let _ = ready!(this.timer.poll_tick(cx));
+        loop {
+            tokio::select! {
+                _ = timer.tick() => {
+                    self.tick(&mut buf)?;
+                }
 
-        match parse(this.buf) {
-            Ok(event) => std::task::Poll::Ready(Some(event)),
-            Err(err) => {
-                log::error!(target: "Memory", "{err:?}");
-                std::task::Poll::Ready(None)
+                _ = self.token.cancelled() => {
+                    log::info!(target: "Clock", "exiting...");
+                    return Ok(())
+                }
             }
         }
+    }
+}
+
+impl Memory {
+    fn tick(&self, buf: &mut [u8]) -> Result<()> {
+        let event = parse(buf)?;
+        self.etx
+            .send(event)
+            .context("failed to send MemoryEvent: channel is closed")
     }
 }
 

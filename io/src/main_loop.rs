@@ -44,13 +44,7 @@ impl MainLoop {
         let mut handles = HashMap::new();
         let mut streams = StreamMap::new();
 
-        macro_rules! register_stream {
-            ($t:ty) => {{
-                let (name, stream) = <$t>::new();
-                streams.insert(name, stream.map(Event::from).boxed());
-            }};
-        }
-        macro_rules! register_task {
+        macro_rules! register {
             ($t:ty) => {{
                 let (stream, handle, ctl) = <$t>::spawn(token.clone());
                 handles.insert(<$t>::NAME, handle);
@@ -59,15 +53,15 @@ impl MainLoop {
             }};
         }
 
-        register_stream!(Memory);
-        register_task!(CPU);
-        register_task!(Clock);
-        register_task!(Control);
-        register_task!(Network);
-        register_task!(Weather);
-        register_task!(Sound);
-        let hyprctl = register_task!(Hyprland);
-        let trayctl = register_task!(Tray);
+        register!(Memory);
+        register!(CPU);
+        register!(Clock);
+        register!(Control);
+        register!(Network);
+        register!(Weather);
+        register!(Sound);
+        let hyprctl = register!(Hyprland);
+        let trayctl = register!(Tray);
 
         Ok(Self {
             config,
