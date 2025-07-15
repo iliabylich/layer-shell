@@ -1,4 +1,4 @@
-use crate::TrayItem;
+use crate::{TrayIconPixmap, TrayItem};
 use std::sync::Arc;
 use zbus::zvariant::OwnedObjectPath;
 
@@ -20,9 +20,7 @@ pub(crate) enum DBusEvent {
     },
     IconPixmapChanged {
         service: Arc<str>,
-        width: i32,
-        height: i32,
-        bytes: Vec<u8>,
+        pixmap: TrayIconPixmap,
     },
     MenuChanged {
         service: Arc<str>,

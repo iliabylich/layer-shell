@@ -1,5 +1,5 @@
 use crate::{
-    TrayEvent, TrayIcon, TrayItem,
+    TrayEvent, TrayIcon, TrayIconPixmap, TrayItem,
     dbus::{NameLostEvent, NameOwnerChangedEvent},
     dbus_event::DBusEvent,
     dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated, trigger_tray_item},
@@ -89,14 +89,8 @@ impl TrayTask {
             DBusEvent::IconNameChanged { service, icon_name } => {
                 self.on_icon_name_changed(service, icon_name).await?;
             }
-            DBusEvent::IconPixmapChanged {
-                service,
-                width,
-                height,
-                bytes,
-            } => {
-                self.on_icon_pixmap_changed(service, width, height, bytes)
-                    .await?;
+            DBusEvent::IconPixmapChanged { service, pixmap } => {
+                self.on_icon_pixmap_changed(service, pixmap).await?;
             }
             DBusEvent::MenuChanged { service, menu } => {
                 self.on_menu_changed(service, menu).await?;
@@ -153,11 +147,9 @@ impl TrayTask {
     async fn on_icon_pixmap_changed(
         &mut self,
         service: Arc<str>,
-        width: i32,
-        height: i32,
-        bytes: Vec<u8>,
+        pixmap: TrayIconPixmap,
     ) -> Result<()> {
-        let icon = TrayIcon::new_pixmap(width, height, bytes);
+        let icon = TrayIcon::Pixmap(pixmap);
         if let Some(event) = self.store.update_icon(service, icon) {
             self.etx.send(event)?;
         }
@@ -186,15 +178,12 @@ impl TrayTask {
             }
         });
 
-        let fut2 =
-            IconPixmap::get(&self.conn, Arc::clone(&service)).map_ok(|(width, height, bytes)| {
-                DBusEvent::IconPixmapChanged {
-                    service: Arc::clone(&service),
-                    width,
-                    height,
-                    bytes,
-                }
-            });
+        let fut2 = IconPixmap::get(&self.conn, Arc::clone(&service)).map_ok(|pixmap| {
+            DBusEvent::IconPixmapChanged {
+                service: Arc::clone(&service),
+                pixmap,
+            }
+        });
 
         let (e1, e2) = tokio::join!(fut1, fut2);
 

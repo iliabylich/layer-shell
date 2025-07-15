@@ -14,6 +14,6 @@ mod uuid;
 
 pub use event::{
     TrayAppAddedEvent, TrayAppIconUpdatedEvent, TrayAppMenuUpdatedEvent, TrayAppRemovedEvent,
-    TrayEvent, TrayIcon, TrayItem,
+    TrayEvent, TrayIcon, TrayIconPixmap, TrayItem,
 };
 pub use tray::{Tray, TrayCtl};

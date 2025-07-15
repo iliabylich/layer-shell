@@ -1,4 +1,4 @@
-use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
+use crate::{TrayIconPixmap, dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
 use anyhow::{Context as _, Result};
 use futures::{StreamExt, stream::BoxStream};
 use std::sync::Arc;
@@ -34,12 +34,10 @@ impl TrayStream for IconPixmap {
             .await?;
 
         let pre = match Self::get(conn, Arc::clone(&service)).await {
-            Ok((width, height, bytes)) => {
+            Ok(pixmap) => {
                 let event = DBusEvent::IconPixmapChanged {
                     service: Arc::clone(&service),
-                    width,
-                    height,
-                    bytes,
+                    pixmap,
                 };
                 futures::stream::once(async move { event }).boxed()
             }
@@ -59,9 +57,11 @@ impl TrayStream for IconPixmap {
                     let (width, height, bytes) = select_best_variant(variants).ok()?;
                     Some(DBusEvent::IconPixmapChanged {
                         service: Arc::clone(&service),
-                        width,
-                        height,
-                        bytes,
+                        pixmap: TrayIconPixmap {
+                            width,
+                            height,
+                            bytes: bytes.into(),
+                        },
                     })
                 }
             });
@@ -71,7 +71,7 @@ impl TrayStream for IconPixmap {
 }
 
 impl IconPixmap {
-    pub(crate) async fn get(conn: &Connection, service: Arc<str>) -> Result<(i32, i32, Vec<u8>)> {
+    pub(crate) async fn get(conn: &Connection, service: Arc<str>) -> Result<TrayIconPixmap> {
         let proxy = StatusNotifierItemProxy::builder(conn)
             .destination(service.to_string())?
             .build()
@@ -82,6 +82,11 @@ impl IconPixmap {
             .await
             .context("failed to get IconPixmap")
             .and_then(select_best_variant)
+            .map(|(width, height, bytes)| TrayIconPixmap {
+                width,
+                height,
+                bytes: bytes.into(),
+            })
     }
 }
 

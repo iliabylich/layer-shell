@@ -87,11 +87,11 @@ void tray_icon_update_icon(TrayIcon *self, IO_TrayIcon icon) {
     gtk_image_set_from_icon_name(image, icon.name.name);
     break;
   }
-  case IO_TrayIcon_PixmapVariant: {
-    uint8_t *data = icon.pixmap_variant.bytes.ptr;
-    size_t size = icon.pixmap_variant.bytes.len;
-    uint32_t w = icon.pixmap_variant.w;
-    uint32_t h = icon.pixmap_variant.h;
+  case IO_TrayIcon_Pixmap: {
+    uint8_t *data = icon.pixmap.bytes.ptr;
+    size_t size = icon.pixmap.bytes.len;
+    uint32_t w = icon.pixmap.width;
+    uint32_t h = icon.pixmap.height;
 
     GBytes *bytes = g_bytes_new(data, size);
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_bytes(bytes, GDK_COLORSPACE_RGB,

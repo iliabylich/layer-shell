@@ -73,29 +73,13 @@ pub enum TrayItem {
     },
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub enum TrayIcon {
     Path { path: CString },
     Name { name: CString },
-    PixmapVariant { w: u32, h: u32, bytes: CArray<u8> },
+    Pixmap(TrayIconPixmap),
     Unset,
-}
-
-impl std::fmt::Debug for TrayIcon {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TrayIcon::Path { path } => f.debug_struct("TrayIconPath").field("path", path).finish(),
-            TrayIcon::Name { name } => f.debug_struct("TrayIconName").field("name", name).finish(),
-            TrayIcon::PixmapVariant { w, h, bytes } => f
-                .debug_struct("TrayIconPixmapVariant")
-                .field("w", w)
-                .field("h", h)
-                .field("bytes", &format!("[...{} bytes]", bytes.len))
-                .finish(),
-            TrayIcon::Unset => write!(f, "None"),
-        }
-    }
 }
 
 impl TrayIcon {
@@ -110,12 +94,22 @@ impl TrayIcon {
             }
         }
     }
+}
 
-    pub(crate) fn new_pixmap(w: i32, h: i32, bytes: Vec<u8>) -> Self {
-        Self::PixmapVariant {
-            w: w as u32,
-            h: h as u32,
-            bytes: bytes.into(),
-        }
+#[derive(Clone)]
+#[repr(C)]
+pub struct TrayIconPixmap {
+    pub width: i32,
+    pub height: i32,
+    pub bytes: CArray<u8>,
+}
+
+impl std::fmt::Debug for TrayIconPixmap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TrayIconPixmapVariant")
+            .field("w", &self.width)
+            .field("h", &self.height)
+            .field("bytes", &format!("[...{} bytes]", self.bytes.len))
+            .finish()
     }
 }
