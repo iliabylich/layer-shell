@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 tokio = { workspace = true }
 chrono = { workspace = true }
-futures = { workspace = true }
 tokio-util = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }

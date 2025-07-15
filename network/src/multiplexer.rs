@@ -1,14 +1,10 @@
 use crate::nm_event::NetworkManagerEvent;
 use futures::{Stream, ready, stream::BoxStream};
-use pin_project_lite::pin_project;
 use std::pin::Pin;
 use tokio_stream::StreamMap;
 
-pin_project! {
-    pub(crate) struct Multiplexer {
-        #[pin]
-        map: StreamMap<&'static StreamId, BoxStream<'static, NetworkManagerEvent>>,
-    }
+pub(crate) struct Multiplexer {
+    map: StreamMap<&'static StreamId, BoxStream<'static, NetworkManagerEvent>>,
 }
 
 #[derive(Hash, PartialEq, Eq)]
@@ -45,11 +41,11 @@ impl Stream for Multiplexer {
     type Item = (&'static str, NetworkManagerEvent);
 
     fn poll_next(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        let out = ready!(self.project().map.poll_next(cx))
-            .map(|(stream_id, event)| (stream_id.name, event));
+        let map = Pin::new(&mut self.as_mut().get_mut().map);
+        let out = ready!(map.poll_next(cx)).map(|(stream_id, event)| (stream_id.name, event));
         std::task::Poll::Ready(out)
     }
 }

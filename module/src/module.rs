@@ -1,5 +1,5 @@
 use crate::Ctl;
-use futures::{Stream, StreamExt as _};
+use futures::Stream;
 use std::time::Duration;
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
@@ -45,7 +45,7 @@ pub trait Module: Send {
         });
 
         (
-            UnboundedReceiverStream::new(erx).boxed(),
+            UnboundedReceiverStream::new(erx),
             handle,
             Self::Ctl::new(ctx),
         )

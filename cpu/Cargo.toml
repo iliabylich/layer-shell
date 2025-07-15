@@ -9,6 +9,5 @@ log = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 async-trait = { workspace = true }
-futures = { workspace = true }
 ffi = { path = "../ffi" }
 module = { path = "../module" }

@@ -11,5 +11,4 @@ tokio-util = { workspace = true }
 tokio = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }
-
 module = { path = "../module" }
