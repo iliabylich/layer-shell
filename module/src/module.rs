@@ -19,12 +19,7 @@ pub trait Module: Send {
 
     fn spawn(
         token: CancellationToken,
-    ) -> (
-        &'static str,
-        impl Stream<Item = Self::Event>,
-        JoinHandle<()>,
-        Self::Ctl,
-    )
+    ) -> (impl Stream<Item = Self::Event>, JoinHandle<()>, Self::Ctl)
     where
         Self: Sized,
     {
@@ -50,7 +45,6 @@ pub trait Module: Send {
         });
 
         (
-            Self::NAME,
             UnboundedReceiverStream::new(erx).boxed(),
             handle,
             Self::Ctl::new(ctx),

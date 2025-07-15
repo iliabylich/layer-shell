@@ -52,10 +52,10 @@ impl MainLoop {
         }
         macro_rules! register_task {
             ($t:ty) => {{
-                let (name, stream, handle, out) = <$t>::spawn(token.clone());
-                handles.insert(name, handle);
-                streams.insert(name, stream.map(Event::from).boxed());
-                out
+                let (stream, handle, ctl) = <$t>::spawn(token.clone());
+                handles.insert(<$t>::NAME, handle);
+                streams.insert(<$t>::NAME, stream.map(Event::from).boxed());
+                ctl
             }};
         }
 
