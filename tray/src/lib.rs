@@ -9,11 +9,12 @@ mod store;
 mod stream_id;
 mod tray;
 mod tray_stream;
-mod tray_task;
+mod trayctl;
 mod uuid;
 
 pub use event::{
     TrayAppAddedEvent, TrayAppIconUpdatedEvent, TrayAppMenuUpdatedEvent, TrayAppRemovedEvent,
     TrayEvent, TrayIcon, TrayIconPixmap, TrayItem,
 };
-pub use tray::{Tray, TrayCtl};
+pub use tray::Tray;
+pub use trayctl::TrayCtl;

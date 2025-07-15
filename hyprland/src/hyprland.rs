@@ -1,6 +1,6 @@
-use crate::{HyprlandEvent, reader::Reader, state::State, writer::Writer};
-use anyhow::{Context, Result};
-use module::{Ctl, Module};
+use crate::{Hyprctl, HyprlandEvent, reader::Reader, state::State, writer::Writer};
+use anyhow::Result;
+use module::Module;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
@@ -64,26 +64,5 @@ impl Module for Hyprland {
 async fn exec_in_place(command: String) {
     if let Err(err) = Writer::dispatch(command).await {
         log::error!(target: "Hyprland", "failed to dispatch hyprctl: {err:?}");
-    }
-}
-
-pub struct Hyprctl {
-    ctx: UnboundedSender<String>,
-}
-
-#[async_trait::async_trait]
-impl Ctl for Hyprctl {
-    const NAME: &str = "Hyprctl";
-
-    type Command = String;
-
-    fn new(ctx: UnboundedSender<Self::Command>) -> Self {
-        Self { ctx }
-    }
-
-    async fn try_send(&self, command: Self::Command) -> Result<()> {
-        self.ctx
-            .send(command)
-            .context("failed to send hyprctl command: channel is closed")
     }
 }

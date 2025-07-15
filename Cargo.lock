@@ -1648,6 +1648,7 @@ dependencies = [
  "ffi",
  "futures",
  "log",
+ "module",
  "pin-project-lite",
  "tokio",
  "tokio-stream",

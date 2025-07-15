@@ -16,3 +16,4 @@ chrono = { workspace = true }
 async-trait = { workspace = true }
 
 ffi = { path = "../ffi" }
+module = { path = "../module" }

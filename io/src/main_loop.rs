@@ -148,7 +148,7 @@ impl MainLoop {
                 hyprctl!("exit");
             }
             Command::TriggerTray { uuid } => {
-                self.trayctl.trigger(uuid);
+                self.trayctl.send(uuid).await;
             }
             Command::SpawnWiFiEditor => {
                 hyprctl!("exec {}", self.config.edit_wifi);
