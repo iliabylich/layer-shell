@@ -33,7 +33,7 @@ impl TrayStream for Menu {
             id: ServiceStreamId::MenuUpdated,
         };
 
-        let proxy = StatusNotifierItemProxy::builder(&conn)
+        let proxy = StatusNotifierItemProxy::builder(conn)
             .destination(service.to_string())?
             .build()
             .await?;

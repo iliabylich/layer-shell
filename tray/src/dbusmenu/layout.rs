@@ -32,11 +32,11 @@ type Input = (u32, (i32, HashMap<String, OwnedValue>, Vec<OwnedValue>));
 
 impl<'a> Layout<'a> {
     pub(crate) async fn get(
-        conn: Connection,
+        conn: &Connection,
         service: &'a str,
         menu: &'a OwnedObjectPath,
     ) -> Result<Vec<TrayItem>> {
-        let dbus_menu_proxy = DBusMenuProxy::builder(&conn)
+        let dbus_menu_proxy = DBusMenuProxy::builder(conn)
             .destination(service.to_string())?
             .path(menu.clone())?
             .build()

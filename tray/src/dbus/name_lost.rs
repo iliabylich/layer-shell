@@ -15,7 +15,7 @@ impl TrayStream for NameLost {
     ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
         let id = StreamId::NameLost;
 
-        let dbus_proxy = DBusProxy::new(&conn).await?;
+        let dbus_proxy = DBusProxy::new(conn).await?;
         let stream = dbus_proxy
             .receive_name_lost()
             .await?

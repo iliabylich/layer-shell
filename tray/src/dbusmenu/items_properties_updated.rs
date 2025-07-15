@@ -34,7 +34,7 @@ impl TrayStream for ItemsPropertiesUpdated {
         conn: &Connection,
         (service, menu): Self::Input,
     ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
-        let proxy = dbus::DBusMenuProxy::builder(&conn)
+        let proxy = dbus::DBusMenuProxy::builder(conn)
             .destination(service.as_ref())?
             .path(menu.as_ref())?
             .build()

@@ -33,7 +33,7 @@ impl TrayStream for IconName {
             id: ServiceStreamId::IconNameUpdated,
         };
 
-        let proxy = StatusNotifierItemProxy::builder(&conn)
+        let proxy = StatusNotifierItemProxy::builder(conn)
             .destination(service.to_string())?
             .build()
             .await?;

@@ -33,7 +33,7 @@ impl TrayStream for LayoutUpdated {
             id: ServiceStreamId::LayoutUpdated,
         };
 
-        let proxy = dbus::DBusMenuProxy::builder(&conn)
+        let proxy = dbus::DBusMenuProxy::builder(conn)
             .destination(service.as_ref())?
             .path(menu.as_ref())?
             .build()

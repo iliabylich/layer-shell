@@ -203,7 +203,7 @@ impl TrayTask {
         service: Arc<str>,
         menu: Arc<OwnedObjectPath>,
     ) -> Result<()> {
-        let items = Layout::get(self.conn.clone(), &service, &menu).await?;
+        let items = Layout::get(&self.conn, &service, &menu).await?;
         self.multiplexer.emit(DBusEvent::LayoutReceived {
             items,
             service: Arc::clone(&service),
@@ -236,9 +236,7 @@ impl TrayTask {
 
     async fn trigger(&mut self, uuid: String) -> Result<()> {
         let (service, menu, id) = Uuid::decode(&uuid)?;
-        trigger_tray_item(self.conn.clone(), service, menu, id).await?;
+        trigger_tray_item(&self.conn, service, menu, id).await?;
         Ok(())
     }
 }
-
-// TODO: ASYNC TRAIT SendEvent with impl for <Event = TrayEvent> and <Event = DBusEvent>

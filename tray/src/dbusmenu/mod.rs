@@ -7,7 +7,7 @@ pub(crate) use layout::Layout;
 pub(crate) use layout_updated::LayoutUpdated;
 
 pub(crate) async fn trigger_tray_item(
-    conn: zbus::Connection,
+    conn: &zbus::Connection,
     service: String,
     menu: String,
     id: i32,
@@ -25,7 +25,7 @@ pub(crate) async fn trigger_tray_item(
         ) -> zbus::Result<()>;
     }
 
-    let proxy = DBusMenuProxy::builder(&conn)
+    let proxy = DBusMenuProxy::builder(conn)
         .destination(service.to_string())?
         .path(menu)?
         .build()
