@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 #[repr(transparent)]
 pub struct CString {
     pub ptr: *mut std::ffi::c_char,
@@ -43,6 +45,12 @@ impl From<CString> for String {
             .to_string();
         std::mem::forget(s);
         out
+    }
+}
+
+impl From<Arc<str>> for CString {
+    fn from(value: Arc<str>) -> Self {
+        Self::from(value.as_ref().to_string())
     }
 }
 
