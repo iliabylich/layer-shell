@@ -31,6 +31,7 @@ static void sound_window_init(SoundWindow *self) {
   gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, true);
   gtk_layer_set_margin(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, 100);
   gtk_widget_add_css_class(GTK_WIDGET(self), "sound-window");
+  gtk_widget_add_css_class(GTK_WIDGET(self), "notification-window");
 
   self->root = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
   gtk_widget_add_css_class(self->root, "wrapper");

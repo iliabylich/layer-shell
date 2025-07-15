@@ -221,12 +221,14 @@ tooltip {
     }
 }
 
-.sound-window {
+.notification-window {
     border: 3px solid var(--inverse_primary);
     border-radius: 10px;
     background-color: var(--surface_container-alpha);
     padding: 15px;
+}
 
+.sound-window {
     label {
         min-width: 30px;
         font-size: 30px;
@@ -246,5 +248,17 @@ tooltip {
                 background-color: var(--tertiary_container);
             }
         }
+    }
+}
+
+.caps-lock-window {
+    .icon {
+        font-size: 30px;
+        min-width: 30px;
+    }
+
+    .status {
+        font-size: 20px;
+        min-width: 200px;
     }
 }

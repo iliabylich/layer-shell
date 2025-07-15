@@ -2,6 +2,7 @@ sources += files(
     'base_window.c',
     'bluetooth.c',
     'buffer.c',
+    'caps_lock_window.c',
     'change_theme.c',
     'clock.c',
     'cpu.c',

@@ -1,5 +1,5 @@
 use clock::ClockEvent;
-use control::ControlEvent;
+use control::{ControlCapsLockToggledEvent, ControlEvent};
 use cpu::CpuUsageEvent;
 use hyprland::{HyprlandEvent, LanguageEvent, WorkspacesEvent};
 use memory::MemoryEvent;
@@ -39,6 +39,7 @@ pub enum Event {
     TrayAppRemoved(TrayAppRemovedEvent),
     ToggleSessionScreen,
     ReloadStyles,
+    CapsLockToggled(ControlCapsLockToggledEvent),
     Exit,
     VolumeChanged(VolumeChangedEvent),
     MuteChanged(MuteChangedEvent),
@@ -77,6 +78,7 @@ impl From<ControlEvent> for Event {
         match event {
             ControlEvent::ToggleSessionScreen => Self::ToggleSessionScreen,
             ControlEvent::ReloadStyles => Self::ReloadStyles,
+            ControlEvent::CapsLockToggled(e) => Self::CapsLockToggled(e),
             ControlEvent::Exit => Self::Exit,
         }
     }

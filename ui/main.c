@@ -1,5 +1,6 @@
 #include "bindings.h"
 #include "ui/bluetooth.h"
+#include "ui/caps_lock_window.h"
 #include "ui/change_theme.h"
 #include "ui/clock.h"
 #include "ui/cpu.h"
@@ -31,6 +32,7 @@ GtkWidget *terminal_window;
 GtkWidget *ping_window;
 GtkWidget *session_window;
 GtkWidget *sound_window;
+GtkWidget *caps_lock_window;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
@@ -147,6 +149,11 @@ int poll_events(void) {
     }
     case IO_Event_MuteChanged: {
       sound_window_refresh_mute(SOUND_WINDOW(sound_window), event.mute_changed);
+      break;
+    }
+    case IO_Event_CapsLockToggled: {
+      caps_lock_window_refresh(CAPS_LOCK_WINDOW(caps_lock_window),
+                               event.caps_lock_toggled);
       break;
     }
     case IO_Event_Exit: {
@@ -283,6 +290,8 @@ static void on_app_activate() {
   CONNECT(session_window, "clicked-logout", on_logout_clicked);
 
   sound_window = sound_window_new(app);
+
+  caps_lock_window = caps_lock_window_new(app);
 
 #undef CONNECT
 

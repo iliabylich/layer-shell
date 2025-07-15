@@ -11,3 +11,4 @@ log = { workspace = true }
 tokio-util = { workspace = true }
 async-trait = { workspace = true }
 module = { path = "../module" }
+hyprland = { path = "../hyprland" }

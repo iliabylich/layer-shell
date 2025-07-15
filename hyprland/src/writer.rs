@@ -11,7 +11,7 @@ use tokio::{
 pub(crate) struct Writer;
 
 impl Writer {
-    async fn call(cmd: impl AsRef<str>) -> Result<String> {
+    pub(crate) async fn call(cmd: impl AsRef<str>) -> Result<String> {
         let path = format!(
             "{}/hypr/{}/.socket.sock",
             xdg_runtime_dir()?,

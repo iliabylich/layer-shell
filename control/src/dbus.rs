@@ -1,4 +1,5 @@
-use crate::ControlEvent;
+use crate::{ControlCapsLockToggledEvent, ControlEvent};
+use hyprland::CapsLock;
 use tokio::sync::mpsc::UnboundedSender;
 use zbus::interface;
 
@@ -26,6 +27,19 @@ impl DBus {
 
     async fn reload_styles(&self) {
         self.emit(ControlEvent::ReloadStyles)
+    }
+
+    async fn caps_lock_toggled(&self) {
+        let enabled = match CapsLock::is_enabled().await {
+            Ok(enabled) => enabled,
+            Err(err) => {
+                log::error!(target: "Control", "{err:?}");
+                return;
+            }
+        };
+        self.emit(ControlEvent::CapsLockToggled(ControlCapsLockToggledEvent {
+            enabled,
+        }))
     }
 
     async fn exit(&self) {
