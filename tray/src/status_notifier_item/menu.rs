@@ -1,4 +1,8 @@
-use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
+use crate::{
+    dbus_event::DBusEvent,
+    stream_id::{ServiceStreamId, StreamId},
+    tray_stream::TrayStream,
+};
 use anyhow::Result;
 use futures::{StreamExt, stream::BoxStream};
 use std::sync::Arc;
@@ -24,8 +28,9 @@ impl TrayStream for Menu {
         conn: &Connection,
         service: Self::Input,
     ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
-        let id = StreamId::MenuUpdated {
+        let id = StreamId::ServiceStream {
             service: Arc::clone(&service),
+            id: ServiceStreamId::MenuUpdated,
         };
 
         let proxy = StatusNotifierItemProxy::builder(&conn)
@@ -34,10 +39,10 @@ impl TrayStream for Menu {
             .await?;
 
         let pre = match proxy.menu().await {
-            Ok(path) => {
+            Ok(menu) => {
                 let event = DBusEvent::MenuChanged {
                     service: Arc::clone(&service),
-                    menu: Arc::new(path),
+                    menu: Arc::new(menu),
                 };
                 futures::stream::once(async move { event }).boxed()
             }
@@ -53,11 +58,8 @@ impl TrayStream for Menu {
             .filter_map(move |e| {
                 let service = Arc::clone(&service);
                 async move {
-                    let path = e.get().await.ok()?;
-                    Some(DBusEvent::MenuChanged {
-                        service: Arc::clone(&service),
-                        menu: Arc::new(path),
-                    })
+                    let menu = Arc::new(e.get().await.ok()?);
+                    Some(DBusEvent::MenuChanged { service, menu })
                 }
             })
             .boxed();

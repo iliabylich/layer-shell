@@ -31,7 +31,7 @@ impl Multiplexer {
     pub(crate) fn remove_service(&mut self, service: &str) -> Option<usize> {
         let mut ids_to_remove = vec![];
         for id in self.map.keys() {
-            if id.is_related_to(service) {
+            if id.is_related_to_service(service) {
                 ids_to_remove.push(id.clone())
             }
         }

@@ -1,4 +1,8 @@
-use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
+use crate::{
+    dbus_event::DBusEvent,
+    stream_id::{ServiceStreamId, StreamId},
+    tray_stream::TrayStream,
+};
 use anyhow::Result;
 use futures::{StreamExt, stream::BoxStream};
 use std::sync::Arc;
@@ -24,13 +28,14 @@ impl TrayStream for LayoutUpdated {
         conn: &Connection,
         (service, menu): Self::Input,
     ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
-        let id = StreamId::LayoutUpdated {
+        let id = StreamId::ServiceStream {
             service: Arc::clone(&service),
+            id: ServiceStreamId::LayoutUpdated,
         };
 
         let proxy = dbus::DBusMenuProxy::builder(&conn)
-            .destination(service.to_string())?
-            .path(menu.as_ref().to_string())?
+            .destination(service.as_ref())?
+            .path(menu.as_ref())?
             .build()
             .await?;
 
@@ -43,12 +48,7 @@ impl TrayStream for LayoutUpdated {
         let post = proxy.receive_layout_updated().await?.filter_map(move |_| {
             let service = Arc::clone(&service);
             let menu = Arc::clone(&menu);
-            async move {
-                Some(DBusEvent::LayoutUpdated {
-                    service: Arc::clone(&service),
-                    menu: Arc::clone(&menu),
-                })
-            }
+            async move { Some(DBusEvent::LayoutUpdated { service, menu }) }
         });
 
         Ok((id, pre.chain(post).boxed()))

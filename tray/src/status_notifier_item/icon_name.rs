@@ -1,4 +1,8 @@
-use crate::{dbus_event::DBusEvent, stream_id::StreamId, tray_stream::TrayStream};
+use crate::{
+    dbus_event::DBusEvent,
+    stream_id::{ServiceStreamId, StreamId},
+    tray_stream::TrayStream,
+};
 use anyhow::{Context as _, Result, bail};
 use futures::{StreamExt, stream::BoxStream};
 use std::sync::Arc;
@@ -24,8 +28,9 @@ impl TrayStream for IconName {
         conn: &Connection,
         service: Self::Input,
     ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
-        let id = StreamId::IconNameUpdated {
+        let id = StreamId::ServiceStream {
             service: Arc::clone(&service),
+            id: ServiceStreamId::IconNameUpdated,
         };
 
         let proxy = StatusNotifierItemProxy::builder(&conn)
@@ -54,10 +59,7 @@ impl TrayStream for IconName {
                 let service = Arc::clone(&service);
                 async move {
                     let icon_name = e.get().await.ok()?;
-                    Some(DBusEvent::IconNameChanged {
-                        service: Arc::clone(&service),
-                        icon_name,
-                    })
+                    Some(DBusEvent::IconNameChanged { service, icon_name })
                 }
             });
 
