@@ -1,6 +1,6 @@
 use crate::{
     TrayEvent, TrayIcon, TrayIconPixmap, TrayItem,
-    dbus::{NameLostEvent, NameOwnerChangedEvent},
+    dbus::{NameLost, NameOwnerChanged},
     dbus_event::DBusEvent,
     dbusmenu::{ItemsPropertiesUpdated, Layout, LayoutUpdated, trigger_tray_item},
     multiplexer::Multiplexer,
@@ -46,8 +46,8 @@ impl TrayTask {
 
     async fn r#loop(mut self) -> Result<()> {
         self.add::<StatusNotifierWatcher>(()).await?;
-        self.add::<NameLostEvent>(()).await?;
-        self.add::<NameOwnerChangedEvent>(()).await?;
+        self.add::<NameLost>(()).await?;
+        self.add::<NameOwnerChanged>(()).await?;
 
         loop {
             tokio::select! {

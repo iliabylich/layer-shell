@@ -1,5 +1,5 @@
-mod name_lost_event;
-mod name_owner_changed_event;
+mod name_lost;
+mod name_owner_changed;
 
-pub(crate) use name_lost_event::NameLostEvent;
-pub(crate) use name_owner_changed_event::NameOwnerChangedEvent;
+pub(crate) use name_lost::NameLost;
+pub(crate) use name_owner_changed::NameOwnerChanged;

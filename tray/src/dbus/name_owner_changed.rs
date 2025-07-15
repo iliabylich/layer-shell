@@ -3,26 +3,27 @@ use anyhow::Result;
 use futures::{StreamExt, stream::BoxStream};
 use zbus::{Connection, fdo::DBusProxy};
 
-pub(crate) struct NameLostEvent;
+pub(crate) struct NameOwnerChanged;
 
 #[async_trait::async_trait]
-impl TrayStream for NameLostEvent {
+impl TrayStream for NameOwnerChanged {
     type Input = ();
 
     async fn stream(
         conn: &Connection,
         _: Self::Input,
     ) -> Result<(StreamId, BoxStream<'static, DBusEvent>)> {
-        let id = StreamId::NameLost;
+        let id = StreamId::NameOwnedChanged;
 
-        let dbus_proxy = DBusProxy::new(&conn).await?;
+        let dbus_proxy = DBusProxy::new(conn).await?;
         let stream = dbus_proxy
-            .receive_name_lost()
+            .receive_name_owner_changed()
             .await?
             .filter_map(|e| async move {
                 let args = e.args().ok()?;
                 let name = args.name.to_string();
-                Some(DBusEvent::NameLost(name))
+                let new_owner = args.new_owner.as_ref().map(|v| v.to_string());
+                Some(DBusEvent::NameOwnerChanged { name, new_owner })
             })
             .boxed();
 
