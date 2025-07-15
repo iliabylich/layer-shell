@@ -30,16 +30,17 @@ impl NmStream for AccessPointSsid {
     ) -> Result<BoxStream<'static, NetworkManagerEvent>> {
         let proxy = AccessPointProxy::builder(conn).path(path)?.build().await?;
 
-        let pre = match proxy.ssid().await {
-            Ok(ssid) => {
+        let pre = proxy
+            .ssid()
+            .await
+            .map(|ssid| {
                 let event = NetworkManagerEvent::Ssid(ssid);
                 futures::stream::once(async move { event }).boxed()
-            }
-            Err(err) => {
+            })
+            .unwrap_or_else(|err| {
                 log::error!(target: "Network", "{err:?}");
                 futures::stream::empty().boxed()
-            }
-        };
+            });
 
         let post = proxy
             .receive_ssid_changed()

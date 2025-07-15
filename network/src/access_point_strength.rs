@@ -30,16 +30,17 @@ impl NmStream for AccessPointStrength {
     ) -> Result<BoxStream<'static, NetworkManagerEvent>> {
         let proxy = AccessPointProxy::builder(conn).path(path)?.build().await?;
 
-        let pre = match proxy.strength().await {
-            Ok(strength) => {
+        let pre = proxy
+            .strength()
+            .await
+            .map(|strength| {
                 let event = NetworkManagerEvent::Strength(strength);
                 futures::stream::once(async move { event }).boxed()
-            }
-            Err(err) => {
+            })
+            .unwrap_or_else(|err| {
                 log::error!(target: "Network", "{err:?}");
                 futures::stream::empty().boxed()
-            }
-        };
+            });
 
         let post = proxy
             .receive_strength_changed()

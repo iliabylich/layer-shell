@@ -37,16 +37,17 @@ impl NmStream for AccessPoint {
             .build()
             .await?;
 
-        let pre = match proxy.active_access_point().await {
-            Ok(path) => {
+        let pre = proxy
+            .active_access_point()
+            .await
+            .map(|path| {
                 let event = NetworkManagerEvent::AccessPoint(path);
                 futures::stream::once(async move { event }).boxed()
-            }
-            Err(err) => {
+            })
+            .unwrap_or_else(|err| {
                 log::error!(target: "Network", "{err:?}");
                 futures::stream::empty().boxed()
-            }
-        };
+            });
 
         let post = proxy
             .receive_active_access_point_changed()

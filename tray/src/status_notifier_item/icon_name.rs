@@ -34,23 +34,23 @@ impl TrayStream for IconName {
         };
 
         let proxy = StatusNotifierItemProxy::builder(conn)
-            .destination(service.to_string())?
+            .destination(Arc::clone(&service))?
             .build()
             .await?;
 
-        let pre = match Self::get(conn, Arc::clone(&service)).await {
-            Ok(icon_name) => {
+        let pre = Self::get(conn, &service)
+            .await
+            .map(|icon_name| {
                 let event = DBusEvent::IconNameChanged {
                     service: Arc::clone(&service),
                     icon_name,
                 };
                 futures::stream::once(async move { event }).boxed()
-            }
-            Err(err) => {
+            })
+            .unwrap_or_else(|err| {
                 log::error!(target: "Tray", "{err:?}");
                 futures::stream::empty().boxed()
-            }
-        };
+            });
 
         let post = proxy
             .receive_icon_name_changed()
@@ -68,9 +68,9 @@ impl TrayStream for IconName {
 }
 
 impl IconName {
-    pub(crate) async fn get(conn: &Connection, service: Arc<str>) -> Result<String> {
+    pub(crate) async fn get(conn: &Connection, service: &str) -> Result<String> {
         let proxy = StatusNotifierItemProxy::builder(conn)
-            .destination(service.to_string())?
+            .destination(service)?
             .build()
             .await?;
 

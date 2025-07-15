@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     TrayCtl, TrayEvent, TrayIcon, TrayIconPixmap, TrayItem,
     dbus::{NameLost, NameOwnerChanged},
@@ -15,6 +13,7 @@ use crate::{
 use anyhow::Result;
 use futures::{StreamExt, TryFutureExt as _};
 use module::Module;
+use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 use zbus::{Connection, zvariant::OwnedObjectPath};
@@ -187,18 +186,14 @@ impl Tray {
     }
 
     async fn on_new_icon_received(&mut self, conn: &Connection, service: Arc<str>) -> Result<()> {
-        let fut1 = IconName::get(conn, Arc::clone(&service)).map_ok(|icon_name| {
-            DBusEvent::IconNameChanged {
-                service: Arc::clone(&service),
-                icon_name,
-            }
+        let fut1 = IconName::get(conn, &service).map_ok(|icon_name| DBusEvent::IconNameChanged {
+            service: Arc::clone(&service),
+            icon_name,
         });
 
-        let fut2 = IconPixmap::get(conn, Arc::clone(&service)).map_ok(|pixmap| {
-            DBusEvent::IconPixmapChanged {
-                service: Arc::clone(&service),
-                pixmap,
-            }
+        let fut2 = IconPixmap::get(conn, &service).map_ok(|pixmap| DBusEvent::IconPixmapChanged {
+            service: Arc::clone(&service),
+            pixmap,
         });
 
         let (e1, e2) = tokio::join!(fut1, fut2);

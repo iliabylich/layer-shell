@@ -35,23 +35,23 @@ impl TrayStream for IconPixmap {
         };
 
         let proxy = StatusNotifierItemProxy::builder(conn)
-            .destination(service.to_string())?
+            .destination(Arc::clone(&service))?
             .build()
             .await?;
 
-        let pre = match Self::get(conn, Arc::clone(&service)).await {
-            Ok(pixmap) => {
+        let pre = Self::get(conn, &service)
+            .await
+            .map(|pixmap| {
                 let event = DBusEvent::IconPixmapChanged {
                     service: Arc::clone(&service),
                     pixmap,
                 };
                 futures::stream::once(async move { event }).boxed()
-            }
-            Err(err) => {
+            })
+            .unwrap_or_else(|err| {
                 log::error!(target: "Tray", "{err:?}");
                 futures::stream::empty().boxed()
-            }
-        };
+            });
 
         let post = proxy
             .receive_icon_pixmap_changed()
@@ -70,9 +70,9 @@ impl TrayStream for IconPixmap {
 }
 
 impl IconPixmap {
-    pub(crate) async fn get(conn: &Connection, service: Arc<str>) -> Result<TrayIconPixmap> {
+    pub(crate) async fn get(conn: &Connection, service: &str) -> Result<TrayIconPixmap> {
         let proxy = StatusNotifierItemProxy::builder(conn)
-            .destination(service.to_string())?
+            .destination(service)?
             .build()
             .await?;
 
@@ -89,6 +89,7 @@ fn select_best_variant(variants: Vec<(i32, i32, Vec<u8>)>) -> Result<TrayIconPix
         .into_iter()
         .max_by(|(w1, _, _), (w2, _, _)| w1.cmp(w2))
         .context("DBus returned IconPixmap but it has no variants")?;
+
     Ok(TrayIconPixmap {
         width,
         height,
