@@ -33,7 +33,7 @@ impl Module for Weather {
         loop {
             tokio::select! {
                 _ = timer.tick() => {
-                    let events = get_weather(&client).await;
+                    let events = get_weather(&client).await?;
                     for event in events {
                         self.etx.send(event)?;
                     }
@@ -48,11 +48,7 @@ impl Module for Weather {
     }
 }
 
-async fn get_weather(client: &Client) -> Vec<WeatherEvent> {
-    if let Ok(response) = client.get().await {
-        if let Ok(events) = response.into_events() {
-            return events;
-        }
-    }
-    vec![]
+async fn get_weather(client: &Client) -> Result<Vec<WeatherEvent>> {
+    let response = client.get().await?;
+    response.into_events()
 }
