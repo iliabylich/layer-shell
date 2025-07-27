@@ -1,8 +1,12 @@
 use crate::MemoryEvent;
 use anyhow::{Context as _, Result};
 use module::Module;
-use std::{io::Read as _, time::Duration};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use std::{io::SeekFrom, time::Duration};
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt as _, AsyncSeekExt as _},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+};
 use tokio_util::sync::CancellationToken;
 
 pub struct Memory {
@@ -29,15 +33,18 @@ impl Module for Memory {
     async fn start(&mut self) -> Result<()> {
         let mut timer = tokio::time::interval(Duration::from_secs(1));
         let mut buf = vec![0; 1_024];
+        let mut f = File::open("/proc/meminfo")
+            .await
+            .context("failed to open /proc/meminfo")?;
 
         loop {
             tokio::select! {
                 _ = timer.tick() => {
-                    self.tick(&mut buf)?;
+                    self.tick(&mut f, &mut buf).await?;
                 }
 
                 _ = self.token.cancelled() => {
-                    log::info!(target: "Clock", "exiting...");
+                    log::info!(target: "Memory", "exiting...");
                     return Ok(())
                 }
             }
@@ -46,17 +53,19 @@ impl Module for Memory {
 }
 
 impl Memory {
-    fn tick(&self, buf: &mut [u8]) -> Result<()> {
-        let event = parse(buf)?;
+    async fn tick(&self, f: &mut File, buf: &mut [u8]) -> Result<()> {
+        let event = parse(f, buf).await?;
         self.etx
             .send(event)
             .context("failed to send MemoryEvent: channel is closed")
     }
 }
 
-fn parse(buf: &mut [u8]) -> Result<MemoryEvent> {
-    let mut file = std::fs::File::open("/proc/meminfo").context("failed to open")?;
-    let len = file.read(buf).context("failed to read")?;
+async fn parse(f: &mut File, buf: &mut [u8]) -> Result<MemoryEvent> {
+    f.seek(SeekFrom::Start(0))
+        .await
+        .context("failed to fseek")?;
+    let len = f.read(buf).await.context("failed to read")?;
     let contents = std::str::from_utf8(&buf[..len]).context("non-utf8 content")?;
     let mut lines = contents.lines();
 

@@ -1,22 +1,19 @@
 use crate::core::Core;
 use anyhow::{Result, ensure};
+use tokio::fs::File;
 
 pub(crate) struct Store {
-    buf: Vec<u8>,
     state: Option<Vec<Core>>,
 }
 
 impl Store {
     pub(crate) fn new() -> Self {
-        Self {
-            buf: vec![0; 1_024],
-            state: None,
-        }
+        Self { state: None }
     }
 
-    pub(crate) fn update(&mut self) -> Result<Vec<u8>> {
+    pub(crate) async fn update(&mut self, f: &mut File, buf: &mut [u8]) -> Result<Vec<u8>> {
         let previous = self.state.take();
-        let next = Core::read_and_parse_all(&mut self.buf)?;
+        let next = Core::read_and_parse_all(f, buf).await?;
 
         let usage = if let Some(previous) = previous {
             ensure!(

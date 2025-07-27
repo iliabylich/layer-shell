@@ -3,6 +3,7 @@ use anyhow::{Context as _, Result};
 use module::Module;
 use std::time::Duration;
 use tokio::{
+    fs::File,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     time::interval,
 };
@@ -32,11 +33,15 @@ impl Module for CPU {
     async fn start(&mut self) -> Result<()> {
         let mut timer = interval(Duration::from_secs(1));
         let mut store = Store::new();
+        let mut buf = vec![0; 1_024];
+        let mut f = File::open("/proc/stat")
+            .await
+            .context("failed to open /proc/stat")?;
 
         loop {
             tokio::select! {
                 _ = timer.tick() => {
-                    self.tick(&mut store).await?;
+                    self.tick(&mut store, &mut f, &mut buf).await?;
                 }
 
                 _ = self.token.cancelled() => {
@@ -49,8 +54,8 @@ impl Module for CPU {
 }
 
 impl CPU {
-    async fn tick(&self, store: &mut Store) -> Result<()> {
-        let usage_per_core = store.update()?;
+    async fn tick(&self, store: &mut Store, f: &mut File, buf: &mut [u8]) -> Result<()> {
+        let usage_per_core = store.update(f, buf).await?;
         let event = CpuUsageEvent {
             usage_per_core: usage_per_core.into(),
         };

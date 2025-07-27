@@ -1,5 +1,9 @@
 use anyhow::{Context as _, Result};
-use std::io::Read as _;
+use std::io::SeekFrom;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt as _, AsyncSeekExt as _},
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Core {
@@ -63,9 +67,11 @@ impl Core {
         Ok(Self { id, idle, total })
     }
 
-    pub(crate) fn read_and_parse_all(buf: &mut [u8]) -> Result<Vec<Self>> {
-        let mut file = std::fs::File::open("/proc/stat").context("failed to open")?;
-        let len = file.read(buf).context("failed to read")?;
+    pub(crate) async fn read_and_parse_all(f: &mut File, buf: &mut [u8]) -> Result<Vec<Self>> {
+        f.seek(SeekFrom::Start(0))
+            .await
+            .context("failed to fseek")?;
+        let len = f.read(buf).await.context("failed to read")?;
         let contents = std::str::from_utf8(&buf[..len]).context("non-utf8 content")?;
 
         contents
