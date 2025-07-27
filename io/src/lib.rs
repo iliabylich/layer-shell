@@ -8,7 +8,11 @@ use command::Command;
 use event::Event;
 pub use ffi::{CArray, CString};
 use main_loop::MainLoop;
-use std::cell::RefCell;
+use std::{
+    cell::RefCell,
+    io::{PipeReader, PipeWriter},
+    os::fd::AsRawFd,
+};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::config::{Config, IOConfig};
@@ -22,6 +26,9 @@ thread_local! {
 
     static THREAD_HANDLE: RefCell<Option<std::thread::JoinHandle<()>>> = const { RefCell::new(None) };
 
+    static PIPE_WRITER: RefCell<Option<PipeWriter>> = const { RefCell::new(None) };
+    static PIPE_READER: RefCell<Option<PipeReader>> = const { RefCell::new(None) };
+
     static CONFIG: RefCell<Option<Config>> = const { RefCell::new(None) };
     static IO_CONFIG: RefCell<Option<IOConfig>> = const { RefCell::new(None) };
 }
@@ -30,6 +37,7 @@ fn io_run_in_place(
     config: Config,
     etx: UnboundedSender<Event>,
     crx: UnboundedReceiver<Command>,
+    pipe_writer: PipeWriter,
 ) -> Result<()> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -40,7 +48,7 @@ fn io_run_in_place(
         });
 
     rt.block_on(async move {
-        let main_loop = match MainLoop::new(config, etx, crx).await {
+        let main_loop = match MainLoop::new(config, etx, crx, pipe_writer).await {
             Ok(main_loop) => main_loop,
             Err(err) => {
                 log::error!("failed to instantiate main loop, exiting: {err:?}");
@@ -59,7 +67,7 @@ fn io_run_in_place(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_init() {
+pub extern "C" fn io_init() -> std::ffi::c_int {
     env_logger::init();
 
     let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<Event>();
@@ -73,12 +81,26 @@ pub extern "C" fn io_init() {
     };
     let io_config = IOConfig::from(&config);
 
+    let (pipe_reader, pipe_writer) = match std::io::pipe() {
+        Ok(pair) => pair,
+        Err(err) => {
+            log::error!("{err:?}");
+            std::process::exit(1);
+        }
+    };
+
+    let fd = pipe_reader.as_raw_fd();
+
     ETX.set(Some(etx));
     ERX.set(Some(erx));
     CTX.set(Some(ctx));
     CRX.set(Some(crx));
     CONFIG.set(Some(config));
     IO_CONFIG.set(Some(io_config));
+    PIPE_WRITER.set(Some(pipe_writer));
+    PIPE_READER.set(Some(pipe_reader));
+
+    fd
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_thread() {
@@ -94,9 +116,13 @@ pub extern "C" fn io_spawn_thread() {
         log::error!("CONFIG is not set, did you call io_init()?");
         std::process::exit(1);
     };
+    let Some(pipe_writer) = PIPE_WRITER.take() else {
+        log::error!("PIPE_WRITER is not set, did you call io_init()?");
+        std::process::exit(1);
+    };
 
     let handle = std::thread::spawn(move || {
-        if let Err(err) = io_run_in_place(config, etx, crx) {
+        if let Err(err) = io_run_in_place(config, etx, crx, pipe_writer) {
             log::error!("IO thread has crashed: {:?}", err);
         }
     });

@@ -20,6 +20,7 @@
 #include "ui/weather.h"
 #include "ui/weather_window.h"
 #include "ui/workspaces.h"
+#include <glib-unix.h>
 #include <gtk/gtk.h>
 
 LOGGER("main.c", 0)
@@ -47,15 +48,15 @@ GtkWidget *bluetooth;
 GtkWidget *clock_;
 GtkWidget *power;
 
-void remove_window(GtkWidget **win) {
+static void remove_window(GtkWidget **win) {
   gtk_application_remove_window(app, GTK_WINDOW(*win));
   g_clear_pointer(win, g_object_unref);
 }
 
-int poll_events(void) {
+static bool poll_events(void) {
   IO_CArray_Event events = io_poll_events();
-  bool keep_processing = true;
-  for (size_t i = 0; i < events.len && keep_processing; i++) {
+  bool received_exit = false;
+  for (size_t i = 0; i < events.len && !received_exit; i++) {
     IO_Event event = events.ptr[i];
     switch (event.tag) {
     case IO_Event_Workspaces: {
@@ -167,13 +168,13 @@ int poll_events(void) {
       remove_window(&session_window);
       g_application_quit(G_APPLICATION(app));
       LOG("Quit done.");
-      keep_processing = false;
+      received_exit = false;
       break;
     }
     }
   }
   io_drop_events(events);
-  return 1;
+  return received_exit;
 }
 
 static void on_workspace_switched(Workspaces *, guint idx) {
@@ -297,14 +298,22 @@ static void on_app_activate() {
 
   gtk_window_present(GTK_WINDOW(top_bar));
 
-  g_timeout_add(50, G_SOURCE_FUNC(poll_events), NULL);
-
   io_spawn_thread();
+}
+
+static gboolean on_new_events(gint fd, GIOCondition, gpointer) {
+  char buffer[100];
+  read(fd, buffer, sizeof(buffer));
+
+  bool should_exit = poll_events();
+
+  return should_exit ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
 }
 
 int main(int argc, char **argv) {
   setenv("GSK_RENDERER", "cairo", true);
-  io_init();
+  int fd = io_init();
+  g_unix_fd_add(fd, G_IO_IN, on_new_events, NULL);
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", on_app_activate, NULL);

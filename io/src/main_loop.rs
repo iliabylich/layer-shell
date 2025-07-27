@@ -1,5 +1,5 @@
 use crate::{command::Command, config::Config, event::Event};
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context as _, Result, anyhow, bail};
 use clock::Clock;
 use control::Control;
 use cpu::CPU;
@@ -9,7 +9,10 @@ use memory::Memory;
 use module::{Ctl, Module, Timer};
 use network::Network;
 use sound::Sound;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    io::{PipeWriter, Write},
+};
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
@@ -32,6 +35,8 @@ pub(crate) struct MainLoop {
 
     hyprctl: Hyprctl,
     trayctl: TrayCtl,
+
+    pipe_writer: PipeWriter,
 }
 
 impl MainLoop {
@@ -39,6 +44,7 @@ impl MainLoop {
         config: Config,
         etx: UnboundedSender<Event>,
         crx: UnboundedReceiver<Command>,
+        pipe_writer: PipeWriter,
     ) -> Result<Self> {
         let token = CancellationToken::new();
 
@@ -79,6 +85,8 @@ impl MainLoop {
 
             hyprctl,
             trayctl,
+
+            pipe_writer,
         })
     }
 
@@ -116,12 +124,18 @@ impl MainLoop {
         }
     }
 
-    async fn emit(&self, module: &str, e: Event) -> Result<()> {
+    async fn emit(&mut self, module: &str, e: Event) -> Result<()> {
         log::info!(target: module, "{e:?}");
 
         self.etx
             .send(e)
-            .map_err(|_| anyhow!("failed to emit Event, channel is closed"))
+            .map_err(|_| anyhow!("failed to emit Event, channel is closed"))?;
+
+        self.pipe_writer
+            .write(b"1")
+            .context("failed to write to pipe")?;
+
+        Ok(())
     }
 
     async fn on_command(&mut self, cmd: Command) {
