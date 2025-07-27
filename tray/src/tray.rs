@@ -12,7 +12,7 @@ use crate::{
 };
 use anyhow::Result;
 use futures::{StreamExt, TryFutureExt as _};
-use module::Module;
+use module::{Module, TimerSubscriber};
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
@@ -38,6 +38,7 @@ impl Module for Tray {
         etx: UnboundedSender<Self::Event>,
         crx: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        _: TimerSubscriber,
     ) -> Self {
         Self {
             multiplexer: Multiplexer::new(),

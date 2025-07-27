@@ -6,7 +6,7 @@ use cpu::CPU;
 use futures::{StreamExt as _, stream::BoxStream};
 use hyprland::{Hyprctl, Hyprland};
 use memory::Memory;
-use module::{Ctl, Module};
+use module::{Ctl, Module, Timer};
 use network::Network;
 use sound::Sound;
 use std::collections::HashMap;
@@ -27,6 +27,7 @@ pub(crate) struct MainLoop {
     etx: UnboundedSender<Event>,
     crx: UnboundedReceiver<Command>,
 
+    timer: Timer,
     streams: StreamMap<&'static str, BoxStream<'static, Event>>,
 
     hyprctl: Hyprctl,
@@ -44,9 +45,11 @@ impl MainLoop {
         let mut handles = HashMap::new();
         let mut streams = StreamMap::new();
 
+        let timer = Timer::new();
+
         macro_rules! register {
             ($t:ty) => {{
-                let (stream, handle, ctl) = <$t>::spawn(token.clone());
+                let (stream, handle, ctl) = <$t>::spawn(token.clone(), timer.subscribe());
                 handles.insert(<$t>::NAME, handle);
                 streams.insert(<$t>::NAME, stream.map(Event::from).boxed());
                 ctl
@@ -71,6 +74,7 @@ impl MainLoop {
             etx,
             crx,
 
+            timer,
             streams,
 
             hyprctl,
@@ -81,6 +85,10 @@ impl MainLoop {
     pub(crate) async fn start(mut self) -> Result<()> {
         loop {
             tokio::select! {
+                _ = &mut self.timer => {
+                    self.timer.tick()?;
+                }
+
                 Some((name, event)) = self.streams.next() => {
                     self.emit(name, event).await?;
                 }

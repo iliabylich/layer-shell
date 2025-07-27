@@ -1,17 +1,16 @@
 use crate::{CpuUsageEvent, store::Store};
 use anyhow::{Context as _, Result};
-use module::Module;
-use std::time::Duration;
+use module::{Module, TimerSubscriber};
 use tokio::{
     fs::File,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
-    time::interval,
 };
 use tokio_util::sync::CancellationToken;
 
 pub struct CPU {
     etx: UnboundedSender<CpuUsageEvent>,
     token: CancellationToken,
+    timer: TimerSubscriber,
 }
 
 #[async_trait::async_trait]
@@ -26,12 +25,16 @@ impl Module for CPU {
         etx: UnboundedSender<Self::Event>,
         _: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        timer: TimerSubscriber,
     ) -> Self {
-        Self { etx, token }
+        Self {
+            etx,
+            token,
+            timer: timer.with_cycle(1),
+        }
     }
 
     async fn start(&mut self) -> Result<()> {
-        let mut timer = interval(Duration::from_secs(1));
         let mut store = Store::new();
         let mut buf = vec![0; 1_024];
         let mut f = File::open("/proc/stat")
@@ -40,7 +43,7 @@ impl Module for CPU {
 
         loop {
             tokio::select! {
-                _ = timer.tick() => {
+                _ = self.timer.recv() => {
                     self.tick(&mut store, &mut f, &mut buf).await?;
                 }
 

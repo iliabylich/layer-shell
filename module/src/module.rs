@@ -1,4 +1,4 @@
-use crate::Ctl;
+use crate::{Ctl, TimerSubscriber};
 use futures::Stream;
 use std::time::Duration;
 use tokio::{
@@ -19,6 +19,7 @@ pub trait Module: Send {
 
     fn spawn(
         token: CancellationToken,
+        timer: TimerSubscriber,
     ) -> (impl Stream<Item = Self::Event>, JoinHandle<()>, Self::Ctl)
     where
         Self: Sized,
@@ -27,7 +28,7 @@ pub trait Module: Send {
         let (ctx, crx) = tokio::sync::mpsc::unbounded_channel::<Self::Command>();
 
         let handle = tokio::task::spawn(async move {
-            let mut task = Self::new(etx, crx, token.clone());
+            let mut task = Self::new(etx, crx, token.clone(), timer);
 
             loop {
                 if let Err(err) = task.start().await {
@@ -55,6 +56,7 @@ pub trait Module: Send {
         etx: UnboundedSender<Self::Event>,
         crx: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        timer: TimerSubscriber,
     ) -> Self
     where
         Self: Sized;

@@ -1,7 +1,7 @@
 use crate::MemoryEvent;
 use anyhow::{Context as _, Result};
-use module::Module;
-use std::{io::SeekFrom, time::Duration};
+use module::{Module, TimerSubscriber};
+use std::io::SeekFrom;
 use tokio::{
     fs::File,
     io::{AsyncReadExt as _, AsyncSeekExt as _},
@@ -12,6 +12,7 @@ use tokio_util::sync::CancellationToken;
 pub struct Memory {
     etx: UnboundedSender<MemoryEvent>,
     token: CancellationToken,
+    timer: TimerSubscriber,
 }
 
 #[async_trait::async_trait]
@@ -26,12 +27,16 @@ impl Module for Memory {
         etx: UnboundedSender<Self::Event>,
         _: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        timer: TimerSubscriber,
     ) -> Self {
-        Self { etx, token }
+        Self {
+            etx,
+            token,
+            timer: timer.with_cycle(1),
+        }
     }
 
     async fn start(&mut self) -> Result<()> {
-        let mut timer = tokio::time::interval(Duration::from_secs(1));
         let mut buf = vec![0; 1_024];
         let mut f = File::open("/proc/meminfo")
             .await
@@ -39,7 +44,7 @@ impl Module for Memory {
 
         loop {
             tokio::select! {
-                _ = timer.tick() => {
+                _ = self.timer.recv() => {
                     self.tick(&mut f, &mut buf).await?;
                 }
 

@@ -1,13 +1,13 @@
 use crate::ClockEvent;
 use anyhow::{Context as _, Result};
-use module::Module;
-use std::time::Duration;
+use module::{Module, TimerSubscriber};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 pub struct Clock {
     etx: UnboundedSender<ClockEvent>,
     token: CancellationToken,
+    timer: TimerSubscriber,
 }
 
 #[async_trait::async_trait]
@@ -22,16 +22,19 @@ impl Module for Clock {
         etx: UnboundedSender<Self::Event>,
         _: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        timer: TimerSubscriber,
     ) -> Self {
-        Self { etx, token }
+        Self {
+            etx,
+            token,
+            timer: timer.with_cycle(1),
+        }
     }
 
     async fn start(&mut self) -> Result<()> {
-        let mut timer = tokio::time::interval(Duration::from_secs(1));
-
         loop {
             tokio::select! {
-                _ = timer.tick() => {
+                _ = self.timer.recv() => {
                     self.tick()?;
                 }
 

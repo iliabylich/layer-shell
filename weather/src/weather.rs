@@ -1,13 +1,13 @@
 use crate::{WeatherEvent, client::Client};
 use anyhow::Result;
-use module::Module;
-use std::time::Duration;
+use module::{Module, TimerSubscriber};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 pub struct Weather {
     etx: UnboundedSender<WeatherEvent>,
     token: CancellationToken,
+    timer: TimerSubscriber,
 }
 
 #[async_trait::async_trait]
@@ -22,17 +22,21 @@ impl Module for Weather {
         etx: UnboundedSender<Self::Event>,
         _: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        timer: TimerSubscriber,
     ) -> Self {
-        Self { etx, token }
+        Self {
+            etx,
+            token,
+            timer: timer.with_cycle(120),
+        }
     }
 
     async fn start(&mut self) -> Result<()> {
-        let mut timer = tokio::time::interval(Duration::from_secs(120));
         let client = Client::new()?;
 
         loop {
             tokio::select! {
-                _ = timer.tick() => {
+                _ = self.timer.recv() => {
                     let events = get_weather(&client).await?;
                     for event in events {
                         self.etx.send(event)?;

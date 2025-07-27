@@ -3,7 +3,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result, bail};
 use futures::StreamExt as _;
-use module::Module;
+use module::{Module, TimerSubscriber};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 use zbus::Connection;
@@ -24,6 +24,7 @@ impl Module for Sound {
         etx: UnboundedSender<Self::Event>,
         _: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        _: TimerSubscriber,
     ) -> Self {
         Self { etx, token }
     }

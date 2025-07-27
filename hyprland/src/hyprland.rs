@@ -1,6 +1,6 @@
 use crate::{Hyprctl, HyprlandEvent, reader::Reader, state::State, writer::Writer};
 use anyhow::Result;
-use module::Module;
+use module::{Module, TimerSubscriber};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
@@ -23,6 +23,7 @@ impl Module for Hyprland {
         etx: UnboundedSender<Self::Event>,
         crx: UnboundedReceiver<Self::Command>,
         token: CancellationToken,
+        _: TimerSubscriber,
     ) -> Self {
         Self { etx, crx, token }
     }
