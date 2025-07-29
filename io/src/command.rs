@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 #[must_use]
-pub(crate) enum Command {
+pub enum Command {
     FinishIoThread,
 
     HyprlandGoToWorkspace { workspace: usize },

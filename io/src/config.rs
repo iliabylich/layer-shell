@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, Debug)]
-pub(crate) struct Config {
+pub struct Config {
     pub(crate) lock: String,
     pub(crate) reboot: String,
     pub(crate) shutdown: String,

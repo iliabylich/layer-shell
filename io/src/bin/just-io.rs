@@ -1,13 +1,9 @@
-use layer_shell_io::{io_init, io_poll_events, io_spawn_thread};
-use std::time::Duration;
+use layer_shell_io::{io_init, io_run_in_place, io_take_ctx};
 
 fn main() {
     io_init();
 
-    io_spawn_thread();
+    let (etx, crx, config, pipe_writer) = io_take_ctx();
 
-    loop {
-        let _ = io_poll_events();
-        std::thread::sleep(Duration::from_millis(50));
-    }
+    io_run_in_place(config, etx, crx, pipe_writer).unwrap();
 }

@@ -33,7 +33,7 @@ thread_local! {
     static IO_CONFIG: RefCell<Option<IOConfig>> = const { RefCell::new(None) };
 }
 
-fn io_run_in_place(
+pub fn io_run_in_place(
     config: Config,
     etx: UnboundedSender<Event>,
     crx: UnboundedReceiver<Command>,
@@ -102,8 +102,12 @@ pub extern "C" fn io_init() -> std::ffi::c_int {
 
     fd
 }
-#[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_thread() {
+pub fn io_take_ctx() -> (
+    UnboundedSender<Event>,
+    UnboundedReceiver<Command>,
+    Config,
+    PipeWriter,
+) {
     let Some(etx) = ETX.take() else {
         log::error!("ETX is not set, did you call io_init()?");
         std::process::exit(1);
@@ -120,6 +124,11 @@ pub extern "C" fn io_spawn_thread() {
         log::error!("PIPE_WRITER is not set, did you call io_init()?");
         std::process::exit(1);
     };
+    (etx, crx, config, pipe_writer)
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_spawn_thread() {
+    let (etx, crx, config, pipe_writer) = io_take_ctx();
 
     let handle = std::thread::spawn(move || {
         if let Err(err) = io_run_in_place(config, etx, crx, pipe_writer) {
