@@ -1,3 +1,13 @@
+# Screenshots
+
+![top_bar.png](/screenshots/top_bar.png)
+![terminal.png](/screenshots/terminal.png)
+![weather.png](/screenshots/weather.png)
+
+# Dependencies
+
+Rust, GTK4, meson, sassc.
+
 # Building for development
 
 ```sh
