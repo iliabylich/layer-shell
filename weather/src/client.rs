@@ -1,6 +1,6 @@
 use crate::response::Response;
 use anyhow::{Context as _, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 pub(crate) struct Client {
@@ -10,29 +10,41 @@ pub(crate) struct Client {
 impl Client {
     pub(crate) fn new() -> Result<Self> {
         let client = reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(2))
-            .read_timeout(Duration::from_secs(2))
-            .timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(10))
             .build()?;
 
         Ok(Self { client })
     }
 
     async fn get_lat_lng(&self) -> Result<(String, String)> {
+        #[derive(Serialize)]
+        struct Request {
+            services: Vec<String>,
+        }
+        #[derive(Deserialize)]
+        struct Response {
+            location: Location,
+        }
         #[derive(Deserialize)]
         struct Location {
             lat: f64,
-            lon: f64,
+            lng: f64,
         }
-        let location = self
+        let response = self
             .client
-            .get("http://ip-api.com/json/?fields=lon,lat")
+            .post("https://myip.ibylich.dev")
+            .json(&Request {
+                services: vec![String::from("freegeoip")],
+            })
             .send()
             .await?
-            .json::<Location>()
+            .json::<Response>()
             .await?;
 
-        Ok((format!("{}", location.lat), format!("{}", location.lon)))
+        Ok((
+            response.location.lat.to_string(),
+            response.location.lng.to_string(),
+        ))
     }
 
     async fn get_tz(&self) -> Result<String> {
