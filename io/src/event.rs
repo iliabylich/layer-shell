@@ -8,6 +8,7 @@ use network::{
     UploadSpeedEvent,
 };
 use sound::{InitialSoundEvent, MuteChangedEvent, SoundEvent, VolumeChangedEvent};
+use tracker::{TrackerEvent, TrackerUpdatedEvent};
 use tray::{
     TrayAppAddedEvent, TrayAppIconUpdatedEvent, TrayAppMenuUpdatedEvent, TrayAppRemovedEvent,
     TrayEvent,
@@ -44,6 +45,7 @@ pub enum Event {
     VolumeChanged(VolumeChangedEvent),
     MuteChanged(MuteChangedEvent),
     InitialSound(InitialSoundEvent),
+    TrackerUpdated(TrackerUpdatedEvent),
 }
 
 impl From<HyprlandEvent> for Event {
@@ -123,6 +125,14 @@ impl From<SoundEvent> for Event {
             SoundEvent::MuteChangedEvent(e) => Self::MuteChanged(e),
             SoundEvent::VolumeChangedEvent(e) => Self::VolumeChanged(e),
             SoundEvent::InitialSoundEvent(e) => Self::InitialSound(e),
+        }
+    }
+}
+
+impl From<TrackerEvent> for Event {
+    fn from(event: TrackerEvent) -> Self {
+        match event {
+            TrackerEvent::Updated(e) => Self::TrackerUpdated(e),
         }
     }
 }

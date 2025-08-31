@@ -248,3 +248,29 @@ pub extern "C" fn io_spawn_system_monitor() {
 pub extern "C" fn io_change_theme() {
     send_command(Command::ChangeTheme);
 }
+#[unsafe(no_mangle)]
+pub extern "C" fn io_tracker_toggle() {
+    send_command(Command::TrackerToggle);
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_tracker_add(title: *const std::ffi::c_char) {
+    send_command(Command::TrackerAdd {
+        title: CString::from(title).into(),
+    });
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_tracker_remove(uuid: *const std::ffi::c_char) {
+    send_command(Command::TrackerRemove {
+        uuid: CString::from(uuid).into(),
+    });
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_tracker_select(uuid: *const std::ffi::c_char) {
+    send_command(Command::TrackerSelect {
+        uuid: CString::from(uuid).into(),
+    });
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn io_tracker_cut() {
+    send_command(Command::TrackerCut);
+}

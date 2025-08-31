@@ -106,19 +106,19 @@ void weather_window_toggle(WeatherWindow *self) {
   base_window_toggle(BASE_WINDOW(self));
 }
 
-GtkWidget *temperature_label_new() { return gtk_label_new("??"); }
-void temperature_label_refresh(GtkWidget *label, float temperature) {
+static GtkWidget *temperature_label_new() { return gtk_label_new("??"); }
+static void temperature_label_refresh(GtkWidget *label, float temperature) {
   char buffer[100];
   sprintf(buffer, "%5.1f℃", temperature);
   gtk_label_set_label(GTK_LABEL(label), buffer);
 }
 
-GtkWidget *temperature_icon_new() {
+static GtkWidget *temperature_icon_new() {
   GtkWidget *label = gtk_label_new("");
   gtk_widget_add_css_class(label, "icon");
   return label;
 }
-void temperature_icon_refresh(GtkWidget *icon, IO_WeatherCode code) {
+static void temperature_icon_refresh(GtkWidget *icon, IO_WeatherCode code) {
   gtk_label_set_label(GTK_LABEL(icon), weather_code_to_icon(code));
   gtk_widget_set_tooltip_text(icon, weather_code_to_description(code));
 }

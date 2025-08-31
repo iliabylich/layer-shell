@@ -16,4 +16,10 @@ pub enum Command {
     SpawnBluetoothEditor,
     SpawnSystemMonitor,
     ChangeTheme,
+
+    TrackerToggle,
+    TrackerAdd { title: String },
+    TrackerRemove { uuid: String },
+    TrackerSelect { uuid: String },
+    TrackerCut,
 }

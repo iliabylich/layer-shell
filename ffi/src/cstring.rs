@@ -20,6 +20,10 @@ impl CString {
         std::mem::forget(self);
         ptr
     }
+
+    pub fn none() -> Self {
+        Self::from("none".to_string())
+    }
 }
 
 impl From<String> for CString {

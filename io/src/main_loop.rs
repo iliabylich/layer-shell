@@ -19,6 +19,7 @@ use tokio::{
 };
 use tokio_stream::StreamMap;
 use tokio_util::sync::CancellationToken;
+use tracker::{Tracker, TrackerCtl};
 use tray::{Tray, TrayCtl};
 use weather::Weather;
 
@@ -35,6 +36,7 @@ pub(crate) struct MainLoop {
 
     hyprctl: Hyprctl,
     trayctl: TrayCtl,
+    trackerctl: TrackerCtl,
 
     pipe_writer: PipeWriter,
 }
@@ -71,6 +73,7 @@ impl MainLoop {
         register!(Sound);
         let hyprctl = register!(Hyprland);
         let trayctl = register!(Tray);
+        let trackerctl = register!(Tracker);
 
         Ok(Self {
             config,
@@ -85,6 +88,7 @@ impl MainLoop {
 
             hyprctl,
             trayctl,
+            trackerctl,
 
             pipe_writer,
         })
@@ -177,6 +181,22 @@ impl MainLoop {
             }
             Command::ChangeTheme => {
                 hyprctl!("exec {}", self.config.change_theme);
+            }
+
+            Command::TrackerToggle => {
+                self.trackerctl.toggle().await;
+            }
+            Command::TrackerAdd { title } => {
+                self.trackerctl.add(title).await;
+            }
+            Command::TrackerRemove { uuid } => {
+                self.trackerctl.remove(uuid).await;
+            }
+            Command::TrackerSelect { uuid } => {
+                self.trackerctl.select(uuid).await;
+            }
+            Command::TrackerCut => {
+                self.trackerctl.cut().await;
             }
         }
     }

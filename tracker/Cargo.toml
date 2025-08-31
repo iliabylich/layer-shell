@@ -1,0 +1,18 @@
+[package]
+name = "tracker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio-util = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+module = { path = "../module" }
+ffi = { path = "../ffi" }
