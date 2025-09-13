@@ -1,16 +1,22 @@
 find_program('cargo')
+cargo_args = ['--manifest-path', meson.project_source_root() / 'Cargo.toml']
+if get_option('buildtype') == 'release'
+    cargo_args += ['--release']
+endif
 
 rustlib = custom_target(
     'liblayer_shell_io.a',
     command: [
-        files('build.sh'),
-        get_option('buildtype'),
-        meson.project_source_root(),
-        '@OUTPUT@',
+        'sh',
+        '-c', 'cargo build @0@ && cp @1@ @OUTPUT@'.format(
+            ' '.join(cargo_args),
+            meson.project_source_root() / 'target' / get_option('buildtype') / 'liblayer_shell_io.a',
+        ),
     ],
     output: 'liblayer_shell_io.a',
     build_always_stale: true,
     build_by_default: true,
+    console: true,
 )
 sources += rustlib
 
