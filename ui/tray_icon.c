@@ -94,13 +94,11 @@ void tray_icon_update_icon(TrayIcon *self, IO_TrayIcon icon) {
     uint32_t h = icon.pixmap.height;
 
     GBytes *bytes = g_bytes_new(data, size);
-    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_bytes(bytes, GDK_COLORSPACE_RGB,
-                                                  true, 8, w, h, 4 * w);
-    GdkTexture *texture = gdk_texture_new_for_pixbuf(pixbuf);
+    GdkTexture *texture =
+        gdk_memory_texture_new(w, h, GDK_MEMORY_R8G8B8A8, bytes, 4 * w);
     gtk_image_set_from_paintable(image, GDK_PAINTABLE(texture));
 
     g_bytes_unref(bytes);
-    g_object_unref(pixbuf);
     g_object_unref(texture);
     break;
   }
