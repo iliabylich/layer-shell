@@ -1,4 +1,5 @@
 #include "ui/tray_popover.h"
+#include "ui/assertions.h"
 #include "ui/logger.h"
 
 LOGGER("TrayPopover", 3)
@@ -90,11 +91,10 @@ static void visit_all(TrayPopover *self, IO_CArray_TrayItem items,
 
 static void add_action(TrayPopover *self, uint32_t id, const char *uuid,
                        const GVariantType *parameter_type, GVariant *state) {
-  char *name;
-  asprintf(&name, "%d", id);
+  char name[100];
+  checked_fmt(name, "%d", id);
   GSimpleAction *action =
       g_simple_action_new_stateful(name, parameter_type, state);
-  free(name);
 
   g_object_set_data_full(G_OBJECT(action), UUID_KEY, strdup(uuid), free);
 
@@ -105,10 +105,9 @@ static void add_action(TrayPopover *self, uint32_t id, const char *uuid,
 static void add_menu_item(GMenu *menu, uint32_t id, const char *label,
                           GVariant *target_value) {
   GMenuItem *menu_item = g_menu_item_new(label, NULL);
-  char *action;
-  asprintf(&action, "%s.%d", NAMESPACE, id);
+  char action[100];
+  checked_fmt(action, "%s.%d", NAMESPACE, id);
   g_menu_item_set_action_and_target_value(menu_item, action, target_value);
-  free(action);
 
   g_menu_append_item(menu, menu_item);
   g_object_unref(menu_item);

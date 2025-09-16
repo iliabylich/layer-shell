@@ -1,4 +1,5 @@
 #include "ui/weather_window.h"
+#include "ui/assertions.h"
 #include "ui/base_window.h"
 #include "ui/logger.h"
 #include "ui/weather_helper.h"
@@ -109,7 +110,7 @@ void weather_window_toggle(WeatherWindow *self) {
 static GtkWidget *temperature_label_new() { return gtk_label_new("??"); }
 static void temperature_label_refresh(GtkWidget *label, float temperature) {
   char buffer[100];
-  sprintf(buffer, "%5.1f℃", temperature);
+  checked_fmt(buffer, "%5.1f℃", temperature);
   gtk_label_set_label(GTK_LABEL(label), buffer);
 }
 

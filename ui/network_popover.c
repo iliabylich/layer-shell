@@ -1,4 +1,5 @@
 #include "ui/network_popover.h"
+#include "ui/assertions.h"
 #include "ui/logger.h"
 
 LOGGER("NetworkPopover", 2)
@@ -114,9 +115,9 @@ void network_popover_refresh(NetworkPopover *self, IO_NetworkListEvent event) {
 
   for (size_t i = 0; i < event.list.len; i++) {
     IO_NetworkData network = event.list.ptr[i];
-    char label[100];
-    sprintf(label, "%s: %s", network.iface, network.address);
+    char buf[100];
+    checked_fmt(buf, "%s: %s", network.iface, network.address);
     GVariant *target_value = g_variant_new_string(network.address);
-    append_row(self, label, "network.address", target_value);
+    append_row(self, buf, "network.address", target_value);
   }
 }

@@ -1,4 +1,5 @@
 #include "bindings.h"
+#include "ui/assertions.h"
 #include "ui/bluetooth.h"
 #include "ui/caps_lock_window.h"
 #include "ui/change_theme.h"
@@ -52,15 +53,16 @@ GtkWidget *bluetooth;
 GtkWidget *clock_;
 GtkWidget *power;
 
+bool exiting = false;
+
 static void remove_window(GtkWidget **win) {
   gtk_application_remove_window(app, GTK_WINDOW(*win));
   g_clear_pointer(win, g_object_unref);
 }
 
-static bool poll_events(void) {
+static void poll_events(void) {
   IO_CArray_Event events = io_poll_events();
-  bool received_exit = false;
-  for (size_t i = 0; i < events.len && !received_exit; i++) {
+  for (size_t i = 0; i < events.len && !exiting; i++) {
     IO_Event event = events.ptr[i];
     switch (event.tag) {
     case IO_Event_Workspaces: {
@@ -180,13 +182,12 @@ static bool poll_events(void) {
       remove_window(&session_window);
       g_application_quit(G_APPLICATION(app));
       LOG("Quit done.");
-      received_exit = false;
+      exiting = true;
       break;
     }
     }
   }
   io_drop_events(events);
-  return received_exit;
 }
 
 static void on_workspace_switched(Workspaces *, guint idx) {
@@ -225,9 +226,10 @@ static void on_network_address_clicked(Network *, const char *ip) {
   GdkClipboard *clipboard = gdk_display_get_clipboard(display);
   gdk_clipboard_set_text(clipboard, ip);
 
-  char format[100];
-  sprintf(format, "Copied %s", ip);
-  GNotification *notification = g_notification_new(format);
+  char buf[100];
+  checked_fmt(buf, "Copied %s", ip);
+
+  GNotification *notification = g_notification_new(buf);
   g_application_send_notification(G_APPLICATION(app), NULL, notification);
 }
 
@@ -346,9 +348,9 @@ static gboolean on_new_events(gint fd, GIOCondition, gpointer) {
   char buffer[100];
   read(fd, buffer, sizeof(buffer));
 
-  bool should_exit = poll_events();
+  poll_events();
 
-  return should_exit ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
+  return exiting ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
 }
 
 int main(int argc, char **argv) {

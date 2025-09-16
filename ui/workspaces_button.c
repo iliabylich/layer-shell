@@ -1,4 +1,5 @@
 #include "ui/workspaces_button.h"
+#include "ui/assertions.h"
 #include "ui/logger.h"
 
 LOGGER("WorkspacesButton", 2)
@@ -54,7 +55,7 @@ static void workspaces_button_set_property(GObject *object, guint property_id,
   case PROP_NUM:
     self->num = g_value_get_uint(value);
     char label[5];
-    sprintf(label, "%u", self->num);
+    checked_fmt(label, "%u", self->num);
     gtk_button_set_label(GTK_BUTTON(self->root), label);
     break;
 

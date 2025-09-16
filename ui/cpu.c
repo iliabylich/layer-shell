@@ -1,4 +1,5 @@
 #include "ui/cpu.h"
+#include "ui/assertions.h"
 #include "ui/cpu_label.h"
 #include "ui/logger.h"
 
@@ -50,14 +51,6 @@ GtkWidget *cpu_new(void) { return g_object_new(cpu_get_type(), NULL); }
 
 static bool first_time_init_p(Cpu *self) { return self->labels_count == 0; }
 
-static void assert_cpu_count_is(size_t next, size_t prev) {
-  if (next != prev) {
-    fprintf(stderr, "Dynamic number of CPU cores %lu vs %lu, exiting...\n",
-            next, prev);
-    exit(EXIT_FAILURE);
-  }
-}
-
 static void create_labels(Cpu *self, size_t count) {
   GList *labels = NULL;
   for (size_t i = 0; i < count; i++) {
@@ -73,7 +66,9 @@ void cpu_refresh(Cpu *self, IO_CpuUsageEvent event) {
   if (first_time_init_p(self)) {
     create_labels(self, event.usage_per_core.len);
   } else {
-    assert_cpu_count_is(self->labels_count, event.usage_per_core.len);
+    assert(self->labels_count == event.usage_per_core.len,
+           "Dynamic number of CPU cores %lu vs %lu", self->labels_count,
+           event.usage_per_core.len);
   }
 
   size_t i = 0;

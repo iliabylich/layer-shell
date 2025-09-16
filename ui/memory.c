@@ -1,4 +1,5 @@
 #include "ui/memory.h"
+#include "ui/assertions.h"
 #include "ui/logger.h"
 
 LOGGER("Memory", 1)
@@ -59,6 +60,6 @@ GtkWidget *memory_new(void) { return g_object_new(memory_get_type(), NULL); }
 
 void memory_refresh(Memory *self, IO_MemoryEvent event) {
   char buffer[100];
-  sprintf(buffer, "RAM %.1fG/%.1fG", event.used, event.total);
+  checked_fmt(buffer, "RAM %.1fG/%.1fG", event.used, event.total);
   gtk_button_set_label(GTK_BUTTON(self->root), buffer);
 }

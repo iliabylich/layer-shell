@@ -1,5 +1,6 @@
 #include "ui/network.h"
 #include "glib.h"
+#include "ui/assertions.h"
 #include "ui/logger.h"
 #include "ui/network_popover.h"
 #include <string.h>
@@ -136,7 +137,7 @@ static void refresh_ssid_and_strength(Network *self) {
     gtk_label_set_label(GTK_LABEL(self->network_name_label), "Not connected");
   } else {
     char buffer[100];
-    sprintf(buffer, "%s (%d)%% ", self->ssid, self->strength);
+    checked_fmt(buffer, "%s (%d)%% ", self->ssid, self->strength);
     gtk_label_set_label(GTK_LABEL(self->network_name_label), buffer);
   }
 }

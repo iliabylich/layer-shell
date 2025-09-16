@@ -1,4 +1,5 @@
 #include "ui/weather.h"
+#include "ui/assertions.h"
 #include "ui/logger.h"
 #include "ui/weather_helper.h"
 
@@ -60,7 +61,7 @@ GtkWidget *weather_new(void) { return g_object_new(weather_get_type(), NULL); }
 
 void weather_refresh(Weather *self, IO_CurrentWeatherEvent event) {
   char buffer[100];
-  sprintf(buffer, "%.1f℃ %s", event.temperature,
-          weather_code_to_description(event.code));
+  checked_fmt(buffer, "%.1f℃ %s", event.temperature,
+              weather_code_to_description(event.code));
   gtk_button_set_label(GTK_BUTTON(self->root), buffer);
 }

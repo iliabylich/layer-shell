@@ -1,6 +1,6 @@
 #include "ui/css.h"
 #include "main.scss.xxd"
-#include <assert.h>
+#include "ui/assertions.h"
 #include <gtk/gtk.h>
 #include <stdio.h>
 
@@ -14,49 +14,35 @@ static char theme_css_path[100] = {0};
 static char theme_css[5000] = {0};
 
 static void read_theme_css() {
-  size_t len;
+  const char *home = getenv("HOME");
+  assert(home, "failed to get $HOME");
 
   memset(theme_css_path, 0, sizeof(theme_css_path));
-  const char *home = getenv("HOME");
-  assert(home != NULL);
-  len = sprintf(theme_css_path, "%s/.config/layer-shell/theme.css", home);
-  assert(len > 0);
+  checked_fmt(theme_css_path, "%s/.config/layer-shell/theme.css", home);
   fprintf(stderr, "Theme css path: %s\n", theme_css_path);
 
   memset(theme_css, 0, sizeof(theme_css));
-  assert(theme_css != NULL);
   FILE *f = fopen(theme_css_path, "rb");
   if (f == NULL) {
-    fprintf(stderr, "Failed to load theme CSS from %s\n", theme_css_path);
     fclose(f);
-    return;
+    assert(f != NULL, "failed to open theme css file");
   }
   fseek(f, 0, SEEK_END);
-  len = ftell(f);
-  assert(len > 0);
-  if (len > sizeof(theme_css)) {
-    fprintf(stderr, "not enough space for theme.css: %lu cs %lu\n", len,
-            sizeof(theme_css));
-    assert(false);
-  }
-  fprintf(stderr, "Have main.css, len is %lu\n", len);
+  size_t len = ftell(f);
+  assert(len < sizeof(theme_css), "not enough space for theme.css: %lu vs %lu",
+         len, sizeof(theme_css));
   fseek(f, 0, SEEK_SET);
-  fread(theme_css, 1, len, f);
+  size_t read = fread(theme_css, 1, len, f);
+  assert(read == len, "failed to fully read theme.css");
   fclose(f);
+  fprintf(stderr, "Have main.css, len is %lu\n", len);
 }
 
 static char full_css[20000] = {0};
 
 static void merge_css() {
-  size_t len = snprintf(full_css, sizeof(full_css), "%.*s%.*s",
-                        (unsigned int)strlen(theme_css), theme_css,
-                        main_scss_len, main_scss);
-  assert(len > 0);
-  if (len > sizeof(full_css)) {
-    fprintf(stderr, "not enough space for full CSS: %lu cs %lu\n", len,
-            sizeof(full_css));
-    assert(false);
-  }
+  checked_fmt(full_css, "%.*s%.*s", (unsigned int)strlen(theme_css), theme_css,
+              main_scss_len, main_scss);
   fprintf(stderr, "Have full CSS, len is %lu\n", strlen(full_css));
 }
 
