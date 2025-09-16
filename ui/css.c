@@ -23,10 +23,7 @@ static void read_theme_css() {
 
   memset(theme_css, 0, sizeof(theme_css));
   FILE *f = fopen(theme_css_path, "rb");
-  if (f == NULL) {
-    fclose(f);
-    assert(f != NULL, "failed to open theme css file");
-  }
+  assert(f != NULL, "failed to open theme css file");
   fseek(f, 0, SEEK_END);
   size_t len = ftell(f);
   assert(len < sizeof(theme_css), "not enough space for theme.css: %lu vs %lu",

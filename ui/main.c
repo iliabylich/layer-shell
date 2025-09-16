@@ -346,7 +346,8 @@ static void on_app_activate() {
 
 static gboolean on_new_events(gint fd, GIOCondition, gpointer) {
   char buffer[100];
-  read(fd, buffer, sizeof(buffer));
+  int nread = read(fd, buffer, sizeof(buffer));
+  assert(nread >= 0, "failed to read from shared IO fd");
 
   poll_events();
 
