@@ -1,6 +1,6 @@
 use crate::response::Response;
 use anyhow::{Context as _, Result};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::time::Duration;
 
 pub(crate) struct Client {
@@ -17,34 +17,46 @@ impl Client {
     }
 
     async fn get_lat_lng(&self) -> Result<(String, String)> {
-        #[derive(Serialize)]
-        struct Request {
-            services: Vec<String>,
-        }
-        #[derive(Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct Response {
-            location: Location,
+            location: Vec<Location>,
         }
-        #[derive(Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct Location {
             lat: f64,
             lng: f64,
+            source: Source,
+        }
+        #[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+        enum Source {
+            #[serde(rename = "freegeoip")]
+            FreeGeoIP,
+            #[serde(rename = "ipapi")]
+            IpAPI,
+            #[serde(rename = "ipwhois")]
+            IpWhoIs,
         }
         let response = self
             .client
-            .post("https://myip.ibylich.dev")
-            .json(&Request {
-                services: vec![String::from("freegeoip")],
-            })
+            .get("https://myip.ibylich.dev")
             .send()
             .await?
             .json::<Response>()
             .await?;
 
-        Ok((
-            response.location.lat.to_string(),
-            response.location.lng.to_string(),
-        ))
+        let get = |source: Source| -> Option<(f64, f64)> {
+            response
+                .location
+                .iter()
+                .find(|loc| loc.source == source)
+                .map(|loc| (loc.lat, loc.lng))
+        };
+        let (lat, lng) = get(Source::FreeGeoIP)
+            .or_else(|| get(Source::IpAPI))
+            .or_else(|| get(Source::IpWhoIs))
+            .context("failed to get at least one location")?;
+
+        Ok((lat.to_string(), lng.to_string()))
     }
 
     async fn get_tz(&self) -> Result<String> {
