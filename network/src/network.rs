@@ -6,7 +6,7 @@ use crate::{
     nm_event::NetworkManagerEvent, nm_stream::NmStream, primary_connection::PrimaryConnection,
     primary_devices::PrimaryDevices, speed::Speed,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, ensure};
 use futures::StreamExt;
 use module::{Module, TimerSubscriber};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -60,8 +60,6 @@ impl Module for Network {
                     log::info!(target: "Network", "exiting...");
                     return Ok(())
                 }
-
-                else => bail!("all streams are closed")
             }
         }
     }
@@ -142,12 +140,7 @@ impl Network {
 
 fn sole<T>(list: Vec<T>) -> Result<T> {
     let mut iter = list.into_iter();
-
-    let Some(item) = iter.next() else {
-        bail!("got 0 items in vec (expected 1)");
-    };
-    if iter.next().is_some() {
-        bail!("got multiple in vec (expected 1)");
-    }
+    let item = iter.next().context("got 0 items in vec (expected 1)")?;
+    ensure!(iter.next().is_none(), "got multiple in vec (expected 1)");
     Ok(item)
 }

@@ -1,7 +1,7 @@
 use crate::{
     InitialSoundEvent, MuteChangedEvent, SoundEvent, VolumeChangedEvent, dbus::PipewireDBusProxy,
 };
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 use futures::StreamExt as _;
 use module::{Module, TimerSubscriber};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -77,8 +77,6 @@ impl Module for Sound {
                     log::info!(target: "Network", "exiting...");
                     return Ok(())
                 }
-
-                else => bail!("all streams are closed")
             }
         }
     }

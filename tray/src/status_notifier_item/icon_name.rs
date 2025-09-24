@@ -3,7 +3,7 @@ use crate::{
     stream_id::{ServiceStreamId, StreamId},
     tray_stream::TrayStream,
 };
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result, ensure};
 use futures::{StreamExt, stream::BoxStream};
 use std::sync::Arc;
 use zbus::{Connection, proxy};
@@ -75,11 +75,7 @@ impl IconName {
             .await?;
 
         let icon_name = proxy.icon_name().await.context("failed to get IconName")?;
-
-        if icon_name.is_empty() {
-            bail!("empty IconName, skipping");
-        }
-
+        ensure!(!icon_name.is_empty(), "empty IconName, skipping");
         Ok(icon_name)
     }
 }

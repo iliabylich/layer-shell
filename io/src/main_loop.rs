@@ -1,5 +1,5 @@
 use crate::{command::Command, config::Config, event::Event};
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result, anyhow};
 use clock::Clock;
 use control::Control;
 use cpu::CPU;
@@ -112,8 +112,6 @@ impl MainLoop {
                     }
                     self.on_command(cmd).await;
                 }
-
-                else => bail!("all streams are dead"),
             }
         }
     }

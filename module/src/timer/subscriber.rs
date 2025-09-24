@@ -1,4 +1,4 @@
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 use tokio::sync::broadcast::Receiver;
 
 pub struct TimerSubscriber {
@@ -17,9 +17,7 @@ impl TimerSubscriber {
     }
 
     pub async fn recv(&mut self) -> Result<u64> {
-        let Some(cycle) = self.cycle else {
-            bail!("TimerSubscriber has no cycle");
-        };
+        let cycle = self.cycle.context("TimerSubscriber has no cycle")?;
 
         loop {
             let time = self

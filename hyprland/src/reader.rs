@@ -1,5 +1,5 @@
 use crate::env::{hyprland_instance_signature, xdg_runtime_dir};
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 use tokio::{
     io::{AsyncBufReadExt, BufReader, Lines},
     net::UnixStream,
@@ -26,9 +26,11 @@ impl Reader {
 
     pub(crate) async fn next_event(&mut self) -> Result<ReaderEvent> {
         loop {
-            let Some(line) = self.socket.next_line().await? else {
-                bail!("Hyprland reader socket is closed, exiting");
-            };
+            let line = self
+                .socket
+                .next_line()
+                .await?
+                .context("Hyprland reader socket is closed, exiting")?;
 
             match parse_event(&line) {
                 Ok(Some(event)) => return Ok(event),
@@ -50,9 +52,9 @@ pub(crate) enum ReaderEvent {
 }
 
 fn parse_event(line: &str) -> Result<Option<ReaderEvent>> {
-    let Some((event, payload)) = line.split_once(">>") else {
-        bail!("malformed line from Hyprland reader socket: {line:?} (expected >> separator)")
-    };
+    let (event, payload) = line.split_once(">>").with_context(|| {
+        format!("malformed line from Hyprland reader socket: {line:?} (expected >> separator)")
+    })?;
 
     let num_payload = || {
         payload

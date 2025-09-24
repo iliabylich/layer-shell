@@ -1,8 +1,7 @@
-use std::collections::HashSet;
-
 use crate::env::{hyprland_instance_signature, xdg_runtime_dir};
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result, ensure};
 use serde::Deserialize;
+use std::collections::HashSet;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
@@ -36,13 +35,11 @@ impl Writer {
 
     pub(crate) async fn dispatch(cmd: impl AsRef<str>) -> Result<()> {
         let res = Self::call(format!("dispatch {}", cmd.as_ref())).await?;
-
-        if res != "ok" {
-            bail!(
-                "invalid response from hyprctl dispatch: expected 'ok', got {:?}",
-                res
-            );
-        }
+        ensure!(
+            res == "ok",
+            "invalid response from hyprctl dispatch: expected 'ok', got {:?}",
+            res
+        );
         Ok(())
     }
 
