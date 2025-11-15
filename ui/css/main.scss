@@ -245,15 +245,11 @@ tooltip {
     scale {
         trough {
             min-height: 50px;
-            background-color: var(--tertiary_container-alpha);
+            background-color: var(--surface-alpha);
             border-radius: 10px;
 
             highlight {
-                background-color: var(--tertiary_container);
-            }
-
-            slider {
-                background-color: var(--tertiary_container);
+                background-color: var(--inverse_primary);
             }
         }
     }
