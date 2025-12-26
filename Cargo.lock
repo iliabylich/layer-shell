@@ -742,7 +742,6 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "toml",
- "tracker",
  "tray",
  "weather",
 ]
@@ -1638,24 +1637,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracker"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "ffi",
- "futures",
- "log",
- "module",
- "serde",
- "tokio",
- "tokio-util",
- "toml",
- "uuid",
-]
-
-[[package]]
 name = "tray"
 version = "0.1.0"
 dependencies = [
@@ -1725,7 +1706,6 @@ version = "1.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f87b8aa10b915a06587d0dec516c282ff295b475d94abf425d62b57710070a2"
 dependencies = [
- "getrandom 0.3.4",
  "js-sys",
  "serde",
  "wasm-bindgen",

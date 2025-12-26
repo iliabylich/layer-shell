@@ -28,6 +28,5 @@ hyprland = { path = "../hyprland" }
 memory = { path = "../memory" }
 network = { path = "../network" }
 sound = { path = "../sound" }
-tracker = { path = "../tracker" }
 tray = { path = "../tray" }
 weather = { path = "../weather" }

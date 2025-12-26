@@ -17,8 +17,6 @@
 #include "ui/terminal.h"
 #include "ui/terminal_window.h"
 #include "ui/top_bar.h"
-#include "ui/tracker.h"
-#include "ui/tracker_window.h"
 #include "ui/tray.h"
 #include "ui/weather.h"
 #include "ui/weather_window.h"
@@ -37,12 +35,10 @@ GtkWidget *ping_window;
 GtkWidget *session_window;
 GtkWidget *sound_window;
 GtkWidget *caps_lock_window;
-GtkWidget *tracker_window;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
 GtkWidget *tray;
-GtkWidget *tracker;
 GtkWidget *weather;
 GtkWidget *terminal;
 GtkWidget *language;
@@ -163,14 +159,6 @@ static void poll_events(void) {
                                event.caps_lock_toggled);
       break;
     }
-    case IO_Event_TrackerUpdated: {
-      tracker_window_refresh(TRACKER_WINDOW(tracker_window),
-                             event.tracker_updated);
-
-      tracker_refresh(TRACKER(tracker), event.tracker_updated);
-
-      break;
-    }
     case IO_Event_Exit: {
       LOG("Received exit...");
       io_finalize();
@@ -199,11 +187,6 @@ static void on_theme_change_clicked() { io_change_theme(); }
 static void on_tray_triggered(Tray *, const char *uuid) {
   io_trigger_tray(uuid);
 }
-
-static void on_tracker_clicked() {
-  tracker_window_toggle(TRACKER_WINDOW(tracker_window));
-}
-static void on_tracker_right_clicked() { io_tracker_toggle(); }
 
 static void on_weather_clicked() {
   weather_window_toggle(WEATHER_WINDOW(weather_window));
@@ -244,18 +227,6 @@ static void on_reboot_clicked() { io_reboot(); }
 static void on_shutdown_clicked() { io_shutdown(); }
 static void on_logout_clicked() { io_logout(); }
 
-static void on_tracker_added(TrackerWindow *, const char *title) {
-  io_tracker_add(title);
-}
-static void on_tracker_removed(TrackerWindow *, const char *uuid) {
-  io_tracker_remove(uuid);
-}
-static void on_tracker_cut(TrackerWindow *) { io_tracker_cut(); }
-static void on_tracker_selected(TrackerWindow *, const char *uuid) {
-  io_tracker_select(uuid);
-}
-static void on_tracker_toggled(TrackerWindow *) { io_tracker_toggle(); }
-
 static void on_app_activate() {
   top_bar = top_bar_new(app);
 
@@ -273,11 +244,6 @@ static void on_app_activate() {
   tray = tray_new();
   CONNECT(tray, "triggered", on_tray_triggered);
   top_bar_push_right(TOP_BAR(top_bar), tray);
-
-  tracker = tracker_new();
-  CONNECT(tracker, "clicked", on_tracker_clicked);
-  CONNECT(tracker, "right-clicked", on_tracker_right_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), tracker);
 
   weather = weather_new();
   CONNECT(weather, "clicked", on_weather_clicked);
@@ -329,13 +295,6 @@ static void on_app_activate() {
   sound_window = sound_window_new(app);
 
   caps_lock_window = caps_lock_window_new(app);
-
-  tracker_window = tracker_window_new(app);
-  CONNECT(tracker_window, "added", on_tracker_added);
-  CONNECT(tracker_window, "removed", on_tracker_removed);
-  CONNECT(tracker_window, "cut", on_tracker_cut);
-  CONNECT(tracker_window, "selected", on_tracker_selected);
-  CONNECT(tracker_window, "toggled", on_tracker_toggled);
 
 #undef CONNECT
 
