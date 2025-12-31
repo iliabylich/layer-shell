@@ -1,5 +1,5 @@
 use super::fsm::{FSM, Request, Response, Wants};
-use crate::liburing::{Cqe, IoUring};
+use crate::{liburing::IoUring, user_data::UserData};
 use anyhow::{Result, bail, ensure};
 use libc::{AF_INET, SOCK_STREAM, addrinfo, freeaddrinfo, gai_strerror, sockaddr_in};
 use rustls::pki_types::ServerName;
@@ -33,11 +33,11 @@ pub(crate) struct HttpsConnection {
     fd: i32,
     state: State,
 
-    socket_user_data: u64,
-    connect_user_data: u64,
-    read_user_data: u64,
-    write_user_data: u64,
-    close_user_data: u64,
+    socket_user_data: UserData,
+    connect_user_data: UserData,
+    read_user_data: UserData,
+    write_user_data: UserData,
+    close_user_data: UserData,
 
     response: Option<Response>,
 }
@@ -47,11 +47,11 @@ impl HttpsConnection {
         hostname: &str,
         port: u16,
         path: &str,
-        socket_user_data: u64,
-        connect_user_data: u64,
-        read_user_data: u64,
-        write_user_data: u64,
-        close_user_data: u64,
+        socket_user_data: UserData,
+        connect_user_data: UserData,
+        read_user_data: UserData,
+        write_user_data: UserData,
+        close_user_data: UserData,
     ) -> Result<Self> {
         let fsm = {
             let server_name = ServerName::try_from(hostname)?.to_owned();
@@ -91,7 +91,7 @@ impl HttpsConnection {
             State::CanAcquireSocket { .. } => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
-                sqe.set_user_data(self.socket_user_data);
+                sqe.set_user_data(self.socket_user_data.as_u64());
 
                 self.state = State::AcquiringSocket;
                 Ok(true)
@@ -105,7 +105,7 @@ impl HttpsConnection {
                     (&self.addr as *const sockaddr_in).cast(),
                     std::mem::size_of::<sockaddr_in>() as u32,
                 );
-                sqe.set_user_data(self.connect_user_data);
+                sqe.set_user_data(self.connect_user_data.as_u64());
                 self.state = State::Connecting;
 
                 Ok(true)
@@ -116,7 +116,7 @@ impl HttpsConnection {
                 Wants::Read(buf) => {
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
-                    sqe.set_user_data(self.read_user_data);
+                    sqe.set_user_data(self.read_user_data.as_u64());
 
                     self.state = State::Reading;
                     Ok(true)
@@ -124,7 +124,7 @@ impl HttpsConnection {
                 Wants::Write(buf) => {
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
-                    sqe.set_user_data(self.write_user_data);
+                    sqe.set_user_data(self.write_user_data.as_u64());
 
                     self.state = State::Writing;
                     Ok(true)
@@ -134,7 +134,7 @@ impl HttpsConnection {
 
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_close(self.fd);
-                    sqe.set_user_data(self.close_user_data);
+                    sqe.set_user_data(self.close_user_data.as_u64());
 
                     self.state = State::Closing;
                     Ok(true)
@@ -147,7 +147,7 @@ impl HttpsConnection {
             State::CanClose => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_close(self.fd);
-                sqe.set_user_data(self.close_user_data);
+                sqe.set_user_data(self.close_user_data.as_u64());
 
                 self.state = State::Closing;
                 Ok(true)
@@ -158,41 +158,41 @@ impl HttpsConnection {
         }
     }
 
-    pub(crate) fn feed(&mut self, cqe: Cqe) -> Result<Option<Response>> {
-        if cqe.user_data() == self.socket_user_data {
+    pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<Option<Response>> {
+        if user_data == self.socket_user_data {
             ensure!(
                 matches!(self.state, State::AcquiringSocket),
                 "malformed state, expected AcquiringSocket, got {:?}",
                 self.state
             );
 
-            let fd = cqe.res();
+            let fd = res;
             ensure!(fd > 0);
             self.fd = fd;
             self.state = State::CanConnect;
             return Ok(None);
         }
 
-        if cqe.user_data() == self.connect_user_data {
+        if user_data == self.connect_user_data {
             ensure!(
                 matches!(self.state, State::Connecting),
                 "malformed state, expected Connecting, got {:?}",
                 self.state
             );
 
-            ensure!(cqe.res() >= 0);
+            ensure!(res >= 0);
             self.state = State::CanReadWrite;
             return Ok(None);
         }
 
-        if cqe.user_data() == self.read_user_data {
+        if user_data == self.read_user_data {
             ensure!(
                 matches!(self.state, State::Reading),
                 "malformed state, expected Reading, got {:?}",
                 self.state
             );
 
-            let read = cqe.res();
+            let read = res;
             ensure!(read >= 0);
             let read = read as usize;
             self.fsm.done_reading(read);
@@ -208,14 +208,14 @@ impl HttpsConnection {
             return Ok(None);
         }
 
-        if cqe.user_data() == self.write_user_data {
+        if user_data == self.write_user_data {
             ensure!(
                 matches!(self.state, State::Writing),
                 "malformed state, expected Writing, got {:?}",
                 self.state
             );
 
-            let written = cqe.res();
+            let written = res;
             ensure!(written >= 0);
             let written = written as usize;
             self.fsm.done_writing(written);
@@ -231,7 +231,7 @@ impl HttpsConnection {
             return Ok(None);
         }
 
-        if cqe.user_data() == self.close_user_data {
+        if user_data == self.close_user_data {
             ensure!(
                 matches!(self.state, State::Closing),
                 "malformed state, expected Closing, got {:?}",

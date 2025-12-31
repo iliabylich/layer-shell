@@ -1,6 +1,7 @@
 use crate::{
-    Event, UserData,
-    liburing::{Actor, Cqe, IoUring},
+    Event,
+    liburing::{Actor, IoUring},
+    user_data::UserData,
 };
 use anyhow::{Context as _, Result};
 use reader::HyprlandReader;
@@ -22,17 +23,10 @@ pub(crate) struct Hyprland {
 }
 
 fn reader() -> Result<Box<HyprlandReader>> {
-    HyprlandReader::new(UserData::HyprlandReaderRead as u64)
+    HyprlandReader::new()
 }
 fn writer(resource: Box<dyn WriterResource>) -> Result<Box<HyprlandWriter>> {
-    HyprlandWriter::new(
-        resource,
-        UserData::HyprlandWriterSocket as u64,
-        UserData::HyprlandWriterConnect as u64,
-        UserData::HyprlandWriterWrite as u64,
-        UserData::HyprlandWriterRead as u64,
-        UserData::HyprlandWriterClose as u64,
-    )
+    HyprlandWriter::new(resource)
 }
 
 impl Hyprland {
@@ -55,8 +49,14 @@ impl Actor for Hyprland {
         Ok(drained)
     }
 
-    fn feed(&mut self, _ring: &mut IoUring, cqe: Cqe, events: &mut Vec<Event>) -> Result<()> {
-        if let Some(reply) = self.writer.feed(cqe)? {
+    fn feed(
+        &mut self,
+        _ring: &mut IoUring,
+        user_data: UserData,
+        res: i32,
+        events: &mut Vec<Event>,
+    ) -> Result<()> {
+        if let Some(reply) = self.writer.feed(user_data, res)? {
             match reply {
                 WriterReply::WorkspaceList(workspaces) => {
                     let workspace_ids = workspaces.into_iter().map(|w| w.id).collect();
@@ -83,7 +83,7 @@ impl Actor for Hyprland {
         }
 
         let mut hevents = vec![];
-        self.reader.feed(cqe, &mut hevents)?;
+        self.reader.feed(user_data, res, &mut hevents)?;
         for hevent in hevents {
             let event = self.state.apply(hevent);
             events.push(event);

@@ -1,7 +1,7 @@
 use crate::{
     Event, UserData,
     https::HttpsConnection,
-    liburing::{Actor, Cqe, IoUring},
+    liburing::{Actor, IoUring},
     timerfd::Tick,
     weather::weather_response::WeatherResponse,
 };
@@ -28,11 +28,11 @@ fn get_location() -> Result<HttpsConnection> {
         "myip.ibylich.dev",
         443,
         "/",
-        UserData::GetLocationSocket as u64,
-        UserData::GetLocationConnect as u64,
-        UserData::GetLocationRead as u64,
-        UserData::GetLocationWrite as u64,
-        UserData::GetLocationClose as u64,
+        UserData::GetLocationSocket,
+        UserData::GetLocationConnect,
+        UserData::GetLocationRead,
+        UserData::GetLocationWrite,
+        UserData::GetLocationClose,
     )
 }
 
@@ -57,11 +57,11 @@ fn get_weather(lat: f64, lng: f64) -> Result<HttpsConnection> {
         "api.open-meteo.com",
         443,
         &format!("/v1/forecast?{query}"),
-        UserData::GetWeatherSocket as u64,
-        UserData::GetWeatherConnect as u64,
-        UserData::GetWeatherRead as u64,
-        UserData::GetWeatherWrite as u64,
-        UserData::GetWeatherClose as u64,
+        UserData::GetWeatherSocket,
+        UserData::GetWeatherConnect,
+        UserData::GetWeatherRead,
+        UserData::GetWeatherWrite,
+        UserData::GetWeatherClose,
     )
 }
 
@@ -82,17 +82,23 @@ impl Actor for Weather {
         }
     }
 
-    fn feed(&mut self, _ring: &mut IoUring, cqe: Cqe, events: &mut Vec<Event>) -> Result<()> {
+    fn feed(
+        &mut self,
+        _ring: &mut IoUring,
+        user_data: UserData,
+        res: i32,
+        events: &mut Vec<Event>,
+    ) -> Result<()> {
         match &mut self.state {
             State::WaitingForTimer => {}
             State::GettingLocation(https) => {
-                if let Some(response) = https.feed(cqe)? {
+                if let Some(response) = https.feed(user_data, res)? {
                     let (lat, lng) = LocationResponse::parse(response)?;
                     self.state = State::GettingWeather(get_weather(lat, lng)?);
                 }
             }
             State::GettingWeather(https) => {
-                if let Some(response) = https.feed(cqe)? {
+                if let Some(response) = https.feed(user_data, res)? {
                     let event: Event = WeatherResponse::parse(response)?.try_into()?;
                     events.push(event);
                 }

@@ -8,7 +8,9 @@ use crate::{
 #[must_use]
 pub enum Event {
     // Memory(MemoryEvent),
-    // CpuUsage(CpuUsageEvent),
+    CpuUsage {
+        usage_per_core: CArray<u8>,
+    },
     Clock {
         time: CString,
     },

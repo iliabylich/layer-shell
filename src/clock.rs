@@ -1,7 +1,8 @@
 use crate::{
     Event,
-    liburing::{Actor, Cqe, IoUring},
+    liburing::{Actor, IoUring},
     timerfd::Tick,
+    user_data::UserData,
 };
 use anyhow::Result;
 
@@ -38,7 +39,13 @@ impl Actor for Clock {
         Ok(false)
     }
 
-    fn feed(&mut self, _ring: &mut IoUring, _cqe: Cqe, _events: &mut Vec<Event>) -> Result<()> {
+    fn feed(
+        &mut self,
+        _ring: &mut IoUring,
+        _user_data: UserData,
+        _res: i32,
+        _events: &mut Vec<Event>,
+    ) -> Result<()> {
         Ok(())
     }
 

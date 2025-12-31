@@ -4,20 +4,20 @@ mod event;
 // mod main_loop;
 mod array_writer;
 mod clock;
+mod cpu;
 mod ffi;
 mod https;
 mod hyprland;
 mod liburing;
 mod timerfd;
+mod user_data;
 mod weather;
 
 use anyhow::Result;
 // use command::Command;
 pub use event::Event;
 pub use ffi::{CArray, CString};
-// use main_loop::MainLoop;
-use std::{ffi::c_void, os::fd::AsRawFd};
-// use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use std::ffi::c_void;
 
 // use crate::config::{Config, IOConfig};
 
@@ -27,49 +27,28 @@ thread_local! {
 }
 
 use crate::{
-    clock::Clock, hyprland::Hyprland, liburing::Actor, liburing::IoUring, timerfd::Timerfd,
+    clock::Clock,
+    cpu::CPU,
+    hyprland::Hyprland,
+    liburing::{Actor, IoUring},
+    timerfd::Timerfd,
+    user_data::UserData,
     weather::Weather,
 };
-
-#[repr(u64)]
-enum UserData {
-    GetLocationSocket = 1,
-    GetLocationConnect,
-    GetLocationRead,
-    GetLocationWrite,
-    GetLocationClose,
-
-    GetWeatherSocket,
-    GetWeatherConnect,
-    GetWeatherRead,
-    GetWeatherWrite,
-    GetWeatherClose,
-
-    HyprlandReaderRead,
-
-    HyprlandWriterSocket,
-    HyprlandWriterConnect,
-    HyprlandWriterWrite,
-    HyprlandWriterRead,
-    HyprlandWriterClose,
-
-    TimerfdRead,
-}
 
 struct IO {
     ring: IoUring,
     timer: Box<Timerfd>,
-
     actors: Vec<Box<dyn Actor>>,
     on_event: fn(event: Event),
 }
 
 impl IO {
-    fn new(on_event: fn(event: Event)) -> Result<Self> {
-        let mut ring = IoUring::new(10, 0).unwrap();
+    fn try_new(on_event: fn(event: Event)) -> Result<Self> {
+        let mut ring = IoUring::new(10, 0)?;
 
-        let mut timer = Timerfd::new(UserData::TimerfdRead as u64).unwrap();
-        let drained = timer.drain(&mut ring).unwrap();
+        let mut timer = Timerfd::new()?;
+        let drained = timer.drain(&mut ring)?;
         assert!(drained);
 
         let mut events = vec![];
@@ -78,6 +57,7 @@ impl IO {
         actors.push(Clock::new() as Box<dyn Actor>);
         actors.push(Weather::new()? as Box<dyn Actor>);
         actors.push(Hyprland::new()? as Box<dyn Actor>);
+        actors.push(CPU::new()? as Box<dyn Actor>);
 
         for actor in &mut actors {
             actor.drain_to_end(&mut ring, &mut events)?;
@@ -87,31 +67,47 @@ impl IO {
             (on_event)(event);
         }
 
-        ring.submit().unwrap();
+        ring.submit()?;
 
         Ok(IO {
             ring,
             timer,
-
             actors,
             on_event,
         })
     }
 
-    fn process(&mut self) -> Result<()> {
+    fn new(on_event: fn(event: Event)) -> Self {
+        Self::try_new(on_event).unwrap_or_else(|err| {
+            eprintln!("{err:?}");
+            std::process::exit(1);
+        })
+    }
+
+    fn from_raw(ptr: *mut c_void) -> &'static mut Self {
+        unsafe { ptr.cast::<Self>().as_mut() }.unwrap_or_else(|| {
+            eprintln!("NULL IO pointer given to IO::from_raw()");
+            std::process::exit(1);
+        })
+    }
+
+    fn try_process(&mut self) -> Result<()> {
         let mut drained = false;
         let mut events = vec![];
 
-        while let Some(cqe) = self.ring.try_get_cqe().unwrap() {
-            if let Some(tick) = self.timer.feed(cqe).unwrap() {
+        while let Some(cqe) = self.ring.try_get_cqe()? {
+            let (user_data, _request_id) = UserData::from_u64(cqe.user_data());
+            let res = cqe.res();
+
+            if let Some(tick) = self.timer.feed(user_data)? {
                 for actor in &mut self.actors {
                     actor.on_tick(tick)?;
                 }
             }
-            drained |= self.timer.drain(&mut self.ring).unwrap();
+            drained |= self.timer.drain(&mut self.ring)?;
 
             for actor in &mut self.actors {
-                actor.feed(&mut self.ring, cqe, &mut events)?;
+                actor.feed(&mut self.ring, user_data, res, &mut events)?;
                 drained |= actor.drain_to_end(&mut self.ring, &mut events)?;
             }
 
@@ -123,14 +119,28 @@ impl IO {
         }
 
         if drained {
-            self.ring.submit().unwrap()
+            self.ring.submit()?
         }
 
         Ok(())
     }
 
-    fn wait(&mut self) -> Result<()> {
+    fn process(&mut self) {
+        self.try_process().unwrap_or_else(|err| {
+            eprintln!("{err:?}");
+            std::process::exit(1);
+        })
+    }
+
+    fn try_wait(&mut self) -> Result<()> {
         self.ring.submit_and_wait(1)
+    }
+
+    fn wait(&mut self) {
+        self.try_wait().unwrap_or_else(|err| {
+            eprintln!("{err:?}");
+            std::process::exit(1);
+        })
     }
 }
 
@@ -167,26 +177,15 @@ pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
     // PIPE_WRITER.set(Some(pipe_writer));
     // PIPE_READER.set(Some(pipe_reader));
 
-    let io = IO::new(on_event).unwrap_or_else(|err| {
-        eprintln!("{err:?}");
-        std::process::exit(1);
-    });
-
-    (Box::leak(Box::new(io)) as *mut IO).cast()
+    (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }
 
 pub fn io_process(io: *mut c_void) {
-    let io = unsafe { io.cast::<IO>().as_mut() }.unwrap();
-
-    if let Err(err) = io.process() {}
+    IO::from_raw(io).process();
 }
 
 pub fn io_wait(io: *mut c_void) {
-    let io = unsafe { io.cast::<IO>().as_mut() }.unwrap();
-    if let Err(err) = io.wait() {
-        eprintln!("{err:?}");
-        std::process::exit(1);
-    }
+    IO::from_raw(io).wait();
 }
 
 // pub fn io_take_ctx() -> (

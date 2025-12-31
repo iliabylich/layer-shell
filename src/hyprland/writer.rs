@@ -1,7 +1,8 @@
 use crate::{
+    UserData,
     array_writer::ArrayWriter,
     hyprland::{hyprland_instance_signature, xdg_runtime_dir},
-    liburing::{Cqe, IoUring},
+    liburing::IoUring,
 };
 use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;
@@ -87,29 +88,23 @@ pub(crate) enum WriterReply {
     Devices(Devices),
 }
 
+const SOCKET_USER_DATA: UserData = UserData::HyprlandWriterSocket;
+const CONNECT_USER_DATA: UserData = UserData::HyprlandWriterConnect;
+const WRITE_USER_DATA: UserData = UserData::HyprlandWriterWrite;
+const READ_USER_DATA: UserData = UserData::HyprlandWriterRead;
+const CLOSE_USER_DATA: UserData = UserData::HyprlandWriterClose;
+
 pub(crate) struct HyprlandWriter {
     fd: i32,
     addr: sockaddr_un,
     buf: [u8; 4_096],
-    socket_user_data: u64,
-    connect_user_data: u64,
-    write_user_data: u64,
-    read_user_data: u64,
-    close_user_data: u64,
     resource: Box<dyn WriterResource>,
     state: State,
     reply: Option<WriterReply>,
 }
 
 impl HyprlandWriter {
-    pub(crate) fn new(
-        resource: Box<dyn WriterResource>,
-        socket_user_data: u64,
-        connect_user_data: u64,
-        write_user_data: u64,
-        read_user_data: u64,
-        close_user_data: u64,
-    ) -> Result<Box<Self>> {
+    pub(crate) fn new(resource: Box<dyn WriterResource>) -> Result<Box<Self>> {
         let addr = sockaddr_un {
             sun_family: AF_UNIX as u16,
             sun_path: {
@@ -129,11 +124,6 @@ impl HyprlandWriter {
             fd: -1,
             addr,
             buf: [0; 4_096],
-            socket_user_data,
-            connect_user_data,
-            write_user_data,
-            read_user_data,
-            close_user_data,
             resource,
             state: State::Initial,
             reply: None,
@@ -145,7 +135,7 @@ impl HyprlandWriter {
             State::Initial => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
-                sqe.set_user_data(self.socket_user_data);
+                sqe.set_user_data(SOCKET_USER_DATA.as_u64());
                 self.state = State::SocketRequested;
                 Ok(true)
             }
@@ -158,7 +148,7 @@ impl HyprlandWriter {
                     (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
                     std::mem::size_of::<sockaddr_un>() as u32,
                 );
-                sqe.set_user_data(self.connect_user_data);
+                sqe.set_user_data(CONNECT_USER_DATA.as_u64());
                 self.state = State::Connecting;
                 Ok(true)
             }
@@ -171,7 +161,7 @@ impl HyprlandWriter {
 
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, self.buf.as_ptr(), buflen);
-                sqe.set_user_data(self.write_user_data);
+                sqe.set_user_data(WRITE_USER_DATA.as_u64());
                 self.state = State::Writing;
                 Ok(true)
             }
@@ -180,7 +170,7 @@ impl HyprlandWriter {
             State::Written => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(self.read_user_data);
+                sqe.set_user_data(READ_USER_DATA.as_u64());
                 self.state = State::Reading;
                 Ok(true)
             }
@@ -189,7 +179,7 @@ impl HyprlandWriter {
             State::Read => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_close(self.fd);
-                sqe.set_user_data(self.close_user_data);
+                sqe.set_user_data(CLOSE_USER_DATA.as_u64());
                 self.state = State::Closing;
                 Ok(true)
             }
@@ -199,54 +189,54 @@ impl HyprlandWriter {
         }
     }
 
-    pub(crate) fn feed(&mut self, cqe: Cqe) -> Result<Option<WriterReply>> {
-        if cqe.user_data() == self.socket_user_data {
+    pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<Option<WriterReply>> {
+        if user_data == SOCKET_USER_DATA {
             ensure!(
                 matches!(self.state, State::SocketRequested),
                 "malformed state, expected SocketRequested, got {:?}",
                 self.state
             );
 
-            let fd = cqe.res();
+            let fd = res;
             ensure!(fd > 0);
             self.fd = fd;
             self.state = State::SocketAcquired;
             return Ok(None);
         }
 
-        if cqe.user_data() == self.connect_user_data {
+        if user_data == CONNECT_USER_DATA {
             ensure!(
                 matches!(self.state, State::Connecting),
                 "malformed state, expected Connecting, got {:?}",
                 self.state
             );
 
-            ensure!(cqe.res() >= 0);
+            ensure!(res >= 0);
             self.state = State::Connected;
             return Ok(None);
         }
 
-        if cqe.user_data() == self.write_user_data {
+        if user_data == WRITE_USER_DATA {
             ensure!(
                 matches!(self.state, State::Writing),
                 "malformed state, expected Writing, got {:?}",
                 self.state
             );
 
-            ensure!(cqe.res() > 0);
+            ensure!(res > 0);
             self.state = State::Written;
             return Ok(None);
         }
 
-        if cqe.user_data() == self.read_user_data {
+        if user_data == READ_USER_DATA {
             ensure!(
                 matches!(self.state, State::Reading),
                 "malformed state, expected Reading, got {:?}",
                 self.state
             );
 
-            ensure!(cqe.res() > 0);
-            let len = cqe.res() as usize;
+            ensure!(res > 0);
+            let len = res as usize;
             let json = std::str::from_utf8(&self.buf[..len])?;
             self.reply = Some(self.resource.parse(json)?);
             self.state = State::Read;
@@ -254,14 +244,14 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if cqe.user_data() == self.close_user_data {
+        if user_data == CLOSE_USER_DATA {
             ensure!(
                 matches!(self.state, State::Closing),
                 "malformed state, expected Closing, got {:?}",
                 self.state
             );
 
-            ensure!(cqe.res() >= 0);
+            ensure!(res >= 0);
             self.state = State::Closed;
             return Ok(self.reply.take());
         }
