@@ -2,7 +2,7 @@ use crate::liburing::{Cqe, IoUring};
 use anyhow::{Result, ensure};
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
 use std::ptr::null_mut;
-use tick::Tick;
+pub(crate) use tick::Tick;
 
 mod tick;
 

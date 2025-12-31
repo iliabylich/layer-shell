@@ -9,7 +9,9 @@ use crate::{
 pub enum Event {
     // Memory(MemoryEvent),
     // CpuUsage(CpuUsageEvent),
-    // Clock(ClockEvent),
+    Clock {
+        time: CString,
+    },
     Workspaces {
         workspaces: CArray<Workspace>,
     },

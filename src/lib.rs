@@ -3,6 +3,7 @@
 mod event;
 // mod main_loop;
 mod array_writer;
+mod clock;
 mod ffi;
 mod https;
 mod hyprland;
@@ -10,7 +11,7 @@ mod liburing;
 mod timerfd;
 mod weather;
 
-// use anyhow::{Context as _, Result};
+use anyhow::Result;
 // use command::Command;
 pub use event::Event;
 pub use ffi::{CArray, CString};
@@ -21,58 +22,14 @@ use std::{ffi::c_void, os::fd::AsRawFd};
 // use crate::config::{Config, IOConfig};
 
 thread_local! {
-//     static ETX: RefCell<Option<UnboundedSender<Event>>> = const { RefCell::new(None) };
-//     static ERX: RefCell<Option<UnboundedReceiver<Event>>> = const { RefCell::new(None) };
-
-//     static CTX: RefCell<Option<UnboundedSender<Command>>> = const { RefCell::new(None) };
-//     static CRX: RefCell<Option<UnboundedReceiver<Command>>> = const { RefCell::new(None) };
-
-//     static THREAD_HANDLE: RefCell<Option<std::thread::JoinHandle<()>>> = const { RefCell::new(None) };
-
-//     static PIPE_WRITER: RefCell<Option<PipeWriter>> = const { RefCell::new(None) };
-//     static PIPE_READER: RefCell<Option<PipeReader>> = const { RefCell::new(None) };
-
 //     static CONFIG: RefCell<Option<Config>> = const { RefCell::new(None) };
 //     static IO_CONFIG: RefCell<Option<IOConfig>> = const { RefCell::new(None) };
 }
 
-// pub fn io_run_in_place(
-//     config: Config,
-//     etx: UnboundedSender<Event>,
-//     crx: UnboundedReceiver<Command>,
-//     pipe_writer: PipeWriter,
-// ) -> Result<()> {
-//     let rt = tokio::runtime::Builder::new_current_thread()
-//         .enable_all()
-//         .build()
-//         .unwrap_or_else(|err| {
-//             log::error!("failed to start tokio runtime: {err:?}");
-//             std::process::exit(1);
-//         });
-
-//     rt.block_on(async move {
-//         let main_loop = match MainLoop::new(config, etx, crx, pipe_writer).await {
-//             Ok(main_loop) => main_loop,
-//             Err(err) => {
-//                 log::error!("failed to instantiate main loop, exiting: {err:?}");
-//                 std::process::exit(1);
-//             }
-//         };
-
-//         if let Err(err) = main_loop.start().await {
-//             log::error!("main loop error, stopping: {err:?}");
-//             std::process::exit(1);
-//         }
-//     });
-
-//     log::info!("tokio has finished");
-//     Ok(())
-// }
-
 use crate::{
-    https::Response, hyprland::Hyprland, liburing::Actor, timerfd::Timerfd, weather::Weather,
+    clock::Clock, hyprland::Hyprland, liburing::Actor, liburing::IoUring, timerfd::Timerfd,
+    weather::Weather,
 };
-use liburing::IoUring;
 
 #[repr(u64)]
 enum UserData {
@@ -102,30 +59,104 @@ enum UserData {
 struct IO {
     ring: IoUring,
     timer: Timerfd,
+
+    clock: Clock,
     weather: Weather,
     hyprland: Hyprland,
     on_event: fn(event: Event),
 }
 
+impl IO {
+    fn new(on_event: fn(event: Event)) -> Self {
+        let mut ring = IoUring::new(10, 0).unwrap();
+        let mut timer = Timerfd::new(UserData::TimerfdRead as u64).unwrap();
+
+        let mut clock = Clock::new();
+        let mut weather = Weather::new().unwrap();
+        let mut hyprland = Hyprland::new().unwrap();
+
+        let mut events = vec![];
+
+        let drained = timer.drain(&mut ring).unwrap();
+        assert!(drained);
+
+        let drained = clock.drain_to_end(&mut ring, &mut events).unwrap();
+        assert!(!drained);
+
+        let drained = weather.drain_to_end(&mut ring, &mut events).unwrap();
+        assert!(drained);
+
+        let drained = hyprland.drain_to_end(&mut ring, &mut events).unwrap();
+        assert!(drained);
+
+        for event in events {
+            (on_event)(event);
+        }
+
+        ring.submit().unwrap();
+
+        IO {
+            ring,
+            timer,
+
+            clock,
+            weather,
+            hyprland,
+            on_event,
+        }
+    }
+
+    fn process(&mut self) -> Result<()> {
+        let mut drained = false;
+        let mut events = vec![];
+
+        while let Some(cqe) = self.ring.try_get_cqe().unwrap() {
+            if let Some(tick) = self.timer.feed(cqe).unwrap() {
+                self.clock.on_tick(tick);
+            }
+            drained |= self.timer.drain(&mut self.ring).unwrap();
+
+            self.clock.feed(&mut self.ring, cqe, &mut events).unwrap();
+            drained |= self
+                .clock
+                .drain_to_end(&mut self.ring, &mut events)
+                .unwrap();
+
+            self.weather.feed(&mut self.ring, cqe, &mut events).unwrap();
+            drained |= self
+                .weather
+                .drain_to_end(&mut self.ring, &mut events)
+                .unwrap();
+
+            self.hyprland
+                .feed(&mut self.ring, cqe, &mut events)
+                .unwrap();
+            drained |= self
+                .hyprland
+                .drain_to_end(&mut self.ring, &mut events)
+                .unwrap();
+
+            self.ring.cqe_seen(cqe);
+        }
+
+        for event in events {
+            (self.on_event)(event);
+        }
+
+        if drained {
+            self.ring.submit().unwrap()
+        }
+
+        Ok(())
+    }
+
+    fn wait(&mut self) -> Result<()> {
+        self.ring.submit_and_wait(1)
+    }
+}
+
 pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
     env_logger::init();
-
-    let mut ring = IoUring::new(10, 0).unwrap();
-    let mut timer = Timerfd::new(UserData::TimerfdRead as u64).unwrap();
-
-    let mut weather = Weather::new().unwrap();
-    let mut hyprland = Hyprland::new().unwrap();
-
-    let mut events = vec![];
-
-    let drained = timer.drain(&mut ring).unwrap();
-    assert!(drained);
-
-    let drained = weather.drain_to_end(&mut ring, &mut events).unwrap();
-    assert!(drained);
-
-    let drained = hyprland.drain_to_end(&mut ring, &mut events).unwrap();
-    assert!(drained);
 
     // let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<Event>();
     // let (ctx, crx) = tokio::sync::mpsc::unbounded_channel::<Command>();
@@ -157,55 +188,24 @@ pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
     // PIPE_WRITER.set(Some(pipe_writer));
     // PIPE_READER.set(Some(pipe_reader));
 
-    assert!(events.is_empty());
-    ring.submit().unwrap();
-
-    let io = IO {
-        ring,
-        timer,
-        weather,
-        hyprland,
-        on_event,
-    };
-
-    (Box::leak(Box::new(io)) as *mut IO).cast()
+    (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }
 
 pub fn io_process(io: *mut c_void) {
     let io = unsafe { io.cast::<IO>().as_mut() }.unwrap();
-    let mut drained = false;
-    let mut events = vec![];
 
-    while let Some(cqe) = io.ring.try_get_cqe().unwrap() {
-        if let Some(tick) = io.timer.feed(cqe).unwrap() {
-            println!("[main] tick = {}", tick.0);
-        }
-        drained |= io.timer.drain(&mut io.ring).unwrap();
-
-        io.weather.feed(&mut io.ring, cqe, &mut events).unwrap();
-        drained |= io.weather.drain_to_end(&mut io.ring, &mut events).unwrap();
-
-        io.hyprland.feed(&mut io.ring, cqe, &mut events).unwrap();
-        drained |= io.hyprland.drain_to_end(&mut io.ring, &mut events).unwrap();
-
-        io.ring.cqe_seen(cqe);
-    }
-
-    for event in events {
-        (io.on_event)(event);
-    }
-
-    if drained {
-        io.ring.submit().unwrap()
+    if let Err(err) = io.process() {
+        eprintln!("{err:?}");
+        std::process::exit(1);
     }
 }
 
 pub fn io_wait(io: *mut c_void) {
     let io = unsafe { io.cast::<IO>().as_mut() }.unwrap();
-
-    io.ring
-        .submit_and_wait(1)
-        .expect("failed to submit_and_wait");
+    if let Err(err) = io.wait() {
+        eprintln!("{err:?}");
+        std::process::exit(1);
+    }
 }
 
 // pub fn io_take_ctx() -> (
