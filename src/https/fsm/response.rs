@@ -4,6 +4,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub(crate) struct Response {
     pub(crate) status: u16,
+    #[allow(dead_code)]
     pub(crate) headers: HashMap<String, String>,
     pub(crate) body: String,
 }

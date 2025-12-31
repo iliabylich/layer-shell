@@ -1,6 +1,6 @@
 use crate::{
     Event, UserData,
-    liburing::{Actor, Cqe, IoUring, Pending},
+    liburing::{Actor, Cqe, IoUring},
 };
 use anyhow::{Context as _, Result};
 use reader::HyprlandReader;
@@ -46,16 +46,11 @@ impl Hyprland {
 }
 
 impl Actor for Hyprland {
-    fn drain_once(
-        &mut self,
-        ring: &mut IoUring,
-        pending: &mut Pending,
-        _events: &mut Vec<Event>,
-    ) -> Result<bool> {
+    fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
         let mut drained = false;
 
         drained |= self.writer.drain(ring)?;
-        drained |= self.reader.drain(ring, pending)?;
+        drained |= self.reader.drain(ring)?;
 
         Ok(drained)
     }

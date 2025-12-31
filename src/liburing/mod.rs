@@ -1,4 +1,4 @@
-pub(crate) use self::{actor::Actor, cqe::Cqe, pending::Pending, sqe::Sqe};
+pub(crate) use self::{actor::Actor, cqe::Cqe, sqe::Sqe};
 use anyhow::{Result, bail};
 use libc::{ETIME, strerror};
 use liburing::{
@@ -18,7 +18,6 @@ mod cqe;
     non_snake_case
 )]
 mod liburing;
-mod pending;
 mod sqe;
 
 fn checkerr(errno: i32) -> Result<()> {

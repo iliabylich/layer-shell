@@ -1,7 +1,7 @@
 use crate::{
     Event, UserData,
-    https::HttpsActor,
-    liburing::{Actor, Cqe, IoUring, Pending},
+    https::HttpsConnection,
+    liburing::{Actor, Cqe, IoUring},
     weather::weather_response::WeatherResponse,
 };
 use anyhow::Result;
@@ -12,18 +12,17 @@ mod location_response;
 mod weather_code;
 mod weather_response;
 
-pub(crate) enum Weather {
-    GettingLocation {
-        conn: HttpsActor,
-        location: Option<(f64, f64)>,
-    },
-    GettingWeather {
-        conn: HttpsActor,
-    },
+enum State {
+    GettingLocation(HttpsConnection),
+    GettingWeather(HttpsConnection),
 }
 
-fn get_location() -> Result<HttpsActor> {
-    HttpsActor::get(
+pub(crate) struct Weather {
+    state: State,
+}
+
+fn get_location() -> Result<HttpsConnection> {
+    HttpsConnection::get(
         "myip.ibylich.dev",
         443,
         "/",
@@ -35,7 +34,7 @@ fn get_location() -> Result<HttpsActor> {
     )
 }
 
-fn get_weather(lat: f64, lng: f64) -> Result<HttpsActor> {
+fn get_weather(lat: f64, lng: f64) -> Result<HttpsConnection> {
     let query = format!(
         "{}={}&{}={}&{}={}&{}={}&{}={}&{}={}",
         "latitude",
@@ -52,7 +51,7 @@ fn get_weather(lat: f64, lng: f64) -> Result<HttpsActor> {
         "Europe/Warsaw"
     );
 
-    HttpsActor::get(
+    HttpsConnection::get(
         "api.open-meteo.com",
         443,
         &format!("/v1/forecast?{query}"),
@@ -66,67 +65,38 @@ fn get_weather(lat: f64, lng: f64) -> Result<HttpsActor> {
 
 impl Weather {
     pub(crate) fn new() -> Result<Self> {
-        Ok(Self::GettingLocation {
-            conn: get_location()?,
-            location: None,
+        Ok(Self {
+            state: State::GettingLocation(get_location()?),
         })
     }
 
     pub(crate) fn reset(&mut self) -> Result<()> {
-        *self = Self::GettingLocation {
-            conn: get_location()?,
-            location: None,
-        };
-        Ok(())
-    }
-
-    pub(crate) fn start_getting_weather(&mut self, lat: f64, lng: f64) -> Result<()> {
-        println!("lat = {lat} / lng = {lng}");
-        *self = Self::GettingWeather {
-            conn: get_weather(lat, lng)?,
-        };
+        self.state = State::GettingLocation(get_location()?);
         Ok(())
     }
 }
 
 impl Actor for Weather {
-    fn drain_once(
-        &mut self,
-        ring: &mut IoUring,
-        pending: &mut Pending,
-        events: &mut Vec<Event>,
-    ) -> Result<bool> {
-        match self {
-            Weather::GettingLocation { conn, location } => {
-                if let Some((lat, lng)) = location.map(|e| e)
-                    && conn.is_closed()
-                {
-                    self.start_getting_weather(lat, lng)?;
-                    return self.drain_once(ring, pending, events);
-                }
-
-                let (drained, response) = conn.drain(ring, pending)?;
-                if let Some(response) = response {
-                    let (lat, lng) = LocationResponse::parse(response)?;
-                    *location = Some((lat, lng));
-                };
-                Ok(drained)
-            }
-            Weather::GettingWeather { conn } => {
-                let (drained, response) = conn.drain(ring, pending)?;
-                if let Some(response) = response {
-                    let event: Event = WeatherResponse::parse(response)?.try_into()?;
-                    events.push(event);
-                };
-                Ok(drained)
-            }
+    fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
+        match &mut self.state {
+            State::GettingLocation(https) => https.drain_once(ring),
+            State::GettingWeather(https) => https.drain_once(ring),
         }
     }
 
-    fn feed(&mut self, ring: &mut IoUring, cqe: Cqe, events: &mut Vec<Event>) -> Result<()> {
-        match self {
-            Weather::GettingLocation { conn, .. } | Weather::GettingWeather { conn } => {
-                conn.feed(ring, cqe)?
+    fn feed(&mut self, _ring: &mut IoUring, cqe: Cqe, events: &mut Vec<Event>) -> Result<()> {
+        match &mut self.state {
+            State::GettingLocation(https) => {
+                if let Some(response) = https.feed(cqe)? {
+                    let (lat, lng) = LocationResponse::parse(response)?;
+                    self.state = State::GettingWeather(get_weather(lat, lng)?);
+                }
+            }
+            State::GettingWeather(https) => {
+                if let Some(response) = https.feed(cqe)? {
+                    let event: Event = WeatherResponse::parse(response)?.try_into()?;
+                    events.push(event);
+                }
             }
         }
 

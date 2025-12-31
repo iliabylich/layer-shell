@@ -70,13 +70,9 @@ thread_local! {
 // }
 
 use crate::{
-    https::{HttpsActor, Response},
-    hyprland::Hyprland,
-    liburing::Actor,
-    timerfd::Timerfd,
-    weather::Weather,
+    https::Response, hyprland::Hyprland, liburing::Actor, timerfd::Timerfd, weather::Weather,
 };
-use liburing::{IoUring, Pending};
+use liburing::IoUring;
 
 #[repr(u64)]
 enum UserData {
@@ -105,7 +101,6 @@ enum UserData {
 
 struct IO {
     ring: IoUring,
-    pending: Pending,
     timer: Timerfd,
     weather: Weather,
     hyprland: Hyprland,
@@ -116,7 +111,6 @@ pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
     env_logger::init();
 
     let mut ring = IoUring::new(10, 0).unwrap();
-    let mut pending = Pending::new();
     let mut timer = Timerfd::new(UserData::TimerfdRead as u64).unwrap();
 
     let mut weather = Weather::new().unwrap();
@@ -124,17 +118,13 @@ pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
 
     let mut events = vec![];
 
-    let drained = weather
-        .drain_to_end(&mut ring, &mut pending, &mut events)
-        .unwrap();
+    let drained = timer.drain(&mut ring).unwrap();
     assert!(drained);
 
-    let drained = timer.drain(&mut ring, &mut pending).unwrap();
+    let drained = weather.drain_to_end(&mut ring, &mut events).unwrap();
     assert!(drained);
 
-    let drained = hyprland
-        .drain_to_end(&mut ring, &mut pending, &mut events)
-        .unwrap();
+    let drained = hyprland.drain_to_end(&mut ring, &mut events).unwrap();
     assert!(drained);
 
     // let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<Event>();
@@ -172,7 +162,6 @@ pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
 
     let io = IO {
         ring,
-        pending,
         timer,
         weather,
         hyprland,
@@ -188,30 +177,22 @@ pub fn io_process(io: *mut c_void) {
     let mut events = vec![];
 
     while let Some(cqe) = io.ring.try_get_cqe().unwrap() {
-        io.pending.unset(cqe.user_data());
-
         if let Some(tick) = io.timer.feed(cqe).unwrap() {
             println!("[main] tick = {}", tick.0);
         }
-        drained |= io.timer.drain(&mut io.ring, &mut io.pending).unwrap();
+        drained |= io.timer.drain(&mut io.ring).unwrap();
 
         io.weather.feed(&mut io.ring, cqe, &mut events).unwrap();
-        drained |= io
-            .weather
-            .drain_to_end(&mut io.ring, &mut io.pending, &mut events)
-            .unwrap();
+        drained |= io.weather.drain_to_end(&mut io.ring, &mut events).unwrap();
 
         io.hyprland.feed(&mut io.ring, cqe, &mut events).unwrap();
-        drained |= io
-            .hyprland
-            .drain_to_end(&mut io.ring, &mut io.pending, &mut events)
-            .unwrap();
+        drained |= io.hyprland.drain_to_end(&mut io.ring, &mut events).unwrap();
 
         io.ring.cqe_seen(cqe);
     }
 
     for event in events {
-        println!("{event:?}");
+        (io.on_event)(event);
     }
 
     if drained {

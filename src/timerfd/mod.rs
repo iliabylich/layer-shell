@@ -1,4 +1,4 @@
-use crate::liburing::{Cqe, IoUring, Pending};
+use crate::liburing::{Cqe, IoUring};
 use anyhow::{Result, ensure};
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
 use std::ptr::null_mut;
@@ -57,7 +57,7 @@ impl Timerfd {
         Ok(this)
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring, _pending: &mut Pending) -> Result<bool> {
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
         match self.state {
             State::CanRead => {
                 let mut sqe = ring.get_sqe()?;

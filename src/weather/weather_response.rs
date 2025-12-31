@@ -39,9 +39,6 @@ pub(crate) struct DailyWeatherResponse {
 impl WeatherResponse {
     pub(crate) fn parse(response: Response) -> Result<Self> {
         ensure!(response.status == 200);
-
-        println!("{:?}", response.body);
-
         serde_json::from_str(&response.body).context("malformed JSON output")
     }
 }

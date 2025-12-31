@@ -1,5 +1,4 @@
-mod actor;
 mod connection;
 mod fsm;
 
-pub(crate) use self::{actor::HttpsActor, fsm::Response};
+pub(crate) use self::{connection::HttpsConnection, fsm::Response};

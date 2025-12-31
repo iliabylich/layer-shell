@@ -1,5 +1,5 @@
 use super::fsm::{FSM, Request, Response, Wants};
-use crate::liburing::{Cqe, IoUring, Pending};
+use crate::liburing::{Cqe, IoUring};
 use anyhow::{Result, bail, ensure};
 use libc::{AF_INET, SOCK_STREAM, addrinfo, freeaddrinfo, gai_strerror, sockaddr_in};
 use rustls::pki_types::ServerName;
@@ -9,27 +9,28 @@ use std::{
     ptr::null_mut,
 };
 
-#[derive(Default)]
+#[derive(Debug)]
 enum State {
-    Initialized {
-        addr: sockaddr_in,
-    },
-    Connecting {
-        fd: i32,
-        addr: sockaddr_in,
-    },
-    Connected {
-        fd: i32,
-    },
-    Closing {
-        fd: i32,
-    },
-    #[default]
+    CanAcquireSocket,
+    AcquiringSocket,
+
+    CanConnect,
+    Connecting,
+
+    CanReadWrite,
+    Reading,
+    Writing,
+
+    CanClose,
+    Closing,
     Closed,
 }
 
 pub(crate) struct HttpsConnection {
     fsm: FSM,
+
+    addr: sockaddr_in,
+    fd: i32,
     state: State,
 
     socket_user_data: u64,
@@ -37,6 +38,8 @@ pub(crate) struct HttpsConnection {
     read_user_data: u64,
     write_user_data: u64,
     close_user_data: u64,
+
+    response: Option<Response>,
 }
 
 impl HttpsConnection {
@@ -65,136 +68,182 @@ impl HttpsConnection {
 
         Ok(Self {
             fsm,
-            state: State::Initialized { addr },
+            addr,
+            fd: -1,
+            state: State::CanAcquireSocket,
             socket_user_data,
             connect_user_data,
             read_user_data,
             write_user_data,
             close_user_data,
+            response: None,
         })
     }
 
-    pub(crate) fn push_sqes(
-        &mut self,
-        ring: &mut IoUring,
-        pending: &mut Pending,
-    ) -> Result<(bool, Option<Response>)> {
-        macro_rules! swallow_dupes {
-            ($op:expr, $code:block) => {
-                if pending.is($op) {
-                    return Ok((false, None));
-                } else {
-                    $code
-                    pending.set($op);
-                    return Ok((true, None));
-                }
-            };
-        }
+    fn response_received(&mut self, response: Response) {
+        assert!(self.response.is_none());
+        self.response = Some(response);
+        self.state = State::CanClose;
+    }
 
+    pub(crate) fn drain_once(&mut self, ring: &mut IoUring) -> Result<bool> {
         match &self.state {
-            State::Initialized { .. } => {
-                swallow_dupes!(self.socket_user_data, {
-                    let mut sqe = ring.get_sqe()?;
-                    sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
-                    sqe.set_user_data(self.socket_user_data);
-                })
+            State::CanAcquireSocket { .. } => {
+                let mut sqe = ring.get_sqe()?;
+                sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
+                sqe.set_user_data(self.socket_user_data);
+
+                self.state = State::AcquiringSocket;
+                Ok(true)
             }
-            State::Connecting { fd, addr, .. } => {
-                swallow_dupes!(self.connect_user_data, {
-                    let mut sqe = ring.get_sqe()?;
-                    sqe.prep_connect(
-                        *fd,
-                        (addr as *const sockaddr_in).cast(),
-                        std::mem::size_of::<sockaddr_in>() as u32,
-                    );
-                    sqe.set_user_data(self.connect_user_data);
-                })
+            State::AcquiringSocket => Ok(false),
+
+            State::CanConnect => {
+                let mut sqe = ring.get_sqe()?;
+                sqe.prep_connect(
+                    self.fd,
+                    (&self.addr as *const sockaddr_in).cast(),
+                    std::mem::size_of::<sockaddr_in>() as u32,
+                );
+                sqe.set_user_data(self.connect_user_data);
+                self.state = State::Connecting;
+
+                Ok(true)
             }
-            State::Connected { fd } => match self.fsm.wants()? {
+            State::Connecting => Ok(false),
+
+            State::CanReadWrite => match self.fsm.wants()? {
                 Wants::Read(buf) => {
-                    swallow_dupes!(self.read_user_data, {
-                        let mut sqe = ring.get_sqe()?;
-                        sqe.prep_read(*fd, buf.as_mut_ptr(), buf.len());
-                        sqe.set_user_data(self.read_user_data);
-                    })
+                    let mut sqe = ring.get_sqe()?;
+                    sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
+                    sqe.set_user_data(self.read_user_data);
+
+                    self.state = State::Reading;
+                    Ok(true)
                 }
                 Wants::Write(buf) => {
-                    swallow_dupes!(self.write_user_data, {
-                        let mut sqe = ring.get_sqe()?;
-                        sqe.prep_write(*fd, buf.as_ptr(), buf.len());
-                        sqe.set_user_data(self.write_user_data);
-                    })
+                    let mut sqe = ring.get_sqe()?;
+                    sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
+                    sqe.set_user_data(self.write_user_data);
+
+                    self.state = State::Writing;
+                    Ok(true)
                 }
                 Wants::Done(response) => {
-                    self.state = State::Closing { fd: *fd };
-                    Ok((false, Some(response)))
+                    self.response_received(response);
+
+                    let mut sqe = ring.get_sqe()?;
+                    sqe.prep_close(self.fd);
+                    sqe.set_user_data(self.close_user_data);
+
+                    self.state = State::Closing;
+                    Ok(true)
                 }
             },
-            State::Closing { fd } => {
-                swallow_dupes!(self.close_user_data, {
-                    let mut sqe = ring.get_sqe()?;
-                    sqe.prep_close(*fd);
-                    sqe.set_user_data(self.close_user_data);
-                })
+
+            State::Reading => Ok(false),
+            State::Writing => Ok(false),
+
+            State::CanClose => {
+                let mut sqe = ring.get_sqe()?;
+                sqe.prep_close(self.fd);
+                sqe.set_user_data(self.close_user_data);
+
+                self.state = State::Closing;
+                Ok(true)
             }
-            State::Closed => {
-                panic!("closed");
-            }
+            State::Closing => Ok(false),
+
+            State::Closed => Ok(false),
         }
     }
 
-    fn take_state(&mut self) -> State {
-        std::mem::take(&mut self.state)
-    }
+    pub(crate) fn feed(&mut self, cqe: Cqe) -> Result<Option<Response>> {
+        if cqe.user_data() == self.socket_user_data {
+            ensure!(
+                matches!(self.state, State::AcquiringSocket),
+                "malformed state, expected AcquiringSocket, got {:?}",
+                self.state
+            );
 
-    pub(crate) fn process_cqe(&mut self, cqe: Cqe) -> Result<()> {
-        match cqe.user_data() {
-            data if data == self.socket_user_data => {
-                let fd = cqe.res();
-                ensure!(fd > 0);
-
-                let State::Initialized { addr } = self.take_state() else {
-                    panic!("malformed state")
-                };
-
-                self.state = State::Connecting { fd, addr };
-            }
-            data if data == self.connect_user_data => {
-                ensure!(cqe.res() >= 0);
-
-                let State::Connecting { fd, .. } = self.take_state() else {
-                    panic!("malformed state")
-                };
-
-                self.state = State::Connected { fd };
-            }
-            data if data == self.read_user_data => {
-                let read = cqe.res();
-                ensure!(read >= 0);
-                let read = read as usize;
-
-                self.fsm.done_reading(read);
-            }
-            data if data == self.write_user_data => {
-                let written = cqe.res();
-                ensure!(written >= 0);
-                let written = written as usize;
-
-                self.fsm.done_writing(written);
-            }
-            data if data == self.close_user_data => {
-                println!("CLOSED!!!");
-                self.state = State::Closed;
-            }
-
-            _ => {}
+            let fd = cqe.res();
+            ensure!(fd > 0);
+            self.fd = fd;
+            self.state = State::CanConnect;
+            return Ok(None);
         }
 
-        Ok(())
-    }
+        if cqe.user_data() == self.connect_user_data {
+            ensure!(
+                matches!(self.state, State::Connecting),
+                "malformed state, expected Connecting, got {:?}",
+                self.state
+            );
 
-    pub(crate) fn is_closed(&self) -> bool {
-        matches!(self.state, State::Closed)
+            ensure!(cqe.res() >= 0);
+            self.state = State::CanReadWrite;
+            return Ok(None);
+        }
+
+        if cqe.user_data() == self.read_user_data {
+            ensure!(
+                matches!(self.state, State::Reading),
+                "malformed state, expected Reading, got {:?}",
+                self.state
+            );
+
+            let read = cqe.res();
+            ensure!(read >= 0);
+            let read = read as usize;
+            self.fsm.done_reading(read);
+
+            match self.fsm.wants()? {
+                Wants::Read(_) | Wants::Write(_) => {
+                    self.state = State::CanReadWrite;
+                }
+                Wants::Done(response) => {
+                    self.response_received(response);
+                }
+            }
+            return Ok(None);
+        }
+
+        if cqe.user_data() == self.write_user_data {
+            ensure!(
+                matches!(self.state, State::Writing),
+                "malformed state, expected Writing, got {:?}",
+                self.state
+            );
+
+            let written = cqe.res();
+            ensure!(written >= 0);
+            let written = written as usize;
+            self.fsm.done_writing(written);
+
+            match self.fsm.wants()? {
+                Wants::Read(_) | Wants::Write(_) => {
+                    self.state = State::CanReadWrite;
+                }
+                Wants::Done(response) => {
+                    self.response_received(response);
+                }
+            }
+            return Ok(None);
+        }
+
+        if cqe.user_data() == self.close_user_data {
+            ensure!(
+                matches!(self.state, State::Closing),
+                "malformed state, expected Closing, got {:?}",
+                self.state
+            );
+
+            eprintln!("HttpsConnection closed");
+            self.state = State::Closed;
+            return Ok(self.response.take());
+        }
+
+        Ok(None)
     }
 }
 

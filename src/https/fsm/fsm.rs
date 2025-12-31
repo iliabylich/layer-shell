@@ -32,6 +32,15 @@ pub(crate) enum Wants<'a> {
     Write(&'a [u8]),
     Done(Response),
 }
+impl std::fmt::Debug for Wants<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Read(buf) => f.debug_tuple("Read").field(&buf.len()).finish(),
+            Self::Write(buf) => f.debug_tuple("Write").field(&buf.len()).finish(),
+            Self::Done(res) => f.debug_tuple("Done").field(res).finish(),
+        }
+    }
+}
 
 impl FSM {
     pub(crate) fn new(server_name: ServerName<'static>, request: Request) -> Result<Self> {

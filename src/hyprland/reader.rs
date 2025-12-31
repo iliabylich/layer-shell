@@ -1,6 +1,6 @@
 use crate::{
     hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
-    liburing::{Cqe, IoUring, Pending},
+    liburing::{Cqe, IoUring},
 };
 use anyhow::{Result, ensure};
 use std::os::{fd::IntoRawFd as _, unix::net::UnixStream};
@@ -36,7 +36,7 @@ impl HyprlandReader {
         })
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring, _pending: &mut Pending) -> Result<bool> {
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
         match self.state {
             State::CanRead => {
                 let mut sqe = ring.get_sqe()?;
