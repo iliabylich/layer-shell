@@ -2,6 +2,7 @@ use crate::{
     Event, UserData,
     https::HttpsConnection,
     liburing::{Actor, Cqe, IoUring},
+    timerfd::Tick,
     weather::weather_response::WeatherResponse,
 };
 use anyhow::Result;
@@ -13,6 +14,7 @@ mod weather_code;
 mod weather_response;
 
 enum State {
+    WaitingForTimer,
     GettingLocation(HttpsConnection),
     GettingWeather(HttpsConnection),
 }
@@ -64,21 +66,17 @@ fn get_weather(lat: f64, lng: f64) -> Result<HttpsConnection> {
 }
 
 impl Weather {
-    pub(crate) fn new() -> Result<Self> {
-        Ok(Self {
-            state: State::GettingLocation(get_location()?),
-        })
-    }
-
-    pub(crate) fn reset(&mut self) -> Result<()> {
-        self.state = State::GettingLocation(get_location()?);
-        Ok(())
+    pub(crate) fn new() -> Result<Box<Self>> {
+        Ok(Box::new(Self {
+            state: State::WaitingForTimer,
+        }))
     }
 }
 
 impl Actor for Weather {
     fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
         match &mut self.state {
+            State::WaitingForTimer => Ok(false),
             State::GettingLocation(https) => https.drain_once(ring),
             State::GettingWeather(https) => https.drain_once(ring),
         }
@@ -86,6 +84,7 @@ impl Actor for Weather {
 
     fn feed(&mut self, _ring: &mut IoUring, cqe: Cqe, events: &mut Vec<Event>) -> Result<()> {
         match &mut self.state {
+            State::WaitingForTimer => {}
             State::GettingLocation(https) => {
                 if let Some(response) = https.feed(cqe)? {
                     let (lat, lng) = LocationResponse::parse(response)?;
@@ -100,6 +99,13 @@ impl Actor for Weather {
             }
         }
 
+        Ok(())
+    }
+
+    fn on_tick(&mut self, tick: Tick) -> Result<()> {
+        if tick.is_multiple_of(120) {
+            self.state = State::GettingLocation(get_location()?);
+        }
         Ok(())
     }
 }

@@ -15,16 +15,10 @@ pub(crate) struct Clock {
 }
 
 impl Clock {
-    pub(crate) fn new() -> Self {
-        Self {
+    pub(crate) fn new() -> Box<Self> {
+        Box::new(Self {
             state: State::WaitingForTimer,
-        }
-    }
-
-    pub(crate) fn on_tick(&mut self, tick: Tick) {
-        if tick.is_multiple_of(1) {
-            self.state = State::CanTick
-        }
+        })
     }
 }
 
@@ -44,7 +38,14 @@ impl Actor for Clock {
         Ok(false)
     }
 
-    fn feed(&mut self, ring: &mut IoUring, cqe: Cqe, events: &mut Vec<Event>) -> Result<()> {
+    fn feed(&mut self, _ring: &mut IoUring, _cqe: Cqe, _events: &mut Vec<Event>) -> Result<()> {
+        Ok(())
+    }
+
+    fn on_tick(&mut self, tick: Tick) -> Result<()> {
+        if tick.is_multiple_of(1) {
+            self.state = State::CanTick
+        }
         Ok(())
     }
 }

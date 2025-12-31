@@ -109,7 +109,7 @@ impl HyprlandWriter {
         write_user_data: u64,
         read_user_data: u64,
         close_user_data: u64,
-    ) -> Result<Self> {
+    ) -> Result<Box<Self>> {
         let addr = sockaddr_un {
             sun_family: AF_UNIX as u16,
             sun_path: {
@@ -125,7 +125,7 @@ impl HyprlandWriter {
             },
         };
 
-        Ok(Self {
+        Ok(Box::new(Self {
             fd: -1,
             addr,
             buf: [0; 4_096],
@@ -137,7 +137,7 @@ impl HyprlandWriter {
             resource,
             state: State::Initial,
             reply: None,
-        })
+        }))
     }
 
     pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {

@@ -1,5 +1,5 @@
 use super::{IoUring, cqe::Cqe};
-use crate::Event;
+use crate::{Event, timerfd::Tick};
 use anyhow::Result;
 
 pub(crate) trait Actor {
@@ -18,4 +18,6 @@ pub(crate) trait Actor {
     }
 
     fn feed(&mut self, ring: &mut IoUring, cqe: Cqe, events: &mut Vec<Event>) -> Result<()>;
+
+    fn on_tick(&mut self, tick: Tick) -> Result<()>;
 }

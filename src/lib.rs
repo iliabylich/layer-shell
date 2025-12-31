@@ -58,36 +58,30 @@ enum UserData {
 
 struct IO {
     ring: IoUring,
-    timer: Timerfd,
+    timer: Box<Timerfd>,
 
-    clock: Clock,
-    weather: Weather,
-    hyprland: Hyprland,
+    actors: Vec<Box<dyn Actor>>,
     on_event: fn(event: Event),
 }
 
 impl IO {
-    fn new(on_event: fn(event: Event)) -> Self {
+    fn new(on_event: fn(event: Event)) -> Result<Self> {
         let mut ring = IoUring::new(10, 0).unwrap();
+
         let mut timer = Timerfd::new(UserData::TimerfdRead as u64).unwrap();
-
-        let mut clock = Clock::new();
-        let mut weather = Weather::new().unwrap();
-        let mut hyprland = Hyprland::new().unwrap();
-
-        let mut events = vec![];
-
         let drained = timer.drain(&mut ring).unwrap();
         assert!(drained);
 
-        let drained = clock.drain_to_end(&mut ring, &mut events).unwrap();
-        assert!(!drained);
+        let mut events = vec![];
+        let mut actors = vec![];
 
-        let drained = weather.drain_to_end(&mut ring, &mut events).unwrap();
-        assert!(drained);
+        actors.push(Clock::new() as Box<dyn Actor>);
+        actors.push(Weather::new()? as Box<dyn Actor>);
+        actors.push(Hyprland::new()? as Box<dyn Actor>);
 
-        let drained = hyprland.drain_to_end(&mut ring, &mut events).unwrap();
-        assert!(drained);
+        for actor in &mut actors {
+            actor.drain_to_end(&mut ring, &mut events)?;
+        }
 
         for event in events {
             (on_event)(event);
@@ -95,15 +89,13 @@ impl IO {
 
         ring.submit().unwrap();
 
-        IO {
+        Ok(IO {
             ring,
             timer,
 
-            clock,
-            weather,
-            hyprland,
+            actors,
             on_event,
-        }
+        })
     }
 
     fn process(&mut self) -> Result<()> {
@@ -112,29 +104,16 @@ impl IO {
 
         while let Some(cqe) = self.ring.try_get_cqe().unwrap() {
             if let Some(tick) = self.timer.feed(cqe).unwrap() {
-                self.clock.on_tick(tick);
+                for actor in &mut self.actors {
+                    actor.on_tick(tick)?;
+                }
             }
             drained |= self.timer.drain(&mut self.ring).unwrap();
 
-            self.clock.feed(&mut self.ring, cqe, &mut events).unwrap();
-            drained |= self
-                .clock
-                .drain_to_end(&mut self.ring, &mut events)
-                .unwrap();
-
-            self.weather.feed(&mut self.ring, cqe, &mut events).unwrap();
-            drained |= self
-                .weather
-                .drain_to_end(&mut self.ring, &mut events)
-                .unwrap();
-
-            self.hyprland
-                .feed(&mut self.ring, cqe, &mut events)
-                .unwrap();
-            drained |= self
-                .hyprland
-                .drain_to_end(&mut self.ring, &mut events)
-                .unwrap();
+            for actor in &mut self.actors {
+                actor.feed(&mut self.ring, cqe, &mut events)?;
+                drained |= actor.drain_to_end(&mut self.ring, &mut events)?;
+            }
 
             self.ring.cqe_seen(cqe);
         }
@@ -188,16 +167,18 @@ pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
     // PIPE_WRITER.set(Some(pipe_writer));
     // PIPE_READER.set(Some(pipe_reader));
 
-    (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
+    let io = IO::new(on_event).unwrap_or_else(|err| {
+        eprintln!("{err:?}");
+        std::process::exit(1);
+    });
+
+    (Box::leak(Box::new(io)) as *mut IO).cast()
 }
 
 pub fn io_process(io: *mut c_void) {
     let io = unsafe { io.cast::<IO>().as_mut() }.unwrap();
 
-    if let Err(err) = io.process() {
-        eprintln!("{err:?}");
-        std::process::exit(1);
-    }
+    if let Err(err) = io.process() {}
 }
 
 pub fn io_wait(io: *mut c_void) {

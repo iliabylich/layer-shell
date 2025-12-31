@@ -14,14 +14,14 @@ enum State {
 
 pub(crate) struct Timerfd {
     fd: i32,
-    buf: Box<[u8; 8]>,
+    buf: [u8; 8],
     read_user_data: u64,
     ticks: u64,
     state: State,
 }
 
 impl Timerfd {
-    pub(crate) fn new(read_user_data: u64) -> Result<Self> {
+    pub(crate) fn new(read_user_data: u64) -> Result<Box<Self>> {
         let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
         ensure!(
             fd != -1,
@@ -41,7 +41,7 @@ impl Timerfd {
         };
         let this = Self {
             fd,
-            buf: Box::new([0; 8]),
+            buf: [0; 8],
             read_user_data,
             ticks: 0,
             state: State::CanRead,
@@ -54,7 +54,7 @@ impl Timerfd {
             std::io::Error::last_os_error()
         );
 
-        Ok(this)
+        Ok(Box::new(this))
     }
 
     pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {

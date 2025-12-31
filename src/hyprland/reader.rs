@@ -13,13 +13,13 @@ enum State {
 
 pub(crate) struct HyprlandReader {
     fd: i32,
-    buf: Box<[u8; 1_024]>,
+    buf: [u8; 1_024],
     read_user_data: u64,
     state: State,
 }
 
 impl HyprlandReader {
-    pub(crate) fn new(read_user_data: u64) -> Result<Self> {
+    pub(crate) fn new(read_user_data: u64) -> Result<Box<Self>> {
         let path = format!(
             "{}/hypr/{}/.socket2.sock",
             xdg_runtime_dir()?,
@@ -28,12 +28,12 @@ impl HyprlandReader {
 
         let fd = UnixStream::connect(&path)?.into_raw_fd();
 
-        Ok(Self {
+        Ok(Box::new(Self {
             fd,
-            buf: Box::new([0; 1_024]),
+            buf: [0; 1_024],
             read_user_data,
             state: State::CanRead,
-        })
+        }))
     }
 
     pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {

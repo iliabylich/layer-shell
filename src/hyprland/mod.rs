@@ -16,15 +16,15 @@ mod state;
 mod writer;
 
 pub(crate) struct Hyprland {
-    reader: HyprlandReader,
-    writer: HyprlandWriter,
+    reader: Box<HyprlandReader>,
+    writer: Box<HyprlandWriter>,
     state: HyprlandState,
 }
 
-fn reader() -> Result<HyprlandReader> {
+fn reader() -> Result<Box<HyprlandReader>> {
     HyprlandReader::new(UserData::HyprlandReaderRead as u64)
 }
-fn writer(resource: Box<dyn WriterResource>) -> Result<HyprlandWriter> {
+fn writer(resource: Box<dyn WriterResource>) -> Result<Box<HyprlandWriter>> {
     HyprlandWriter::new(
         resource,
         UserData::HyprlandWriterSocket as u64,
@@ -36,12 +36,12 @@ fn writer(resource: Box<dyn WriterResource>) -> Result<HyprlandWriter> {
 }
 
 impl Hyprland {
-    pub(crate) fn new() -> Result<Self> {
-        Ok(Self {
+    pub(crate) fn new() -> Result<Box<Self>> {
+        Ok(Box::new(Self {
             reader: reader()?,
             writer: writer(Box::new(WorkspaceListResource))?,
             state: HyprlandState::default(),
-        })
+        }))
     }
 }
 
@@ -89,6 +89,10 @@ impl Actor for Hyprland {
             events.push(event);
         }
 
+        Ok(())
+    }
+
+    fn on_tick(&mut self, _tick: crate::timerfd::Tick) -> Result<()> {
         Ok(())
     }
 }
