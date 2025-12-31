@@ -1,6 +1,9 @@
 dbus-generate:
     ./dbus/generate.sh
 
+liburing-generate:
+    bindgen src/liburing-wrapper.h -o src/liburing.rs
+
 setup build:
     meson setup builddir --buildtype={{build}}
 
