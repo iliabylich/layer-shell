@@ -9,6 +9,7 @@ mod ffi;
 mod https;
 mod hyprland;
 mod liburing;
+mod memory;
 mod timerfd;
 mod user_data;
 mod weather;
@@ -31,6 +32,7 @@ use crate::{
     cpu::CPU,
     hyprland::Hyprland,
     liburing::{Actor, IoUring},
+    memory::Memory,
     timerfd::Timerfd,
     user_data::UserData,
     weather::Weather,
@@ -52,12 +54,13 @@ impl IO {
         assert!(drained);
 
         let mut events = vec![];
-        let mut actors = vec![];
+        let mut actors: Vec<Box<dyn Actor>> = vec![];
 
-        actors.push(Clock::new() as Box<dyn Actor>);
-        actors.push(Weather::new()? as Box<dyn Actor>);
-        actors.push(Hyprland::new()? as Box<dyn Actor>);
-        actors.push(CPU::new()? as Box<dyn Actor>);
+        actors.push(Clock::new());
+        actors.push(Weather::new()?);
+        actors.push(Hyprland::new()?);
+        actors.push(CPU::new()?);
+        actors.push(Memory::new()?);
 
         for actor in &mut actors {
             actor.drain_to_end(&mut ring, &mut events)?;

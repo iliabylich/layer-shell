@@ -25,6 +25,8 @@ pub(crate) enum UserData {
 
     CpuRead,
 
+    MemoryRead,
+
     TimerfdRead,
 
     MAX,

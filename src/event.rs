@@ -7,7 +7,10 @@ use crate::{
 #[repr(C)]
 #[must_use]
 pub enum Event {
-    // Memory(MemoryEvent),
+    Memory {
+        used: f64,
+        total: f64,
+    },
     CpuUsage {
         usage_per_core: CArray<u8>,
     },
