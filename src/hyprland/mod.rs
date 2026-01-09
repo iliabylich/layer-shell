@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    liburing::{Actor, IoUring},
+    liburing::{IoUringActor, IoUring},
     user_data::UserData,
 };
 use anyhow::{Context as _, Result};
@@ -39,7 +39,7 @@ impl Hyprland {
     }
 }
 
-impl Actor for Hyprland {
+impl IoUringActor for Hyprland {
     fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
         let mut drained = false;
 

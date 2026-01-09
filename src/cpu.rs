@@ -2,7 +2,7 @@ use std::{fs::File, os::fd::IntoRawFd};
 
 use crate::{
     Event, UserData,
-    liburing::{Actor, IoUring},
+    liburing::{IoUringActor, IoUring},
     timerfd::Tick,
 };
 use anyhow::{Context as _, Result, ensure};
@@ -74,7 +74,7 @@ impl CPU {
 
 const READ_USER_DATA: UserData = UserData::CpuRead;
 
-impl Actor for CPU {
+impl IoUringActor for CPU {
     fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
         match self.state {
             State::CanRead => {

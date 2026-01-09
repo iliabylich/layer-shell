@@ -1,7 +1,7 @@
 use crate::{
     Event, UserData,
     https::HttpsConnection,
-    liburing::{Actor, IoUring},
+    liburing::{IoUring, IoUringActor},
     timerfd::Tick,
     weather::weather_response::WeatherResponse,
 };
@@ -73,7 +73,7 @@ impl Weather {
     }
 }
 
-impl Actor for Weather {
+impl IoUringActor for Weather {
     fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
         match &mut self.state {
             State::WaitingForTimer => Ok(false),

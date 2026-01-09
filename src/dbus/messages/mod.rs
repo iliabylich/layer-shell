@@ -1,13 +1,6 @@
-mod org_freedesktop_dbus;
-pub(crate) use org_freedesktop_dbus::{
-    AddMatch, Hello, NameAcquired, PropertiesChanged, RequestName,
-};
-
-mod introspect;
-pub(crate) use introspect::{IntrospectRequest, IntrospectResponse};
-
-mod pipewire;
-pub(crate) use pipewire::{MuteChanged, VolumeChanged};
+pub(crate) mod introspect;
+pub(crate) mod org_freedesktop_dbus;
+pub(crate) mod pipewire;
 
 macro_rules! message_is {
     ($message:expr, $pat:pat) => {
@@ -121,6 +114,10 @@ macro_rules! define_sum_message {
         }
     };
 }
+
+use introspect::IntrospectRequest;
+use org_freedesktop_dbus::{NameAcquired, PropertiesChanged};
+use pipewire::{MuteChanged, VolumeChanged};
 
 define_sum_message!(
     KnownDBusMessage,

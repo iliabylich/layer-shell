@@ -11,6 +11,7 @@ mod https;
 mod hyprland;
 mod liburing;
 mod memory;
+mod sound;
 mod timerfd;
 mod user_data;
 mod weather;
@@ -19,7 +20,7 @@ use anyhow::Result;
 // use command::Command;
 pub use event::Event;
 pub use ffi::{CArray, CString};
-use std::{borrow::Cow, ffi::c_void, os::fd::AsRawFd};
+use std::{ffi::c_void, os::fd::AsRawFd};
 
 // use crate::config::{Config, IOConfig};
 
@@ -31,13 +32,11 @@ thread_local! {
 use crate::{
     clock::Clock,
     cpu::CPU,
-    dbus::{
-        DBus, KnownDBusMessage,
-        messages::{AddMatch, Hello},
-    },
+    dbus::{DBus, DBusActor, KnownDBusMessage, messages::org_freedesktop_dbus::Hello},
     hyprland::Hyprland,
-    liburing::{Actor, IoUring},
+    liburing::{IoUring, IoUringActor},
     memory::Memory,
+    sound::Sound,
     timerfd::Timerfd,
     user_data::UserData,
     weather::Weather,
@@ -46,8 +45,9 @@ use crate::{
 struct IO {
     ring: IoUring,
     timer: Box<Timerfd>,
-    actors: Vec<Box<dyn Actor>>,
+    actors: Vec<Box<dyn IoUringActor>>,
     dbus: DBus,
+    dbus_actors: Vec<Box<dyn DBusActor>>,
     on_event: fn(event: Event),
 }
 
@@ -60,7 +60,7 @@ impl IO {
         assert!(drained);
 
         let mut events = vec![];
-        let mut actors: Vec<Box<dyn Actor>> = vec![];
+        let mut actors: Vec<Box<dyn IoUringActor>> = vec![];
 
         actors.push(Clock::new());
         actors.push(Weather::new()?);
@@ -70,10 +70,14 @@ impl IO {
 
         let mut dbus = DBus::new()?;
         dbus.enqueue(&mut Hello.into())?;
-        dbus.enqueue(&mut AddMatch::new(Cow::Borrowed("/org/local/PipewireDBus")).into())?;
+
+        let mut dbus_actors: Vec<Box<dyn DBusActor>> = vec![];
+        dbus_actors.push(Sound::new());
+        for dbus_actor in &mut dbus_actors {
+            dbus_actor.init(&mut dbus)?;
+        }
 
         dbus.drain(&mut ring).unwrap();
-
         for actor in &mut actors {
             actor.drain_to_end(&mut ring, &mut events)?;
         }
@@ -89,6 +93,7 @@ impl IO {
             timer,
             actors,
             dbus,
+            dbus_actors,
             on_event,
         })
     }
@@ -119,6 +124,9 @@ impl IO {
                 for actor in &mut self.actors {
                     actor.on_tick(tick)?;
                 }
+                for dbus_actor in &mut self.dbus_actors {
+                    dbus_actor.on_tick(tick)?;
+                }
             }
             drained |= self.timer.drain(&mut self.ring)?;
 
@@ -129,9 +137,14 @@ impl IO {
 
             if let Some(message) = self.dbus.feed(user_data, res)? {
                 if let Ok(message) = KnownDBusMessage::try_from(&message) {
-                    eprintln!("{message:?}");
+                    for dbus_actor in &mut self.dbus_actors {
+                        dbus_actor.on_message(&message, &mut events, &mut self.dbus)?;
+                    }
                 } else {
                     eprintln!("Unknown {message:?}");
+                    for dbus_actor in &mut self.dbus_actors {
+                        dbus_actor.on_unknown_message(&message, &mut events, &mut self.dbus)?;
+                    }
                 }
             }
             drained |= self.dbus.drain(&mut self.ring)?;

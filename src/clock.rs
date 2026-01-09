@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    liburing::{Actor, IoUring},
+    liburing::{IoUringActor, IoUring},
     timerfd::Tick,
     user_data::UserData,
 };
@@ -23,7 +23,7 @@ impl Clock {
     }
 }
 
-impl Actor for Clock {
+impl IoUringActor for Clock {
     fn drain_once(&mut self, _ring: &mut IoUring, events: &mut Vec<Event>) -> Result<bool> {
         match self.state {
             State::CanTick => {

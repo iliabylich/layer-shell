@@ -1,4 +1,4 @@
-pub(crate) use self::{actor::Actor, cqe::Cqe, sqe::Sqe};
+pub(crate) use self::{actor::IoUringActor, cqe::Cqe, sqe::Sqe};
 use anyhow::{Result, bail};
 use libc::{ETIME, strerror};
 use liburing::{

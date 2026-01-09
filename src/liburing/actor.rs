@@ -2,7 +2,7 @@ use super::IoUring;
 use crate::{Event, timerfd::Tick, user_data::UserData};
 use anyhow::Result;
 
-pub(crate) trait Actor {
+pub(crate) trait IoUringActor {
     fn drain_once(&mut self, ring: &mut IoUring, events: &mut Vec<Event>) -> Result<bool>;
 
     fn drain_to_end(&mut self, ring: &mut IoUring, events: &mut Vec<Event>) -> Result<bool> {

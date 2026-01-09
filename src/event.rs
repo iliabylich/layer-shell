@@ -42,9 +42,16 @@ pub enum Event {
     // ReloadStyles,
     // CapsLockToggled(ControlCapsLockToggledEvent),
     // Exit,
-    // VolumeChanged(VolumeChangedEvent),
-    // MuteChanged(MuteChangedEvent),
-    // InitialSound(InitialSoundEvent),
+    VolumeChanged {
+        volume: u32,
+    },
+    MuteChanged {
+        muted: bool,
+    },
+    InitialSound {
+        volume: u32,
+        muted: bool,
+    },
 }
 
 #[derive(Debug)]

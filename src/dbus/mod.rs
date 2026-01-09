@@ -1,3 +1,4 @@
+mod actor;
 mod auth;
 mod decoders;
 mod encoders;
@@ -13,10 +14,11 @@ use std::os::{
     fd::{AsRawFd, IntoRawFd},
     unix::net::UnixStream,
 };
-use types::Message;
 
 pub(crate) mod messages;
+pub(crate) use actor::DBusActor;
 pub(crate) use messages::KnownDBusMessage;
+pub(crate) use types::Message;
 
 pub(crate) enum DBus {
     Auth(Auth),

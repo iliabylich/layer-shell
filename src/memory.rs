@@ -2,7 +2,7 @@ use std::{fs::File, os::fd::IntoRawFd};
 
 use crate::{
     Event, UserData,
-    liburing::{Actor, IoUring},
+    liburing::{IoUring, IoUringActor},
     timerfd::Tick,
 };
 use anyhow::{Context as _, Result, ensure};
@@ -32,7 +32,7 @@ impl Memory {
 
 const READ_USER_DATA: UserData = UserData::MemoryRead;
 
-impl Actor for Memory {
+impl IoUringActor for Memory {
     fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
         match self.state {
             State::CanRead => {
