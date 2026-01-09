@@ -23,6 +23,17 @@ pub(crate) enum UserData {
     HyprlandWriterRead,
     HyprlandWriterClose,
 
+    DbusAuthWriteZero,
+    DbusAuthWriteAuthExternal,
+    DbusAuthReadData,
+    DbusAuthWriteData,
+    DbusAuthReadGUID,
+    DbusAuthWriteBegin,
+
+    DBusReadHeader,
+    DBusReadBody,
+    DBusWrite,
+
     CpuRead,
 
     MemoryRead,
@@ -51,14 +62,14 @@ impl UserData {
         u64::from_le_bytes(bytes)
     }
 
-    pub(crate) fn from_u64(n: u64) -> (Self, u32) {
+    pub(crate) fn from_u64(n: u64, res: i32) -> (Self, u32) {
         let bytes: [u8; 8] = n.to_le_bytes();
         let mut high = [0; 4];
         high.copy_from_slice(&bytes[..4]);
         let request_id = { u32::from_le_bytes(high) };
         assert!(bytes[7] < Self::MAX as u8);
         let this: Self = unsafe { std::mem::transmute(bytes[7]) };
-        eprintln!("<== {this:?}({request_id})");
+        eprintln!("<== {this:?}({request_id}, {res})");
         (this, request_id)
     }
 }

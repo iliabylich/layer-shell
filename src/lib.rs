@@ -5,6 +5,7 @@ mod event;
 mod array_writer;
 mod clock;
 mod cpu;
+mod dbus;
 mod ffi;
 mod https;
 mod hyprland;
@@ -18,7 +19,7 @@ use anyhow::Result;
 // use command::Command;
 pub use event::Event;
 pub use ffi::{CArray, CString};
-use std::ffi::c_void;
+use std::{borrow::Cow, ffi::c_void, os::fd::AsRawFd};
 
 // use crate::config::{Config, IOConfig};
 
@@ -30,6 +31,10 @@ thread_local! {
 use crate::{
     clock::Clock,
     cpu::CPU,
+    dbus::{
+        DBus, KnownDBusMessage,
+        messages::{AddMatch, Hello},
+    },
     hyprland::Hyprland,
     liburing::{Actor, IoUring},
     memory::Memory,
@@ -42,6 +47,7 @@ struct IO {
     ring: IoUring,
     timer: Box<Timerfd>,
     actors: Vec<Box<dyn Actor>>,
+    dbus: DBus,
     on_event: fn(event: Event),
 }
 
@@ -62,6 +68,12 @@ impl IO {
         actors.push(CPU::new()?);
         actors.push(Memory::new()?);
 
+        let mut dbus = DBus::new()?;
+        dbus.enqueue(&mut Hello.into())?;
+        dbus.enqueue(&mut AddMatch::new(Cow::Borrowed("/org/local/PipewireDBus")).into())?;
+
+        dbus.drain(&mut ring).unwrap();
+
         for actor in &mut actors {
             actor.drain_to_end(&mut ring, &mut events)?;
         }
@@ -76,6 +88,7 @@ impl IO {
             ring,
             timer,
             actors,
+            dbus,
             on_event,
         })
     }
@@ -99,8 +112,8 @@ impl IO {
         let mut events = vec![];
 
         while let Some(cqe) = self.ring.try_get_cqe()? {
-            let (user_data, _request_id) = UserData::from_u64(cqe.user_data());
             let res = cqe.res();
+            let (user_data, _request_id) = UserData::from_u64(cqe.user_data(), res);
 
             if let Some(tick) = self.timer.feed(user_data)? {
                 for actor in &mut self.actors {
@@ -113,6 +126,15 @@ impl IO {
                 actor.feed(&mut self.ring, user_data, res, &mut events)?;
                 drained |= actor.drain_to_end(&mut self.ring, &mut events)?;
             }
+
+            if let Some(message) = self.dbus.feed(user_data, res)? {
+                if let Ok(message) = KnownDBusMessage::try_from(&message) {
+                    eprintln!("{message:?}");
+                } else {
+                    eprintln!("Unknown {message:?}");
+                }
+            }
+            drained |= self.dbus.drain(&mut self.ring)?;
 
             self.ring.cqe_seen(cqe);
         }
@@ -189,6 +211,10 @@ pub fn io_process(io: *mut c_void) {
 
 pub fn io_wait(io: *mut c_void) {
     IO::from_raw(io).wait();
+}
+
+pub fn io_as_raw_fd(io: *mut c_void) -> i32 {
+    IO::from_raw(io).ring.as_raw_fd()
 }
 
 // pub fn io_take_ctx() -> (
