@@ -1,4 +1,4 @@
-use layer_shell_io::{Event, io_init, io_on_readable, io_wait_readable};
+use layer_shell_io::{Event, io_handle_readable, io_init, io_wait_readable};
 
 fn on_event(event: Event) {
     println!("on_event: {event:?}");
@@ -13,6 +13,6 @@ fn main() {
         println!("Wait finished...");
 
         println!("Processing...");
-        io_on_readable(io);
+        io_handle_readable(io);
     }
 }

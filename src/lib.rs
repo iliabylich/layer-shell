@@ -101,7 +101,56 @@ impl IO {
         })
     }
 
-    fn try_process(&mut self) -> Result<()> {
+    fn try_handle_timer(&mut self, user_data: UserData) -> Result<bool> {
+        if let Some(tick) = self.timer.feed(user_data)? {
+            for actor in &mut self.actors {
+                actor.on_tick(tick)?;
+            }
+            for dbus_actor in &mut self.dbus_actors {
+                dbus_actor.on_tick(tick)?;
+            }
+        }
+        self.timer.drain(&mut self.ring)
+    }
+
+    fn try_handle_actors(
+        &mut self,
+        user_data: UserData,
+        res: i32,
+        events: &mut Vec<Event>,
+    ) -> Result<bool> {
+        let mut drained = false;
+
+        for actor in &mut self.actors {
+            actor.feed(&mut self.ring, user_data, res, events)?;
+            drained |= actor.drain_to_end(&mut self.ring, events)?;
+        }
+
+        Ok(drained)
+    }
+
+    fn try_handle_dbus(
+        &mut self,
+        user_data: UserData,
+        res: i32,
+        events: &mut Vec<Event>,
+    ) -> Result<bool> {
+        if let Some(message) = self.dbus.feed(user_data, res)? {
+            if let Ok(message) = KnownDBusMessage::try_from(&message) {
+                for dbus_actor in &mut self.dbus_actors {
+                    dbus_actor.on_message(&message, events, &mut self.dbus)?;
+                }
+            } else {
+                eprintln!("Unknown {message:?}");
+                for dbus_actor in &mut self.dbus_actors {
+                    dbus_actor.on_unknown_message(&message, events, &mut self.dbus)?;
+                }
+            }
+        }
+        self.dbus.drain(&mut self.ring)
+    }
+
+    fn try_handle_readable(&mut self) -> Result<()> {
         let mut drained = false;
         let mut events = vec![];
 
@@ -109,34 +158,9 @@ impl IO {
             let res = cqe.res();
             let (user_data, _request_id) = UserData::from_u64(cqe.user_data(), res);
 
-            if let Some(tick) = self.timer.feed(user_data)? {
-                for actor in &mut self.actors {
-                    actor.on_tick(tick)?;
-                }
-                for dbus_actor in &mut self.dbus_actors {
-                    dbus_actor.on_tick(tick)?;
-                }
-            }
-            drained |= self.timer.drain(&mut self.ring)?;
-
-            for actor in &mut self.actors {
-                actor.feed(&mut self.ring, user_data, res, &mut events)?;
-                drained |= actor.drain_to_end(&mut self.ring, &mut events)?;
-            }
-
-            if let Some(message) = self.dbus.feed(user_data, res)? {
-                if let Ok(message) = KnownDBusMessage::try_from(&message) {
-                    for dbus_actor in &mut self.dbus_actors {
-                        dbus_actor.on_message(&message, &mut events, &mut self.dbus)?;
-                    }
-                } else {
-                    eprintln!("Unknown {message:?}");
-                    for dbus_actor in &mut self.dbus_actors {
-                        dbus_actor.on_unknown_message(&message, &mut events, &mut self.dbus)?;
-                    }
-                }
-            }
-            drained |= self.dbus.drain(&mut self.ring)?;
+            drained |= self.try_handle_timer(user_data)?;
+            drained |= self.try_handle_actors(user_data, res, &mut events)?;
+            drained |= self.try_handle_dbus(user_data, res, &mut events)?;
 
             self.ring.cqe_seen(cqe);
         }
@@ -152,19 +176,19 @@ impl IO {
         Ok(())
     }
 
-    fn process(&mut self) {
-        self.try_process().unwrap_or_else(|err| {
+    fn handle_readable(&mut self) {
+        self.try_handle_readable().unwrap_or_else(|err| {
             eprintln!("{err:?}");
             std::process::exit(1);
         })
     }
 
-    fn try_wait(&mut self) -> Result<()> {
+    fn try_wait_readable(&mut self) -> Result<()> {
         self.ring.submit_and_wait(1)
     }
 
-    fn wait(&mut self) {
-        self.try_wait().unwrap_or_else(|err| {
+    fn wait_readable(&mut self) {
+        self.try_wait_readable().unwrap_or_else(|err| {
             eprintln!("{err:?}");
             std::process::exit(1);
         })
@@ -207,12 +231,12 @@ pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }
 
-pub fn io_process(io: *mut c_void) {
-    IO::from_raw(io).process();
+pub fn io_handle_readable(io: *mut c_void) {
+    IO::from_raw(io).handle_readable();
 }
 
-pub fn io_wait(io: *mut c_void) {
-    IO::from_raw(io).wait();
+pub fn io_wait_readable(io: *mut c_void) {
+    IO::from_raw(io).wait_readable();
 }
 
 pub fn io_as_raw_fd(io: *mut c_void) -> i32 {
