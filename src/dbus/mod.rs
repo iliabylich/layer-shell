@@ -1,10 +1,8 @@
-mod actor;
 mod auth;
 mod decoders;
 mod encoders;
 mod read_write;
 mod serial;
-mod types;
 
 use crate::{liburing::IoUring, user_data::UserData};
 use anyhow::{Context, Result};
@@ -16,24 +14,25 @@ use std::os::{
 };
 
 pub(crate) mod messages;
-pub(crate) use actor::DBusActor;
-pub(crate) use messages::KnownDBusMessage;
+pub(crate) mod types;
+pub(crate) use messages::BuiltinDBusMessage;
 pub(crate) use types::Message;
 
+#[expect(clippy::large_enum_variant)]
 pub(crate) enum DBus {
     Auth(Auth),
     ReadWrite(ReadWrite),
 }
 
 impl DBus {
-    pub(crate) fn new() -> Result<Self> {
+    pub(crate) fn new() -> Result<Box<Self>> {
         let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
         let (_, path) = address
             .split_once("=")
             .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
         let fd = UnixStream::connect(path)?.into_raw_fd();
 
-        Ok(Self::Auth(Auth::new(fd)))
+        Ok(Box::new(Self::Auth(Auth::new(fd))))
     }
 
     pub(crate) fn enqueue(&mut self, message: &mut Message) -> Result<()> {

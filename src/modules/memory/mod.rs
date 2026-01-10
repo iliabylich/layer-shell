@@ -1,11 +1,9 @@
+use crate::{Event, UserData, liburing::IoUring, timerfd::Tick};
+use anyhow::{Result, ensure};
+use parser::Parser;
 use std::{fs::File, os::fd::IntoRawFd};
 
-use crate::{
-    Event, UserData,
-    liburing::{IoUring, IoUringActor},
-    timerfd::Tick,
-};
-use anyhow::{Context as _, Result, ensure};
+mod parser;
 
 #[derive(Debug)]
 enum State {
@@ -20,6 +18,8 @@ pub(crate) struct Memory {
     buf: [u8; 1_024],
 }
 
+const READ_USER_DATA: UserData = UserData::MemoryRead;
+
 impl Memory {
     pub(crate) fn new() -> Result<Box<Self>> {
         Ok(Box::new(Self {
@@ -28,12 +28,8 @@ impl Memory {
             buf: [0; 1_024],
         }))
     }
-}
 
-const READ_USER_DATA: UserData = UserData::MemoryRead;
-
-impl IoUringActor for Memory {
-    fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
         match self.state {
             State::CanRead => {
                 let mut sqe = ring.get_sqe()?;
@@ -49,9 +45,8 @@ impl IoUringActor for Memory {
         }
     }
 
-    fn feed(
+    pub(crate) fn feed(
         &mut self,
-        _ring: &mut IoUring,
         user_data: UserData,
         res: i32,
         events: &mut Vec<Event>,
@@ -67,8 +62,8 @@ impl IoUringActor for Memory {
             let len = res as usize;
             let s = std::str::from_utf8(&self.buf[..len])?;
 
-            let event = parse(s)?;
-            events.push(event);
+            let (used, total) = Parser::parse(s)?;
+            events.push(Event::Memory { used, total });
 
             self.state = State::WaitingForTimer;
             return Ok(());
@@ -77,7 +72,7 @@ impl IoUringActor for Memory {
         Ok(())
     }
 
-    fn on_tick(&mut self, tick: Tick) -> Result<()> {
+    pub(crate) fn on_tick(&mut self, tick: Tick) -> Result<()> {
         if tick.is_multiple_of(1) {
             assert!(
                 matches!(self.state, State::WaitingForTimer),
@@ -88,34 +83,4 @@ impl IoUringActor for Memory {
         }
         Ok(())
     }
-}
-
-fn parse(contents: &str) -> Result<Event> {
-    let mut lines = contents.lines();
-
-    let parse_mem = |line: &str, prefix: &str| {
-        line.trim_ascii_end()
-            .strip_prefix(prefix)
-            .with_context(|| format!("no {prefix} prefix"))?
-            .strip_suffix("kB")
-            .context("no 'kB' suffix")?
-            .trim_ascii()
-            .parse::<usize>()
-            .with_context(|| format!("not an int on {prefix} line"))
-    };
-
-    let line1 = lines.next().context("no line 1")?;
-    let total_kb = parse_mem(line1, "MemTotal:")?;
-
-    let _line2 = lines.next().context("no line 2")?;
-
-    let line3 = lines.next().context("no line 3")?;
-    let available_kb = parse_mem(line3, "MemAvailable:")?;
-
-    let used_kb = total_kb - available_kb;
-
-    Ok(Event::Memory {
-        used: (used_kb as f64) / 1024.0 / 1024.0,
-        total: (total_kb as f64) / 1024.0 / 1024.0,
-    })
 }

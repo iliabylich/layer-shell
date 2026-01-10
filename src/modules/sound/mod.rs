@@ -1,16 +1,19 @@
 use crate::{
     Event,
     dbus::{
-        DBus, DBusActor, KnownDBusMessage, Message,
-        messages::{
-            org_freedesktop_dbus::{AddMatch, GetAllProperties},
-            pipewire::{MuteChanged, VolumeAndMutedProperties, VolumeChanged},
-        },
+        BuiltinDBusMessage, DBus, Message,
+        messages::org_freedesktop_dbus::{AddMatch, GetAllProperties},
     },
-    timerfd::Tick,
 };
 use anyhow::Result;
+use mute_changed::MuteChanged;
 use std::borrow::Cow;
+use volume_and_muted_properties::VolumeAndMutedProperties;
+use volume_changed::VolumeChanged;
+
+mod mute_changed;
+mod volume_and_muted_properties;
+mod volume_changed;
 
 pub(crate) struct Sound {
     sent_initial_event: bool,
@@ -24,10 +27,8 @@ impl Sound {
             get_all_properties_serial: None,
         })
     }
-}
 
-impl DBusActor for Sound {
-    fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
         let mut message: Message = GetAllProperties::new(
             Cow::Borrowed("org.local.PipewireDBus"),
             Cow::Borrowed("/org/local/PipewireDBus"),
@@ -43,34 +44,34 @@ impl DBusActor for Sound {
         Ok(())
     }
 
-    fn on_message(
+    pub(crate) fn on_builtin_message(
         &mut self,
-        message: &KnownDBusMessage,
+        message: &BuiltinDBusMessage,
         events: &mut Vec<Event>,
-        _dbus: &mut DBus,
     ) -> Result<()> {
         if !self.sent_initial_event {
             return Ok(());
         }
 
-        match message {
-            KnownDBusMessage::VolumeChanged(VolumeChanged { volume }) => {
-                events.push(Event::VolumeChanged { volume: *volume });
-            }
-            KnownDBusMessage::MuteChanged(MuteChanged { muted }) => {
-                events.push(Event::MuteChanged { muted: *muted });
-            }
-            _ => return Ok(()),
+        let BuiltinDBusMessage::PropertiesChanged(message) = message else {
+            return Ok(());
         };
+
+        if let Ok(VolumeChanged { volume }) = VolumeChanged::try_from(message) {
+            events.push(Event::VolumeChanged { volume });
+        }
+
+        if let Ok(MuteChanged { muted }) = MuteChanged::try_from(message) {
+            events.push(Event::MuteChanged { muted });
+        }
 
         Ok(())
     }
 
-    fn on_unknown_message(
+    pub(crate) fn on_unknown_message(
         &mut self,
         message: &Message,
         events: &mut Vec<Event>,
-        _dbus: &mut DBus,
     ) -> Result<()> {
         if self.get_all_properties_serial == message.reply_serial() {
             let VolumeAndMutedProperties { volume, muted } =
@@ -78,10 +79,6 @@ impl DBusActor for Sound {
             events.push(Event::InitialSound { volume, muted });
             self.sent_initial_event = true;
         }
-        Ok(())
-    }
-
-    fn on_tick(&mut self, _tick: Tick) -> Result<()> {
         Ok(())
     }
 }

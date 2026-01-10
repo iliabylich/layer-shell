@@ -1,8 +1,4 @@
-use crate::{
-    Event,
-    liburing::{IoUring, IoUringActor},
-    user_data::UserData,
-};
+use crate::{Event, liburing::IoUring, user_data::UserData};
 use anyhow::{Context as _, Result};
 use reader::HyprlandReader;
 use state::HyprlandState;
@@ -38,21 +34,25 @@ impl Hyprland {
             state: HyprlandState::default(),
         }))
     }
-}
 
-impl IoUringActor for Hyprland {
-    fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
         let mut drained = false;
 
-        drained |= self.writer.drain(ring)?;
-        drained |= self.reader.drain(ring)?;
+        loop {
+            let mut drained_on_current_iteration = false;
+            drained_on_current_iteration |= self.writer.drain(ring)?;
+            drained_on_current_iteration |= self.reader.drain(ring)?;
+            if !drained_on_current_iteration {
+                break;
+            }
+            drained |= drained_on_current_iteration;
+        }
 
         Ok(drained)
     }
 
-    fn feed(
+    pub(crate) fn feed(
         &mut self,
-        _ring: &mut IoUring,
         user_data: UserData,
         res: i32,
         events: &mut Vec<Event>,
@@ -92,17 +92,13 @@ impl IoUringActor for Hyprland {
 
         Ok(())
     }
-
-    fn on_tick(&mut self, _tick: crate::timerfd::Tick) -> Result<()> {
-        Ok(())
-    }
 }
 
-pub(crate) fn xdg_runtime_dir() -> Result<String> {
+fn xdg_runtime_dir() -> Result<String> {
     std::env::var("XDG_RUNTIME_DIR").context("no XDG_RUNTIME_DIR variable")
 }
 
-pub(crate) fn hyprland_instance_signature() -> Result<String> {
+fn hyprland_instance_signature() -> Result<String> {
     std::env::var("HYPRLAND_INSTANCE_SIGNATURE")
         .context("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?")
 }

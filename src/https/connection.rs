@@ -43,6 +43,7 @@ pub(crate) struct HttpsConnection {
 }
 
 impl HttpsConnection {
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn get(
         hostname: &str,
         port: u16,
@@ -88,7 +89,7 @@ impl HttpsConnection {
 
     pub(crate) fn drain_once(&mut self, ring: &mut IoUring) -> Result<bool> {
         match &self.state {
-            State::CanAcquireSocket { .. } => {
+            State::CanAcquireSocket => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
                 sqe.set_user_data(self.socket_user_data.as_u64());

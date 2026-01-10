@@ -44,13 +44,18 @@ impl<'a> TryFrom<&'a Message> for IntrospectRequest<'a> {
 }
 
 pub(crate) struct IntrospectResponse<'a> {
-    req: IntrospectRequest<'a>,
+    reply_serial: u32,
+    destination: &'a str,
     xml: &'static str,
 }
 
 impl<'a> IntrospectResponse<'a> {
-    pub(crate) fn new(req: IntrospectRequest<'a>, xml: &'static str) -> Self {
-        Self { req, xml }
+    pub(crate) fn new(reply_serial: u32, destination: &'a str, xml: &'static str) -> Self {
+        Self {
+            reply_serial,
+            destination,
+            xml,
+        }
     }
 }
 
@@ -58,8 +63,8 @@ impl<'a> From<IntrospectResponse<'a>> for Message {
     fn from(value: IntrospectResponse<'a>) -> Message {
         Message::MethodReturn {
             serial: 0,
-            reply_serial: value.req.serial,
-            destination: Some(Cow::Owned(value.req.sender.to_string())),
+            reply_serial: value.reply_serial,
+            destination: Some(Cow::Owned(value.destination.to_string())),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(value.xml.to_string())],

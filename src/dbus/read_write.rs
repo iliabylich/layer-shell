@@ -103,7 +103,7 @@ impl ReadWrite {
                 self.read_state = ReadState::ReadingBody;
                 drained |= true;
             }
-            ReadState::ReadingBody { .. } => {}
+            ReadState::ReadingBody => {}
         }
 
         Ok(drained)
@@ -149,7 +149,7 @@ impl ReadWrite {
 
         if user_data == READ_BODY_USER_DATA {
             ensure!(
-                matches!(self.read_state, ReadState::ReadingBody { .. }),
+                matches!(self.read_state, ReadState::ReadingBody),
                 "malformed state, expected ReadingBody, got {:?}",
                 self.read_state
             );

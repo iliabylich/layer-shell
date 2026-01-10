@@ -24,70 +24,74 @@ thread_local! {
 }
 
 use crate::{
-    dbus::{DBus, DBusActor, KnownDBusMessage, messages::org_freedesktop_dbus::Hello},
-    liburing::{IoUring, IoUringActor},
-    modules::{CPU, Clock, Hyprland, Memory, Sound, Weather},
+    dbus::{BuiltinDBusMessage, DBus, messages::org_freedesktop_dbus::Hello},
+    liburing::IoUring,
+    modules::{CPU, Clock, Control, ControlRequest, Hyprland, Memory, Sound, Weather},
     timerfd::Timerfd,
     user_data::UserData,
 };
 
 struct IO {
     ring: IoUring,
+
     timer: Box<Timerfd>,
-    actors: Vec<Box<dyn IoUringActor>>,
-    dbus: DBus,
-    dbus_actors: Vec<Box<dyn DBusActor>>,
-    on_event: fn(event: Event),
+    dbus: Box<DBus>,
+
+    weather: Box<Weather>,
+    hyprland: Box<Hyprland>,
+    cpu: Box<CPU>,
+    memory: Box<Memory>,
+
+    sound: Box<Sound>,
+    control: Box<Control>,
+
+    on_event: extern "C" fn(event: Event),
 }
 
 impl IO {
-    fn try_new(on_event: fn(event: Event)) -> Result<Self> {
-        let mut ring = IoUring::new(10, 0)?;
+    fn try_new(on_event: extern "C" fn(event: Event)) -> Result<Self> {
+        let mut this = Self {
+            ring: IoUring::new(10, 0)?,
 
-        let mut timer = Timerfd::new()?;
-        let drained = timer.drain(&mut ring)?;
-        assert!(drained);
+            timer: Timerfd::new()?,
+            dbus: DBus::new()?,
 
-        let mut events = vec![];
-        let mut actors: Vec<Box<dyn IoUringActor>> = vec![];
+            weather: Weather::new()?,
+            hyprland: Hyprland::new()?,
+            cpu: CPU::new()?,
+            memory: Memory::new()?,
 
-        actors.push(Clock::new());
-        actors.push(Weather::new()?);
-        actors.push(Hyprland::new()?);
-        actors.push(CPU::new()?);
-        actors.push(Memory::new()?);
+            sound: Sound::new(),
+            control: Control::new(),
 
-        let mut dbus = DBus::new()?;
-        dbus.enqueue(&mut Hello.into())?;
-
-        let mut dbus_actors: Vec<Box<dyn DBusActor>> = vec![];
-        dbus_actors.push(Sound::new());
-        for dbus_actor in &mut dbus_actors {
-            dbus_actor.init(&mut dbus)?;
-        }
-
-        dbus.drain(&mut ring).unwrap();
-        for actor in &mut actors {
-            actor.drain_to_end(&mut ring, &mut events)?;
-        }
-
-        for event in events {
-            (on_event)(event);
-        }
-
-        ring.submit()?;
-
-        Ok(IO {
-            ring,
-            timer,
-            actors,
-            dbus,
-            dbus_actors,
             on_event,
-        })
+        };
+
+        this.init()?;
+
+        Ok(this)
     }
 
-    fn new(on_event: fn(event: Event)) -> Self {
+    fn init(&mut self) -> Result<()> {
+        let drained = self.timer.drain(&mut self.ring)?;
+        assert!(drained);
+
+        self.weather.drain(&mut self.ring)?;
+        self.hyprland.drain(&mut self.ring)?;
+        self.cpu.drain(&mut self.ring)?;
+        self.memory.drain(&mut self.ring)?;
+
+        self.dbus.enqueue(&mut Hello.into())?;
+        self.sound.init(&mut self.dbus)?;
+        self.control.init(&mut self.dbus)?;
+        self.dbus.drain(&mut self.ring)?;
+
+        self.ring.submit()?;
+
+        Ok(())
+    }
+
+    fn new(on_event: extern "C" fn(event: Event)) -> Self {
         Self::try_new(on_event).unwrap_or_else(|err| {
             eprintln!("{err:?}");
             std::process::exit(1);
@@ -102,15 +106,21 @@ impl IO {
     }
 
     fn try_handle_timer(&mut self, user_data: UserData) -> Result<bool> {
+        let mut events = vec![];
+
         if let Some(tick) = self.timer.feed(user_data)? {
-            for actor in &mut self.actors {
-                actor.on_tick(tick)?;
-            }
-            for dbus_actor in &mut self.dbus_actors {
-                dbus_actor.on_tick(tick)?;
-            }
+            Clock::on_tick(tick, &mut events);
+            self.weather.on_tick(tick)?;
+            self.cpu.on_tick(tick)?;
+            self.memory.on_tick(tick)?;
         }
-        self.timer.drain(&mut self.ring)
+        let drained = self.timer.drain(&mut self.ring)?;
+
+        for event in events {
+            (self.on_event)(event);
+        }
+
+        Ok(drained)
     }
 
     fn try_handle_actors(
@@ -121,12 +131,29 @@ impl IO {
     ) -> Result<bool> {
         let mut drained = false;
 
-        for actor in &mut self.actors {
-            actor.feed(&mut self.ring, user_data, res, events)?;
-            drained |= actor.drain_to_end(&mut self.ring, events)?;
-        }
+        drained |= {
+            self.weather.feed(user_data, res, events)?;
+            self.weather.drain(&mut self.ring)?
+        };
+        drained |= {
+            self.hyprland.feed(user_data, res, events)?;
+            self.hyprland.drain(&mut self.ring)?
+        };
+        drained |= {
+            self.cpu.feed(user_data, res, events)?;
+            self.cpu.drain(&mut self.ring)?
+        };
+        drained |= {
+            self.memory.feed(user_data, res, events)?;
+            self.memory.drain(&mut self.ring)?
+        };
 
         Ok(drained)
+    }
+
+    fn on_control_req(&mut self, req: ControlRequest) -> Result<()> {
+        println!("Got control request: {req:?}");
+        Ok(())
     }
 
     fn try_handle_dbus(
@@ -136,14 +163,15 @@ impl IO {
         events: &mut Vec<Event>,
     ) -> Result<bool> {
         if let Some(message) = self.dbus.feed(user_data, res)? {
-            if let Ok(message) = KnownDBusMessage::try_from(&message) {
-                for dbus_actor in &mut self.dbus_actors {
-                    dbus_actor.on_message(&message, events, &mut self.dbus)?;
-                }
+            if let Ok(message) = BuiltinDBusMessage::try_from(&message) {
+                self.sound.on_builtin_message(&message, events)?;
+                self.control.on_builtin_message(&message, &mut self.dbus)?;
             } else {
-                eprintln!("Unknown {message:?}");
-                for dbus_actor in &mut self.dbus_actors {
-                    dbus_actor.on_unknown_message(&message, events, &mut self.dbus)?;
+                self.sound.on_unknown_message(&message, events)?;
+                if let Some(control_req) =
+                    self.control.on_unknown_message(&message, &mut self.dbus)?
+                {
+                    self.on_control_req(control_req)?;
                 }
             }
         }
@@ -195,7 +223,7 @@ impl IO {
     }
 }
 
-pub fn io_init(on_event: fn(event: Event)) -> *mut c_void {
+pub fn io_init(on_event: extern "C" fn(event: Event)) -> *mut c_void {
     env_logger::init();
 
     // let (etx, erx) = tokio::sync::mpsc::unbounded_channel::<Event>();

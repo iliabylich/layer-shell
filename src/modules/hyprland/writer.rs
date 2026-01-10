@@ -35,7 +35,7 @@ impl WriterResource for WorkspaceListResource {
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
-        let workspaces = serde_json::from_str(&json).context("malformed workspaces response")?;
+        let workspaces = serde_json::from_str(json).context("malformed workspaces response")?;
         Ok(WriterReply::WorkspaceList(workspaces))
     }
 }
@@ -47,8 +47,7 @@ impl WriterResource for ActiveWorkspaceResource {
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
-        let workspace =
-            serde_json::from_str(&json).context("malformed activeworkspace response")?;
+        let workspace = serde_json::from_str(json).context("malformed activeworkspace response")?;
         Ok(WriterReply::ActiveWorkspace(workspace))
     }
 }
@@ -60,7 +59,7 @@ impl WriterResource for DevicesResource {
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
-        let devices = serde_json::from_str(&json).context("malformed devices response")?;
+        let devices = serde_json::from_str(json).context("malformed devices response")?;
         Ok(WriterReply::Devices(devices))
     }
 }

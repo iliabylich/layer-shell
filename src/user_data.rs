@@ -40,11 +40,11 @@ pub(crate) enum UserData {
 
     TimerfdRead,
 
-    MAX,
+    Max,
 }
 
 thread_local! {
-    static NEXT_REQUEST_ID: Cell<u32> = Cell::new(1);
+    static NEXT_REQUEST_ID: Cell<u32> = const { Cell::new(1) };
 }
 fn next_request_id() -> u32 {
     let request_id = NEXT_REQUEST_ID.get();
@@ -67,7 +67,7 @@ impl UserData {
         let mut high = [0; 4];
         high.copy_from_slice(&bytes[..4]);
         let request_id = { u32::from_le_bytes(high) };
-        assert!(bytes[7] < Self::MAX as u8);
+        assert!(bytes[7] < Self::Max as u8);
         let this: Self = unsafe { std::mem::transmute(bytes[7]) };
         eprintln!("<== {this:?}({request_id}, {res})");
         (this, request_id)

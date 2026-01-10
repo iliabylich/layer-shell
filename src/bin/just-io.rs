@@ -1,6 +1,6 @@
 use layer_shell_io::{Event, io_handle_readable, io_init, io_wait_readable};
 
-fn on_event(event: Event) {
+extern "C" fn on_event(event: Event) {
     println!("on_event: {event:?}");
 }
 

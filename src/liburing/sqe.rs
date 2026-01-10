@@ -1,6 +1,6 @@
 use libc::sockaddr;
 
-use super::liburing::{
+use super::generated::{
     __io_uring_prep_close, __io_uring_prep_connect, __io_uring_prep_openat, __io_uring_prep_read,
     __io_uring_prep_socket, __io_uring_prep_write, io_uring_sqe, mode_t, socklen_t,
 };

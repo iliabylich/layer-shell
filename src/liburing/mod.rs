@@ -1,14 +1,13 @@
-pub(crate) use self::{actor::IoUringActor, cqe::Cqe, sqe::Sqe};
+pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use anyhow::{Result, bail};
-use libc::{ETIME, strerror};
-use liburing::{
+use generated::{
     __io_uring_cqe_seen, __io_uring_get_sqe, __io_uring_queue_exit, __io_uring_queue_init,
     __io_uring_submit, __io_uring_submit_and_wait, __io_uring_wait_cqe,
     __io_uring_wait_cqe_timeout, __kernel_timespec, io_uring, io_uring_cqe,
 };
+use libc::{ETIME, strerror};
 use std::{mem::MaybeUninit, os::fd::AsRawFd};
 
-mod actor;
 mod cqe;
 #[expect(
     dead_code,
@@ -17,7 +16,7 @@ mod cqe;
     non_camel_case_types,
     non_snake_case
 )]
-mod liburing;
+mod generated;
 mod sqe;
 
 fn checkerr(errno: i32) -> Result<()> {

@@ -1,9 +1,6 @@
 use crate::{
-    Event, UserData,
-    https::HttpsConnection,
-    liburing::{IoUring, IoUringActor},
-    modules::weather::weather_response::WeatherResponse,
-    timerfd::Tick,
+    Event, UserData, https::HttpsConnection, liburing::IoUring,
+    modules::weather::weather_response::WeatherResponse, timerfd::Tick,
 };
 use anyhow::Result;
 use location_response::LocationResponse;
@@ -71,20 +68,29 @@ impl Weather {
             state: State::WaitingForTimer,
         }))
     }
-}
 
-impl IoUringActor for Weather {
-    fn drain_once(&mut self, ring: &mut IoUring, _events: &mut Vec<Event>) -> Result<bool> {
-        match &mut self.state {
-            State::WaitingForTimer => Ok(false),
-            State::GettingLocation(https) => https.drain_once(ring),
-            State::GettingWeather(https) => https.drain_once(ring),
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
+        let mut drained = false;
+
+        loop {
+            let drained_on_current_iteration = match &mut self.state {
+                State::WaitingForTimer => break,
+                State::GettingLocation(https) => https.drain_once(ring)?,
+                State::GettingWeather(https) => https.drain_once(ring)?,
+            };
+
+            if !drained_on_current_iteration {
+                break;
+            }
+
+            drained |= drained_on_current_iteration
         }
+
+        Ok(drained)
     }
 
-    fn feed(
+    pub(crate) fn feed(
         &mut self,
-        _ring: &mut IoUring,
         user_data: UserData,
         res: i32,
         events: &mut Vec<Event>,
@@ -108,7 +114,7 @@ impl IoUringActor for Weather {
         Ok(())
     }
 
-    fn on_tick(&mut self, tick: Tick) -> Result<()> {
+    pub(crate) fn on_tick(&mut self, tick: Tick) -> Result<()> {
         if tick.is_multiple_of(120) {
             self.state = State::GettingLocation(get_location()?);
         }

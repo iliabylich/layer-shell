@@ -73,7 +73,7 @@ impl Auth {
         match self.state {
             State::CanWriteZero => {
                 let mut sqe = ring.get_sqe()?;
-                sqe.prep_write(self.fd, b"\0".as_ptr(), 1);
+                sqe.prep_write(self.fd, c"".as_ptr().cast(), 1);
                 sqe.set_user_data(WRITE_ZERO_USER_DATA.as_u64());
                 self.state = State::WritingZero;
                 Ok(true)
