@@ -6,7 +6,7 @@ pub struct CString {
 }
 
 impl CString {
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         unsafe { std::ffi::CStr::from_ptr(self.ptr.cast()) }
             .to_str()
             .unwrap_or_else(|err| {
@@ -15,13 +15,13 @@ impl CString {
             })
     }
 
-    pub fn into_raw(self) -> *mut std::ffi::c_char {
+    pub(crate) fn into_raw(self) -> *mut std::ffi::c_char {
         let ptr = self.ptr;
         std::mem::forget(self);
         ptr
     }
 
-    pub fn none() -> Self {
+    pub(crate) fn none() -> Self {
         Self::from("none".to_string())
     }
 }

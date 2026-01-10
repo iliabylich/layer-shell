@@ -5,7 +5,7 @@ pub struct CArray<T> {
 }
 
 impl<T> CArray<T> {
-    pub fn as_slice(&self) -> &[T] {
+    pub(crate) fn as_slice(&self) -> &[T] {
         unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
     }
 }
