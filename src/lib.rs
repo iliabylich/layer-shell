@@ -35,7 +35,8 @@ struct IO {
     ring: IoUring,
 
     timer: Box<Timerfd>,
-    dbus: Box<DBus>,
+    session_dbus: Box<DBus>,
+    system_dbus: Box<DBus>,
 
     weather: Box<Weather>,
     hyprland: Box<Hyprland>,
@@ -54,7 +55,8 @@ impl IO {
             ring: IoUring::new(10, 0)?,
 
             timer: Timerfd::new()?,
-            dbus: DBus::new()?,
+            session_dbus: DBus::new_session()?,
+            system_dbus: DBus::new_system()?,
 
             weather: Weather::new()?,
             hyprland: Hyprland::new()?,
@@ -81,10 +83,12 @@ impl IO {
         self.cpu.drain(&mut self.ring)?;
         self.memory.drain(&mut self.ring)?;
 
-        self.dbus.enqueue(&mut Hello.into())?;
-        self.sound.init(&mut self.dbus)?;
-        self.control.init(&mut self.dbus)?;
-        self.dbus.drain(&mut self.ring)?;
+        self.session_dbus.enqueue(&mut Hello.into())?;
+        self.sound.init(&mut self.session_dbus)?;
+        self.control.init(&mut self.session_dbus)?;
+        self.session_dbus.drain(&mut self.ring)?;
+
+        self.system_dbus.enqueue(&mut Hello.into())?;
 
         self.ring.submit()?;
 
@@ -156,26 +160,42 @@ impl IO {
         Ok(())
     }
 
-    fn try_handle_dbus(
+    fn try_handle_session_dbus(
         &mut self,
         user_data: UserData,
         res: i32,
         events: &mut Vec<Event>,
     ) -> Result<bool> {
-        if let Some(message) = self.dbus.feed(user_data, res)? {
+        if let Some(message) = self.session_dbus.feed(user_data, res)? {
             if let Ok(message) = BuiltinDBusMessage::try_from(&message) {
                 self.sound.on_builtin_message(&message, events)?;
-                self.control.on_builtin_message(&message, &mut self.dbus)?;
+                self.control
+                    .on_builtin_message(&message, &mut self.session_dbus)?;
             } else {
                 self.sound.on_unknown_message(&message, events)?;
-                if let Some(control_req) =
-                    self.control.on_unknown_message(&message, &mut self.dbus)?
+                if let Some(control_req) = self
+                    .control
+                    .on_unknown_message(&message, &mut self.session_dbus)?
                 {
                     self.on_control_req(control_req)?;
                 }
             }
         }
-        self.dbus.drain(&mut self.ring)
+        self.session_dbus.drain(&mut self.ring)
+    }
+
+    fn try_handle_system_dbus(
+        &mut self,
+        user_data: UserData,
+        res: i32,
+        events: &mut Vec<Event>,
+    ) -> Result<bool> {
+        if let Some(message) = self.system_dbus.feed(user_data, res)? {
+            if let Ok(message) = BuiltinDBusMessage::try_from(&message) {
+            } else {
+            }
+        }
+        self.session_dbus.drain(&mut self.ring)
     }
 
     fn try_handle_readable(&mut self) -> Result<()> {
@@ -188,7 +208,8 @@ impl IO {
 
             drained |= self.try_handle_timer(user_data)?;
             drained |= self.try_handle_actors(user_data, res, &mut events)?;
-            drained |= self.try_handle_dbus(user_data, res, &mut events)?;
+            drained |= self.try_handle_session_dbus(user_data, res, &mut events)?;
+            drained |= self.try_handle_system_dbus(user_data, res, &mut events)?;
 
             self.ring.cqe_seen(cqe);
         }

@@ -23,16 +23,27 @@ pub(crate) enum UserData {
     HyprlandWriterRead,
     HyprlandWriterClose,
 
-    DbusAuthWriteZero,
-    DbusAuthWriteAuthExternal,
-    DbusAuthReadData,
-    DbusAuthWriteData,
-    DbusAuthReadGUID,
-    DbusAuthWriteBegin,
+    SessionDBusAuthWriteZero,
+    SessionDBusAuthWriteAuthExternal,
+    SessionDBusAuthReadData,
+    SessionDBusAuthWriteData,
+    SessionDBusAuthReadGUID,
+    SessionDBusAuthWriteBegin,
 
-    DBusReadHeader,
-    DBusReadBody,
-    DBusWrite,
+    SessionDBusReadHeader,
+    SessionDBusReadBody,
+    SessionDBusWrite,
+
+    SystemDBusAuthWriteZero,
+    SystemDBusAuthWriteAuthExternal,
+    SystemDBusAuthReadData,
+    SystemDBusAuthWriteData,
+    SystemDBusAuthReadGUID,
+    SystemDBusAuthWriteBegin,
+
+    SystemDBusReadHeader,
+    SystemDBusReadBody,
+    SystemDBusWrite,
 
     CpuRead,
 

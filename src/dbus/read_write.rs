@@ -33,16 +33,27 @@ pub(crate) struct ReadWrite {
     write_buf: Vec<u8>,
     queue: VecDeque<Vec<u8>>,
     serial: Serial,
+
+    read_header_user_data: UserData,
+    read_body_user_data: UserData,
+    write_user_data: UserData,
 }
 
 const HEADER_LEN: usize = HeaderDecoder::LENGTH + std::mem::size_of::<u32>();
 
-const READ_HEADER_USER_DATA: UserData = UserData::DBusReadHeader;
-const READ_BODY_USER_DATA: UserData = UserData::DBusReadBody;
-const WRITE_USER_DATA: UserData = UserData::DBusWrite;
+// const READ_HEADER_USER_DATA: UserData = UserData::SessionDBusReadHeader;
+// const READ_BODY_USER_DATA: UserData = UserData::SessionDBusReadBody;
+// const WRITE_USER_DATA: UserData = UserData::SessionDBusWrite;
 
 impl ReadWrite {
-    pub(crate) fn new(fd: i32, queue: VecDeque<Vec<u8>>, serial: Serial) -> Self {
+    pub(crate) fn new(
+        fd: i32,
+        queue: VecDeque<Vec<u8>>,
+        serial: Serial,
+        read_header_user_data: UserData,
+        read_body_user_data: UserData,
+        write_user_data: UserData,
+    ) -> Self {
         Self {
             fd,
             read_state: ReadState::CanReadHeader,
@@ -51,6 +62,10 @@ impl ReadWrite {
             write_buf: vec![],
             queue,
             serial,
+
+            read_header_user_data,
+            read_body_user_data,
+            write_user_data,
         }
     }
 
@@ -71,7 +86,7 @@ impl ReadWrite {
 
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_write(self.fd, self.write_buf.as_ptr(), self.write_buf.len());
-                    sqe.set_user_data(WRITE_USER_DATA.as_u64());
+                    sqe.set_user_data(self.write_user_data.as_u64());
 
                     self.write_state = WriteState::Writing;
                     drained |= true;
@@ -84,7 +99,7 @@ impl ReadWrite {
             ReadState::CanReadHeader => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.read_buf.as_mut_ptr(), HEADER_LEN);
-                sqe.set_user_data(READ_HEADER_USER_DATA.as_u64());
+                sqe.set_user_data(self.read_header_user_data.as_u64());
 
                 self.read_state = ReadState::ReadingHeader;
                 drained |= true;
@@ -98,7 +113,7 @@ impl ReadWrite {
                     self.read_buf[HEADER_LEN..].as_mut_ptr(),
                     remaining_len,
                 );
-                sqe.set_user_data(READ_BODY_USER_DATA.as_u64());
+                sqe.set_user_data(self.read_body_user_data.as_u64());
 
                 self.read_state = ReadState::ReadingBody;
                 drained |= true;
@@ -110,7 +125,7 @@ impl ReadWrite {
     }
 
     pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<Option<Message>> {
-        if user_data == WRITE_USER_DATA {
+        if user_data == self.write_user_data {
             ensure!(
                 matches!(self.write_state, WriteState::Writing),
                 "malformed state, expected Writing, got {:?}",
@@ -126,7 +141,7 @@ impl ReadWrite {
             return Ok(None);
         }
 
-        if user_data == READ_HEADER_USER_DATA {
+        if user_data == self.read_header_user_data {
             ensure!(
                 matches!(self.read_state, ReadState::ReadingHeader),
                 "malformed state, expected ReadingHeader, got {:?}",
@@ -147,7 +162,7 @@ impl ReadWrite {
             return Ok(None);
         }
 
-        if user_data == READ_BODY_USER_DATA {
+        if user_data == self.read_body_user_data {
             ensure!(
                 matches!(self.read_state, ReadState::ReadingBody),
                 "malformed state, expected ReadingBody, got {:?}",

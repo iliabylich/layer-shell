@@ -25,14 +25,52 @@ pub(crate) enum DBus {
 }
 
 impl DBus {
-    pub(crate) fn new() -> Result<Box<Self>> {
+    pub(crate) fn new_session() -> Result<Box<Self>> {
         let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
         let (_, path) = address
             .split_once("=")
             .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
         let fd = UnixStream::connect(path)?.into_raw_fd();
 
-        Ok(Box::new(Self::Auth(Auth::new(fd))))
+        Ok(Box::new(Self::Auth(Auth::new(
+            fd,
+            UserData::SessionDBusAuthWriteZero,
+            UserData::SessionDBusAuthWriteAuthExternal,
+            UserData::SessionDBusAuthReadData,
+            UserData::SessionDBusAuthWriteData,
+            UserData::SessionDBusAuthReadGUID,
+            UserData::SessionDBusAuthWriteBegin,
+            UserData::SessionDBusReadHeader,
+            UserData::SessionDBusReadBody,
+            UserData::SessionDBusWrite,
+        ))))
+    }
+
+    pub(crate) fn new_system() -> Result<Box<Self>> {
+        let path = std::env::var("DBUS_SYSTEM_BUS_ADDRESS")
+            .context("no DBUS_SYSTEM_BUS_ADDRESS")
+            .and_then(|address| {
+                address
+                    .split_once("=")
+                    .map(|(_, path)| path.to_string())
+                    .context("malformed DBUS_SESSION_BUS_ADDRESS")
+            })
+            .unwrap_or_else(|_| String::from("/var/run/dbus/system_bus_socket"));
+
+        let fd = UnixStream::connect(path)?.into_raw_fd();
+
+        Ok(Box::new(Self::Auth(Auth::new(
+            fd,
+            UserData::SystemDBusAuthWriteZero,
+            UserData::SystemDBusAuthWriteAuthExternal,
+            UserData::SystemDBusAuthReadData,
+            UserData::SystemDBusAuthWriteData,
+            UserData::SystemDBusAuthReadGUID,
+            UserData::SystemDBusAuthWriteBegin,
+            UserData::SystemDBusReadHeader,
+            UserData::SystemDBusReadBody,
+            UserData::SystemDBusWrite,
+        ))))
     }
 
     pub(crate) fn enqueue(&mut self, message: &mut Message) -> Result<()> {
@@ -56,7 +94,14 @@ impl DBus {
                     let fd = auth.as_raw_fd();
                     let queue = auth.take_queue();
                     let serial = auth.take_serial();
-                    *self = Self::ReadWrite(ReadWrite::new(fd, queue, serial));
+                    *self = Self::ReadWrite(ReadWrite::new(
+                        fd,
+                        queue,
+                        serial,
+                        auth.read_header_user_data,
+                        auth.read_body_user_data,
+                        auth.write_user_data,
+                    ));
                 }
                 Ok(None)
             }
