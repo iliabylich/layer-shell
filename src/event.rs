@@ -1,6 +1,6 @@
 use crate::{
     ffi::{CArray, CString},
-    weather::WeatherCode,
+    modules::WeatherCode,
 };
 
 #[derive(Debug)]

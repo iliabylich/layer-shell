@@ -1,8 +1,7 @@
 use crate::{
     UserData,
-    array_writer::ArrayWriter,
-    hyprland::{hyprland_instance_signature, xdg_runtime_dir},
     liburing::IoUring,
+    modules::hyprland::{array_writer::ArrayWriter, hyprland_instance_signature, xdg_runtime_dir},
 };
 use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;

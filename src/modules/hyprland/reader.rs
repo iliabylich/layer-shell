@@ -1,7 +1,7 @@
 use crate::{
     UserData,
-    hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
     liburing::IoUring,
+    modules::hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
 };
 use anyhow::{Result, ensure};
 use std::os::{fd::IntoRawFd as _, unix::net::UnixStream};

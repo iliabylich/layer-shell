@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    liburing::{IoUringActor, IoUring},
+    liburing::{IoUring, IoUringActor},
     user_data::UserData,
 };
 use anyhow::{Context as _, Result};
@@ -11,6 +11,7 @@ use writer::{
     WriterResource,
 };
 
+mod array_writer;
 mod event;
 mod reader;
 mod state;

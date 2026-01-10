@@ -2,8 +2,8 @@ use crate::{
     Event, UserData,
     https::HttpsConnection,
     liburing::{IoUring, IoUringActor},
+    modules::weather::weather_response::WeatherResponse,
     timerfd::Tick,
-    weather::weather_response::WeatherResponse,
 };
 use anyhow::Result;
 use location_response::LocationResponse;

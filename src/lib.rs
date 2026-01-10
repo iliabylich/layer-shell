@@ -2,19 +2,13 @@
 // mod config;
 mod event;
 // mod main_loop;
-mod array_writer;
-mod clock;
-mod cpu;
 mod dbus;
 mod ffi;
 mod https;
-mod hyprland;
 mod liburing;
-mod memory;
-mod sound;
+mod modules;
 mod timerfd;
 mod user_data;
-mod weather;
 
 use anyhow::Result;
 // use command::Command;
@@ -30,16 +24,11 @@ thread_local! {
 }
 
 use crate::{
-    clock::Clock,
-    cpu::CPU,
     dbus::{DBus, DBusActor, KnownDBusMessage, messages::org_freedesktop_dbus::Hello},
-    hyprland::Hyprland,
     liburing::{IoUring, IoUringActor},
-    memory::Memory,
-    sound::Sound,
+    modules::{CPU, Clock, Hyprland, Memory, Sound, Weather},
     timerfd::Timerfd,
     user_data::UserData,
-    weather::Weather,
 };
 
 struct IO {

@@ -1,6 +1,6 @@
 use crate::{
     event::{Event, Workspace},
-    hyprland::event::HyprlandEvent,
+    modules::hyprland::event::HyprlandEvent,
 };
 use std::collections::HashSet;
 
