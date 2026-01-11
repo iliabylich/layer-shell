@@ -1,20 +1,30 @@
-use crate::dbus::messages::{
-    destination_is, introspect::IntrospectRequest as GenericIntrospectRequest, path_is,
+use crate::dbus::{
+    Message,
+    messages::{destination_is, introspect::IntrospectRequest, path_is},
 };
 use anyhow::Result;
 
-pub(crate) struct IntrospectRequest;
+pub(crate) struct ControlIntrospectRequest {
+    pub(crate) sender: String,
+    pub(crate) serial: u32,
+}
 
-impl TryFrom<&GenericIntrospectRequest<'_>> for IntrospectRequest {
+impl TryFrom<&Message> for ControlIntrospectRequest {
     type Error = anyhow::Error;
 
-    fn try_from(
-        GenericIntrospectRequest {
-            destination, path, ..
-        }: &GenericIntrospectRequest,
-    ) -> Result<Self> {
+    fn try_from(message: &Message) -> Result<Self> {
+        let IntrospectRequest {
+            destination,
+            path,
+            sender,
+            serial,
+        } = IntrospectRequest::try_from(message)?;
+
         destination_is!(destination, "org.me.LayerShellTmpControl");
         path_is!(path, "/");
-        Ok(Self)
+        Ok(Self {
+            sender: sender.to_string(),
+            serial,
+        })
     }
 }

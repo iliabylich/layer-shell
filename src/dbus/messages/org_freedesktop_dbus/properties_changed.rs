@@ -1,5 +1,7 @@
-use super::{body_is, interface_is, message_is, type_is, value_is};
-use crate::dbus::types::{CompleteType, Message, Value};
+use crate::dbus::{
+    messages::{body_is, interface_is, message_is, type_is, value_is},
+    types::{CompleteType, Message, Value},
+};
 use anyhow::Result;
 use std::{borrow::Cow, collections::HashMap};
 

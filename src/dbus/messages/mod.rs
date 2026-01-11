@@ -88,37 +88,3 @@ macro_rules! type_is {
     };
 }
 pub(crate) use type_is;
-
-macro_rules! define_sum_message {
-    ($enum_name:ident, $($variant:ident$(<$lt:lifetime>)?),+ $(,)?) => {
-        #[derive(Debug)]
-        pub(crate) enum $enum_name<'a> {
-            $(
-                $variant($variant$(<$lt>)?),
-            )+
-        }
-
-        impl<'a> TryFrom<&'a $crate::dbus::Message> for $enum_name<'a> {
-            type Error = anyhow::Error;
-
-            fn try_from(message: &'a $crate::dbus::Message) -> anyhow::Result<Self> {
-                $(
-                    if let Ok(mapped) = $variant::try_from(message) {
-                        return Ok(Self::$variant(mapped));
-                    }
-                )+
-
-                anyhow::bail!("{message:?} doesn't match any registered type")
-            }
-        }
-    };
-}
-
-use introspect::IntrospectRequest;
-use org_freedesktop_dbus::PropertiesChanged;
-
-define_sum_message!(
-    BuiltinDBusMessage,
-    IntrospectRequest<'a>,
-    PropertiesChanged<'a>
-);

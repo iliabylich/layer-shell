@@ -1,4 +1,4 @@
-use crate::{DownloadSpeedEvent, NetworkEvent, UploadSpeedEvent};
+use crate::Event;
 
 #[derive(Debug)]
 enum OneWaySpeed {
@@ -47,18 +47,18 @@ impl Speed {
         self.rx = OneWaySpeed::Unset;
     }
 
-    pub(crate) fn update_tx(&mut self, tx: u64) -> NetworkEvent {
+    pub(crate) fn update_tx(&mut self, tx: u64) -> Event {
         let d = self.tx.update(tx);
-        NetworkEvent::UploadSpeed(UploadSpeedEvent {
+        Event::UploadSpeed {
             speed: fmt(d).into(),
-        })
+        }
     }
 
-    pub(crate) fn update_rx(&mut self, rx: u64) -> NetworkEvent {
+    pub(crate) fn update_rx(&mut self, rx: u64) -> Event {
         let d = self.rx.update(rx);
-        NetworkEvent::DownloadSpeed(DownloadSpeedEvent {
+        Event::DownloadSpeed {
             speed: fmt(d).into(),
-        })
+        }
     }
 }
 

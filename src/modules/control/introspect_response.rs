@@ -1,11 +1,11 @@
-use crate::dbus::{Message, messages::introspect::IntrospectResponse as GenericIntrospectResponse};
+use crate::dbus::{Message, messages::introspect::IntrospectResponse};
 
-pub(crate) struct IntrospectResponse<'a> {
+pub(crate) struct ControlIntrospectResponse<'a> {
     reply_serial: u32,
     destination: &'a str,
 }
 
-impl<'a> IntrospectResponse<'a> {
+impl<'a> ControlIntrospectResponse<'a> {
     pub(crate) fn new(reply_serial: u32, destination: &'a str) -> Self {
         Self {
             reply_serial,
@@ -14,14 +14,14 @@ impl<'a> IntrospectResponse<'a> {
     }
 }
 
-impl<'a> From<IntrospectResponse<'a>> for Message {
+impl<'a> From<ControlIntrospectResponse<'a>> for Message {
     fn from(
-        IntrospectResponse {
+        ControlIntrospectResponse {
             reply_serial,
             destination,
-        }: IntrospectResponse,
+        }: ControlIntrospectResponse,
     ) -> Self {
-        GenericIntrospectResponse::new(reply_serial, destination, INTROSPECTION).into()
+        IntrospectResponse::new(reply_serial, destination, INTROSPECTION).into()
     }
 }
 

@@ -2,12 +2,11 @@ use crate::dbus::{
     encoders::{EncodingBuffer, HeaderEncoder, SignatureEncoder, ValueEncoder},
     types::{Flags, HeaderFieldName, Message, Signature, Value},
 };
-use anyhow::Result;
 
 pub(crate) struct MessageEncoder;
 
 impl MessageEncoder {
-    pub(crate) fn encode(message: &Message) -> Result<Vec<u8>> {
+    pub(crate) fn encode(message: &Message) -> Vec<u8> {
         let mut buf = EncodingBuffer::new();
 
         HeaderEncoder::encode(
@@ -15,7 +14,7 @@ impl MessageEncoder {
             message.message_type() as u8,
             Flags::default().into(),
             message.serial(),
-        )?;
+        );
 
         buf.encode_u32(0); // header fields len
         let header_fields_start = buf.size();
@@ -103,7 +102,7 @@ impl MessageEncoder {
         };
         let header_fieldss_end = buf.size();
 
-        buf.set_u32(12, (header_fieldss_end - header_fields_start) as u32)?;
+        buf.set_u32(12, (header_fieldss_end - header_fields_start) as u32);
         buf.align(8);
 
         let body_starts_at = buf.size();
@@ -111,10 +110,8 @@ impl MessageEncoder {
             ValueEncoder::encode_value(&mut buf, value);
         }
         let body_len = buf.size() - body_starts_at;
-        buf.set_u32(4, body_len as u32)?;
+        buf.set_u32(4, body_len as u32);
 
-        let buf = buf.done();
-
-        Ok(buf)
+        buf.done()
     }
 }

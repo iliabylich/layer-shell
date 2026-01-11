@@ -1,22 +1,22 @@
 use crate::dbus::types::{Message, Value};
 use std::borrow::Cow;
 
-pub(crate) struct AddMatch<'a> {
+pub(crate) struct RemoveMatch<'a> {
     path: &'a str,
 }
 
-impl<'a> AddMatch<'a> {
+impl<'a> RemoveMatch<'a> {
     pub(crate) fn new(path: &'a str) -> Self {
         Self { path }
     }
 }
 
-impl From<AddMatch<'_>> for Message {
-    fn from(value: AddMatch) -> Message {
+impl From<RemoveMatch<'_>> for Message {
+    fn from(value: RemoveMatch) -> Message {
         Message::MethodCall {
             serial: 0,
             path: Cow::Borrowed("/org/freedesktop/DBus"),
-            member: Cow::Borrowed("AddMatch"),
+            member: Cow::Borrowed("RemoveMatch"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
             destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
             sender: None,

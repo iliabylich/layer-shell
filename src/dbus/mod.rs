@@ -15,7 +15,6 @@ use std::os::{
 
 pub(crate) mod messages;
 pub(crate) mod types;
-pub(crate) use messages::BuiltinDBusMessage;
 pub(crate) use types::Message;
 
 #[expect(clippy::large_enum_variant)]
@@ -73,7 +72,7 @@ impl DBus {
         ))))
     }
 
-    pub(crate) fn enqueue(&mut self, message: &mut Message) -> Result<()> {
+    pub(crate) fn enqueue(&mut self, message: &mut Message) {
         match self {
             Self::Auth(auth) => auth.enqueue(message),
             Self::ReadWrite(rw) => rw.enqueue(message),

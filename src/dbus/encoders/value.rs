@@ -98,7 +98,7 @@ impl ValueEncoder {
         let data_end = buf.size();
         let byte_len = (data_end - data_start) as u32;
 
-        buf.set_u32(len_pos, byte_len).expect("malformed state");
+        buf.set_u32(len_pos, byte_len);
     }
 
     pub(crate) fn encode_header(buf: &mut EncodingBuffer, field: HeaderFieldName, value: &Value) {
@@ -106,8 +106,7 @@ impl ValueEncoder {
         buf.encode_u8(0);
         let start = buf.size();
         SignatureEncoder::encode_complete_type(buf, &value.complete_type());
-        buf.set_u8(start - 1, (buf.size() - start) as u8)
-            .expect("malformed state");
+        buf.set_u8(start - 1, (buf.size() - start) as u8);
         buf.encode_u8(0);
         Self::encode_value(buf, value);
     }
@@ -130,7 +129,15 @@ impl ValueEncoder {
             Value::Struct(fields) => Self::encode_struct(buf, fields),
             Value::Array(item_type, items) => Self::encode_array(buf, item_type, items),
             Value::DictEntry(key, value) => Self::encode_dict_entry(buf, key, value),
-            Value::Variant(_inner) => todo!(),
+            Value::Variant(inner) => {
+                buf.encode_u8(0);
+                let start = buf.size();
+                SignatureEncoder::encode_complete_type(buf, &inner.complete_type());
+                buf.set_u8(start - 1, (buf.size() - start) as u8);
+                buf.encode_u8(0);
+
+                Self::encode_value(buf, inner);
+            }
         }
     }
 }

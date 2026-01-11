@@ -1,84 +1,114 @@
 use crate::{
     Event,
     dbus::{
-        BuiltinDBusMessage, DBus, Message,
-        messages::org_freedesktop_dbus::{AddMatch, GetAllProperties},
+        DBus, Message,
+        messages::{
+            body_is, interface_is, message_is,
+            org_freedesktop_dbus::{AddMatch, GetAllProperties, PropertiesChanged},
+            path_is, type_is, value_is,
+        },
+        types::{CompleteType, Value},
     },
 };
-use anyhow::Result;
-use mute_changed::MuteChanged;
-use std::borrow::Cow;
-use volume_and_muted_properties::VolumeAndMutedProperties;
-use volume_changed::VolumeChanged;
-
-mod mute_changed;
-mod volume_and_muted_properties;
-mod volume_changed;
+use anyhow::{Context as _, Result, ensure};
+use std::{borrow::Cow, collections::HashMap};
 
 pub(crate) struct Sound {
     sent_initial_event: bool,
-    get_all_properties_serial: Option<u32>,
+    reply_serial: Option<u32>,
 }
 
 impl Sound {
     pub(crate) fn new() -> Box<Self> {
         Box::new(Self {
             sent_initial_event: false,
-            get_all_properties_serial: None,
+            reply_serial: None,
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
         let mut message: Message = GetAllProperties::new(
-            Cow::Borrowed("org.local.PipewireDBus"),
-            Cow::Borrowed("/org/local/PipewireDBus"),
-            Cow::Borrowed("org.local.PipewireDBus"),
+            "org.local.PipewireDBus",
+            "/org/local/PipewireDBus",
+            "org.local.PipewireDBus",
         )
         .into();
-        dbus.enqueue(&mut message)?;
-        self.get_all_properties_serial = Some(message.serial());
+        dbus.enqueue(&mut message);
+        self.reply_serial = Some(message.serial());
 
-        let message = AddMatch::new(Cow::Borrowed("/org/local/PipewireDBus"));
-        dbus.enqueue(&mut message.into())?;
-
-        Ok(())
+        let mut message: Message = AddMatch::new("/org/local/PipewireDBus").into();
+        dbus.enqueue(&mut message);
     }
 
-    pub(crate) fn on_builtin_message(
-        &mut self,
-        message: &BuiltinDBusMessage,
-        events: &mut Vec<Event>,
-    ) -> Result<()> {
-        if !self.sent_initial_event {
-            return Ok(());
+    fn try_parse_reply(&self, message: &Message) -> Result<(u32, bool)> {
+        ensure!(message.reply_serial() == self.reply_serial);
+        message_is!(message, Message::MethodReturn { body, .. });
+        body_is!(body, [Value::Array(item_t, array)]);
+        type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
+        type_is!(&**key_t, CompleteType::String);
+        type_is!(&**value_t, CompleteType::Variant);
+
+        let mut map = HashMap::new();
+        for item in array {
+            value_is!(item, Value::DictEntry(key, value));
+            value_is!(&**key, Value::String(key));
+            value_is!(&**value, Value::Variant(value));
+            map.insert(Cow::Borrowed(key.as_str()), &**value);
         }
 
-        let BuiltinDBusMessage::PropertiesChanged(message) = message else {
-            return Ok(());
+        let volume = map.remove("Volume").context("no Volume")?;
+        let muted = map.remove("Muted").context("no Muted")?;
+
+        value_is!(*volume, Value::UInt32(volume));
+        value_is!(*muted, Value::Bool(muted));
+
+        Ok((volume, muted))
+    }
+
+    fn try_parse_signal(&self, message: &Message) -> Result<(Option<u32>, Option<bool>)> {
+        let PropertiesChanged {
+            path,
+            interface,
+            changes,
+        } = PropertiesChanged::try_from(message)?;
+
+        path_is!(path, "/org/local/PipewireDBus");
+        interface_is!(interface, "org.local.PipewireDBus");
+
+        let volume = if let Some(volume) = changes.get("Volume") {
+            value_is!(volume, Value::UInt32(volume));
+            Some(*volume)
+        } else {
+            None
         };
 
-        if let Ok(VolumeChanged { volume }) = VolumeChanged::try_from(message) {
-            events.push(Event::VolumeChanged { volume });
-        }
+        let muted = if let Some(muted) = changes.get("Muted") {
+            value_is!(muted, Value::Bool(muted));
+            Some(*muted)
+        } else {
+            None
+        };
 
-        if let Ok(MuteChanged { muted }) = MuteChanged::try_from(message) {
-            events.push(Event::MuteChanged { muted });
-        }
-
-        Ok(())
+        Ok((volume, muted))
     }
 
-    pub(crate) fn on_unknown_message(
-        &mut self,
-        message: &Message,
-        events: &mut Vec<Event>,
-    ) -> Result<()> {
-        if self.get_all_properties_serial == message.reply_serial() {
-            let VolumeAndMutedProperties { volume, muted } =
-                VolumeAndMutedProperties::try_from(message)?;
+    pub(crate) fn on_message(&mut self, message: &Message, events: &mut Vec<Event>) {
+        if let Ok((volume, muted)) = self.try_parse_reply(message) {
             events.push(Event::InitialSound { volume, muted });
             self.sent_initial_event = true;
+            return;
         }
-        Ok(())
+
+        if self.sent_initial_event
+            && let Ok((volume, muted)) = self.try_parse_signal(message)
+        {
+            if let Some(volume) = volume {
+                events.push(Event::VolumeChanged { volume });
+            }
+
+            if let Some(muted) = muted {
+                events.push(Event::MuteChanged { muted });
+            }
+        }
     }
 }

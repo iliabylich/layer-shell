@@ -1,4 +1,4 @@
-use anyhow::{Context as _, Result};
+use anyhow::Context as _;
 
 #[derive(Debug)]
 pub(crate) struct EncodingBuffer {
@@ -60,16 +60,15 @@ impl EncodingBuffer {
         self.buf
     }
 
-    pub(crate) fn set_u8(&mut self, at: usize, value: u8) -> Result<()> {
-        *self.buf.get_mut(at).context("out of bounds")? = value;
-        Ok(())
+    pub(crate) fn set_u8(&mut self, at: usize, value: u8) {
+        *self.buf.get_mut(at).context("out of bounds").unwrap() = value;
     }
 
-    pub(crate) fn set_u32(&mut self, at: usize, value: u32) -> Result<()> {
+    pub(crate) fn set_u32(&mut self, at: usize, value: u32) {
         self.buf
             .get_mut(at..at + 4)
-            .context("out of bounds")?
+            .context("out of bounds")
+            .unwrap()
             .copy_from_slice(&value.to_le_bytes());
-        Ok(())
     }
 }

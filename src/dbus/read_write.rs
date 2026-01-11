@@ -69,11 +69,10 @@ impl ReadWrite {
         }
     }
 
-    pub(crate) fn enqueue(&mut self, message: &mut Message) -> Result<()> {
+    pub(crate) fn enqueue(&mut self, message: &mut Message) {
         *message.serial_mut() = self.serial.increment_and_get();
-        let bytes = MessageEncoder::encode(message)?;
+        let bytes = MessageEncoder::encode(message);
         self.queue.push_back(bytes);
-        Ok(())
     }
 
     pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {

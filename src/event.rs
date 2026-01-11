@@ -29,10 +29,18 @@ pub enum Event {
         hourly_forecast: CArray<WeatherOnHour>,
         daily_forecast: CArray<WeatherOnDay>,
     },
-    // NetworkSsid(NetworkSsidEvent),
-    // NetworkStrength(NetworkStrengthEvent),
-    // UploadSpeed(UploadSpeedEvent),
-    // DownloadSpeed(DownloadSpeedEvent),
+    NetworkSsid {
+        ssid: CString,
+    },
+    NetworkStrength {
+        strength: u8,
+    },
+    UploadSpeed {
+        speed: CString,
+    },
+    DownloadSpeed {
+        speed: CString,
+    },
     // NetworkList(NetworkListEvent),
     // TrayAppAdded(TrayAppAddedEvent),
     // TrayAppIconUpdated(TrayAppIconUpdatedEvent),

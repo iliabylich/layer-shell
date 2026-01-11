@@ -55,6 +55,7 @@ const DATA: &[u8] = b"DATA\r\n";
 const BEGIN: &[u8] = b"BEGIN\r\n";
 
 impl Auth {
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         fd: i32,
         write_zero_user_data: UserData,
@@ -87,11 +88,10 @@ impl Auth {
         }
     }
 
-    pub(crate) fn enqueue(&mut self, message: &mut Message) -> Result<()> {
+    pub(crate) fn enqueue(&mut self, message: &mut Message) {
         *message.serial_mut() = self.serial.increment_and_get();
-        let bytes = MessageEncoder::encode(message)?;
+        let bytes = MessageEncoder::encode(message);
         self.queue.push_back(bytes);
-        Ok(())
     }
 
     pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
