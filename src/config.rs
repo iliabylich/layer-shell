@@ -1,10 +1,10 @@
+use crate::ffi::CString;
 use anyhow::{Context as _, Result};
-use ffi::CString;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, Debug)]
-pub struct Config {
+pub(crate) struct Config {
     pub(crate) lock: String,
     pub(crate) reboot: String,
     pub(crate) shutdown: String,

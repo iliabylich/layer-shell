@@ -111,6 +111,28 @@ impl WriterResource for CapsLock {
     }
 }
 
+pub(crate) struct Dispatch {
+    cmd: String,
+}
+impl Dispatch {
+    pub(crate) fn new(cmd: String) -> Self {
+        Self { cmd }
+    }
+}
+impl WriterResource for Dispatch {
+    fn command(&self) -> String {
+        format!("dispatch {}", self.cmd)
+    }
+
+    fn parse(&self, reply: &str) -> Result<WriterReply> {
+        ensure!(
+            reply == "ok",
+            "invalid response from hyprctl dispatch: expected 'ok', got {reply:?}",
+        );
+        Ok(WriterReply::None)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum State {
     Initial,
@@ -132,6 +154,7 @@ pub(crate) enum WriterReply {
     ActiveWorkspace(u64),
     ActiveKeymap(String),
     CapsLock(bool),
+    None,
 }
 
 const SOCKET_USER_DATA: UserData = UserData::HyprlandWriterSocket;

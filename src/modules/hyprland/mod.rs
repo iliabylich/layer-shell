@@ -4,8 +4,8 @@ use reader::HyprlandReader;
 use state::HyprlandState;
 use std::collections::VecDeque;
 use writer::{
-    ActiveWorkspaceResource, DevicesResource, HyprlandWriter, WorkspaceListResource, WriterReply,
-    WriterResource,
+    ActiveWorkspaceResource, DevicesResource, Dispatch, HyprlandWriter, WorkspaceListResource,
+    WriterReply, WriterResource,
 };
 
 mod array_writer;
@@ -40,6 +40,10 @@ impl Hyprland {
 
     pub(crate) fn enqueue_get_caps_lock(&mut self) {
         self.queue.push_back(Box::new(CapsLock));
+    }
+
+    pub(crate) fn dispatch(&mut self, cmd: String) {
+        self.queue.push_back(Box::new(Dispatch::new(cmd)));
     }
 
     pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
@@ -90,6 +94,7 @@ impl Hyprland {
                 WriterReply::CapsLock(enabled) => {
                     events.push(Event::CapsLockToggled { enabled });
                 }
+                WriterReply::None => {}
             }
         }
 

@@ -1,19 +1,17 @@
 #[derive(Debug, Clone)]
 #[must_use]
-pub enum Command {
-    FinishIoThread,
-
-    HyprlandGoToWorkspace { workspace: usize },
+pub(crate) enum Command {
+    GoToWorkspace { workspace: usize },
 
     Lock,
     Reboot,
     Shutdown,
     Logout,
 
-    TriggerTray { uuid: String },
-
     SpawnWiFiEditor,
     SpawnBluetoothEditor,
     SpawnSystemMonitor,
     ChangeTheme,
+
+    TriggerTray { uuid: String },
 }
