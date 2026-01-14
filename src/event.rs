@@ -46,10 +46,12 @@ pub enum Event {
     // TrayAppIconUpdated(TrayAppIconUpdatedEvent),
     // TrayAppMenuUpdated(TrayAppMenuUpdatedEvent),
     // TrayAppRemoved(TrayAppRemovedEvent),
-    // ToggleSessionScreen,
-    // ReloadStyles,
-    // CapsLockToggled(ControlCapsLockToggledEvent),
-    // Exit,
+    ToggleSessionScreen,
+    ReloadStyles,
+    CapsLockToggled {
+        enabled: bool,
+    },
+    Exit,
     VolumeChanged {
         volume: u32,
     },

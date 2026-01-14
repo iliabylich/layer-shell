@@ -159,9 +159,13 @@ impl IO {
         Ok(drained)
     }
 
-    fn on_control_req(&mut self, req: ControlRequest) -> Result<()> {
-        println!("Got control request: {req:?}");
-        Ok(())
+    fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
+        match req {
+            ControlRequest::CapsLockToggled => self.hyprland.enqueue_get_caps_lock(),
+            ControlRequest::Exit => events.push(Event::Exit),
+            ControlRequest::ReloadStyles => events.push(Event::ReloadStyles),
+            ControlRequest::ToggleSessionScreen => events.push(Event::ToggleSessionScreen),
+        }
     }
 
     fn try_handle_session_dbus(
@@ -173,8 +177,8 @@ impl IO {
         if let Some(message) = self.session_dbus.feed(user_data, res)? {
             self.sound.on_message(&message, events);
 
-            if let Some(e) = self.control.on_message(&message, &mut self.session_dbus) {
-                self.on_control_req(e)?;
+            if let Some(req) = self.control.on_message(&message, &mut self.session_dbus) {
+                self.on_control_req(req, events);
             }
         }
         self.session_dbus.drain(&mut self.ring)

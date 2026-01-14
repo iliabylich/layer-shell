@@ -7,20 +7,7 @@ use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct Workspace {
-    pub(crate) id: u64,
-}
-#[derive(Debug, Deserialize)]
-pub(crate) struct Devices {
-    pub(crate) keyboards: Vec<Keyboard>,
-}
-#[derive(Debug, Deserialize)]
-pub(crate) struct Keyboard {
-    pub(crate) main: bool,
-    pub(crate) active_keymap: String,
-}
+use std::collections::HashSet;
 
 pub(crate) trait WriterResource {
     fn command(&self) -> String;
@@ -35,8 +22,16 @@ impl WriterResource for WorkspaceListResource {
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
-        let workspaces = serde_json::from_str(json).context("malformed workspaces response")?;
-        Ok(WriterReply::WorkspaceList(workspaces))
+        #[derive(Debug, Deserialize)]
+        struct Workspace {
+            id: u64,
+        }
+        let workspaces: Vec<Workspace> =
+            serde_json::from_str(json).context("malformed workspaces response")?;
+
+        let workspace_ids = workspaces.into_iter().map(|w| w.id).collect();
+
+        Ok(WriterReply::WorkspaceList(workspace_ids))
     }
 }
 
@@ -47,8 +42,13 @@ impl WriterResource for ActiveWorkspaceResource {
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
-        let workspace = serde_json::from_str(json).context("malformed activeworkspace response")?;
-        Ok(WriterReply::ActiveWorkspace(workspace))
+        #[derive(Deserialize)]
+        struct Workspace {
+            id: u64,
+        }
+        let workspace: Workspace =
+            serde_json::from_str(json).context("malformed activeworkspace response")?;
+        Ok(WriterReply::ActiveWorkspace(workspace.id))
     }
 }
 
@@ -59,8 +59,55 @@ impl WriterResource for DevicesResource {
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
-        let devices = serde_json::from_str(json).context("malformed devices response")?;
-        Ok(WriterReply::Devices(devices))
+        #[derive(Deserialize)]
+        struct Devices {
+            keyboards: Vec<Keyboard>,
+        }
+        #[derive(Deserialize)]
+        struct Keyboard {
+            main: bool,
+            active_keymap: String,
+        }
+
+        let devices: Devices = serde_json::from_str(json).context("malformed devices response")?;
+
+        let active_keymap = devices
+            .keyboards
+            .into_iter()
+            .find(|keyboard| keyboard.main)
+            .context("expected at least one hyprland device")?
+            .active_keymap;
+
+        Ok(WriterReply::ActiveKeymap(active_keymap))
+    }
+}
+
+pub(crate) struct CapsLock;
+impl WriterResource for CapsLock {
+    fn command(&self) -> String {
+        "[[BATCH]]j/devices".to_string()
+    }
+
+    fn parse(&self, json: &str) -> Result<WriterReply> {
+        #[derive(Deserialize)]
+        struct Devices {
+            keyboards: Vec<Keyboard>,
+        }
+        #[derive(Deserialize)]
+        struct Keyboard {
+            main: bool,
+            #[serde(rename = "capsLock")]
+            caps_lock: bool,
+        }
+
+        let devices: Devices = serde_json::from_str(json).context("malformed devices response")?;
+        let main_keyboard = devices
+            .keyboards
+            .into_iter()
+            .find(|keyboard| keyboard.main)
+            .context("expected at least one hyprland device")?;
+
+        Ok(WriterReply::CapsLock(main_keyboard.caps_lock))
     }
 }
 
@@ -81,9 +128,10 @@ enum State {
 
 #[derive(Debug)]
 pub(crate) enum WriterReply {
-    WorkspaceList(Vec<Workspace>),
-    ActiveWorkspace(Workspace),
-    Devices(Devices),
+    WorkspaceList(HashSet<u64>),
+    ActiveWorkspace(u64),
+    ActiveKeymap(String),
+    CapsLock(bool),
 }
 
 const SOCKET_USER_DATA: UserData = UserData::HyprlandWriterSocket;
@@ -255,5 +303,9 @@ impl HyprlandWriter {
         }
 
         Ok(None)
+    }
+
+    pub(crate) fn is_finished(&self) -> bool {
+        matches!(self.state, State::Closed)
     }
 }

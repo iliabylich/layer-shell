@@ -20,7 +20,7 @@ impl TryFrom<&Message> for ControlIntrospectRequest {
             serial,
         } = IntrospectRequest::try_from(message)?;
 
-        destination_is!(destination, "org.me.LayerShellTmpControl");
+        destination_is!(destination, "org.me.LayerShellControl");
         path_is!(path, "/");
         Ok(Self {
             sender: sender.to_string(),

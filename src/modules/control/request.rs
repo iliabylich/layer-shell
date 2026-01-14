@@ -34,7 +34,7 @@ impl TryFrom<&Message> for AnyControlRequest {
         );
 
         path_is!(path, "/");
-        destination_is!(destination.as_deref(), Some("org.me.LayerShellTmpControl"));
+        destination_is!(destination.as_deref(), Some("org.me.LayerShellControl"));
         interface_is!(interface.as_deref(), Some("org.me.LayerShellControl"));
         body_is!(body, []);
 

@@ -18,7 +18,7 @@ impl Control {
 
     pub(crate) fn init(&mut self, dbus: &mut DBus) {
         let mut message: Message =
-            RequestName::new(Cow::Borrowed("org.me.LayerShellTmpControl")).into();
+            RequestName::new(Cow::Borrowed("org.me.LayerShellControl")).into();
         dbus.enqueue(&mut message);
     }
 

@@ -1,7 +1,8 @@
-use crate::{Event, liburing::IoUring, user_data::UserData};
+use crate::{Event, liburing::IoUring, modules::hyprland::writer::CapsLock, user_data::UserData};
 use anyhow::{Context as _, Result};
 use reader::HyprlandReader;
 use state::HyprlandState;
+use std::collections::VecDeque;
 use writer::{
     ActiveWorkspaceResource, DevicesResource, HyprlandWriter, WorkspaceListResource, WriterReply,
     WriterResource,
@@ -17,6 +18,7 @@ pub(crate) struct Hyprland {
     reader: Box<HyprlandReader>,
     writer: Box<HyprlandWriter>,
     state: HyprlandState,
+    queue: VecDeque<Box<dyn WriterResource>>,
 }
 
 fn reader() -> Result<Box<HyprlandReader>> {
@@ -32,11 +34,22 @@ impl Hyprland {
             reader: reader()?,
             writer: writer(Box::new(WorkspaceListResource))?,
             state: HyprlandState::default(),
+            queue: VecDeque::new(),
         }))
+    }
+
+    pub(crate) fn enqueue_get_caps_lock(&mut self) {
+        self.queue.push_back(Box::new(CapsLock));
     }
 
     pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
         let mut drained = false;
+
+        if self.writer.is_finished()
+            && let Some(res) = self.queue.pop_front()
+        {
+            self.writer = writer(res)?;
+        }
 
         loop {
             let mut drained_on_current_iteration = false;
@@ -59,26 +72,23 @@ impl Hyprland {
     ) -> Result<()> {
         if let Some(reply) = self.writer.feed(user_data, res)? {
             match reply {
-                WriterReply::WorkspaceList(workspaces) => {
-                    let workspace_ids = workspaces.into_iter().map(|w| w.id).collect();
+                WriterReply::WorkspaceList(workspace_ids) => {
                     self.state.init_workspace_ids(workspace_ids);
                     self.writer = writer(Box::new(ActiveWorkspaceResource))?;
                 }
-                WriterReply::ActiveWorkspace(workspace) => {
-                    self.state.init_active_workspace(workspace.id);
+                WriterReply::ActiveWorkspace(id) => {
+                    self.state.init_active_workspace(id);
                     self.writer = writer(Box::new(DevicesResource))?;
                 }
-                WriterReply::Devices(devices) => {
-                    let main_keyboard = devices
-                        .keyboards
-                        .into_iter()
-                        .find(|keyboard| keyboard.main)
-                        .context("expected at least one hyprland device")?;
-                    self.state.init_language(main_keyboard.active_keymap);
+                WriterReply::ActiveKeymap(active_keymap) => {
+                    self.state.init_language(active_keymap);
 
                     for event in self.state.initial_events() {
                         events.push(event);
                     }
+                }
+                WriterReply::CapsLock(enabled) => {
+                    events.push(Event::CapsLockToggled { enabled });
                 }
             }
         }

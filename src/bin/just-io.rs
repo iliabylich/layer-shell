@@ -1,18 +1,18 @@
 use layer_shell_io::{Event, io_handle_readable, io_init, io_wait_readable};
 
 extern "C" fn on_event(event: Event) {
-    println!("on_event: {event:?}");
+    println!("{event:?}");
 }
 
 fn main() {
     let io = io_init(on_event);
 
     loop {
-        println!("Waiting...");
+        // println!("Waiting...");
         io_wait_readable(io);
-        println!("Wait finished...");
+        // println!("Wait finished...");
 
-        println!("Processing...");
+        // println!("Processing...");
         io_handle_readable(io);
     }
 }
