@@ -284,24 +284,29 @@ impl IO {
     }
 }
 
-pub fn io_init(on_event: extern "C" fn(event: Event)) -> *mut c_void {
+#[unsafe(no_mangle)]
+pub extern "C" fn io_init(on_event: extern "C" fn(event: Event)) -> *mut c_void {
     env_logger::init();
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }
 
-pub fn io_handle_readable(io: *mut c_void) {
+#[unsafe(no_mangle)]
+pub extern "C" fn io_handle_readable(io: *mut c_void) {
     IO::from_raw(io).handle_readable();
 }
 
-pub fn io_wait_readable(io: *mut c_void) {
+#[unsafe(no_mangle)]
+pub extern "C" fn io_wait_readable(io: *mut c_void) {
     IO::from_raw(io).wait_readable();
 }
 
-pub fn io_as_raw_fd(io: *mut c_void) -> i32 {
+#[unsafe(no_mangle)]
+pub extern "C" fn io_as_raw_fd(io: *mut c_void) -> i32 {
     IO::from_raw(io).ring.as_raw_fd()
 }
 
-pub fn io_get_config(io: *mut c_void) -> *const IOConfig {
+#[unsafe(no_mangle)]
+pub extern "C" fn io_get_config(io: *mut c_void) -> *const IOConfig {
     IO::from_raw(io).io_config
 }
 

@@ -3,23 +3,9 @@ name = "layer-shell-io"
 version = "0.1.0"
 edition = "2024"
 
-[workspace]
-resolver = "2"
-members = [
-    # "clock",
-    # "control",
-    # "cpu",
-    # "ffi",
-    # "https-sans-io",
-    # "hyprland",
-    # "liburing",
-    # "memory",
-    # "module",
-    # "network",
-    # "sound",
-    # "tray",
-    # "weather",
-]
+[lib]
+crate-type = ["staticlib", "lib"]
+name = "layer_shell_io"
 
 [dependencies]
 anyhow = { version = "1", default-features = false, features = [
@@ -35,12 +21,6 @@ chrono = { version = "0.4", default-features = false, features = [
     "clock",
     "serde",
 ] }
-# tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
-# futures = { version = "0.3", default-features = false, features = ["std"] }
-# tokio-stream = { version = "0.1", default-features = false }
-# tokio-util = { version = "0.7", default-features = false }
-# async-trait = "0.1"
-# uuid = { version = "1.18", features = ["v4", "serde"] }
 
 serde = { version = "1", default-features = false, features = [
     "std",
@@ -48,13 +28,6 @@ serde = { version = "1", default-features = false, features = [
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 toml = "0.9"
-
-# zbus = { version = "5", default-features = false, features = ["tokio"] }
-# reqwest = { version = "0.12", default-features = false, features = [
-#     "rustls-tls",
-#     "json",
-# ] }
-# https-sans-io = { path = "https-sans-io" }
 
 [build-dependencies]
 cc = "1"

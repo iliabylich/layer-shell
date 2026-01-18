@@ -26,7 +26,6 @@ bindings = custom_target(
     'bindings.h',
     command: [
         cbindgen,
-        '--crate', 'io',
         '--config', files('cbindgen.toml'),
         '--quiet',
         '--output', '@OUTPUT@',

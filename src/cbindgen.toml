@@ -4,27 +4,27 @@ pragma_once = true
 usize_is_size_t = true
 style = "both"
 
-# includes = ["io/bindgen-fix.h"]
-
 [parse]
-parse_deps = true
-include = [
-    "clock",
-    "control",
-    "cpu",
-    "ffi",
-    "hyprland",
-    "memory",
-    "network",
-    "sound",
-    "tray",
-    "weather",
-]
+parse_deps = false
+include = []
 
 [export]
-prefix = "IO_"
-# exclude = ["CArray_TrayItem"]
-# include = ["TrayItem"]
-
-[enum]
-prefix_with_name = true
+exclude = [
+    "io_uring_sqe",
+    "io_uring_cqe",
+    "io_uring",
+    "__liburing_submit",
+    "__liburing_submit_and_wait",
+    "__liburing_wait_cqe",
+    "__liburing_wait_cqe_timeout",
+    "__liburing_cqe_seen",
+    "__liburing_queue_exit",
+    "__liburing_get_sqe",
+    "__liburing_prep_socket",
+    "__liburing_prep_connect",
+    "__liburing_prep_write",
+    "__liburing_prep_read",
+    "__liburing_prep_close",
+    "__liburing_prep_openat",
+    "__liburing_queue_init",
+]

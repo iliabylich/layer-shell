@@ -2,7 +2,15 @@ dbus-generate:
     ./dbus/generate.sh
 
 liburing-generate:
-    bindgen src/liburing-wrapper.h -o src/liburing/generated.rs
+    bindgen \
+        src/liburing-wrapper.h \
+        --allowlist-function "__liburing_.*" \
+        --opaque-type "io_uring_sq" \
+        --opaque-type "io_uring_cq" \
+        --opaque-type ".*bindgen.*" \
+        --opaque-type "sockaddr" \
+        -o src/liburing/generated.rs
+    sed -i 's/pub /pub(crate) /g' src/liburing/generated.rs
 
 setup build:
     meson setup builddir --buildtype={{build}}

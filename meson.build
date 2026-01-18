@@ -10,7 +10,7 @@ project(
 
 sources = []
 subdir('ui')
-subdir('io')
+subdir('src')
 subdir('systemd')
 
 prefix = get_option('prefix')
