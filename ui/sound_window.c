@@ -103,22 +103,21 @@ static void show(SoundWindow *self) {
   }
 }
 
-void sound_window_set_initial_sound(SoundWindow *self,
-                                    IO_InitialSoundEvent event) {
-  self->volume = event.volume;
-  self->muted = event.muted;
+void sound_window_set_initial_sound(SoundWindow *self, uint32_t volume,
+                                    bool muted) {
+  self->volume = volume;
+  self->muted = muted;
   self->ready_to_show = true;
 }
 
-void sound_window_refresh_volume(SoundWindow *self,
-                                 IO_VolumeChangedEvent event) {
-  self->volume = event.volume;
+void sound_window_refresh_volume(SoundWindow *self, uint32_t volume) {
+  self->volume = volume;
   redraw(self);
   show(self);
 }
 
-void sound_window_refresh_mute(SoundWindow *self, IO_MuteChangedEvent event) {
-  self->muted = event.muted;
+void sound_window_refresh_mute(SoundWindow *self, bool muted) {
+  self->muted = muted;
   redraw(self);
   show(self);
 }

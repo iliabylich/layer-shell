@@ -125,11 +125,10 @@ static void temperature_icon_refresh(GtkWidget *icon, IO_WeatherCode code) {
 }
 
 void weather_window_refresh_hourly_forecast(
-    WeatherWindow *self, IO_HourlyWeatherForecastEvent event) {
+    WeatherWindow *self, struct IO_CArray_WeatherOnHour data) {
   GtkWidget *child;
-  for (size_t row = 0; row < event.forecast.len && row < HOURLY_ROWS_COUNT;
-       row++) {
-    IO_WeatherOnHour weather_on_hour = event.forecast.ptr[row];
+  for (size_t row = 0; row < data.len && row < HOURLY_ROWS_COUNT; row++) {
+    IO_WeatherOnHour weather_on_hour = data.ptr[row];
 
     child = gtk_grid_get_child_at(GTK_GRID(self->hourly), 0, row);
     gtk_label_set_text(GTK_LABEL(child), weather_on_hour.hour);
@@ -143,12 +142,11 @@ void weather_window_refresh_hourly_forecast(
 }
 
 void weather_window_refresh_daily_forecast(WeatherWindow *self,
-                                           IO_DailyWeatherForecastEvent event) {
+                                           struct IO_CArray_WeatherOnDay data) {
   GtkWidget *child;
 
-  for (size_t row = 0; row < event.forecast.len && row < DAILY_ROWS_COUNT;
-       row++) {
-    IO_WeatherOnDay weather_on_day = event.forecast.ptr[row];
+  for (size_t row = 0; row < data.len && row < DAILY_ROWS_COUNT; row++) {
+    IO_WeatherOnDay weather_on_day = data.ptr[row];
 
     child = gtk_grid_get_child_at(GTK_GRID(self->daily), 0, row);
     gtk_label_set_text(GTK_LABEL(child), weather_on_day.day);

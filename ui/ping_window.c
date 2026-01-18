@@ -4,6 +4,8 @@
 #include "ui/logger.h"
 #include <gtk4-layer-shell.h>
 
+extern const IO_IOConfig *config;
+
 LOGGER("PingWindow", 0)
 
 struct _PingWindow {
@@ -26,7 +28,7 @@ static void ping_window_init(PingWindow *self) {
 
   base_window_set_toggle_on_escape(BASE_WINDOW(self));
 
-  base_window_vte(BASE_WINDOW(self), io_config()->ping);
+  base_window_vte(BASE_WINDOW(self), config->ping);
 }
 
 static void ping_window_dispose(GObject *object) {

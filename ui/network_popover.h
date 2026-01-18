@@ -1,6 +1,5 @@
 #pragma once
 
-#include "bindings.h"
 #include <gtk/gtk.h>
 
 G_DECLARE_FINAL_TYPE(NetworkPopover, network_popover, NETWORK_POPOVER, WIDGET,
@@ -11,5 +10,3 @@ G_DECLARE_FINAL_TYPE(NetworkPopover, network_popover, NETWORK_POPOVER, WIDGET,
 
 GtkWidget *network_popover_new(void);
 void network_popover_open(NetworkPopover *popover);
-void network_popover_refresh(NetworkPopover *popover,
-                             IO_NetworkListEvent event);

@@ -2,6 +2,8 @@
 #include "bindings.h"
 #include "ui/logger.h"
 
+extern const IO_IOConfig *config;
+
 LOGGER("Terminal", 1)
 
 enum {
@@ -25,7 +27,7 @@ static void on_click(GtkWidget *, Terminal *self) {
 static void terminal_init(Terminal *self) {
   LOG("init");
 
-  self->root = gtk_button_new_with_label(io_config()->terminal.label);
+  self->root = gtk_button_new_with_label(config->terminal.label);
   gtk_widget_add_css_class(self->root, "widget");
   gtk_widget_add_css_class(self->root, "terminal");
   gtk_widget_add_css_class(self->root, "padded");

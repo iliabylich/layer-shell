@@ -43,12 +43,12 @@ GtkWidget *language_new(void) {
   return g_object_new(language_get_type(), NULL);
 }
 
-void language_refresh(Language *self, IO_LanguageEvent event) {
+void language_refresh(Language *self, IO_CString lang) {
   const char *text;
 
-  if (strcmp(event.lang, "English (US)") == 0) {
+  if (strcmp(lang, "English (US)") == 0) {
     text = "EN";
-  } else if (strcmp(event.lang, "Polish") == 0) {
+  } else if (strcmp(lang, "Polish") == 0) {
     text = "PL";
   } else {
     text = "??";

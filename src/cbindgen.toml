@@ -9,6 +9,7 @@ parse_deps = false
 include = []
 
 [export]
+prefix = "IO_"
 exclude = [
     "io_uring_sqe",
     "io_uring_cqe",
@@ -28,3 +29,6 @@ exclude = [
     "__liburing_prep_openat",
     "__liburing_queue_init",
 ]
+
+[enum]
+prefix_with_name = true

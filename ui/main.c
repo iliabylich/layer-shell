@@ -17,7 +17,7 @@
 #include "ui/terminal.h"
 #include "ui/terminal_window.h"
 #include "ui/top_bar.h"
-#include "ui/tray.h"
+// #include "ui/tray.h"
 #include "ui/weather.h"
 #include "ui/weather_window.h"
 #include "ui/workspaces.h"
@@ -38,7 +38,7 @@ GtkWidget *caps_lock_window;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
-GtkWidget *tray;
+// GtkWidget *tray;
 GtkWidget *weather;
 GtkWidget *terminal;
 GtkWidget *language;
@@ -49,6 +49,8 @@ GtkWidget *bluetooth;
 GtkWidget *clock_;
 GtkWidget *power;
 
+void *io;
+const IO_IOConfig *config;
 bool exiting = false;
 
 static void remove_window(GtkWidget **win) {
@@ -56,137 +58,126 @@ static void remove_window(GtkWidget **win) {
   g_clear_pointer(win, g_object_unref);
 }
 
-static void poll_events(void) {
-  IO_CArray_Event events = io_poll_events();
-  for (size_t i = 0; i < events.len && !exiting; i++) {
-    IO_Event event = events.ptr[i];
-    switch (event.tag) {
-    case IO_Event_Workspaces: {
-      workspaces_refresh(WORKSPACES(workspaces), event.workspaces);
-      break;
-    }
-    case IO_Event_ReloadStyles: {
-      css_reload();
-      break;
-    }
-    case IO_Event_TrayAppAdded: {
-      tray_add_app(TRAY(tray), event.tray_app_added);
-      break;
-    }
-    case IO_Event_TrayAppRemoved: {
-      tray_remove_app(TRAY(tray), event.tray_app_removed);
-      break;
-    }
-    case IO_Event_TrayAppIconUpdated: {
-      tray_update_icon(TRAY(tray), event.tray_app_icon_updated);
-      break;
-    }
-    case IO_Event_TrayAppMenuUpdated: {
-      tray_update_menu(TRAY(tray), event.tray_app_menu_updated);
-      break;
-    }
-    case IO_Event_CurrentWeather: {
-      weather_refresh(WEATHER(weather), event.current_weather);
-      break;
-    }
-    case IO_Event_HourlyWeatherForecast: {
-      weather_window_refresh_hourly_forecast(WEATHER_WINDOW(weather_window),
-                                             event.hourly_weather_forecast);
-      break;
-    }
-    case IO_Event_DailyWeatherForecast: {
-      weather_window_refresh_daily_forecast(WEATHER_WINDOW(weather_window),
-                                            event.daily_weather_forecast);
-      break;
-    }
-    case IO_Event_Language: {
-      language_refresh(LANGUAGE(language), event.language);
-      break;
-    }
-    case IO_Event_CpuUsage: {
-      cpu_refresh(CPU(cpu), event.cpu_usage);
-      break;
-    }
-    case IO_Event_Memory: {
-      memory_refresh(MEMORY(memory), event.memory);
-      break;
-    }
-    case IO_Event_NetworkSsid: {
-      network_refresh_network_ssid(NETWORK(network), event.network_ssid);
-      break;
-    }
-    case IO_Event_NetworkStrength: {
-      network_refresh_network_strength(NETWORK(network),
-                                       event.network_strength);
-      break;
-    }
-    case IO_Event_DownloadSpeed: {
-      network_refresh_download_speed(NETWORK(network), event.download_speed);
-      break;
-    }
-    case IO_Event_UploadSpeed: {
-      network_refresh_upload_speed(NETWORK(network), event.upload_speed);
-      break;
-    }
-    case IO_Event_NetworkList: {
-      network_refresh_network_list(NETWORK(network), event.network_list);
-      break;
-    }
-    case IO_Event_Clock: {
-      clock_refresh(CLOCK(clock_), event.clock);
-      break;
-    }
-    case IO_Event_ToggleSessionScreen: {
-      session_window_toggle(SESSION_WINDOW(session_window));
-      break;
-    }
-    case IO_Event_InitialSound: {
-      sound_window_set_initial_sound(SOUND_WINDOW(sound_window),
-                                     event.initial_sound);
-      break;
-    }
-    case IO_Event_VolumeChanged: {
-      sound_window_refresh_volume(SOUND_WINDOW(sound_window),
-                                  event.volume_changed);
-      break;
-    }
-    case IO_Event_MuteChanged: {
-      sound_window_refresh_mute(SOUND_WINDOW(sound_window), event.mute_changed);
-      break;
-    }
-    case IO_Event_CapsLockToggled: {
-      caps_lock_window_refresh(CAPS_LOCK_WINDOW(caps_lock_window),
-                               event.caps_lock_toggled);
-      break;
-    }
-    case IO_Event_Exit: {
-      LOG("Received exit...");
-      io_finalize();
-      LOG("Removing windows...");
-      remove_window(&top_bar);
-      remove_window(&weather_window);
-      remove_window(&terminal_window);
-      remove_window(&ping_window);
-      remove_window(&session_window);
-      g_application_quit(G_APPLICATION(app));
-      LOG("Quit done.");
-      exiting = true;
-      break;
-    }
-    }
+static void on_event(const IO_Event *event) {
+  switch (event->tag) {
+  case IO_Event_Workspaces: {
+    workspaces_refresh(WORKSPACES(workspaces), event->workspaces.workspaces);
+    break;
   }
-  io_drop_events(events);
+  case IO_Event_ReloadStyles: {
+    css_reload();
+    break;
+  }
+  // case IO_Event_TrayAppAdded: {
+  //   tray_add_app(TRAY(tray), event.tray_app_added);
+  //   break;
+  // }
+  // case IO_Event_TrayAppRemoved: {
+  //   tray_remove_app(TRAY(tray), event.tray_app_removed);
+  //   break;
+  // }
+  // case IO_Event_TrayAppIconUpdated: {
+  //   tray_update_icon(TRAY(tray), event.tray_app_icon_updated);
+  //   break;
+  // }
+  // case IO_Event_TrayAppMenuUpdated: {
+  //   tray_update_menu(TRAY(tray), event.tray_app_menu_updated);
+  //   break;
+  // }
+  case IO_Event_Weather: {
+    weather_refresh(WEATHER(weather), event->weather.temperature,
+                    event->weather.code);
+    weather_window_refresh_hourly_forecast(WEATHER_WINDOW(weather_window),
+                                           event->weather.hourly_forecast);
+    weather_window_refresh_daily_forecast(WEATHER_WINDOW(weather_window),
+                                          event->weather.daily_forecast);
+    break;
+  }
+  case IO_Event_Language: {
+    language_refresh(LANGUAGE(language), event->language.lang);
+    break;
+  }
+  case IO_Event_CpuUsage: {
+    cpu_refresh(CPU(cpu), event->cpu_usage.usage_per_core);
+    break;
+  }
+  case IO_Event_Memory: {
+    memory_refresh(MEMORY(memory), event->memory.used, event->memory.total);
+    break;
+  }
+  case IO_Event_NetworkSsid: {
+    network_refresh_network_ssid(NETWORK(network), event->network_ssid.ssid);
+    break;
+  }
+  case IO_Event_NetworkStrength: {
+    network_refresh_network_strength(NETWORK(network),
+                                     event->network_strength.strength);
+    break;
+  }
+  case IO_Event_DownloadSpeed: {
+    network_refresh_download_speed(NETWORK(network),
+                                   event->download_speed.speed);
+    break;
+  }
+  case IO_Event_UploadSpeed: {
+    network_refresh_upload_speed(NETWORK(network), event->upload_speed.speed);
+    break;
+  }
+  case IO_Event_Clock: {
+    clock_refresh(CLOCK(clock_), event->clock.time);
+    break;
+  }
+  case IO_Event_ToggleSessionScreen: {
+    session_window_toggle(SESSION_WINDOW(session_window));
+    break;
+  }
+  case IO_Event_InitialSound: {
+    sound_window_set_initial_sound(SOUND_WINDOW(sound_window),
+                                   event->initial_sound.volume,
+                                   event->initial_sound.muted);
+    break;
+  }
+  case IO_Event_VolumeChanged: {
+    sound_window_refresh_volume(SOUND_WINDOW(sound_window),
+                                event->volume_changed.volume);
+    break;
+  }
+  case IO_Event_MuteChanged: {
+    sound_window_refresh_mute(SOUND_WINDOW(sound_window),
+                              event->mute_changed.muted);
+    break;
+  }
+  case IO_Event_CapsLockToggled: {
+    caps_lock_window_refresh(CAPS_LOCK_WINDOW(caps_lock_window),
+                             event->caps_lock_toggled.enabled);
+    break;
+  }
+  case IO_Event_Exit: {
+    LOG("Received exit...");
+    // io_finalize();
+    LOG("Removing windows...");
+    remove_window(&top_bar);
+    remove_window(&weather_window);
+    remove_window(&terminal_window);
+    remove_window(&ping_window);
+    remove_window(&session_window);
+    g_application_quit(G_APPLICATION(app));
+    LOG("Quit done.");
+    exiting = true;
+    break;
+  }
+  }
 }
 
 static void on_workspace_switched(Workspaces *, guint idx) {
-  io_hyprland_go_to_workspace(idx);
+  io_hyprland_go_to_workspace(io, idx);
 }
 
-static void on_theme_change_clicked() { io_change_theme(); }
+static void on_theme_change_clicked() { io_change_theme(io); }
 
-static void on_tray_triggered(Tray *, const char *uuid) {
-  io_trigger_tray(uuid);
-}
+// static void on_tray_triggered(Tray *, const char *uuid) {
+//   io_trigger_tray(uuid);
+// }
 
 static void on_weather_clicked() {
   weather_window_toggle(WEATHER_WINDOW(weather_window));
@@ -196,9 +187,9 @@ static void on_terminal_clicked() {
   terminal_window_toggle(TERMINAL_WINDOW(terminal_window));
 }
 
-static void on_memory_clicked() { io_spawn_system_monitor(); }
+static void on_memory_clicked() { io_spawn_system_monitor(io); }
 
-static void on_network_settings_clicked() { io_spawn_wifi_editor(); }
+static void on_network_settings_clicked() { io_spawn_wifi_editor(io); }
 
 static void on_network_ping_clicked() {
   ping_window_toggle(PING_WINDOW(ping_window));
@@ -216,16 +207,16 @@ static void on_network_address_clicked(Network *, const char *ip) {
   g_application_send_notification(G_APPLICATION(app), NULL, notification);
 }
 
-static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(); }
+static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(io); }
 
 static void on_power_clicked() {
   session_window_toggle(SESSION_WINDOW(session_window));
 }
 
-static void on_lock_clicked() { io_lock(); }
-static void on_reboot_clicked() { io_reboot(); }
-static void on_shutdown_clicked() { io_shutdown(); }
-static void on_logout_clicked() { io_logout(); }
+static void on_lock_clicked() { io_lock(io); }
+static void on_reboot_clicked() { io_reboot(io); }
+static void on_shutdown_clicked() { io_shutdown(io); }
+static void on_logout_clicked() { io_logout(io); }
 
 static void on_app_activate() {
   top_bar = top_bar_new(app);
@@ -241,9 +232,9 @@ static void on_app_activate() {
   CONNECT(change_theme, "clicked", on_theme_change_clicked);
   top_bar_push_left(TOP_BAR(top_bar), change_theme);
 
-  tray = tray_new();
-  CONNECT(tray, "triggered", on_tray_triggered);
-  top_bar_push_right(TOP_BAR(top_bar), tray);
+  // tray = tray_new();
+  // CONNECT(tray, "triggered", on_tray_triggered);
+  // top_bar_push_right(TOP_BAR(top_bar), tray);
 
   weather = weather_new();
   CONNECT(weather, "clicked", on_weather_clicked);
@@ -300,23 +291,20 @@ static void on_app_activate() {
 
   gtk_window_present(GTK_WINDOW(top_bar));
 
-  io_spawn_thread();
+  // io_spawn_thread();
 }
 
-static gboolean on_new_events(gint fd, GIOCondition, gpointer) {
-  char buffer[100];
-  int nread = read(fd, buffer, sizeof(buffer));
-  assert(nread >= 0, "failed to read from shared IO fd");
-
-  poll_events();
+static gboolean on_new_events(gint, GIOCondition, gpointer) {
+  io_handle_readable(io);
 
   return exiting ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
 }
 
 int main(int argc, char **argv) {
   setenv("GSK_RENDERER", "cairo", true);
-  int fd = io_init();
-  g_unix_fd_add(fd, G_IO_IN, on_new_events, NULL);
+  io = io_init(on_event);
+  config = io_get_config(io);
+  g_unix_fd_add(io_as_raw_fd(io), G_IO_IN, on_new_events, NULL);
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", on_app_activate, NULL);

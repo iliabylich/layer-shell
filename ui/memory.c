@@ -58,8 +58,8 @@ static void memory_class_init(MemoryClass *klass) {
 
 GtkWidget *memory_new(void) { return g_object_new(memory_get_type(), NULL); }
 
-void memory_refresh(Memory *self, IO_MemoryEvent event) {
+void memory_refresh(Memory *self, double used, double total) {
   char buffer[100];
-  checked_fmt(buffer, "RAM %.1fG/%.1fG", event.used, event.total);
+  checked_fmt(buffer, "RAM %.1fG/%.1fG", used, total);
   gtk_button_set_label(GTK_BUTTON(self->root), buffer);
 }

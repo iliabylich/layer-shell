@@ -4,6 +4,8 @@
 #include "ui/logger.h"
 #include <gtk4-layer-shell.h>
 
+extern const IO_IOConfig *config;
+
 LOGGER("TerminalWindow", 0)
 
 struct _TerminalWindow {
@@ -25,7 +27,7 @@ static void terminal_window_init(TerminalWindow *self) {
                NULL);
 
   base_window_set_toggle_on_escape(BASE_WINDOW(self));
-  base_window_vte(BASE_WINDOW(self), io_config()->terminal.command);
+  base_window_vte(BASE_WINDOW(self), config->terminal.command);
 }
 
 static void terminal_window_dispose(GObject *object) {

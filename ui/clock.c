@@ -41,6 +41,6 @@ static void clock_class_init(ClockClass *klass) {
 
 GtkWidget *clock_new(void) { return g_object_new(clock_get_type(), NULL); }
 
-void clock_refresh(Clock *self, IO_ClockEvent event) {
-  gtk_label_set_text(GTK_LABEL(self->root), event.time);
+void clock_refresh(Clock *self, IO_CString time) {
+  gtk_label_set_text(GTK_LABEL(self->root), time);
 }

@@ -59,9 +59,10 @@ static void weather_class_init(WeatherClass *klass) {
 
 GtkWidget *weather_new(void) { return g_object_new(weather_get_type(), NULL); }
 
-void weather_refresh(Weather *self, IO_CurrentWeatherEvent event) {
+void weather_refresh(Weather *self, float temperature,
+                     enum IO_WeatherCode code) {
   char buffer[100];
-  checked_fmt(buffer, "%.1f℃ %s", event.temperature,
-              weather_code_to_description(event.code));
+  checked_fmt(buffer, "%.1f℃ %s", temperature,
+              weather_code_to_description(code));
   gtk_button_set_label(GTK_BUTTON(self->root), buffer);
 }

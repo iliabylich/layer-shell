@@ -43,11 +43,11 @@ struct IO {
     control: Box<Control>,
     network: Box<Network>,
 
-    on_event: extern "C" fn(event: Event),
+    on_event: extern "C" fn(event: *const Event),
 }
 
 impl IO {
-    fn try_new(on_event: extern "C" fn(event: Event)) -> Result<Self> {
+    fn try_new(on_event: extern "C" fn(event: *const Event)) -> Result<Self> {
         let config = Config::read()?;
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
@@ -101,7 +101,7 @@ impl IO {
         Ok(())
     }
 
-    fn new(on_event: extern "C" fn(event: Event)) -> Self {
+    fn new(on_event: extern "C" fn(event: *const Event)) -> Self {
         Self::try_new(on_event).unwrap_or_else(|err| {
             eprintln!("{err:?}");
             std::process::exit(1);
@@ -127,7 +127,7 @@ impl IO {
         let drained = self.timer.drain(&mut self.ring)?;
 
         for event in events {
-            (self.on_event)(event);
+            (self.on_event)(&event);
         }
 
         Ok(drained)
@@ -216,7 +216,7 @@ impl IO {
         }
 
         for event in events {
-            (self.on_event)(event);
+            (self.on_event)(&event);
         }
 
         if drained {
@@ -285,7 +285,7 @@ impl IO {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_init(on_event: extern "C" fn(event: Event)) -> *mut c_void {
+pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event)) -> *mut c_void {
     env_logger::init();
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }

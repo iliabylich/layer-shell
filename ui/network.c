@@ -142,27 +142,21 @@ static void refresh_ssid_and_strength(Network *self) {
   }
 }
 
-void network_refresh_network_ssid(Network *self, IO_NetworkSsidEvent event) {
+void network_refresh_network_ssid(Network *self, IO_CString ssid) {
   if (self->ssid != NULL) {
     free(self->ssid);
   }
-  self->ssid = strdup(event.ssid);
+  self->ssid = strdup(ssid);
   refresh_ssid_and_strength(self);
 }
-void network_refresh_network_strength(Network *self,
-                                      IO_NetworkStrengthEvent event) {
-  self->strength = event.strength;
+void network_refresh_network_strength(Network *self, uint8_t strength) {
+  self->strength = strength;
   refresh_ssid_and_strength(self);
 }
 
-void network_refresh_upload_speed(Network *self, IO_UploadSpeedEvent event) {
-  gtk_label_set_label(GTK_LABEL(self->upload_speed_label), event.speed);
+void network_refresh_upload_speed(Network *self, IO_CString speed) {
+  gtk_label_set_label(GTK_LABEL(self->upload_speed_label), speed);
 }
-void network_refresh_download_speed(Network *self,
-                                    IO_DownloadSpeedEvent event) {
-  gtk_label_set_label(GTK_LABEL(self->download_speed_label), event.speed);
-}
-
-void network_refresh_network_list(Network *self, IO_NetworkListEvent event) {
-  network_popover_refresh(NETWORK_POPOVER(self->popover), event);
+void network_refresh_download_speed(Network *self, IO_CString speed) {
+  gtk_label_set_label(GTK_LABEL(self->download_speed_label), speed);
 }

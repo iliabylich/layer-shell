@@ -1,4 +1,5 @@
 #include "ui/cpu.h"
+#include "bindings.h"
 #include "ui/assertions.h"
 #include "ui/cpu_label.h"
 #include "ui/logger.h"
@@ -62,19 +63,19 @@ static void create_labels(Cpu *self, size_t count) {
   self->labels_count = count;
 }
 
-void cpu_refresh(Cpu *self, IO_CpuUsageEvent event) {
+void cpu_refresh(Cpu *self, IO_CArray_u8 data) {
   if (first_time_init_p(self)) {
-    create_labels(self, event.usage_per_core.len);
+    create_labels(self, data.len);
   } else {
-    assert(self->labels_count == event.usage_per_core.len,
+    assert(self->labels_count == data.len,
            "Dynamic number of CPU cores %lu vs %lu", self->labels_count,
-           event.usage_per_core.len);
+           data.len);
   }
 
   size_t i = 0;
   for (GList *ptr = self->labels; ptr != NULL; ptr = ptr->next) {
     GtkWidget *label = GTK_WIDGET(ptr->data);
-    g_object_set(label, "load", event.usage_per_core.ptr[i], NULL);
+    g_object_set(label, "load", data.ptr[i], NULL);
     i++;
   }
 }

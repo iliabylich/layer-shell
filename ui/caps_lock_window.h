@@ -1,6 +1,5 @@
 #pragma once
 
-#include "bindings.h"
 #include "ui/base_window.h"
 #include <gtk/gtk.h>
 
@@ -12,5 +11,4 @@ G_DECLARE_FINAL_TYPE(CapsLockWindow, caps_lock_window, CAPS_LOCK_WINDOW, WINDOW,
 
 GtkWidget *caps_lock_window_new(GtkApplication *app);
 
-void caps_lock_window_refresh(CapsLockWindow *caps_lock_window,
-                              IO_ControlCapsLockToggledEvent event);
+void caps_lock_window_refresh(CapsLockWindow *caps_lock_window, bool enabled);

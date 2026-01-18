@@ -91,9 +91,8 @@ static void show(CapsLockWindow *self) {
   self->timer = g_timeout_add_once(1000, hide, self);
 }
 
-void caps_lock_window_refresh(CapsLockWindow *self,
-                              IO_ControlCapsLockToggledEvent event) {
-  self->enabled = event.enabled;
+void caps_lock_window_refresh(CapsLockWindow *self, bool enabled) {
+  self->enabled = enabled;
   redraw(self);
   show(self);
 }

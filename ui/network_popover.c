@@ -7,7 +7,6 @@ LOGGER("NetworkPopover", 2)
 enum {
   SIGNAL_CLICKED_SETTINGS = 0,
   SIGNAL_CLICKED_PING,
-  SIGNAL_CLICKED_ADDRESS,
   N_SIGNALS,
 };
 static guint signals[N_SIGNALS] = {0};
@@ -29,12 +28,6 @@ static void on_settings_clicked(GSimpleAction *, GVariant *,
 
 static void on_ping_clicked(GSimpleAction *, GVariant *, NetworkPopover *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_PING], 0);
-}
-
-static void on_address_clicked(GSimpleAction *, GVariant *parameter,
-                               NetworkPopover *self) {
-  const char *address = g_variant_get_string(parameter, NULL);
-  g_signal_emit(self, signals[SIGNAL_CLICKED_ADDRESS], 0, address);
 }
 
 static void add_action(NetworkPopover *self, const char *action_name,
@@ -60,8 +53,6 @@ static void network_popover_init(NetworkPopover *self) {
 
   add_action(self, "settings", G_CALLBACK(on_settings_clicked), NULL);
   add_action(self, "ping", G_CALLBACK(on_ping_clicked), NULL);
-  add_action(self, "address", G_CALLBACK(on_address_clicked),
-             G_VARIANT_TYPE_STRING);
 
   append_row(self, "Settings (iwmenu)", "network.settings", NULL);
   append_row(self, "Ping", "network.ping", NULL);
@@ -92,9 +83,6 @@ static void network_popover_class_init(NetworkPopoverClass *klass) {
   signals[SIGNAL_CLICKED_PING] = g_signal_new_class_handler(
       "clicked-ping", G_OBJECT_CLASS_TYPE(object_class), G_SIGNAL_RUN_LAST,
       NULL, NULL, NULL, NULL, G_TYPE_NONE, 0);
-  signals[SIGNAL_CLICKED_ADDRESS] = g_signal_new_class_handler(
-      "clicked-address", G_OBJECT_CLASS_TYPE(object_class), G_SIGNAL_RUN_LAST,
-      NULL, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 
   gtk_widget_class_set_layout_manager_type(GTK_WIDGET_CLASS(klass),
                                            GTK_TYPE_BOX_LAYOUT);
@@ -106,18 +94,4 @@ GtkWidget *network_popover_new() {
 
 void network_popover_open(NetworkPopover *self) {
   gtk_popover_popup(GTK_POPOVER(self->root));
-}
-
-void network_popover_refresh(NetworkPopover *self, IO_NetworkListEvent event) {
-  while (g_menu_model_get_n_items(G_MENU_MODEL(self->menu)) != 2) {
-    g_menu_remove(self->menu, 2);
-  }
-
-  for (size_t i = 0; i < event.list.len; i++) {
-    IO_NetworkData network = event.list.ptr[i];
-    char buf[100];
-    checked_fmt(buf, "%s: %s", network.iface, network.address);
-    GVariant *target_value = g_variant_new_string(network.address);
-    append_row(self, buf, "network.address", target_value);
-  }
 }
