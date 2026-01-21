@@ -5,6 +5,7 @@ mod hyprland;
 mod memory;
 mod network;
 mod sound;
+mod tray;
 mod weather;
 
 pub(crate) use clock::Clock;
@@ -14,4 +15,5 @@ pub(crate) use hyprland::Hyprland;
 pub(crate) use memory::Memory;
 pub(crate) use network::Network;
 pub(crate) use sound::Sound;
+pub(crate) use tray::Tray;
 pub(crate) use weather::{Weather, WeatherCode};

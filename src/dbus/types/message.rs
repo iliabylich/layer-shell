@@ -153,4 +153,27 @@ impl Message {
             | Self::Signal { unix_fds, .. } => *unix_fds,
         }
     }
+
+    pub(crate) fn new_method_return_no_body(reply_serial: u32, destination: &str) -> Self {
+        Message::MethodReturn {
+            serial: 0,
+            reply_serial,
+            destination: Some(Cow::Owned(destination.to_string())),
+            sender: None,
+            unix_fds: None,
+            body: vec![],
+        }
+    }
+
+    pub(crate) fn new_err_no_method(reply_serial: u32, destination: &str) -> Self {
+        Message::Error {
+            serial: 0,
+            error_name: String::from("org.freedesktop.DBus.Error.UnknownMethod"),
+            reply_serial,
+            destination: Some(Cow::Owned(destination.to_string())),
+            sender: None,
+            unix_fds: None,
+            body: vec![Value::String(String::from("Unknown method"))],
+        }
+    }
 }

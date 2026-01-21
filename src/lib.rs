@@ -19,7 +19,9 @@ use std::{ffi::c_void, os::fd::AsRawFd};
 use crate::{
     dbus::{DBus, messages::org_freedesktop_dbus::Hello},
     liburing::IoUring,
-    modules::{CPU, Clock, Control, ControlRequest, Hyprland, Memory, Network, Sound, Weather},
+    modules::{
+        CPU, Clock, Control, ControlRequest, Hyprland, Memory, Network, Sound, Tray, Weather,
+    },
     timerfd::Timerfd,
     user_data::UserData,
 };
@@ -42,6 +44,7 @@ struct IO {
     sound: Box<Sound>,
     control: Box<Control>,
     network: Box<Network>,
+    tray: Box<Tray>,
 
     on_event: extern "C" fn(event: *const Event),
 }
@@ -69,6 +72,7 @@ impl IO {
             sound: Sound::new(),
             control: Control::new(),
             network: Network::new(),
+            tray: Tray::new(),
 
             on_event,
         };
@@ -90,6 +94,7 @@ impl IO {
         self.session_dbus.enqueue(&mut Hello.into());
         self.sound.init(&mut self.session_dbus);
         self.control.init(&mut self.session_dbus);
+        self.tray.init(&mut self.session_dbus);
         self.session_dbus.drain(&mut self.ring)?;
 
         self.system_dbus.enqueue(&mut Hello.into());
@@ -178,6 +183,8 @@ impl IO {
     ) -> Result<bool> {
         if let Some(message) = self.session_dbus.feed(user_data, res)? {
             self.sound.on_message(&message, events);
+            self.tray
+                .on_message(&mut self.session_dbus, &message, events);
 
             if let Some(req) = self.control.on_message(&message, &mut self.session_dbus) {
                 self.on_control_req(req, events);
