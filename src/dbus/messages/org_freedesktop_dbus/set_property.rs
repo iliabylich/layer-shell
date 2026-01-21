@@ -28,13 +28,13 @@ impl<'a> SetProperty<'a> {
 }
 
 impl<'a> From<SetProperty<'a>> for Message<'a> {
-    fn from(message: SetProperty<'_>) -> Self {
+    fn from(message: SetProperty<'a>) -> Self {
         Message::MethodCall {
             serial: 0,
-            path: Cow::Owned(message.path.to_string()),
+            path: Cow::Borrowed(message.path),
             member: Cow::Borrowed("Set"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus.Properties")),
-            destination: Some(Cow::Owned(message.destination.to_string())),
+            destination: Some(Cow::Borrowed(message.destination)),
             sender: None,
             unix_fds: None,
             body: vec![

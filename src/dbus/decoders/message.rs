@@ -60,7 +60,7 @@ impl MessageDecoder {
                     member = Some(Cow::Owned(value));
                 }
                 (HeaderFieldName::ErrorName, Value::String(value)) => {
-                    error_name = Some(value);
+                    error_name = Some(Cow::Owned(value));
                 }
                 (HeaderFieldName::ReplySerial, Value::UInt32(value)) => {
                     reply_serial = Some(value);
@@ -113,12 +113,12 @@ impl MessageDecoder {
 fn build_message<'a>(
     header: Header,
     path: Option<Cow<'a, str>>,
-    interface: Option<Cow<'static, str>>,
-    member: Option<Cow<'static, str>>,
-    error_name: Option<String>,
+    interface: Option<Cow<'a, str>>,
+    member: Option<Cow<'a, str>>,
+    error_name: Option<Cow<'a, str>>,
     reply_serial: Option<u32>,
-    destination: Option<Cow<'static, str>>,
-    sender: Option<Cow<'static, str>>,
+    destination: Option<Cow<'a, str>>,
+    sender: Option<Cow<'a, str>>,
     unix_fds: Option<u32>,
     body: Vec<Value>,
 ) -> Result<Message<'a>> {

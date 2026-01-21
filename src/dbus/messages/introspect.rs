@@ -64,7 +64,7 @@ impl<'a> From<IntrospectResponse<'a>> for Message<'a> {
         Message::MethodReturn {
             serial: 0,
             reply_serial: value.reply_serial,
-            destination: Some(Cow::Owned(value.destination.to_string())),
+            destination: Some(Cow::Borrowed(value.destination)),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(value.xml.to_string())],

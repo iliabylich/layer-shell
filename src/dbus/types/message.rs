@@ -6,37 +6,37 @@ pub(crate) enum Message<'a> {
     MethodCall {
         serial: u32,
         path: Cow<'a, str>,
-        member: Cow<'static, str>,
-        interface: Option<Cow<'static, str>>,
-        destination: Option<Cow<'static, str>>,
-        sender: Option<Cow<'static, str>>,
+        member: Cow<'a, str>,
+        interface: Option<Cow<'a, str>>,
+        destination: Option<Cow<'a, str>>,
+        sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
         body: Vec<Value>,
     },
     MethodReturn {
         serial: u32,
         reply_serial: u32,
-        destination: Option<Cow<'static, str>>,
-        sender: Option<Cow<'static, str>>,
+        destination: Option<Cow<'a, str>>,
+        sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
         body: Vec<Value>,
     },
     Error {
         serial: u32,
-        error_name: String,
+        error_name: Cow<'a, str>,
         reply_serial: u32,
-        destination: Option<Cow<'static, str>>,
-        sender: Option<Cow<'static, str>>,
+        destination: Option<Cow<'a, str>>,
+        sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
         body: Vec<Value>,
     },
     Signal {
         serial: u32,
         path: Cow<'a, str>,
-        interface: Cow<'static, str>,
-        member: Cow<'static, str>,
-        destination: Option<Cow<'static, str>>,
-        sender: Option<Cow<'static, str>>,
+        interface: Cow<'a, str>,
+        member: Cow<'a, str>,
+        destination: Option<Cow<'a, str>>,
+        sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
         body: Vec<Value>,
     },
@@ -108,7 +108,7 @@ impl<'a> Message<'a> {
         }
     }
 
-    pub(crate) fn destination(&self) -> Option<Cow<'static, str>> {
+    pub(crate) fn destination(&self) -> Option<Cow<'a, str>> {
         match self {
             Self::MethodCall { destination, .. }
             | Self::MethodReturn { destination, .. }
@@ -154,23 +154,23 @@ impl<'a> Message<'a> {
         }
     }
 
-    pub(crate) fn new_method_return_no_body(reply_serial: u32, destination: &str) -> Self {
+    pub(crate) fn new_method_return_no_body(reply_serial: u32, destination: &'a str) -> Self {
         Message::MethodReturn {
             serial: 0,
             reply_serial,
-            destination: Some(Cow::Owned(destination.to_string())),
+            destination: Some(Cow::Borrowed(destination)),
             sender: None,
             unix_fds: None,
             body: vec![],
         }
     }
 
-    pub(crate) fn new_err_no_method(reply_serial: u32, destination: &str) -> Self {
+    pub(crate) fn new_err_no_method(reply_serial: u32, destination: &'a str) -> Self {
         Message::Error {
             serial: 0,
-            error_name: String::from("org.freedesktop.DBus.Error.UnknownMethod"),
+            error_name: Cow::Borrowed("org.freedesktop.DBus.Error.UnknownMethod"),
             reply_serial,
-            destination: Some(Cow::Owned(destination.to_string())),
+            destination: Some(Cow::Borrowed(destination)),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(String::from("Unknown method"))],
