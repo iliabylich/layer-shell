@@ -11,10 +11,10 @@ pub(crate) struct PropertiesChanged<'a> {
     pub(crate) interface: Cow<'a, str>,
     pub(crate) changes: HashMap<Cow<'a, str>, Value>,
 }
-impl<'a> TryFrom<&'a Message> for PropertiesChanged<'a> {
+impl<'a> TryFrom<&'a Message<'a>> for PropertiesChanged<'a> {
     type Error = anyhow::Error;
 
-    fn try_from(message: &'a Message) -> Result<Self> {
+    fn try_from(message: &'a Message<'a>) -> Result<Self> {
         message_is!(
             message,
             Message::Signal {

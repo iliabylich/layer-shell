@@ -16,8 +16,8 @@ impl<'a> GetAllProperties<'a> {
         }
     }
 }
-impl From<GetAllProperties<'_>> for Message {
-    fn from(value: GetAllProperties) -> Message {
+impl<'a> From<GetAllProperties<'a>> for Message<'a> {
+    fn from(value: GetAllProperties) -> Self {
         Message::MethodCall {
             serial: 0,
             path: Cow::Owned(value.path.to_string()),

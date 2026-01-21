@@ -1,7 +1,3 @@
-use std::borrow::Cow;
-
-use anyhow::Result;
-
 use crate::dbus::{
     DBus, Message,
     messages::{
@@ -12,6 +8,7 @@ use crate::dbus::{
         path_is,
     },
 };
+use anyhow::Result;
 
 pub(crate) struct StatusNotifierWatcher {
     reply_serial: Option<u32>,
@@ -23,8 +20,7 @@ impl StatusNotifierWatcher {
     }
 
     pub(crate) fn request(&mut self, dbus: &mut DBus) {
-        let mut message: Message =
-            RequestName::new(Cow::Borrowed("org.kde.StatusNotifierWatcher")).into();
+        let mut message: Message = RequestName::new("org.kde.StatusNotifierWatcher").into();
         dbus.enqueue(&mut message);
         self.reply_serial = Some(message.serial());
     }
@@ -52,7 +48,7 @@ impl StatusNotifierWatcher {
         Ok((sender.to_string(), serial))
     }
 
-    fn try_parse_control_req(message: &Message) -> Result<(&str, &str, u32)> {
+    fn try_parse_sni_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, &'a str, u32)> {
         message_is!(
             message,
             Message::MethodCall {
@@ -88,6 +84,8 @@ impl StatusNotifierWatcher {
             dbus.enqueue(&mut reply);
             return;
         }
+
+        if let Ok((_member, _sender, _serial)) = Self::try_parse_sni_req(message) {}
 
         println!("{message:?}")
     }

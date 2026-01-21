@@ -2,6 +2,7 @@ use crate::dbus::{
     encoders::{EncodingBuffer, HeaderEncoder, SignatureEncoder, ValueEncoder},
     types::{Flags, HeaderFieldName, Message, Signature, Value},
 };
+use std::borrow::Cow;
 
 pub(crate) struct MessageEncoder;
 
@@ -24,7 +25,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Path,
-                    &Value::ObjectPath(path),
+                    &Value::ObjectPath(Cow::Owned(path.to_string())),
                 );
             }
             if let Some(interface) = message.interface() {

@@ -9,7 +9,6 @@ use crate::dbus::{
     },
 };
 use anyhow::Result;
-use std::borrow::Cow;
 
 pub(crate) struct Control;
 
@@ -19,8 +18,7 @@ impl Control {
     }
 
     pub(crate) fn init(&mut self, dbus: &mut DBus) {
-        let mut message: Message =
-            RequestName::new(Cow::Borrowed("org.me.LayerShellControl")).into();
+        let mut message: Message = RequestName::new("org.me.LayerShellControl").into();
         dbus.enqueue(&mut message);
     }
 
@@ -47,7 +45,7 @@ impl Control {
         Ok((sender.to_string(), serial))
     }
 
-    fn try_parse_control_req(message: &Message) -> Result<(&str, &str, u32)> {
+    fn try_parse_control_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, &'a str, u32)> {
         message_is!(
             message,
             Message::MethodCall {

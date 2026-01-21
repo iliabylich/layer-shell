@@ -3,8 +3,8 @@ use std::borrow::Cow;
 
 pub(crate) struct Hello;
 
-impl From<Hello> for Message {
-    fn from(_: Hello) -> Message {
+impl From<Hello> for Message<'static> {
+    fn from(_: Hello) -> Message<'static> {
         Message::MethodCall {
             serial: 0,
             path: Cow::Borrowed("/org/freedesktop/DBus"),

@@ -2,10 +2,10 @@ use crate::dbus::types::{MessageType, Value};
 use std::borrow::Cow;
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Message {
+pub(crate) enum Message<'a> {
     MethodCall {
         serial: u32,
-        path: Cow<'static, str>,
+        path: Cow<'a, str>,
         member: Cow<'static, str>,
         interface: Option<Cow<'static, str>>,
         destination: Option<Cow<'static, str>>,
@@ -32,7 +32,7 @@ pub(crate) enum Message {
     },
     Signal {
         serial: u32,
-        path: Cow<'static, str>,
+        path: Cow<'a, str>,
         interface: Cow<'static, str>,
         member: Cow<'static, str>,
         destination: Option<Cow<'static, str>>,
@@ -42,7 +42,7 @@ pub(crate) enum Message {
     },
 }
 
-impl Message {
+impl<'a> Message<'a> {
     pub(crate) fn serial(&self) -> u32 {
         match self {
             Self::MethodCall { serial, .. }
@@ -70,9 +70,9 @@ impl Message {
         }
     }
 
-    pub(crate) fn path(&self) -> Option<Cow<'static, str>> {
+    pub(crate) fn path(&self) -> Option<&str> {
         match self {
-            Self::MethodCall { path, .. } | Self::Signal { path, .. } => Some(path.clone()),
+            Self::MethodCall { path, .. } | Self::Signal { path, .. } => Some(path.as_ref()),
             _ => None,
         }
     }

@@ -86,7 +86,11 @@ impl DBus {
         }
     }
 
-    pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<Option<Message>> {
+    pub(crate) fn feed(
+        &mut self,
+        user_data: UserData,
+        res: i32,
+    ) -> Result<Option<Message<'static>>> {
         match self {
             DBus::Auth(auth) => {
                 if auth.feed(user_data, res)? {

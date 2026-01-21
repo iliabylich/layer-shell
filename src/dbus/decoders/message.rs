@@ -8,7 +8,7 @@ use std::borrow::Cow;
 pub(crate) struct MessageDecoder;
 
 impl MessageDecoder {
-    pub(crate) fn decode(bytes: &[u8]) -> Result<Message> {
+    pub(crate) fn decode(bytes: &[u8]) -> Result<Message<'static>> {
         let mut buf = DecodingBuffer::new(bytes);
         let header = HeaderDecoder::decode(&mut buf)?;
 
@@ -110,9 +110,9 @@ impl MessageDecoder {
 }
 
 #[expect(clippy::too_many_arguments)]
-fn build_message(
+fn build_message<'a>(
     header: Header,
-    path: Option<Cow<'static, str>>,
+    path: Option<Cow<'a, str>>,
     interface: Option<Cow<'static, str>>,
     member: Option<Cow<'static, str>>,
     error_name: Option<String>,
@@ -121,7 +121,7 @@ fn build_message(
     sender: Option<Cow<'static, str>>,
     unix_fds: Option<u32>,
     body: Vec<Value>,
-) -> Result<Message> {
+) -> Result<Message<'a>> {
     match header.message_type {
         MessageType::MethodCall => {
             let path = path.context("MethodCall missing path")?;

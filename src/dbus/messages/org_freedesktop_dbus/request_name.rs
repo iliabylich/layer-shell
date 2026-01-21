@@ -2,15 +2,15 @@ use crate::dbus::types::{Message, Value};
 use std::borrow::Cow;
 
 #[derive(Debug)]
-pub(crate) struct RequestName {
-    name: Cow<'static, str>,
+pub(crate) struct RequestName<'a> {
+    name: &'a str,
 }
-impl RequestName {
-    pub(crate) fn new(name: Cow<'static, str>) -> Self {
+impl<'a> RequestName<'a> {
+    pub(crate) fn new(name: &'a str) -> Self {
         Self { name }
     }
 }
-impl From<RequestName> for Message {
+impl<'a> From<RequestName<'a>> for Message<'a> {
     fn from(value: RequestName) -> Message {
         Message::MethodCall {
             serial: 0,

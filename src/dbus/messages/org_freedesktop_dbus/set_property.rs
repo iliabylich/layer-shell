@@ -27,7 +27,7 @@ impl<'a> SetProperty<'a> {
     }
 }
 
-impl From<SetProperty<'_>> for Message {
+impl<'a> From<SetProperty<'a>> for Message<'a> {
     fn from(message: SetProperty<'_>) -> Self {
         Message::MethodCall {
             serial: 0,

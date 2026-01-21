@@ -11,7 +11,7 @@ impl<'a> AddMatch<'a> {
     }
 }
 
-impl From<AddMatch<'_>> for Message {
+impl<'a> From<AddMatch<'a>> for Message<'a> {
     fn from(value: AddMatch) -> Message {
         Message::MethodCall {
             serial: 0,

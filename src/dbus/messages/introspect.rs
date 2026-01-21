@@ -11,10 +11,10 @@ pub(crate) struct IntrospectRequest<'a> {
     pub(crate) sender: Cow<'a, str>,
 }
 
-impl<'a> TryFrom<&'a Message> for IntrospectRequest<'a> {
+impl<'a> TryFrom<&'a Message<'a>> for IntrospectRequest<'a> {
     type Error = anyhow::Error;
 
-    fn try_from(message: &'a Message) -> Result<Self> {
+    fn try_from(message: &'a Message<'a>) -> Result<Self> {
         message_is!(
             message,
             Message::MethodCall {
@@ -59,8 +59,8 @@ impl<'a> IntrospectResponse<'a> {
     }
 }
 
-impl<'a> From<IntrospectResponse<'a>> for Message {
-    fn from(value: IntrospectResponse<'a>) -> Message {
+impl<'a> From<IntrospectResponse<'a>> for Message<'a> {
+    fn from(value: IntrospectResponse<'a>) -> Self {
         Message::MethodReturn {
             serial: 0,
             reply_serial: value.reply_serial,

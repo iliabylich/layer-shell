@@ -123,7 +123,11 @@ impl ReadWrite {
         Ok(drained)
     }
 
-    pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<Option<Message>> {
+    pub(crate) fn feed(
+        &mut self,
+        user_data: UserData,
+        res: i32,
+    ) -> Result<Option<Message<'static>>> {
         if user_data == self.write_user_data {
             ensure!(
                 matches!(self.write_state, WriteState::Writing),

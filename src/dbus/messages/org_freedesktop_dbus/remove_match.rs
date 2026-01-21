@@ -11,8 +11,8 @@ impl<'a> RemoveMatch<'a> {
     }
 }
 
-impl From<RemoveMatch<'_>> for Message {
-    fn from(value: RemoveMatch) -> Message {
+impl<'a> From<RemoveMatch<'a>> for Message<'a> {
+    fn from(value: RemoveMatch) -> Self {
         Message::MethodCall {
             serial: 0,
             path: Cow::Borrowed("/org/freedesktop/DBus"),
