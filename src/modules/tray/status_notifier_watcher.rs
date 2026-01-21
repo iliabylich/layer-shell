@@ -35,7 +35,7 @@ impl StatusNotifierWatcher {
         dbus.enqueue(&mut reply);
     }
 
-    fn try_parse_introspect_req(message: &Message) -> Result<(String, u32)> {
+    fn try_parse_introspect_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, u32)> {
         let IntrospectRequest {
             destination,
             path,
@@ -45,7 +45,7 @@ impl StatusNotifierWatcher {
 
         destination_is!(destination, "org.kde.StatusNotifierWatcher");
         path_is!(path, "/");
-        Ok((sender.to_string(), serial))
+        Ok((sender, serial))
     }
 
     fn try_parse_sni_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, &'a str, u32)> {
@@ -54,8 +54,8 @@ impl StatusNotifierWatcher {
             Message::MethodCall {
                 path,
                 member,
-                interface,
-                destination,
+                interface: Some(interface),
+                destination: Some(destination),
                 body,
                 sender: Some(sender),
                 serial,
@@ -64,11 +64,8 @@ impl StatusNotifierWatcher {
         );
 
         path_is!(path, "/StatusNotifierWatcher");
-        destination_is!(
-            destination.as_deref(),
-            Some("org.kde.StatusNotifierWatcher")
-        );
-        interface_is!(interface.as_deref(), Some("org.kde.StatusNotifierWatcher"));
+        destination_is!(destination.as_ref(), "org.kde.StatusNotifierWatcher");
+        interface_is!(interface.as_ref(), "org.kde.StatusNotifierWatcher");
         body_is!(body, []);
 
         Ok((member.as_ref(), sender.as_ref(), *serial))

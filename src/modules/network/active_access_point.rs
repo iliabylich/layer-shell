@@ -2,12 +2,12 @@ use crate::dbus::{
     DBus, Message,
     messages::{
         body_is, interface_is, message_is,
-        org_freedesktop_dbus::{AddMatch, GetProperty, PropertiesChanged, RemoveMatch},
-        path_is, value_is,
+        org_freedesktop_dbus::{AddMatch, GetProperty, RemoveMatch},
+        path_is, type_is, value_is,
     },
-    types::Value,
+    types::{CompleteType, Value},
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{Result, bail, ensure};
 
 pub(crate) struct ActiveAccessPoint {
     path: Option<String>,
@@ -19,12 +19,12 @@ pub(crate) enum ActiveAccessPointEvent {
     Connected(String),
     Disconnected,
 }
-impl From<String> for ActiveAccessPointEvent {
-    fn from(path: String) -> Self {
+impl From<&str> for ActiveAccessPointEvent {
+    fn from(path: &str) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
-            Self::Connected(path)
+            Self::Connected(path.to_string())
         }
     }
 }
@@ -64,7 +64,7 @@ impl ActiveAccessPoint {
         self.reply_serial = Some(message.serial())
     }
 
-    fn try_parse_reply(&self, message: &Message) -> Result<String> {
+    fn try_parse_reply<'a>(&self, message: &'a Message<'a>) -> Result<&'a str> {
         ensure!(message.reply_serial() == self.reply_serial);
         message_is!(message, Message::MethodReturn { body, .. });
         body_is!(body, [active_access_point]);
@@ -74,23 +74,7 @@ impl ActiveAccessPoint {
             Value::ObjectPath(active_access_point)
         );
 
-        Ok(active_access_point.to_string())
-    }
-
-    fn try_parse_signal(&self, message: &Message) -> Result<String> {
-        let PropertiesChanged {
-            path,
-            interface,
-            changes,
-        } = PropertiesChanged::try_from(message)?;
-
-        path_is!(path, "/org/freedesktop/NetworkManager");
-        interface_is!(interface, "org.freedesktop.NetworkManager.Device.Wireless");
-
-        let active_access_point = changes.get("ActiveAccessPoint").context("unrelated")?;
-        value_is!(active_access_point, Value::ObjectPath(active_access_point));
-
-        Ok(active_access_point.to_string())
+        Ok(active_access_point)
     }
 
     pub(crate) fn reset(&mut self, dbus: &mut DBus) {
@@ -108,10 +92,47 @@ impl ActiveAccessPoint {
             return Some(ActiveAccessPointEvent::from(device));
         }
 
-        if let Ok(device) = self.try_parse_signal(message) {
+        if let Ok(device) = try_parse_signal(message) {
             return Some(ActiveAccessPointEvent::from(device));
         }
 
         None
     }
+}
+
+fn try_parse_signal<'a>(message: &'a Message<'a>) -> Result<&'a str> {
+    message_is!(
+        message,
+        Message::Signal {
+            path,
+            interface,
+            body,
+            ..
+        }
+    );
+
+    interface_is!(interface, "org.freedesktop.DBus.Properties");
+    body_is!(
+        body,
+        [Value::String(interface), Value::Array(item_t, items), _]
+    );
+    type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
+    type_is!(&**key_t, CompleteType::String);
+    type_is!(&**value_t, CompleteType::Variant);
+
+    path_is!(path, "/org/freedesktop/NetworkManager");
+    interface_is!(interface, "org.freedesktop.NetworkManager.Device.Wireless");
+
+    for item in items {
+        value_is!(item, Value::DictEntry(key, value));
+        value_is!(&**key, Value::String(key));
+        value_is!(&**value, Value::Variant(value));
+
+        if key == "ActiveAccessPoint" {
+            value_is!(&**value, Value::ObjectPath(active_access_point));
+            return Ok(active_access_point.as_ref());
+        }
+    }
+
+    bail!("unrelated")
 }

@@ -14,7 +14,7 @@ pub(crate) enum Value<'a> {
     Double(f64),
     UnixFD(u32),
 
-    String(String),
+    String(Cow<'a, str>),
     ObjectPath(Cow<'a, str>),
     Signature(Vec<u8>),
     Struct(Vec<Value<'a>>),

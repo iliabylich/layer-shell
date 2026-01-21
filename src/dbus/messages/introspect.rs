@@ -6,9 +6,9 @@ use std::borrow::Cow;
 #[derive(Debug)]
 pub(crate) struct IntrospectRequest<'a> {
     pub(crate) serial: u32,
-    pub(crate) destination: Cow<'a, str>,
-    pub(crate) path: Cow<'a, str>,
-    pub(crate) sender: Cow<'a, str>,
+    pub(crate) destination: &'a str,
+    pub(crate) path: &'a str,
+    pub(crate) sender: &'a str,
 }
 
 impl<'a> TryFrom<&'a Message<'a>> for IntrospectRequest<'a> {
@@ -36,9 +36,9 @@ impl<'a> TryFrom<&'a Message<'a>> for IntrospectRequest<'a> {
 
         Ok(Self {
             serial: *serial,
-            destination: destination.clone(),
-            path: path.clone(),
-            sender: sender.clone(),
+            destination: destination.as_ref(),
+            path: path.as_ref(),
+            sender: sender.as_ref(),
         })
     }
 }
@@ -67,7 +67,7 @@ impl<'a> From<IntrospectResponse<'a>> for Message<'a> {
             destination: Some(Cow::Borrowed(value.destination)),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(value.xml.to_string())],
+            body: vec![Value::String(Cow::Borrowed(value.xml))],
         }
     }
 }

@@ -2,12 +2,12 @@ use crate::dbus::{
     DBus, Message,
     messages::{
         body_is, interface_is, message_is,
-        org_freedesktop_dbus::{AddMatch, GetProperty, PropertiesChanged},
-        path_is, value_is,
+        org_freedesktop_dbus::{AddMatch, GetProperty},
+        path_is, type_is, value_is,
     },
-    types::Value,
+    types::{CompleteType, Value},
 };
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Result, bail, ensure};
 
 #[derive(Debug)]
 pub(crate) struct PrimaryConnection {
@@ -19,12 +19,12 @@ pub(crate) enum PrimaryConnectionEvent {
     Disconnected,
 }
 
-impl From<String> for PrimaryConnectionEvent {
-    fn from(path: String) -> Self {
+impl From<&str> for PrimaryConnectionEvent {
+    fn from(path: &str) -> Self {
         if path == "/" {
             PrimaryConnectionEvent::Disconnected
         } else {
-            PrimaryConnectionEvent::Connected(path)
+            PrimaryConnectionEvent::Connected(path.to_string())
         }
     }
 }
@@ -51,30 +51,14 @@ impl PrimaryConnection {
         dbus.enqueue(&mut message);
     }
 
-    fn try_parse_reply(&self, message: &Message) -> Result<String> {
+    fn try_parse_reply<'a>(&self, message: &'a Message<'a>) -> Result<&'a str> {
         ensure!(self.reply_serial == message.reply_serial());
         message_is!(message, Message::MethodReturn { body, .. });
         body_is!(body, [path]);
         value_is!(path, Value::Variant(path));
         value_is!(&**path, Value::ObjectPath(path));
 
-        Ok(path.to_string())
-    }
-
-    fn try_parse_signal(&self, message: &Message) -> Result<String> {
-        let PropertiesChanged {
-            path,
-            interface,
-            changes,
-        } = PropertiesChanged::try_from(message)?;
-
-        path_is!(path, "/org/freedesktop/NetworkManager");
-        interface_is!(interface, "org.freedesktop.NetworkManager");
-
-        let path = changes.get("PrimaryConnection").context("unrelated")?;
-        value_is!(path, Value::ObjectPath(path));
-
-        Ok(path.to_string())
+        Ok(path)
     }
 
     pub(crate) fn init(&mut self, dbus: &mut DBus) {
@@ -87,10 +71,47 @@ impl PrimaryConnection {
             return Some(PrimaryConnectionEvent::from(path));
         }
 
-        if let Ok(path) = self.try_parse_signal(message) {
+        if let Ok(path) = try_parse_signal(message) {
             return Some(PrimaryConnectionEvent::from(path));
         }
 
         None
     }
+}
+
+fn try_parse_signal<'a>(message: &'a Message<'a>) -> Result<&'a str> {
+    message_is!(
+        message,
+        Message::Signal {
+            path,
+            interface,
+            body,
+            ..
+        }
+    );
+
+    interface_is!(interface, "org.freedesktop.DBus.Properties");
+    body_is!(
+        body,
+        [Value::String(interface), Value::Array(item_t, items), _]
+    );
+    type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
+    type_is!(&**key_t, CompleteType::String);
+    type_is!(&**value_t, CompleteType::Variant);
+
+    path_is!(path, "/org/freedesktop/NetworkManager");
+    interface_is!(interface, "org.freedesktop.NetworkManager");
+
+    for item in items {
+        value_is!(item, Value::DictEntry(key, value));
+        value_is!(&**key, Value::String(key));
+        value_is!(&**value, Value::Variant(value));
+
+        if key == "PrimaryConnection" {
+            value_is!(&**value, Value::ObjectPath(path));
+            return Ok(path.as_ref());
+        }
+    }
+
+    bail!("unrelated")
 }

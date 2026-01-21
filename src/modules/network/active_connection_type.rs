@@ -35,14 +35,14 @@ impl ActiveConnectionType {
         self.reply_serial = None;
     }
 
-    fn try_parse_reply(&self, message: &Message) -> Result<String> {
+    fn try_parse_reply<'a>(&self, message: &'a Message<'a>) -> Result<&'a str> {
         ensure!(self.reply_serial == message.reply_serial());
         message_is!(message, Message::MethodReturn { body, .. });
         body_is!(body, [type_]);
         value_is!(type_, Value::Variant(type_));
         value_is!(&**type_, Value::String(type_));
 
-        Ok(type_.clone())
+        Ok(type_.as_ref())
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<(bool, String)> {

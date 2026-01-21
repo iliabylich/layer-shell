@@ -7,18 +7,18 @@ use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 use serde::Deserialize;
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
 pub(crate) trait WriterResource {
-    fn command(&self) -> String;
+    fn command(&self) -> Cow<'static, str>;
     fn parse(&self, json: &str) -> Result<WriterReply>;
 }
 
 pub(crate) struct WorkspaceListResource;
 
 impl WriterResource for WorkspaceListResource {
-    fn command(&self) -> String {
-        "[[BATCH]]j/workspaces".to_string()
+    fn command(&self) -> Cow<'static, str> {
+        Cow::Borrowed("[[BATCH]]j/workspaces")
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
@@ -37,8 +37,8 @@ impl WriterResource for WorkspaceListResource {
 
 pub(crate) struct ActiveWorkspaceResource;
 impl WriterResource for ActiveWorkspaceResource {
-    fn command(&self) -> String {
-        "[[BATCH]]j/activeworkspace".to_string()
+    fn command(&self) -> Cow<'static, str> {
+        Cow::Borrowed("[[BATCH]]j/activeworkspace")
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
@@ -54,8 +54,8 @@ impl WriterResource for ActiveWorkspaceResource {
 
 pub(crate) struct DevicesResource;
 impl WriterResource for DevicesResource {
-    fn command(&self) -> String {
-        "[[BATCH]]j/devices".to_string()
+    fn command(&self) -> Cow<'static, str> {
+        Cow::Borrowed("[[BATCH]]j/devices")
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
@@ -84,8 +84,8 @@ impl WriterResource for DevicesResource {
 
 pub(crate) struct CapsLock;
 impl WriterResource for CapsLock {
-    fn command(&self) -> String {
-        "[[BATCH]]j/devices".to_string()
+    fn command(&self) -> Cow<'static, str> {
+        Cow::Borrowed("[[BATCH]]j/devices")
     }
 
     fn parse(&self, json: &str) -> Result<WriterReply> {
@@ -120,8 +120,8 @@ impl Dispatch {
     }
 }
 impl WriterResource for Dispatch {
-    fn command(&self) -> String {
-        format!("dispatch {}", self.cmd)
+    fn command(&self) -> Cow<'static, str> {
+        Cow::Owned(format!("dispatch {}", self.cmd))
     }
 
     fn parse(&self, reply: &str) -> Result<WriterReply> {

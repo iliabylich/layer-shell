@@ -108,12 +108,12 @@ impl<'a> Message<'a> {
         }
     }
 
-    pub(crate) fn destination(&self) -> Option<Cow<'a, str>> {
+    pub(crate) fn destination(&self) -> Option<&str> {
         match self {
             Self::MethodCall { destination, .. }
             | Self::MethodReturn { destination, .. }
             | Self::Error { destination, .. }
-            | Self::Signal { destination, .. } => destination.clone(),
+            | Self::Signal { destination, .. } => destination.as_deref(),
         }
     }
 
@@ -163,7 +163,7 @@ impl<'a> Message<'a> {
             destination: Some(Cow::Borrowed(destination)),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(String::from("Unknown method"))],
+            body: vec![Value::String(Cow::Borrowed("Unknown method"))],
         }
     }
 }

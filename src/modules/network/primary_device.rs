@@ -2,12 +2,12 @@ use crate::dbus::{
     DBus, Message,
     messages::{
         body_is, interface_is, message_is,
-        org_freedesktop_dbus::{AddMatch, GetProperty, PropertiesChanged, RemoveMatch},
-        path_is, value_is,
+        org_freedesktop_dbus::{AddMatch, GetProperty, RemoveMatch},
+        path_is, type_is, value_is,
     },
     types::{CompleteType, Value},
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 
 pub(crate) struct PrimaryDevice {
     path: Option<String>,
@@ -19,12 +19,12 @@ pub(crate) enum PrimaryDeviceEvent {
     Connected(String),
     Disconnected,
 }
-impl From<String> for PrimaryDeviceEvent {
-    fn from(path: String) -> Self {
+impl From<&str> for PrimaryDeviceEvent {
+    fn from(path: &str) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
-            Self::Connected(path)
+            Self::Connected(path.to_string())
         }
     }
 }
@@ -64,37 +64,16 @@ impl PrimaryDevice {
         self.reply_serial = Some(message.serial());
     }
 
-    fn try_parse_reply(&self, message: &Message) -> Result<String> {
+    fn try_parse_reply<'a>(&self, message: &'a Message<'a>) -> Result<&'a str> {
         ensure!(message.reply_serial() == self.reply_serial);
         message_is!(message, Message::MethodReturn { body, .. });
         body_is!(body, [devices]);
         value_is!(devices, Value::Variant(devices));
         value_is!(&**devices, Value::Array(CompleteType::ObjectPath, devices));
-        let device = sole(devices)?;
+        let device = devices.first().context("expected at least one device")?;
         value_is!(device, Value::ObjectPath(device));
 
-        Ok(device.to_string())
-    }
-
-    fn try_parse_signal(&self, message: &Message) -> Result<String> {
-        let PropertiesChanged {
-            path,
-            interface,
-            changes,
-        } = PropertiesChanged::try_from(message)?;
-
-        path_is!(path, "/org/freedesktop/NetworkManager");
-        interface_is!(
-            interface,
-            "org.freedesktop.NetworkManager.Connection.Active"
-        );
-
-        let devices = changes.get("Devices").context("unrelated")?;
-        value_is!(devices, Value::Array(CompleteType::ObjectPath, devices));
-        let device = sole(devices)?;
-        value_is!(device, Value::ObjectPath(device));
-
-        Ok(device.to_string())
+        Ok(device.as_ref())
     }
 
     pub(crate) fn reset(&mut self, dbus: &mut DBus) {
@@ -112,7 +91,7 @@ impl PrimaryDevice {
             return Some(PrimaryDeviceEvent::from(device));
         }
 
-        if let Ok(device) = self.try_parse_signal(message) {
+        if let Ok(device) = try_parse_signal(message) {
             return Some(PrimaryDeviceEvent::from(device));
         }
 
@@ -120,9 +99,45 @@ impl PrimaryDevice {
     }
 }
 
-fn sole<'a>(devices: &'a [Value<'a>]) -> Result<&'a Value<'a>> {
-    let mut iter = devices.iter();
-    let device = iter.next().context("empty device list")?;
-    ensure!(iter.next().is_none(), "1+ devices");
-    Ok(device)
+fn try_parse_signal<'a>(message: &'a Message<'a>) -> Result<&'a str> {
+    message_is!(
+        message,
+        Message::Signal {
+            path,
+            interface,
+            body,
+            ..
+        }
+    );
+
+    interface_is!(interface, "org.freedesktop.DBus.Properties");
+    body_is!(
+        body,
+        [Value::String(interface), Value::Array(item_t, items), _]
+    );
+    type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
+    type_is!(&**key_t, CompleteType::String);
+    type_is!(&**value_t, CompleteType::Variant);
+
+    path_is!(path, "/org/freedesktop/NetworkManager");
+    interface_is!(
+        interface,
+        "org.freedesktop.NetworkManager.Connection.Active"
+    );
+
+    for item in items {
+        value_is!(item, Value::DictEntry(key, value));
+        value_is!(&**key, Value::String(key));
+        value_is!(&**value, Value::Variant(value));
+
+        if key == "Devices" {
+            let devices = value;
+            value_is!(&**devices, Value::Array(CompleteType::ObjectPath, devices));
+            let device = devices.first().context("expected at least one device")?;
+            value_is!(device, Value::ObjectPath(device));
+            return Ok(device.as_ref());
+        }
+    }
+
+    bail!("unrelated")
 }

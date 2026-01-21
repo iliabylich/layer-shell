@@ -8,7 +8,7 @@ use crate::dbus::{
         path_is,
     },
 };
-use anyhow::Result;
+use anyhow::{Result, bail};
 
 pub(crate) struct Control;
 
@@ -22,69 +22,25 @@ impl Control {
         dbus.enqueue(&mut message);
     }
 
-    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str) {
-        let mut reply = Message::new_method_return_no_body(serial, destination);
-        dbus.enqueue(&mut reply);
-    }
-
-    fn reply_err(dbus: &mut DBus, serial: u32, destination: &str) {
-        let mut reply = Message::new_err_no_method(serial, destination);
-        dbus.enqueue(&mut reply);
-    }
-
-    fn try_parse_introspect_req(message: &Message) -> Result<(String, u32)> {
-        let IntrospectRequest {
-            destination,
-            path,
-            sender,
-            serial,
-        } = IntrospectRequest::try_from(message)?;
-
-        destination_is!(destination, "org.me.LayerShellControl");
-        path_is!(path, "/");
-        Ok((sender.to_string(), serial))
-    }
-
-    fn try_parse_control_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, &'a str, u32)> {
-        message_is!(
-            message,
-            Message::MethodCall {
-                path,
-                member,
-                interface,
-                destination,
-                body,
-                sender: Some(sender),
-                serial,
-                ..
-            }
-        );
-
-        path_is!(path, "/");
-        destination_is!(destination.as_deref(), Some("org.me.LayerShellControl"));
-        interface_is!(interface.as_deref(), Some("org.me.LayerShellControl"));
-        body_is!(body, []);
-
-        Ok((member.as_ref(), sender.as_ref(), *serial))
-    }
-
     pub(crate) fn on_message(
         &mut self,
         message: &Message,
         dbus: &mut DBus,
     ) -> Option<ControlRequest> {
-        if let Ok((sender, serial)) = Self::try_parse_introspect_req(message) {
-            let mut reply: Message = IntrospectResponse::new(serial, &sender, INTROSPECTION).into();
+        if let Ok((sender, serial)) = try_parse_introspect_req(message) {
+            let mut reply: Message = IntrospectResponse::new(serial, sender, INTROSPECTION).into();
             dbus.enqueue(&mut reply);
             return None;
         }
 
-        if let Ok((member, sender, serial)) = Self::try_parse_control_req(message) {
-            if let Ok(control_req) = ControlRequest::try_from(member) {
-                Self::reply_ok(dbus, serial, sender);
+        if let Ok((member, sender, serial)) = try_parse_control_req(message) {
+            if let Ok(control_req) = ControlRequest::try_parse(member) {
+                let mut reply = Message::new_method_return_no_body(serial, sender);
+                dbus.enqueue(&mut reply);
                 return Some(control_req);
             } else {
-                Self::reply_err(dbus, serial, sender);
+                let mut reply = Message::new_err_no_method(serial, sender);
+                dbus.enqueue(&mut reply);
                 return None;
             }
         }
@@ -105,6 +61,42 @@ const INTROSPECTION: &str = r#"
 </node>
 "#;
 
+fn try_parse_introspect_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, u32)> {
+    let IntrospectRequest {
+        destination,
+        path,
+        sender,
+        serial,
+    } = IntrospectRequest::try_from(message)?;
+
+    destination_is!(destination, "org.me.LayerShellControl");
+    path_is!(path, "/");
+    Ok((sender, serial))
+}
+
+fn try_parse_control_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, &'a str, u32)> {
+    message_is!(
+        message,
+        Message::MethodCall {
+            path,
+            member,
+            interface: Some(interface),
+            destination: Some(destination),
+            body,
+            sender: Some(sender),
+            serial,
+            ..
+        }
+    );
+
+    path_is!(path, "/");
+    destination_is!(destination.as_ref(), "org.me.LayerShellControl");
+    interface_is!(interface.as_ref(), "org.me.LayerShellControl");
+    body_is!(body, []);
+
+    Ok((member.as_ref(), sender.as_ref(), *serial))
+}
+
 #[derive(Debug)]
 pub(crate) enum ControlRequest {
     CapsLockToggled,
@@ -113,16 +105,14 @@ pub(crate) enum ControlRequest {
     ToggleSessionScreen,
 }
 
-impl TryFrom<&str> for ControlRequest {
-    type Error = ();
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
+impl ControlRequest {
+    fn try_parse(s: &str) -> Result<Self> {
         match s {
             "CapsLockToggled" => Ok(ControlRequest::CapsLockToggled),
             "Exit" => Ok(ControlRequest::Exit),
             "ReloadStyles" => Ok(ControlRequest::ReloadStyles),
             "ToggleSessionScreen" => Ok(ControlRequest::ToggleSessionScreen),
-            _ => Err(()),
+            _ => bail!("unsupported method"),
         }
     }
 }

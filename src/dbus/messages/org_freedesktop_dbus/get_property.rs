@@ -36,8 +36,8 @@ impl<'a> From<GetProperty<'a>> for Message<'a> {
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::String(value.interface.to_string()),
-                Value::String(value.property.to_string()),
+                Value::String(Cow::Borrowed(value.interface)),
+                Value::String(Cow::Borrowed(value.property)),
             ],
         }
     }

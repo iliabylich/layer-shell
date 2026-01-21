@@ -20,7 +20,7 @@ impl<'a> From<RequestName<'a>> for Message<'a> {
             destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(value.name.to_string()), Value::UInt32(7)],
+            body: vec![Value::String(Cow::Borrowed(value.name)), Value::UInt32(7)],
         }
     }
 }

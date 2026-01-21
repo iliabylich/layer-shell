@@ -3,13 +3,13 @@ use crate::dbus::{
     types::{CompleteType, Message, Value},
 };
 use anyhow::Result;
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub(crate) struct PropertiesChanged<'a> {
-    pub(crate) path: Cow<'a, str>,
-    pub(crate) interface: Cow<'a, str>,
-    pub(crate) changes: HashMap<Cow<'a, str>, Value<'a>>,
+    pub(crate) path: &'a str,
+    pub(crate) interface: &'a str,
+    pub(crate) changes: HashMap<&'a str, Value<'a>>,
 }
 impl<'a> TryFrom<&'a Message<'a>> for PropertiesChanged<'a> {
     type Error = anyhow::Error;
@@ -39,12 +39,12 @@ impl<'a> TryFrom<&'a Message<'a>> for PropertiesChanged<'a> {
             value_is!(item, Value::DictEntry(key, value));
             value_is!(&**key, Value::String(key));
             value_is!(&**value, Value::Variant(value));
-            changes.insert(Cow::Borrowed(key.as_str()), *value.clone());
+            changes.insert(key.as_ref(), *value.clone());
         }
 
         Ok(Self {
-            path: path.clone(),
-            interface: Cow::Borrowed(interface),
+            path: path.as_ref(),
+            interface: interface.as_ref(),
             changes,
         })
     }

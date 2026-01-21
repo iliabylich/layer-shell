@@ -21,10 +21,10 @@ impl<'a> From<RemoveMatch<'a>> for Message<'a> {
             destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(format!(
+            body: vec![Value::String(Cow::Owned(format!(
                 "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{}'",
                 value.path
-            ))],
+            )))],
         }
     }
 }

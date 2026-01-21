@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use anyhow::{Context as _, Result, ensure};
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 pub(crate) struct Sound {
     sent_initial_event: bool,
@@ -53,7 +53,7 @@ impl Sound {
             value_is!(item, Value::DictEntry(key, value));
             value_is!(&**key, Value::String(key));
             value_is!(&**value, Value::Variant(value));
-            map.insert(Cow::Borrowed(key.as_str()), &**value);
+            map.insert(key.as_ref(), &**value);
         }
 
         let volume = map.remove("Volume").context("no Volume")?;

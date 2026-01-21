@@ -38,8 +38,8 @@ impl<'a> From<SetProperty<'a>> for Message<'a> {
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::String(message.interface.to_string()),
-                Value::String(message.property.to_string()),
+                Value::String(Cow::Borrowed(message.interface)),
+                Value::String(Cow::Borrowed(message.property)),
                 Value::Variant(Box::new(message.value)),
             ],
         }

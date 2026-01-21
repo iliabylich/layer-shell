@@ -54,22 +54,22 @@ impl MessageDecoder {
                     path = Some(value);
                 }
                 (HeaderFieldName::Interface, Value::String(value)) => {
-                    interface = Some(Cow::Owned(value));
+                    interface = Some(value);
                 }
                 (HeaderFieldName::Member, Value::String(value)) => {
-                    member = Some(Cow::Owned(value));
+                    member = Some(value);
                 }
                 (HeaderFieldName::ErrorName, Value::String(value)) => {
-                    error_name = Some(Cow::Owned(value));
+                    error_name = Some(value);
                 }
                 (HeaderFieldName::ReplySerial, Value::UInt32(value)) => {
                     reply_serial = Some(value);
                 }
                 (HeaderFieldName::Destination, Value::String(value)) => {
-                    destination = Some(Cow::Owned(value));
+                    destination = Some(value);
                 }
                 (HeaderFieldName::Sender, Value::String(value)) => {
-                    sender = Some(Cow::Owned(value));
+                    sender = Some(value);
                 }
                 (HeaderFieldName::Signature, Value::Signature(value)) => {
                     let mut buf = DecodingBuffer::new(&value);

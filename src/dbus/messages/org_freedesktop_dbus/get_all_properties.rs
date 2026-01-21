@@ -26,7 +26,7 @@ impl<'a> From<GetAllProperties<'a>> for Message<'a> {
             destination: Some(Cow::Borrowed(value.destination)),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(value.interface.to_string())],
+            body: vec![Value::String(Cow::Borrowed(value.interface))],
         }
     }
 }

@@ -1,5 +1,3 @@
-use std::{borrow::Cow, collections::HashMap};
-
 use crate::dbus::{
     DBus, Message,
     messages::{
@@ -10,6 +8,7 @@ use crate::dbus::{
     types::{CompleteType, Value},
 };
 use anyhow::{Context as _, Result, ensure};
+use std::collections::HashMap;
 
 pub(crate) struct SsidAndStrength {
     path: Option<String>,
@@ -80,7 +79,7 @@ impl SsidAndStrength {
             value_is!(item, Value::DictEntry(key, value));
             value_is!(&**key, Value::String(key));
             value_is!(&**value, Value::Variant(value));
-            map.insert(Cow::Borrowed(key.as_str()), &**value);
+            map.insert(key.as_ref(), &**value);
         }
 
         let ssid = map.remove("Ssid").context("no Ssid")?;

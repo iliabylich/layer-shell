@@ -51,11 +51,11 @@ impl ValueDecoder {
         buf.next_f64()
     }
 
-    fn decode_string(buf: &mut DecodingBuffer) -> Result<String> {
+    fn decode_string(buf: &mut DecodingBuffer) -> Result<Cow<'static, str>> {
         let len = Self::decode_u32(buf)? as usize;
         let s = String::from_utf8_lossy(buf.next_n(len)?).into_owned();
         buf.skip();
-        Ok(s)
+        Ok(Cow::Owned(s))
     }
 
     fn decode_object_path(buf: &mut DecodingBuffer) -> Result<Cow<'static, str>> {
