@@ -9,7 +9,7 @@ use std::{borrow::Cow, collections::HashMap};
 pub(crate) struct PropertiesChanged<'a> {
     pub(crate) path: Cow<'a, str>,
     pub(crate) interface: Cow<'a, str>,
-    pub(crate) changes: HashMap<Cow<'a, str>, Value>,
+    pub(crate) changes: HashMap<Cow<'a, str>, Value<'a>>,
 }
 impl<'a> TryFrom<&'a Message<'a>> for PropertiesChanged<'a> {
     type Error = anyhow::Error;

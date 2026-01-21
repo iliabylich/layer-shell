@@ -11,7 +11,7 @@ pub(crate) enum Message<'a> {
         destination: Option<Cow<'a, str>>,
         sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
-        body: Vec<Value>,
+        body: Vec<Value<'a>>,
     },
     MethodReturn {
         serial: u32,
@@ -19,7 +19,7 @@ pub(crate) enum Message<'a> {
         destination: Option<Cow<'a, str>>,
         sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
-        body: Vec<Value>,
+        body: Vec<Value<'a>>,
     },
     Error {
         serial: u32,
@@ -28,7 +28,7 @@ pub(crate) enum Message<'a> {
         destination: Option<Cow<'a, str>>,
         sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
-        body: Vec<Value>,
+        body: Vec<Value<'a>>,
     },
     Signal {
         serial: u32,
@@ -38,7 +38,7 @@ pub(crate) enum Message<'a> {
         destination: Option<Cow<'a, str>>,
         sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
-        body: Vec<Value>,
+        body: Vec<Value<'a>>,
     },
 }
 
@@ -126,17 +126,7 @@ impl<'a> Message<'a> {
         }
     }
 
-    pub(crate) fn body(&self) -> &[Value] {
-        match self {
-            Self::MethodCall { body, .. }
-            | Self::MethodReturn { body, .. }
-            | Self::Error { body, .. }
-            | Self::Signal { body, .. } => body,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn body_mut(&mut self) -> &mut Vec<Value> {
+    pub(crate) fn body(&self) -> &[Value<'a>] {
         match self {
             Self::MethodCall { body, .. }
             | Self::MethodReturn { body, .. }

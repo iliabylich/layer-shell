@@ -120,7 +120,7 @@ impl PrimaryDevice {
     }
 }
 
-fn sole(devices: &[Value]) -> Result<&Value> {
+fn sole<'a>(devices: &'a [Value<'a>]) -> Result<&'a Value<'a>> {
     let mut iter = devices.iter();
     let device = iter.next().context("empty device list")?;
     ensure!(iter.next().is_none(), "1+ devices");

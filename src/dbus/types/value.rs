@@ -2,7 +2,7 @@ use crate::dbus::types::signature::CompleteType;
 use std::borrow::Cow;
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) enum Value {
+pub(crate) enum Value<'a> {
     Byte(u8),
     Bool(bool),
     Int16(i16),
@@ -15,17 +15,17 @@ pub(crate) enum Value {
     UnixFD(u32),
 
     String(String),
-    ObjectPath(Cow<'static, str>),
+    ObjectPath(Cow<'a, str>),
     Signature(Vec<u8>),
-    Struct(Vec<Value>),
-    Array(CompleteType, Vec<Value>),
-    DictEntry(Box<Value>, Box<Value>),
-    Variant(Box<Value>),
+    Struct(Vec<Value<'a>>),
+    Array(CompleteType, Vec<Value<'a>>),
+    DictEntry(Box<Value<'a>>, Box<Value<'a>>),
+    Variant(Box<Value<'a>>),
 }
 
-impl Value {
+impl<'a> Value<'a> {
     #[allow(dead_code)]
-    pub(crate) fn new_non_empty_auto_array(items: Vec<Value>) -> Self {
+    pub(crate) fn new_non_empty_auto_array(items: Vec<Value<'a>>) -> Self {
         let Some(first_item) = items.first() else {
             panic!("an array must be non-empty");
         };

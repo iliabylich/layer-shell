@@ -120,7 +120,7 @@ fn build_message<'a>(
     destination: Option<Cow<'a, str>>,
     sender: Option<Cow<'a, str>>,
     unix_fds: Option<u32>,
-    body: Vec<Value>,
+    body: Vec<Value<'a>>,
 ) -> Result<Message<'a>> {
     match header.message_type {
         MessageType::MethodCall => {

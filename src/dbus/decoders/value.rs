@@ -80,7 +80,10 @@ impl ValueDecoder {
         Ok(s)
     }
 
-    fn decode_array(buf: &mut DecodingBuffer, item_type: &CompleteType) -> Result<Vec<Value>> {
+    fn decode_array(
+        buf: &mut DecodingBuffer,
+        item_type: &CompleteType,
+    ) -> Result<Vec<Value<'static>>> {
         let byte_len = Self::decode_u32(buf)? as usize;
 
         buf.align(item_type.alignment())?;
@@ -97,7 +100,10 @@ impl ValueDecoder {
         Ok(items)
     }
 
-    fn decode_struct(buf: &mut DecodingBuffer, field_types: &[CompleteType]) -> Result<Vec<Value>> {
+    fn decode_struct(
+        buf: &mut DecodingBuffer,
+        field_types: &[CompleteType],
+    ) -> Result<Vec<Value<'static>>> {
         buf.align(8)?;
         let mut fields = vec![];
         for field_type in field_types {
@@ -111,7 +117,7 @@ impl ValueDecoder {
         buf: &mut DecodingBuffer,
         key_type: &CompleteType,
         value_type: &CompleteType,
-    ) -> Result<(Value, Value)> {
+    ) -> Result<(Value<'static>, Value<'static>)> {
         buf.align(8)?;
         let key = Self::decode_value_by_complete_type(buf, key_type)?;
         let value = Self::decode_value_by_complete_type(buf, value_type)?;
@@ -121,7 +127,7 @@ impl ValueDecoder {
     pub(crate) fn decode_value_by_complete_type(
         buf: &mut DecodingBuffer,
         complete_type: &CompleteType,
-    ) -> Result<Value> {
+    ) -> Result<Value<'static>> {
         match complete_type {
             CompleteType::Byte => {
                 let value = Self::decode_u8(buf)?;
@@ -198,7 +204,7 @@ impl ValueDecoder {
     pub(crate) fn decode_values_by_signature(
         buf: &mut DecodingBuffer,
         signature: &Signature,
-    ) -> Result<Vec<Value>> {
+    ) -> Result<Vec<Value<'static>>> {
         let mut out = vec![];
         for complete_type in &signature.items {
             let value = Self::decode_value_by_complete_type(buf, complete_type)?;

@@ -6,7 +6,7 @@ pub(crate) struct SetProperty<'a> {
     path: &'a str,
     interface: &'a str,
     property: &'a str,
-    value: Value,
+    value: Value<'a>,
 }
 
 impl<'a> SetProperty<'a> {
@@ -15,7 +15,7 @@ impl<'a> SetProperty<'a> {
         path: &'a str,
         interface: &'a str,
         property: &'a str,
-        value: Value,
+        value: Value<'a>,
     ) -> Self {
         Self {
             destination,
