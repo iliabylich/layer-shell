@@ -3,16 +3,20 @@ use std::borrow::Cow;
 
 #[derive(Debug)]
 pub(crate) struct GetAllProperties<'a> {
-    destination: &'a str,
-    path: &'a str,
-    interface: &'a str,
+    destination: Cow<'a, str>,
+    path: Cow<'a, str>,
+    interface: Cow<'a, str>,
 }
 impl<'a> GetAllProperties<'a> {
-    pub(crate) fn new(destination: &'a str, path: &'a str, interface: &'a str) -> Self {
+    pub(crate) fn new(
+        destination: impl Into<Cow<'a, str>>,
+        path: impl Into<Cow<'a, str>>,
+        interface: impl Into<Cow<'a, str>>,
+    ) -> Self {
         Self {
-            destination,
-            path,
-            interface,
+            destination: destination.into(),
+            path: path.into(),
+            interface: interface.into(),
         }
     }
 }
@@ -20,13 +24,13 @@ impl<'a> From<GetAllProperties<'a>> for Message<'a> {
     fn from(value: GetAllProperties<'a>) -> Self {
         Message::MethodCall {
             serial: 0,
-            path: Cow::Borrowed(value.path),
+            path: value.path.clone(),
             member: Cow::Borrowed("GetAll"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus.Properties")),
-            destination: Some(Cow::Borrowed(value.destination)),
+            destination: Some(value.destination.clone()),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Borrowed(value.interface))],
+            body: vec![Value::String(value.interface.clone())],
         }
     }
 }

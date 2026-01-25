@@ -1,17 +1,14 @@
 use crate::dbus::{
-    DBus, Message,
-    messages::{
-        body_is, interface_is, message_is,
-        org_freedesktop_dbus::{AddMatch, GetProperty},
-        path_is, type_is, value_is,
-    },
-    types::{CompleteType, Value},
+    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+    messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
+    types::Value,
 };
-use anyhow::{Result, bail, ensure};
+use anyhow::{Result, bail};
 
 #[derive(Debug)]
 pub(crate) struct PrimaryConnection {
-    reply_serial: Option<u32>,
+    oneshot: Oneshot<Resource>,
+    subscription: Subscription<Resource>,
 }
 
 pub(crate) enum PrimaryConnectionEvent {
@@ -19,99 +16,81 @@ pub(crate) enum PrimaryConnectionEvent {
     Disconnected,
 }
 
-impl From<&str> for PrimaryConnectionEvent {
-    fn from(path: &str) -> Self {
+impl From<String> for PrimaryConnectionEvent {
+    fn from(path: String) -> Self {
         if path == "/" {
             PrimaryConnectionEvent::Disconnected
         } else {
-            PrimaryConnectionEvent::Connected(path.to_string())
+            PrimaryConnectionEvent::Connected(path)
         }
     }
 }
 
 impl PrimaryConnection {
     pub(crate) fn new() -> Self {
-        Self { reply_serial: None }
+        Self {
+            oneshot: Oneshot::new(Resource),
+            subscription: Subscription::new(Resource),
+        }
     }
 
-    fn request(&mut self, dbus: &mut DBus) {
-        let mut message: Message = GetProperty::new(
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+        self.oneshot.start(dbus, ());
+        self.subscription
+            .start(dbus, "/org/freedesktop/NetworkManager");
+    }
+
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryConnectionEvent> {
+        None.or_else(|| self.oneshot.process(message))
+            .or_else(|| self.subscription.process(message))
+            .map(PrimaryConnectionEvent::from)
+    }
+}
+
+struct Resource;
+impl OneshotResource for Resource {
+    type Input = ();
+    type Output = String;
+
+    fn make_request(&self, _input: Self::Input) -> Message<'static> {
+        GetProperty::new(
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
             "org.freedesktop.NetworkManager",
             "PrimaryConnection",
         )
-        .into();
-        dbus.enqueue(&mut message);
-        self.reply_serial = Some(message.serial());
+        .into()
     }
 
-    fn subscribe(&self, dbus: &mut DBus) {
-        let mut message: Message = AddMatch::new("/org/freedesktop/NetworkManager").into();
-        dbus.enqueue(&mut message);
-    }
-
-    fn try_parse_reply<'a>(&self, message: &'a Message<'a>) -> Result<&'a str> {
-        ensure!(self.reply_serial == message.reply_serial());
-        message_is!(message, Message::MethodReturn { body, .. });
+    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
         body_is!(body, [path]);
         value_is!(path, Value::Variant(path));
         value_is!(&**path, Value::ObjectPath(path));
 
-        Ok(path)
-    }
-
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
-        self.request(dbus);
-        self.subscribe(dbus);
-    }
-
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryConnectionEvent> {
-        if let Ok(path) = self.try_parse_reply(message) {
-            return Some(PrimaryConnectionEvent::from(path));
-        }
-
-        if let Ok(path) = try_parse_signal(message) {
-            return Some(PrimaryConnectionEvent::from(path));
-        }
-
-        None
+        Ok(path.to_string())
     }
 }
 
-fn try_parse_signal<'a>(message: &'a Message<'a>) -> Result<&'a str> {
-    message_is!(
-        message,
-        Message::Signal {
-            path,
-            interface,
-            body,
-            ..
+impl SubscriptionResource for Resource {
+    type Output = String;
+
+    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
+        path_is!(path, "/org/freedesktop/NetworkManager");
+        interface_is!(interface, "org.freedesktop.NetworkManager");
+
+        for item in items {
+            value_is!(item, Value::DictEntry(key, value));
+            value_is!(&**key, Value::String(key));
+            value_is!(&**value, Value::Variant(value));
+
+            if key == "PrimaryConnection" {
+                value_is!(&**value, Value::ObjectPath(value));
+                return Ok(value.to_string());
+            }
         }
-    );
 
-    interface_is!(interface, "org.freedesktop.DBus.Properties");
-    body_is!(
-        body,
-        [Value::String(interface), Value::Array(item_t, items), _]
-    );
-    type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
-    type_is!(&**key_t, CompleteType::String);
-    type_is!(&**value_t, CompleteType::Variant);
-
-    path_is!(path, "/org/freedesktop/NetworkManager");
-    interface_is!(interface, "org.freedesktop.NetworkManager");
-
-    for item in items {
-        value_is!(item, Value::DictEntry(key, value));
-        value_is!(&**key, Value::String(key));
-        value_is!(&**value, Value::Variant(value));
-
-        if key == "PrimaryConnection" {
-            value_is!(&**value, Value::ObjectPath(path));
-            return Ok(path.as_ref());
-        }
+        bail!("unrelated")
     }
 
-    bail!("unrelated")
+    fn set_path(&mut self, _: String) {}
 }

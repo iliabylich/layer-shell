@@ -182,7 +182,8 @@ impl IO {
         events: &mut Vec<Event>,
     ) -> Result<bool> {
         if let Some(message) = self.session_dbus.feed(user_data, res)? {
-            self.sound.on_message(&message, events);
+            self.sound
+                .on_message(&mut self.session_dbus, &message, events);
             self.tray
                 .on_message(&mut self.session_dbus, &message, events);
 

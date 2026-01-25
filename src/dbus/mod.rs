@@ -2,6 +2,7 @@ mod auth;
 mod decoders;
 mod encoders;
 mod read_write;
+mod requests;
 mod serial;
 
 use crate::{liburing::IoUring, user_data::UserData};
@@ -15,6 +16,7 @@ use std::os::{
 
 pub(crate) mod messages;
 pub(crate) mod types;
+pub(crate) use requests::{Oneshot, OneshotResource, Subscription, SubscriptionResource};
 pub(crate) use types::Message;
 
 #[expect(clippy::large_enum_variant)]

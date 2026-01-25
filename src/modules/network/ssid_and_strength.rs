@@ -1,18 +1,16 @@
 use crate::dbus::{
-    DBus, Message,
+    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
     messages::{
-        body_is, interface_is, message_is,
-        org_freedesktop_dbus::{AddMatch, GetAllProperties, PropertiesChanged, RemoveMatch},
-        path_is, type_is, value_is,
+        body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is, value_is,
     },
     types::{CompleteType, Value},
 };
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result};
 use std::collections::HashMap;
 
 pub(crate) struct SsidAndStrength {
-    path: Option<String>,
-    reply_serial: Option<u32>,
+    oneshot: Oneshot<Resource>,
+    subscription: Subscription<Resource>,
 }
 
 #[derive(Debug)]
@@ -24,51 +22,58 @@ pub(crate) struct SsidAndStrengthEvent {
 impl SsidAndStrength {
     pub(crate) fn new() -> Self {
         Self {
-            path: None,
-            reply_serial: None,
+            oneshot: Oneshot::new(Resource::default()),
+            subscription: Subscription::new(Resource::default()),
         }
     }
 
-    fn unsubscribe(&mut self, dbus: &mut DBus) {
-        let Some(path) = self.path.take() else {
-            return;
-        };
-
-        let mut message: Message = RemoveMatch::new(&path).into();
-        dbus.enqueue(&mut message);
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+        self.subscription.reset(dbus);
+        self.oneshot.reset();
     }
 
-    fn subscribe(&mut self, dbus: &mut DBus, path: &str) {
-        let mut message: Message = AddMatch::new(path).into();
-        dbus.enqueue(&mut message);
-        self.path = Some(path.to_string());
+    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
+        self.subscription.start(dbus, path);
+        self.oneshot.start(dbus, path.to_string());
     }
 
-    fn request(&mut self, dbus: &mut DBus, path: &str) {
-        let mut message: Message = GetAllProperties::new(
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<SsidAndStrengthEvent> {
+        None.or_else(|| self.oneshot.process(message))
+            .or_else(|| self.subscription.process(message))
+    }
+}
+
+fn parse_ssid(ssid: &Value) -> Result<String> {
+    value_is!(ssid, Value::Array(CompleteType::Byte, ssid));
+    let ssid = ssid
+        .iter()
+        .map(|byte| {
+            value_is!(byte, Value::Byte(byte));
+            Ok(*byte)
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let ssid = String::from_utf8_lossy(&ssid).to_string();
+    Ok(ssid)
+}
+
+#[derive(Default)]
+struct Resource {
+    path: Option<String>,
+}
+impl OneshotResource for Resource {
+    type Input = String;
+    type Output = SsidAndStrengthEvent;
+
+    fn make_request(&self, path: String) -> Message<'static> {
+        GetAllProperties::new(
             "org.freedesktop.NetworkManager",
             path,
             "org.freedesktop.NetworkManager.AccessPoint",
         )
-        .into();
-        dbus.enqueue(&mut message);
-        self.reply_serial = Some(message.serial())
+        .into()
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
-        self.unsubscribe(dbus);
-    }
-
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
-        self.unsubscribe(dbus);
-        self.subscribe(dbus, path);
-        self.request(dbus, path);
-    }
-
-    fn try_parse_reply(&self, message: &Message) -> Result<SsidAndStrengthEvent> {
-        ensure!(message.reply_serial() == self.reply_serial);
-        message_is!(message, Message::MethodReturn { body, .. });
-
+    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
         body_is!(body, [Value::Array(item_t, array)]);
         type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
         type_is!(&**key_t, CompleteType::String);
@@ -93,57 +98,36 @@ impl SsidAndStrength {
             strength: Some(*strength),
         })
     }
+}
 
-    fn try_parse_signal(&self, message: &Message) -> Result<SsidAndStrengthEvent> {
-        let expected_path = self.path.as_ref().context("not subscribed")?.as_str();
+impl SubscriptionResource for Resource {
+    type Output = SsidAndStrengthEvent;
 
-        let PropertiesChanged {
-            path,
-            interface,
-            mut changes,
-        } = PropertiesChanged::try_from(message)?;
-
-        path_is!(path, expected_path);
+    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
         interface_is!(interface, "org.freedesktop.NetworkManager.AccessPoint");
+        path_is!(path, self.path.as_deref().context("no path")?);
 
-        let ssid = if let Some(ssid) = changes.remove("Ssid") {
-            Some(parse_ssid(&ssid)?)
-        } else {
-            None
-        };
+        let mut ssid = None;
+        let mut strength = None;
 
-        let strength = if let Some(strength) = changes.remove("Strength") {
-            value_is!(strength, Value::Byte(strength));
-            Some(strength)
-        } else {
-            None
-        };
+        for item in items {
+            value_is!(item, Value::DictEntry(key, value));
+            value_is!(&**key, Value::String(key));
+            value_is!(&**value, Value::Variant(value));
+
+            if key == "Ssid" {
+                let value = parse_ssid(value)?;
+                ssid = Some(value);
+            } else if key == "Strength" {
+                value_is!(&**value, Value::Byte(value));
+                strength = Some(*value);
+            }
+        }
 
         Ok(SsidAndStrengthEvent { ssid, strength })
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<SsidAndStrengthEvent> {
-        if let Ok(e) = self.try_parse_reply(message) {
-            return Some(e);
-        }
-
-        if let Ok(e) = self.try_parse_signal(message) {
-            return Some(e);
-        }
-
-        None
+    fn set_path(&mut self, path: String) {
+        self.path = Some(path)
     }
-}
-
-fn parse_ssid(ssid: &Value) -> Result<String> {
-    value_is!(ssid, Value::Array(CompleteType::Byte, ssid));
-    let ssid = ssid
-        .iter()
-        .map(|byte| {
-            value_is!(byte, Value::Byte(byte));
-            Ok(*byte)
-        })
-        .collect::<Result<Vec<_>>>()?;
-    let ssid = String::from_utf8_lossy(&ssid).to_string();
-    Ok(ssid)
 }

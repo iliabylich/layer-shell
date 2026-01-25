@@ -1,48 +1,75 @@
 use crate::{
     Event,
     dbus::{
-        DBus, Message,
+        DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
         messages::{
-            body_is, interface_is, message_is,
-            org_freedesktop_dbus::{AddMatch, GetAllProperties, PropertiesChanged},
-            path_is, type_is, value_is,
+            body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is,
+            value_is,
         },
         types::{CompleteType, Value},
     },
 };
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result};
 use std::collections::HashMap;
 
 pub(crate) struct Sound {
-    sent_initial_event: bool,
-    reply_serial: Option<u32>,
+    oneshot: Oneshot<Resource>,
+    subscription: Subscription<Resource>,
 }
 
 impl Sound {
     pub(crate) fn new() -> Box<Self> {
         Box::new(Self {
-            sent_initial_event: false,
-            reply_serial: None,
+            oneshot: Oneshot::new(Resource),
+            subscription: Subscription::new(Resource),
         })
     }
 
     pub(crate) fn init(&mut self, dbus: &mut DBus) {
-        let mut message: Message = GetAllProperties::new(
+        self.oneshot.start(dbus, ());
+    }
+
+    pub(crate) fn on_message(
+        &mut self,
+        dbus: &mut DBus,
+        message: &Message,
+        events: &mut Vec<Event>,
+    ) {
+        if let Some((volume, muted)) = self.oneshot.process(message) {
+            events.push(Event::InitialSound { volume, muted });
+            self.subscription.start(dbus, "/org/local/PipewireDBus");
+
+            return;
+        }
+
+        if let Some((volume, muted)) = self.subscription.process(message) {
+            if let Some(volume) = volume {
+                events.push(Event::VolumeChanged { volume });
+            }
+
+            if let Some(muted) = muted {
+                events.push(Event::MuteChanged { muted });
+            }
+        }
+    }
+}
+
+struct Resource;
+
+impl OneshotResource for Resource {
+    type Input = ();
+    type Output = (u32, bool);
+
+    fn make_request(&self, _input: Self::Input) -> Message<'static> {
+        GetAllProperties::new(
             "org.local.PipewireDBus",
             "/org/local/PipewireDBus",
             "org.local.PipewireDBus",
         )
-        .into();
-        dbus.enqueue(&mut message);
-        self.reply_serial = Some(message.serial());
-
-        let mut message: Message = AddMatch::new("/org/local/PipewireDBus").into();
-        dbus.enqueue(&mut message);
+        .into()
     }
 
-    fn try_parse_reply(&self, message: &Message) -> Result<(u32, bool)> {
-        ensure!(message.reply_serial() == self.reply_serial);
-        message_is!(message, Message::MethodReturn { body, .. });
+    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
         body_is!(body, [Value::Array(item_t, array)]);
         type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
         type_is!(&**key_t, CompleteType::String);
@@ -64,51 +91,36 @@ impl Sound {
 
         Ok((volume, muted))
     }
+}
 
-    fn try_parse_signal(&self, message: &Message) -> Result<(Option<u32>, Option<bool>)> {
-        let PropertiesChanged {
-            path,
-            interface,
-            changes,
-        } = PropertiesChanged::try_from(message)?;
+impl SubscriptionResource for Resource {
+    type Output = (Option<u32>, Option<bool>);
 
+    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
         path_is!(path, "/org/local/PipewireDBus");
         interface_is!(interface, "org.local.PipewireDBus");
 
-        let volume = if let Some(volume) = changes.get("Volume") {
-            value_is!(volume, Value::UInt32(volume));
-            Some(*volume)
-        } else {
-            None
-        };
+        let mut volume = None;
+        let mut muted = None;
 
-        let muted = if let Some(muted) = changes.get("Muted") {
-            value_is!(muted, Value::Bool(muted));
-            Some(*muted)
-        } else {
-            None
-        };
+        for item in items {
+            value_is!(item, Value::DictEntry(key, value));
+            value_is!(&**key, Value::String(key));
+            value_is!(&**value, Value::Variant(value));
+
+            if key == "Volume" {
+                value_is!(&**value, Value::UInt32(value));
+                volume = Some(*value);
+            }
+
+            if key == "Muted" {
+                value_is!(&**value, Value::Bool(value));
+                muted = Some(*value);
+            }
+        }
 
         Ok((volume, muted))
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message, events: &mut Vec<Event>) {
-        if let Ok((volume, muted)) = self.try_parse_reply(message) {
-            events.push(Event::InitialSound { volume, muted });
-            self.sent_initial_event = true;
-            return;
-        }
-
-        if self.sent_initial_event
-            && let Ok((volume, muted)) = self.try_parse_signal(message)
-        {
-            if let Some(volume) = volume {
-                events.push(Event::VolumeChanged { volume });
-            }
-
-            if let Some(muted) = muted {
-                events.push(Event::MuteChanged { muted });
-            }
-        }
-    }
+    fn set_path(&mut self, _: String) {}
 }

@@ -1,55 +1,58 @@
 use crate::dbus::{
-    DBus, Message,
-    messages::{body_is, message_is, org_freedesktop_dbus::GetProperty, value_is},
+    DBus, Message, Oneshot, OneshotResource,
+    messages::{body_is, org_freedesktop_dbus::GetProperty, value_is},
     types::Value,
 };
-use anyhow::{Result, ensure};
+use anyhow::Result;
 
 pub(crate) struct ActiveConnectionType {
-    reply_serial: Option<u32>,
     path: Option<String>,
+    oneshot: Oneshot<Resource>,
 }
 
 impl ActiveConnectionType {
     pub(crate) fn new() -> Self {
         Self {
-            reply_serial: None,
             path: None,
+            oneshot: Oneshot::new(Resource),
         }
     }
 
     pub(crate) fn request(&mut self, dbus: &mut DBus, path: &str) {
-        let mut message: Message = GetProperty::new(
+        self.oneshot.start(dbus, path.to_string());
+        self.path = Some(path.to_string())
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.oneshot.reset();
+    }
+
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<(bool, String)> {
+        let is_wireless = self.oneshot.process(message)?;
+        Some((is_wireless, self.path.clone()?))
+    }
+}
+
+struct Resource;
+impl OneshotResource for Resource {
+    type Input = String;
+    type Output = bool;
+
+    fn make_request(&self, path: String) -> Message<'static> {
+        GetProperty::new(
             "org.freedesktop.NetworkManager",
             path,
             "org.freedesktop.NetworkManager.Connection.Active",
             "Type",
         )
-        .into();
-        dbus.enqueue(&mut message);
-        self.reply_serial = Some(message.serial());
-        self.path = Some(path.to_string())
+        .into()
     }
 
-    pub(crate) fn reset(&mut self) {
-        self.reply_serial = None;
-    }
-
-    fn try_parse_reply<'a>(&self, message: &'a Message<'a>) -> Result<&'a str> {
-        ensure!(self.reply_serial == message.reply_serial());
-        message_is!(message, Message::MethodReturn { body, .. });
+    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
         body_is!(body, [type_]);
         value_is!(type_, Value::Variant(type_));
         value_is!(&**type_, Value::String(type_));
 
-        Ok(type_.as_ref())
-    }
-
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<(bool, String)> {
-        if let Ok(type_) = self.try_parse_reply(message) {
-            return Some((type_.contains("wireless"), self.path.clone()?));
-        }
-
-        None
+        Ok(type_.contains("wireless"))
     }
 }

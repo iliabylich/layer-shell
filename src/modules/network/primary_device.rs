@@ -1,17 +1,13 @@
 use crate::dbus::{
-    DBus, Message,
-    messages::{
-        body_is, interface_is, message_is,
-        org_freedesktop_dbus::{AddMatch, GetProperty, RemoveMatch},
-        path_is, type_is, value_is,
-    },
+    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+    messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     types::{CompleteType, Value},
 };
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, bail};
 
 pub(crate) struct PrimaryDevice {
-    path: Option<String>,
-    reply_serial: Option<u32>,
+    oneshot: Oneshot<Resource>,
+    subscription: Subscription<Resource>,
 }
 
 #[derive(Debug)]
@@ -19,12 +15,12 @@ pub(crate) enum PrimaryDeviceEvent {
     Connected(String),
     Disconnected,
 }
-impl From<&str> for PrimaryDeviceEvent {
-    fn from(path: &str) -> Self {
+impl From<String> for PrimaryDeviceEvent {
+    fn from(path: String) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
-            Self::Connected(path.to_string())
+            Self::Connected(path)
         }
     }
 }
@@ -32,112 +28,81 @@ impl From<&str> for PrimaryDeviceEvent {
 impl PrimaryDevice {
     pub(crate) fn new() -> Self {
         Self {
-            path: None,
-            reply_serial: None,
+            oneshot: Oneshot::new(Resource),
+            subscription: Subscription::new(Resource),
         }
     }
 
-    fn unsubscribe(&mut self, dbus: &mut DBus) {
-        let Some(old_path) = self.path.take() else {
-            return;
-        };
-
-        let mut message: Message = RemoveMatch::new(&old_path).into();
-        dbus.enqueue(&mut message);
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+        self.subscription.reset(dbus);
+        self.oneshot.reset();
     }
 
-    fn subscribe(&mut self, dbus: &mut DBus, path: &str) {
-        let mut message: Message = AddMatch::new(path).into();
-        dbus.enqueue(&mut message);
-        self.path = Some(path.to_string())
+    pub(crate) fn init(&mut self, path: String, dbus: &mut DBus) {
+        self.subscription.start(dbus, &path);
+        self.oneshot.start(dbus, path);
     }
 
-    fn request(&mut self, dbus: &mut DBus, path: &str) {
-        let mut message: Message = GetProperty::new(
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryDeviceEvent> {
+        None.or_else(|| self.oneshot.process(message))
+            .or_else(|| self.subscription.process(message))
+            .map(PrimaryDeviceEvent::from)
+    }
+}
+
+struct Resource;
+
+impl OneshotResource for Resource {
+    type Input = String;
+    type Output = String;
+
+    fn make_request(&self, path: String) -> Message<'static> {
+        GetProperty::new(
             "org.freedesktop.NetworkManager",
             path,
             "org.freedesktop.NetworkManager.Connection.Active",
             "Devices",
         )
-        .into();
-        dbus.enqueue(&mut message);
-        self.reply_serial = Some(message.serial());
+        .into()
     }
 
-    fn try_parse_reply<'a>(&self, message: &'a Message<'a>) -> Result<&'a str> {
-        ensure!(message.reply_serial() == self.reply_serial);
-        message_is!(message, Message::MethodReturn { body, .. });
+    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
         body_is!(body, [devices]);
         value_is!(devices, Value::Variant(devices));
         value_is!(&**devices, Value::Array(CompleteType::ObjectPath, devices));
         let device = devices.first().context("expected at least one device")?;
         value_is!(device, Value::ObjectPath(device));
 
-        Ok(device.as_ref())
-    }
-
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
-        self.unsubscribe(dbus);
-    }
-
-    pub(crate) fn init(&mut self, path: String, dbus: &mut DBus) {
-        self.unsubscribe(dbus);
-        self.subscribe(dbus, &path);
-        self.request(dbus, &path);
-    }
-
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryDeviceEvent> {
-        if let Ok(device) = self.try_parse_reply(message) {
-            return Some(PrimaryDeviceEvent::from(device));
-        }
-
-        if let Ok(device) = try_parse_signal(message) {
-            return Some(PrimaryDeviceEvent::from(device));
-        }
-
-        None
+        Ok(device.to_string())
     }
 }
 
-fn try_parse_signal<'a>(message: &'a Message<'a>) -> Result<&'a str> {
-    message_is!(
-        message,
-        Message::Signal {
-            path,
+impl SubscriptionResource for Resource {
+    type Output = String;
+
+    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
+        path_is!(path, "/org/freedesktop/NetworkManager");
+        interface_is!(
             interface,
-            body,
-            ..
+            "org.freedesktop.NetworkManager.Connection.Active"
+        );
+
+        for item in items {
+            value_is!(item, Value::DictEntry(key, value));
+            value_is!(&**key, Value::String(key));
+            value_is!(&**value, Value::Variant(value));
+
+            if key == "Devices" {
+                let devices = value;
+                value_is!(&**devices, Value::Array(CompleteType::ObjectPath, devices));
+                let device = devices.first().context("expected at least one device")?;
+                value_is!(device, Value::ObjectPath(device));
+                return Ok(device.to_string());
+            }
         }
-    );
 
-    interface_is!(interface, "org.freedesktop.DBus.Properties");
-    body_is!(
-        body,
-        [Value::String(interface), Value::Array(item_t, items), _]
-    );
-    type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
-    type_is!(&**key_t, CompleteType::String);
-    type_is!(&**value_t, CompleteType::Variant);
-
-    path_is!(path, "/org/freedesktop/NetworkManager");
-    interface_is!(
-        interface,
-        "org.freedesktop.NetworkManager.Connection.Active"
-    );
-
-    for item in items {
-        value_is!(item, Value::DictEntry(key, value));
-        value_is!(&**key, Value::String(key));
-        value_is!(&**value, Value::Variant(value));
-
-        if key == "Devices" {
-            let devices = value;
-            value_is!(&**devices, Value::Array(CompleteType::ObjectPath, devices));
-            let device = devices.first().context("expected at least one device")?;
-            value_is!(device, Value::ObjectPath(device));
-            return Ok(device.as_ref());
-        }
+        bail!("unrelated")
     }
 
-    bail!("unrelated")
+    fn set_path(&mut self, _: String) {}
 }

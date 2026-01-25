@@ -1,16 +1,13 @@
 use crate::dbus::{
-    DBus, Message,
-    messages::{
-        interface_is,
-        org_freedesktop_dbus::{AddMatch, PropertiesChanged, SetProperty},
-        path_is, value_is,
-    },
+    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+    messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
     types::Value,
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 
 pub(crate) struct TxRx {
-    path: Option<String>,
+    oneshot: Oneshot<Resource>,
+    subscription: Subscription<Resource>,
 }
 
 #[derive(Debug)]
@@ -21,86 +18,83 @@ pub(crate) struct TxRxEvent {
 
 impl TxRx {
     pub(crate) fn new() -> Self {
-        Self { path: None }
+        Self {
+            oneshot: Oneshot::new(Resource::default()),
+            subscription: Subscription::new(Resource::default()),
+        }
     }
 
-    fn configure(&self, dbus: &mut DBus, path: &str) {
-        let mut message: Message = SetProperty::new(
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+        self.oneshot.reset();
+        self.subscription.reset(dbus);
+    }
+
+    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
+        self.oneshot.start(dbus, path.to_string());
+        self.subscription.start(dbus, path);
+    }
+
+    pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {
+        self.subscription.process(message)
+    }
+}
+
+#[derive(Default)]
+struct Resource {
+    path: Option<String>,
+}
+
+impl OneshotResource for Resource {
+    type Input = String;
+    type Output = ();
+
+    fn make_request(&self, path: String) -> Message<'static> {
+        SetProperty::new(
             "org.freedesktop.NetworkManager",
             path,
             "org.freedesktop.NetworkManager.Device.Statistics",
             "RefreshRateMs",
             Value::UInt32(1000),
         )
-        .into();
-        dbus.enqueue(&mut message);
+        .into()
     }
 
-    fn subscribe(&mut self, dbus: &mut DBus, path: &str) {
-        let mut message: Message = AddMatch::new(path).into();
-        dbus.enqueue(&mut message);
-        self.path = Some(path.to_string())
+    fn try_process(&self, _body: &[Value]) -> Result<Self::Output> {
+        panic!("doesn't have to be checked")
     }
+}
 
-    fn unsubscribe(&mut self, dbus: &mut DBus) {
-        let Some(path) = self.path.take() else {
-            return;
-        };
-        let mut message: Message = AddMatch::new(&path).into();
-        dbus.enqueue(&mut message);
-    }
+impl SubscriptionResource for Resource {
+    type Output = TxRxEvent;
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
-        self.unsubscribe(dbus);
-    }
-
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
-        self.unsubscribe(dbus);
-        self.configure(dbus, path);
-        self.subscribe(dbus, path);
-    }
-
-    fn try_parse_signal(&self, message: &Message) -> Result<TxRxEvent> {
-        let expected_path = self.path.as_ref().context("not subscribed")?.as_str();
-
-        let PropertiesChanged {
-            path,
-            changes,
-            interface,
-        } = PropertiesChanged::try_from(message)?;
-
-        path_is!(path, expected_path);
+    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
         interface_is!(
             interface,
             "org.freedesktop.NetworkManager.Device.Statistics"
         );
+        path_is!(path, self.path.as_deref().context("no path")?);
 
-        let tx = if let Some(tx) = changes.get("TxBytes") {
-            value_is!(tx, Value::UInt64(tx));
-            Some(*tx)
-        } else {
-            None
-        };
+        let mut tx = None;
+        let mut rx = None;
 
-        let rx = if let Some(rx) = changes.get("RxBytes") {
-            value_is!(rx, Value::UInt64(rx));
-            Some(*rx)
-        } else {
-            None
-        };
+        for item in items {
+            value_is!(item, Value::DictEntry(key, value));
+            value_is!(&**key, Value::String(key));
+            value_is!(&**value, Value::Variant(value));
 
-        if tx.is_some() || rx.is_some() {
-            Ok(TxRxEvent { tx, rx })
-        } else {
-            bail!("unrelated")
+            if key == "TxBytes" {
+                value_is!(&**value, Value::UInt64(value));
+                tx = Some(*value);
+            } else if key == "RxBytes" {
+                value_is!(&**value, Value::UInt64(value));
+                rx = Some(*value);
+            }
         }
+
+        Ok(TxRxEvent { tx, rx })
     }
 
-    pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {
-        if let Ok(e) = self.try_parse_signal(message) {
-            return Some(e);
-        }
-
-        None
+    fn set_path(&mut self, path: String) {
+        self.path = Some(path)
     }
 }
