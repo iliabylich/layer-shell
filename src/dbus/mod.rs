@@ -1,6 +1,7 @@
 mod auth;
 mod decoders;
 mod encoders;
+mod introspectible_object_at;
 mod read_write;
 mod requests;
 mod serial;
@@ -16,6 +17,7 @@ use std::os::{
 
 pub(crate) mod messages;
 pub(crate) mod types;
+pub(crate) use introspectible_object_at::{IntrospectibleObjectAt, IntrospectibleObjectAtRequest};
 pub(crate) use requests::{Oneshot, OneshotResource, Subscription, SubscriptionResource};
 pub(crate) use types::Message;
 

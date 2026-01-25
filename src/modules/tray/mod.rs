@@ -5,6 +5,7 @@ use crate::{
 use status_notifier_watcher::StatusNotifierWatcher;
 
 mod status_notifier_watcher;
+mod status_notifier_watcher_introspection;
 
 pub(crate) struct Tray {
     status_notifier_watcher: StatusNotifierWatcher,
@@ -27,6 +28,8 @@ impl Tray {
         message: &Message,
         events: &mut Vec<Event>,
     ) {
-        self.status_notifier_watcher.on_message(dbus, message);
+        if let Some(address) = self.status_notifier_watcher.on_message(dbus, message) {
+            println!("NEW SERVICE: {address:?}");
+        }
     }
 }

@@ -1,22 +1,27 @@
-use crate::dbus::{
-    DBus, Message,
-    messages::{
-        body_is, destination_is, interface_is,
-        introspect::{IntrospectRequest, IntrospectResponse},
-        message_is,
-        org_freedesktop_dbus::RequestName,
-        path_is,
+use crate::{
+    dbus::{
+        DBus, Message,
+        messages::{
+            body_is, destination_is, interface_is, message_is, org_freedesktop_dbus::RequestName,
+            path_is, value_is,
+        },
+        types::Value,
     },
+    modules::tray::status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
 };
 use anyhow::Result;
 
 pub(crate) struct StatusNotifierWatcher {
     reply_serial: Option<u32>,
+    introspection: StatusNotifierWatcherIntrospection,
 }
 
 impl StatusNotifierWatcher {
     pub(crate) fn new() -> Self {
-        Self { reply_serial: None }
+        Self {
+            reply_serial: None,
+            introspection: StatusNotifierWatcherIntrospection::new(),
+        }
     }
 
     pub(crate) fn request(&mut self, dbus: &mut DBus) {
@@ -30,95 +35,70 @@ impl StatusNotifierWatcher {
         dbus.enqueue(&mut reply);
     }
 
-    fn reply_err(dbus: &mut DBus, serial: u32, destination: &str) {
-        let mut reply = Message::new_err_no_method(serial, destination);
-        dbus.enqueue(&mut reply);
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+        self.request(dbus);
     }
 
-    fn try_parse_introspect_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, u32)> {
-        let IntrospectRequest {
-            destination,
-            path,
-            sender,
-            serial,
-        } = IntrospectRequest::try_from(message)?;
+    pub(crate) fn on_message(&mut self, dbus: &mut DBus, message: &Message) -> Option<String> {
+        if self.introspection.process_message(dbus, message) {
+            return None;
+        }
 
-        destination_is!(destination, "org.kde.StatusNotifierWatcher");
-        path_is!(path, "/");
-        Ok((sender, serial))
+        if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
+            match req {
+                KSNIRequest::NewItem { address } => {
+                    Self::reply_ok(dbus, serial, &sender);
+                    return Some(address);
+                }
+                KSNIRequest::Other => {
+                    Self::reply_ok(dbus, serial, &sender);
+                    return None;
+                }
+            }
+        }
+
+        None
     }
+}
 
-    fn try_parse_sni_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, &'a str, u32)> {
+enum KSNIRequest {
+    NewItem { address: String },
+    Other,
+}
+
+impl KSNIRequest {
+    fn parse(message: &Message) -> Result<(u32, String, Self)> {
         message_is!(
             message,
             Message::MethodCall {
+                serial,
                 path,
                 member,
                 interface: Some(interface),
                 destination: Some(destination),
-                body,
                 sender: Some(sender),
-                serial,
+                body,
                 ..
             }
         );
 
         path_is!(path, "/StatusNotifierWatcher");
-        destination_is!(destination.as_ref(), "org.kde.StatusNotifierWatcher");
-        interface_is!(interface.as_ref(), "org.kde.StatusNotifierWatcher");
-        body_is!(body, []);
+        interface_is!(interface, "org.kde.StatusNotifierWatcher");
+        destination_is!(destination, "org.kde.StatusNotifierWatcher");
 
-        Ok((member.as_ref(), sender.as_ref(), *serial))
+        let req = match member.as_ref() {
+            "RegisterStatusNotifierItem" => {
+                body_is!(body, [address]);
+                value_is!(address, Value::String(address));
+
+                Self::NewItem {
+                    address: address.to_string(),
+                }
+            }
+
+            _ => Self::Other,
+        };
+
+        Ok((*serial, sender.to_string(), req))
     }
-
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
-        self.request(dbus);
-    }
-
-    pub(crate) fn on_message(&mut self, dbus: &mut DBus, message: &Message) {
-        if let Ok((sender, serial)) = Self::try_parse_introspect_req(message) {
-            let mut reply: Message = IntrospectResponse::new(serial, &sender, INTROSPECTION).into();
-            dbus.enqueue(&mut reply);
-            return;
-        }
-
-        if let Ok((_member, _sender, _serial)) = Self::try_parse_sni_req(message) {}
-
-        println!("{message:?}")
-    }
-}
-
-const INTROSPECTION: &str = r#"
-<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
-<node>
-    <interface name="org.kde.StatusNotifierWatcher">
-
-        <method name="RegisterStatusNotifierItem">
-            <arg name="service" type="s" direction="in" />
-        </method>
-
-        <method name="RegisterStatusNotifierHost">
-            <arg name="service" type="s" direction="in" />
-        </method>
-
-        <property name="RegisteredStatusNotifierItems" type="as" access="read" />
-        <property name="IsStatusNotifierHostRegistered" type="b" access="read" />
-        <property name="ProtocolVersion" type="i" access="read" />
-
-        <signal name="StatusNotifierItemRegistered">
-            <arg type="s" />
-        </signal>
-        <signal name="StatusNotifierItemUnregistered">
-            <arg type="s" />
-        </signal>
-        <signal name="StatusNotifierHostRegistered" />
-        <signal name="StatusNotifierHostUnregistered" />
-
-    </interface>
-</node>
-"#;
-
-enum KSNIRequest<'a> {
-    RegisteredStatusNotifierItem { service: &'a str },
-    RegisterStatusNotifierHost { service: &'a str },
 }

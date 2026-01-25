@@ -46,7 +46,7 @@ where
 
     fn subscribe(&mut self, dbus: &mut DBus, path: impl AsRef<str>) {
         let path = path.as_ref();
-        let mut message: Message = AddMatch::new(path.as_ref()).into();
+        let mut message: Message = AddMatch::new(path).into();
         dbus.enqueue(&mut message);
         self.path = Some(path.to_string());
         self.resource.set_path(path.to_string());

@@ -28,7 +28,8 @@ impl Control {
         dbus: &mut DBus,
     ) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
-            let mut reply: Message = IntrospectResponse::new(serial, sender, INTROSPECTION).into();
+            let mut reply: Message =
+                IntrospectResponse::new(serial, sender, INTROSPECTION.to_string()).into();
             dbus.enqueue(&mut reply);
             return None;
         }

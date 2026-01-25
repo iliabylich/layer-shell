@@ -46,11 +46,11 @@ impl<'a> TryFrom<&'a Message<'a>> for IntrospectRequest<'a> {
 pub(crate) struct IntrospectResponse<'a> {
     reply_serial: u32,
     destination: &'a str,
-    xml: &'static str,
+    xml: String,
 }
 
 impl<'a> IntrospectResponse<'a> {
-    pub(crate) fn new(reply_serial: u32, destination: &'a str, xml: &'static str) -> Self {
+    pub(crate) fn new(reply_serial: u32, destination: &'a str, xml: String) -> Self {
         Self {
             reply_serial,
             destination,
@@ -67,7 +67,7 @@ impl<'a> From<IntrospectResponse<'a>> for Message<'a> {
             destination: Some(Cow::Borrowed(value.destination)),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Borrowed(value.xml))],
+            body: vec![Value::String(Cow::Owned(value.xml))],
         }
     }
 }
