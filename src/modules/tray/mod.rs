@@ -2,24 +2,34 @@ use crate::{
     Event,
     dbus::{DBus, Message},
 };
+use name_lost_or_changed::NameLostOrNameOwnerChanged;
 use status_notifier_watcher::StatusNotifierWatcher;
+use std::collections::HashMap;
+use tray_app::TrayApp;
 
+mod name_lost_or_changed;
 mod status_notifier_watcher;
 mod status_notifier_watcher_introspection;
+mod tray_app;
 
 pub(crate) struct Tray {
     status_notifier_watcher: StatusNotifierWatcher,
+    name_lost_or_changed: NameLostOrNameOwnerChanged,
+    registry: HashMap<String, TrayApp>,
 }
 
 impl Tray {
     pub(crate) fn new() -> Box<Self> {
         Box::new(Self {
             status_notifier_watcher: StatusNotifierWatcher::new(),
+            name_lost_or_changed: NameLostOrNameOwnerChanged::new(),
+            registry: HashMap::new(),
         })
     }
 
     pub(crate) fn init(&mut self, dbus: &mut DBus) {
         self.status_notifier_watcher.init(dbus);
+        self.name_lost_or_changed.init(dbus);
     }
 
     pub(crate) fn on_message(
@@ -29,7 +39,11 @@ impl Tray {
         events: &mut Vec<Event>,
     ) {
         if let Some(address) = self.status_notifier_watcher.on_message(dbus, message) {
-            println!("NEW SERVICE: {address:?}");
+            self.registry.insert(address.clone(), TrayApp::new(address));
+        }
+
+        if let Some(address) = self.name_lost_or_changed.on_message(message) {
+            self.registry.remove(&address);
         }
     }
 }
