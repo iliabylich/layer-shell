@@ -46,9 +46,7 @@ impl Hyprland {
         self.queue.push_back(Box::new(Dispatch::new(cmd)));
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
-        let mut drained = false;
-
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<()> {
         if self.writer.is_finished()
             && let Some(res) = self.queue.pop_front()
         {
@@ -62,21 +60,20 @@ impl Hyprland {
             if !drained_on_current_iteration {
                 break;
             }
-            drained |= drained_on_current_iteration;
         }
 
-        Ok(drained)
+        Ok(())
     }
 
     pub(crate) fn feed(
         &mut self,
         module_id: ModuleId,
-        op_id: u8,
+        op: u8,
         res: i32,
         events: &mut Vec<Event>,
     ) -> Result<()> {
         if module_id == ModuleId::HyprlandWriter {
-            if let Some(reply) = self.writer.feed(op_id, res)? {
+            if let Some(reply) = self.writer.feed(op, res)? {
                 match reply {
                     WriterReply::WorkspaceList(workspace_ids) => {
                         self.state.init_workspace_ids(workspace_ids);
@@ -101,7 +98,7 @@ impl Hyprland {
             }
         } else if module_id == ModuleId::HyprlandReader {
             let mut hevents = vec![];
-            self.reader.feed(op_id, res, &mut hevents)?;
+            self.reader.feed(op, res, &mut hevents)?;
             for hevent in hevents {
                 let event = self.state.apply(hevent);
                 events.push(event);

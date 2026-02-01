@@ -9,17 +9,10 @@ pub(crate) use tick::Tick;
 
 mod tick;
 
-#[derive(Debug)]
-enum State {
-    CanRead,
-    Reading,
-}
-
 pub(crate) struct Timerfd {
     fd: i32,
     buf: [u8; 8],
     ticks: u64,
-    state: State,
 }
 
 #[derive(Debug)]
@@ -27,9 +20,14 @@ pub(crate) struct Timerfd {
 enum Op {
     Read = 1,
 }
-impl From<Op> for u8 {
-    fn from(value: Op) -> Self {
-        value as u8
+const MAX_OP: u8 = Op::Read as u8;
+
+impl TryFrom<u8> for Op {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value <= MAX_OP);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
     }
 }
 
@@ -56,7 +54,6 @@ impl Timerfd {
             fd,
             buf: [0; 8],
             ticks: 0,
-            state: State::CanRead,
         };
 
         let res = unsafe { timerfd_settime(this.fd, 0, &timer_spec, null_mut()) };
@@ -69,34 +66,28 @@ impl Timerfd {
         Ok(Box::new(this))
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
-        match self.state {
-            State::CanRead => {
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(UserData::new(ModuleId::TimerFD, Op::Read));
-
-                self.state = State::Reading;
-                Ok(true)
-            }
-            State::Reading => Ok(false),
-        }
+    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
+        self.schedule_read(ring)
     }
 
-    pub(crate) fn feed(&mut self, op: u8) -> Result<Option<Tick>> {
-        if op == Op::Read as u8 {
-            ensure!(
-                matches!(self.state, State::Reading),
-                "malformed state, expected Reading, got {:?}",
-                self.state
-            );
-            let ticks = self.ticks;
-            self.ticks += 1;
-            self.state = State::CanRead;
-            return Ok(Some(Tick(ticks)));
-        }
+    fn schedule_read(&mut self, ring: &mut IoUring) -> Result<()> {
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
+        sqe.set_user_data(UserData::new(ModuleId::TimerFD, Op::Read as u8));
+        Ok(())
+    }
 
-        Ok(None)
+    pub(crate) fn process(&mut self, op: u8, ring: &mut IoUring) -> Result<Tick> {
+        match Op::try_from(op)? {
+            Op::Read => {
+                let ticks = self.ticks;
+                self.ticks += 1;
+
+                self.schedule_read(ring)?;
+
+                Ok(Tick(ticks))
+            }
+        }
     }
 }
 

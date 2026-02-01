@@ -4,7 +4,7 @@ use crate::{
     user_data::{ModuleId, UserData},
 };
 use anyhow::{Result, ensure};
-use std::{collections::VecDeque, os::fd::AsRawFd};
+use std::collections::VecDeque;
 
 #[derive(Debug, Default)]
 enum State {
@@ -53,6 +53,16 @@ enum Op {
     ReadGUID,
     WriteBegin,
 }
+const MAX_OP: u8 = Op::WriteBegin as u8;
+
+impl TryFrom<u8> for Op {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value <= MAX_OP);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+    }
+}
 
 impl Auth {
     pub(crate) fn new(fd: i32, module_id: ModuleId) -> Self {
@@ -72,164 +82,117 @@ impl Auth {
         self.queue.push_back(bytes);
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<()> {
         match self.state {
             State::CanWriteZero => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, c"".as_ptr().cast(), 1);
                 sqe.set_user_data(UserData::new(self.module_id, Op::WriteZero as u8));
                 self.state = State::WritingZero;
-                Ok(true)
+                Ok(())
             }
-            State::WritingZero => Ok(false),
+            State::WritingZero => Ok(()),
 
             State::CanWriteAuthExternal => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, AUTH_EXTERNAL.as_ptr(), AUTH_EXTERNAL.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::WriteAuthExternal as u8));
                 self.state = State::WritingAuthExternal;
-                Ok(true)
+                Ok(())
             }
-            State::WritingAuthExternal => Ok(false),
+            State::WritingAuthExternal => Ok(()),
 
             State::CanReadData => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::ReadData as u8));
                 self.state = State::ReadingData;
-                Ok(true)
+                Ok(())
             }
-            State::ReadingData => Ok(false),
+            State::ReadingData => Ok(()),
 
             State::CanWriteData => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, DATA.as_ptr(), DATA.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::WriteData as u8));
                 self.state = State::WritingData;
-                Ok(true)
+                Ok(())
             }
-            State::WritingData => Ok(false),
+            State::WritingData => Ok(()),
 
             State::CanReadGUID => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::ReadGUID as u8));
                 self.state = State::ReadingGUID;
-                Ok(true)
+                Ok(())
             }
-            State::ReadingGUID => Ok(false),
+            State::ReadingGUID => Ok(()),
 
             State::CanWriteBegin => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, BEGIN.as_ptr(), BEGIN.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin as u8));
                 self.state = State::WritingBegin;
-                Ok(true)
+                Ok(())
             }
-            State::WritingBegin => Ok(false),
+            State::WritingBegin => Ok(()),
 
-            State::Finished => Ok(false),
+            State::Finished => Ok(()),
         }
     }
 
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<bool> {
-        if op_id == Op::WriteZero as u8 {
-            ensure!(
-                matches!(self.state, State::WritingZero),
-                "malformed state, expected WritingZero, got {:?}",
-                self.state
-            );
+    pub(crate) fn feed(
+        &mut self,
+        op: u8,
+        res: i32,
+    ) -> Result<Option<(i32, Serial, VecDeque<Vec<u8>>)>> {
+        match Op::try_from(op)? {
+            Op::WriteZero => {
+                assert!(res > 0);
+                let written = res as usize;
+                assert_eq!(written, 1);
+                self.state = State::CanWriteAuthExternal;
+                Ok(None)
+            }
+            Op::WriteAuthExternal => {
+                assert!(res > 0);
+                let written = res as usize;
+                assert_eq!(written, AUTH_EXTERNAL.len());
+                self.state = State::CanReadData;
+                Ok(None)
+            }
+            Op::ReadData => {
+                assert!(res > 0);
+                let read = res as usize;
+                assert_eq!(read, DATA.len());
+                assert_eq!(&self.buf[..read], DATA);
+                self.state = State::CanWriteData;
+                Ok(None)
+            }
+            Op::WriteData => {
+                assert!(res > 0);
+                let written = res as usize;
+                assert_eq!(written, DATA.len());
+                self.state = State::CanReadGUID;
+                Ok(None)
+            }
+            Op::ReadGUID => {
+                assert!(res > 0);
+                self.state = State::CanWriteBegin;
+                Ok(None)
+            }
+            Op::WriteBegin => {
+                assert!(res > 0);
+                let written = res as usize;
+                assert_eq!(written, BEGIN.len());
+                self.state = State::Finished;
 
-            assert!(res > 0);
-            let written = res as usize;
-            assert_eq!(written, 1);
-            self.state = State::CanWriteAuthExternal;
-            return Ok(false);
+                let fd = self.fd;
+                let serial = std::mem::take(&mut self.serial);
+                let queue = std::mem::take(&mut self.queue);
+                Ok(Some((fd, serial, queue)))
+            }
         }
-
-        if op_id == Op::WriteAuthExternal as u8 {
-            ensure!(
-                matches!(self.state, State::WritingAuthExternal),
-                "malformed state, expected WritingAuthExternal, got {:?}",
-                self.state
-            );
-
-            assert!(res > 0);
-            let written = res as usize;
-            assert_eq!(written, AUTH_EXTERNAL.len());
-            self.state = State::CanReadData;
-            return Ok(false);
-        }
-
-        if op_id == Op::ReadData as u8 {
-            ensure!(
-                matches!(self.state, State::ReadingData),
-                "malformed state, expected ReadingData, got {:?}",
-                self.state
-            );
-
-            assert!(res > 0);
-            let read = res as usize;
-            assert_eq!(read, DATA.len());
-            assert_eq!(&self.buf[..read], DATA);
-            self.state = State::CanWriteData;
-            return Ok(false);
-        }
-
-        if op_id == Op::WriteData as u8 {
-            ensure!(
-                matches!(self.state, State::WritingData),
-                "malformed state, expected WritingData, got {:?}",
-                self.state
-            );
-
-            assert!(res > 0);
-            let written = res as usize;
-            assert_eq!(written, DATA.len());
-            self.state = State::CanReadGUID;
-            return Ok(false);
-        }
-
-        if op_id == Op::ReadGUID as u8 {
-            ensure!(
-                matches!(self.state, State::ReadingGUID),
-                "malformed state, expected ReadingGUID, got {:?}",
-                self.state
-            );
-
-            assert!(res > 0);
-            self.state = State::CanWriteBegin;
-            return Ok(false);
-        }
-
-        if op_id == Op::WriteBegin as u8 {
-            ensure!(
-                matches!(self.state, State::WritingBegin),
-                "malformed state, expected WritingBegin, got {:?}",
-                self.state
-            );
-
-            assert!(res > 0);
-            let written = res as usize;
-            assert_eq!(written, BEGIN.len());
-            self.state = State::Finished;
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub(crate) fn take_queue(&mut self) -> VecDeque<Vec<u8>> {
-        std::mem::take(&mut self.queue)
-    }
-
-    pub(crate) fn take_serial(&mut self) -> Serial {
-        std::mem::take(&mut self.serial)
-    }
-}
-
-impl AsRawFd for Auth {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.fd
     }
 }

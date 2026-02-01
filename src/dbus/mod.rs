@@ -10,10 +10,7 @@ use crate::{liburing::IoUring, user_data::ModuleId};
 use anyhow::{Context, Result};
 use auth::Auth;
 use read_write::ReadWrite;
-use std::os::{
-    fd::{AsRawFd, IntoRawFd},
-    unix::net::UnixStream,
-};
+use std::os::{fd::IntoRawFd, unix::net::UnixStream};
 
 pub(crate) mod messages;
 pub(crate) mod types;
@@ -61,25 +58,22 @@ impl DBus {
         }
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<()> {
         match self {
             DBus::Auth(auth) => auth.drain(ring),
             DBus::ReadWrite(rw) => rw.drain(ring),
         }
     }
 
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<Message<'static>>> {
+    pub(crate) fn feed(&mut self, op: u8, res: i32) -> Result<Option<Message<'static>>> {
         match self {
             DBus::Auth(auth) => {
-                if auth.feed(op_id, res)? {
-                    let fd = auth.as_raw_fd();
-                    let queue = auth.take_queue();
-                    let serial = auth.take_serial();
-                    *self = Self::ReadWrite(ReadWrite::new(fd, queue, serial, auth.module_id));
+                if let Some((fd, serial, queue)) = auth.feed(op, res)? {
+                    *self = Self::ReadWrite(ReadWrite::new(fd, serial, queue, auth.module_id));
                 }
                 Ok(None)
             }
-            DBus::ReadWrite(rw) => rw.feed(op_id, res),
+            DBus::ReadWrite(rw) => rw.feed(op, res),
         }
     }
 }

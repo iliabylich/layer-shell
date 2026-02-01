@@ -42,14 +42,24 @@ enum Op {
     ReadBody,
     Write,
 }
+const MAX_OP: u8 = Op::Write as u8;
+
+impl TryFrom<u8> for Op {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value <= MAX_OP);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+    }
+}
 
 const HEADER_LEN: usize = HeaderDecoder::LENGTH + std::mem::size_of::<u32>();
 
 impl ReadWrite {
     pub(crate) fn new(
         fd: i32,
-        queue: VecDeque<Vec<u8>>,
         serial: Serial,
+        queue: VecDeque<Vec<u8>>,
         module_id: ModuleId,
     ) -> Self {
         Self {
@@ -70,9 +80,7 @@ impl ReadWrite {
         self.queue.push_back(bytes);
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
-        let mut drained = false;
-
+    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<()> {
         match self.write_state {
             WriteState::CanWrite => {
                 if let Some(next) = self.queue.pop_front() {
@@ -83,7 +91,6 @@ impl ReadWrite {
                     sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
 
                     self.write_state = WriteState::Writing;
-                    drained |= true;
                 }
             }
             WriteState::Writing => {}
@@ -96,7 +103,6 @@ impl ReadWrite {
                 sqe.set_user_data(UserData::new(self.module_id, Op::ReadHeader as u8));
 
                 self.read_state = ReadState::ReadingHeader;
-                drained |= true;
             }
             ReadState::ReadingHeader => {}
 
@@ -110,69 +116,60 @@ impl ReadWrite {
                 sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
 
                 self.read_state = ReadState::ReadingBody;
-                drained |= true;
             }
             ReadState::ReadingBody => {}
         }
 
-        Ok(drained)
+        Ok(())
     }
 
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<Message<'static>>> {
-        if op_id == Op::Write as u8 {
-            ensure!(
-                matches!(self.write_state, WriteState::Writing),
-                "malformed state, expected Writing, got {:?}",
-                self.write_state
-            );
+    pub(crate) fn feed(&mut self, op: u8, res: i32) -> Result<Option<Message<'static>>> {
+        match Op::try_from(op)? {
+            Op::Write => {
+                assert!(res > 0);
+                let written = res as usize;
+                assert_eq!(written, self.write_buf.len());
 
-            assert!(res > 0);
-            let written = res as usize;
-            assert_eq!(written, self.write_buf.len());
+                self.write_buf.clear();
+                self.write_state = WriteState::CanWrite;
+                Ok(None)
+            }
+            Op::ReadHeader => {
+                ensure!(
+                    matches!(self.read_state, ReadState::ReadingHeader),
+                    "malformed state, expected ReadingHeader, got {:?}",
+                    self.read_state
+                );
 
-            self.write_buf.clear();
-            self.write_state = WriteState::CanWrite;
-            return Ok(None);
+                assert!(res > 0, "res is {res}, buf is {:?}", &self.read_buf[..16]);
+                let bytes_read = res as usize;
+                assert_eq!(bytes_read, HEADER_LEN);
+                let buf = &self.read_buf[..bytes_read];
+
+                let mut buf = DecodingBuffer::new(buf);
+                let header = HeaderDecoder::decode(&mut buf)?;
+                let header_fields_len = buf.peek_u32().context("EOF")? as usize;
+                let remaining_len = header_fields_len.next_multiple_of(8) + header.body_len;
+
+                self.read_state = ReadState::CanReadBody { remaining_len };
+                Ok(None)
+            }
+            Op::ReadBody => {
+                ensure!(
+                    matches!(self.read_state, ReadState::ReadingBody),
+                    "malformed state, expected ReadingBody, got {:?}",
+                    self.read_state
+                );
+
+                assert!(res > 0);
+                let bytes_read = res as usize;
+                let buf = &self.read_buf[..HEADER_LEN + bytes_read];
+
+                let message = MessageDecoder::decode(buf)?;
+
+                self.read_state = ReadState::CanReadHeader;
+                Ok(Some(message))
+            }
         }
-
-        if op_id == Op::ReadHeader as u8 {
-            ensure!(
-                matches!(self.read_state, ReadState::ReadingHeader),
-                "malformed state, expected ReadingHeader, got {:?}",
-                self.read_state
-            );
-
-            assert!(res > 0, "res is {res}, buf is {:?}", &self.read_buf[..16]);
-            let bytes_read = res as usize;
-            assert_eq!(bytes_read, HEADER_LEN);
-            let buf = &self.read_buf[..bytes_read];
-
-            let mut buf = DecodingBuffer::new(buf);
-            let header = HeaderDecoder::decode(&mut buf)?;
-            let header_fields_len = buf.peek_u32().context("EOF")? as usize;
-            let remaining_len = header_fields_len.next_multiple_of(8) + header.body_len;
-
-            self.read_state = ReadState::CanReadBody { remaining_len };
-            return Ok(None);
-        }
-
-        if op_id == Op::ReadBody as u8 {
-            ensure!(
-                matches!(self.read_state, ReadState::ReadingBody),
-                "malformed state, expected ReadingBody, got {:?}",
-                self.read_state
-            );
-
-            assert!(res > 0);
-            let bytes_read = res as usize;
-            let buf = &self.read_buf[..HEADER_LEN + bytes_read];
-
-            let message = MessageDecoder::decode(buf)?;
-
-            self.read_state = ReadState::CanReadHeader;
-            return Ok(Some(message));
-        }
-
-        Ok(None)
     }
 }

@@ -15,28 +15,20 @@ impl Location {
         Ok(Box::new(Self { https }))
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
-        let mut drained = false;
-
-        loop {
-            let drained_on_current_iteration = self.https.drain_once(ring)?;
-
-            if !drained_on_current_iteration {
-                break;
-            }
-
-            drained |= drained_on_current_iteration
-        }
-
-        Ok(drained)
+    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
+        self.https.init(ring)
     }
 
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<(f64, f64)>> {
-        if let Some(response) = self.https.feed(op_id, res)? {
-            let (lat, lng) = LocationResponse::parse(response)?;
-            return Ok(Some((lat, lng)));
-        }
+    pub(crate) fn process(
+        &mut self,
+        op: u8,
+        res: i32,
+        ring: &mut IoUring,
+    ) -> Result<Option<(f64, f64)>> {
+        let Some(response) = self.https.process(op, res, ring)? else {
+            return Ok(None);
+        };
 
-        Ok(None)
+        Ok(Some(LocationResponse::parse(response)?))
     }
 }

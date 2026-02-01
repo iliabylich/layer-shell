@@ -86,10 +86,9 @@ impl IO {
     }
 
     fn init(&mut self) -> Result<()> {
-        let drained = self.timer.drain(&mut self.ring)?;
-        assert!(drained);
+        self.timer.init(&mut self.ring)?;
 
-        self.location.drain(&mut self.ring)?;
+        self.location.init(&mut self.ring)?;
         self.hyprland.drain(&mut self.ring)?;
 
         self.session_dbus.enqueue(&mut Hello.into());
@@ -131,37 +130,32 @@ impl IO {
     }
 
     fn try_handle_readable(&mut self) -> Result<()> {
-        let mut drained = false;
         let mut events = vec![];
 
         while let Some(cqe) = self.ring.try_get_cqe()? {
             let res = cqe.res();
-            let Ok(UserData {
-                module_id, op_id, ..
-            }) = UserData::try_from(cqe.user_data())
-            else {
+            let user_data = cqe.user_data();
+
+            let Ok(UserData { module_id, op, .. }) = UserData::try_from(user_data) else {
                 eprintln!("Unknown user data: {:?}", cqe.user_data());
                 continue;
             };
 
             match module_id {
                 ModuleId::GeoLocation => {
-                    if let Some((lat, lng)) = self.location.feed(op_id, res)? {
-                        self.weather.set_location(lat, lng)?;
-                        drained |= self.weather.drain(&mut self.ring)?;
+                    if let Some((lat, lng)) = self.location.process(op, res, &mut self.ring)? {
+                        self.weather.init(lat, lng, &mut self.ring)?;
                     }
-                    drained |= self.location.drain(&mut self.ring)?;
                 }
                 ModuleId::Weather => {
-                    self.weather.feed(op_id, res, &mut events)?;
-                    drained |= self.weather.drain(&mut self.ring)?;
+                    self.weather.process(op, res, &mut self.ring, &mut events)?;
                 }
                 ModuleId::HyprlandReader | ModuleId::HyprlandWriter => {
-                    self.hyprland.feed(module_id, op_id, res, &mut events)?;
-                    drained |= self.hyprland.drain(&mut self.ring)?;
+                    self.hyprland.feed(module_id, op, res, &mut events)?;
+                    self.hyprland.drain(&mut self.ring)?;
                 }
                 ModuleId::SessionDBus => {
-                    if let Some(message) = self.session_dbus.feed(op_id, res)? {
+                    if let Some(message) = self.session_dbus.feed(op, res)? {
                         self.sound
                             .on_message(&mut self.session_dbus, &message, &mut events);
                         self.tray
@@ -172,29 +166,27 @@ impl IO {
                             self.on_control_req(req, &mut events);
                         }
                     }
-                    drained |= self.session_dbus.drain(&mut self.ring)?;
+                    self.session_dbus.drain(&mut self.ring)?;
                 }
                 ModuleId::SystemDBus => {
-                    if let Some(message) = self.system_dbus.feed(op_id, res)? {
+                    if let Some(message) = self.system_dbus.feed(op, res)? {
                         self.network
                             .on_message(&mut self.system_dbus, &message, &mut events);
                     }
-                    drained |= self.system_dbus.drain(&mut self.ring)?;
+                    self.system_dbus.drain(&mut self.ring)?;
                 }
                 ModuleId::CPU => {
-                    self.cpu.feed(op_id, res, &mut events)?;
+                    self.cpu.process(op, res, &mut events)?;
                 }
                 ModuleId::Memory => {
-                    self.memory.feed(op_id, res, &mut events)?;
+                    self.memory.feed(op, res, &mut events)?;
                 }
                 ModuleId::TimerFD => {
-                    if let Some(tick) = self.timer.feed(op_id)? {
-                        Clock::on_tick(tick, &mut events);
-                        drained |= self.weather.tick(tick, &mut self.ring)?;
-                        drained |= self.cpu.tick(tick, &mut self.ring)?;
-                        drained |= self.memory.tick(tick, &mut self.ring)?;
-                    }
-                    drained |= self.timer.drain(&mut self.ring)?;
+                    let tick = self.timer.process(op, &mut self.ring)?;
+                    Clock::tick(tick, &mut events);
+                    self.weather.tick(tick, &mut self.ring)?;
+                    self.cpu.tick(tick, &mut self.ring)?;
+                    self.memory.tick(tick, &mut self.ring)?;
                 }
                 ModuleId::Max => unreachable!(),
             }
@@ -206,7 +198,7 @@ impl IO {
             (self.on_event)(&event);
         }
 
-        if drained {
+        if self.ring.take_dirty() {
             self.ring.submit()?
         }
 

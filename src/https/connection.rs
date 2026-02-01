@@ -12,30 +12,11 @@ use std::{
     ptr::null_mut,
 };
 
-#[derive(Debug)]
-enum State {
-    CanAcquireSocket,
-    AcquiringSocket,
-
-    CanConnect,
-    Connecting,
-
-    CanReadWrite,
-    Reading,
-    Writing,
-
-    CanClose,
-    Closing,
-    Closed,
-}
-
 pub(crate) struct HttpsConnection {
     fsm: FSM,
 
     addr: sockaddr_in,
     fd: i32,
-    state: State,
-
     module_id: ModuleId,
 
     response: Option<Response>,
@@ -48,6 +29,16 @@ enum Op {
     Read,
     Write,
     Close,
+}
+const MAX_OP: u8 = Op::Close as u8;
+
+impl TryFrom<u8> for Op {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value <= MAX_OP);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+    }
 }
 
 impl HttpsConnection {
@@ -69,31 +60,54 @@ impl HttpsConnection {
             fsm,
             addr,
             fd: -1,
-            state: State::CanAcquireSocket,
             module_id,
             response: None,
         })
     }
 
-    fn response_received(&mut self, response: Response) {
-        assert!(self.response.is_none());
-        self.response = Some(response);
-        self.state = State::CanClose;
+    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
+        sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
+        Ok(())
     }
 
-    pub(crate) fn drain_once(&mut self, ring: &mut IoUring) -> Result<bool> {
-        match &self.state {
-            State::CanAcquireSocket => {
+    fn call_fsm(&mut self, ring: &mut IoUring) -> Result<()> {
+        match self.fsm.wants()? {
+            Wants::Read(buf) => {
                 let mut sqe = ring.get_sqe()?;
-                sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
-                sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
-
-                self.state = State::AcquiringSocket;
-                Ok(true)
+                sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
+                sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
             }
-            State::AcquiringSocket => Ok(false),
+            Wants::Write(buf) => {
+                let mut sqe = ring.get_sqe()?;
+                sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
+                sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
+            }
+            Wants::Done(response) => {
+                assert!(self.response.is_none());
+                self.response = Some(response);
 
-            State::CanConnect => {
+                let mut sqe = ring.get_sqe()?;
+                sqe.prep_close(self.fd);
+                sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn process(
+        &mut self,
+        op: u8,
+        res: i32,
+        ring: &mut IoUring,
+    ) -> Result<Option<Response>> {
+        match Op::try_from(op)? {
+            Op::Socket => {
+                let fd = res;
+                ensure!(fd > 0);
+                self.fd = fd;
+
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_connect(
                     self.fd,
@@ -101,144 +115,39 @@ impl HttpsConnection {
                     std::mem::size_of::<sockaddr_in>() as u32,
                 );
                 sqe.set_user_data(UserData::new(self.module_id, Op::Connect as u8));
-                self.state = State::Connecting;
 
-                Ok(true)
+                Ok(None)
             }
-            State::Connecting => Ok(false),
+            Op::Connect => {
+                ensure!(res >= 0);
 
-            State::CanReadWrite => match self.fsm.wants()? {
-                Wants::Read(buf) => {
-                    let mut sqe = ring.get_sqe()?;
-                    sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
-                    sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
+                self.call_fsm(ring)?;
 
-                    self.state = State::Reading;
-                    Ok(true)
-                }
-                Wants::Write(buf) => {
-                    let mut sqe = ring.get_sqe()?;
-                    sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
-                    sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
-
-                    self.state = State::Writing;
-                    Ok(true)
-                }
-                Wants::Done(response) => {
-                    self.response_received(response);
-
-                    let mut sqe = ring.get_sqe()?;
-                    sqe.prep_close(self.fd);
-                    sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
-
-                    self.state = State::Closing;
-                    Ok(true)
-                }
-            },
-
-            State::Reading => Ok(false),
-            State::Writing => Ok(false),
-
-            State::CanClose => {
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_close(self.fd);
-                sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
-
-                self.state = State::Closing;
-                Ok(true)
+                Ok(None)
             }
-            State::Closing => Ok(false),
+            Op::Read => {
+                let read = res;
+                ensure!(read >= 0);
+                let read: usize = read as usize;
+                self.fsm.done_reading(read);
 
-            State::Closed => Ok(false),
-        }
-    }
-
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<Response>> {
-        if op_id == Op::Socket as u8 {
-            ensure!(
-                matches!(self.state, State::AcquiringSocket),
-                "malformed state, expected AcquiringSocket, got {:?}",
-                self.state
-            );
-
-            let fd = res;
-            ensure!(fd > 0);
-            self.fd = fd;
-            self.state = State::CanConnect;
-            return Ok(None);
-        }
-
-        if op_id == Op::Connect as u8 {
-            ensure!(
-                matches!(self.state, State::Connecting),
-                "malformed state, expected Connecting, got {:?}",
-                self.state
-            );
-
-            ensure!(res >= 0);
-            self.state = State::CanReadWrite;
-            return Ok(None);
-        }
-
-        if op_id == Op::Read as u8 {
-            ensure!(
-                matches!(self.state, State::Reading),
-                "malformed state, expected Reading, got {:?}",
-                self.state
-            );
-
-            let read = res;
-            ensure!(read >= 0);
-            let read = read as usize;
-            self.fsm.done_reading(read);
-
-            match self.fsm.wants()? {
-                Wants::Read(_) | Wants::Write(_) => {
-                    self.state = State::CanReadWrite;
-                }
-                Wants::Done(response) => {
-                    self.response_received(response);
-                }
+                self.call_fsm(ring)?;
+                Ok(None)
             }
-            return Ok(None);
-        }
+            Op::Write => {
+                let written = res;
+                ensure!(written >= 0);
+                let written = written as usize;
+                self.fsm.done_writing(written);
 
-        if op_id == Op::Write as u8 {
-            ensure!(
-                matches!(self.state, State::Writing),
-                "malformed state, expected Writing, got {:?}",
-                self.state
-            );
-
-            let written = res;
-            ensure!(written >= 0);
-            let written = written as usize;
-            self.fsm.done_writing(written);
-
-            match self.fsm.wants()? {
-                Wants::Read(_) | Wants::Write(_) => {
-                    self.state = State::CanReadWrite;
-                }
-                Wants::Done(response) => {
-                    self.response_received(response);
-                }
+                self.call_fsm(ring)?;
+                Ok(None)
             }
-            return Ok(None);
+            Op::Close => {
+                eprintln!("HttpsConnection closed");
+                Ok(self.response.take())
+            }
         }
-
-        if op_id == Op::Close as u8 {
-            ensure!(
-                matches!(self.state, State::Closing),
-                "malformed state, expected Closing, got {:?}",
-                self.state
-            );
-
-            eprintln!("HttpsConnection closed");
-            self.state = State::Closed;
-            return Ok(self.response.take());
-        }
-
-        Ok(None)
     }
 }
 

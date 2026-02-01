@@ -14,6 +14,16 @@ pub(crate) struct Memory {
 enum Op {
     Read,
 }
+const MAX_OP: u8 = Op::Read as u8;
+
+impl TryFrom<u8> for Op {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value <= MAX_OP);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+    }
+}
 
 impl Memory {
     pub(crate) fn new() -> Result<Box<Self>> {
@@ -23,29 +33,27 @@ impl Memory {
         }))
     }
 
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
-        if op_id == Op::Read as u8 {
-            ensure!(res > 0);
-            let len = res as usize;
-            let s = std::str::from_utf8(&self.buf[..len])?;
+    pub(crate) fn feed(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
+        match Op::try_from(op)? {
+            Op::Read => {
+                ensure!(res > 0);
+                let len = res as usize;
+                let s = std::str::from_utf8(&self.buf[..len])?;
 
-            let (used, total) = Parser::parse(s)?;
-            events.push(Event::Memory { used, total });
-
-            return Ok(());
+                let (used, total) = Parser::parse(s)?;
+                events.push(Event::Memory { used, total });
+            }
         }
 
         Ok(())
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick, ring: &mut IoUring) -> Result<bool> {
+    pub(crate) fn tick(&mut self, tick: Tick, ring: &mut IoUring) -> Result<()> {
         if tick.is_multiple_of(1) {
             let mut sqe = ring.get_sqe()?;
             sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
             sqe.set_user_data(UserData::new(ModuleId::Memory, Op::Read as u8));
-            Ok(true)
-        } else {
-            Ok(false)
         }
+        Ok(())
     }
 }

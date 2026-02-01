@@ -46,55 +46,41 @@ impl Weather {
         }))
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
-        let Some(https) = self.https.as_mut() else {
-            return Ok(false);
-        };
-
-        let mut drained = false;
-
-        loop {
-            let drained_on_current_iteration = https.drain_once(ring)?;
-
-            if !drained_on_current_iteration {
-                break;
-            }
-
-            drained |= drained_on_current_iteration
-        }
-
-        Ok(drained)
-    }
-
-    pub(crate) fn set_location(&mut self, lat: f64, lng: f64) -> Result<()> {
+    pub(crate) fn init(&mut self, lat: f64, lng: f64, ring: &mut IoUring) -> Result<()> {
         self.latlng = Some((lat, lng));
-        self.https = Some(get_weather(lat, lng)?);
+        let mut https = get_weather(lat, lng)?;
+        https.init(ring)?;
+        self.https = Some(https);
         Ok(())
     }
 
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
+    pub(crate) fn process(
+        &mut self,
+        op: u8,
+        res: i32,
+        ring: &mut IoUring,
+        events: &mut Vec<Event>,
+    ) -> Result<()> {
         let Some(https) = self.https.as_mut() else {
             return Ok(());
         };
-
-        if let Some(response) = https.feed(op_id, res)? {
+        if let Some(response) = https.process(op, res, ring)? {
             let event: Event = WeatherResponse::parse(response)?.try_into()?;
             events.push(event);
         }
-
         Ok(())
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick, ring: &mut IoUring) -> Result<bool> {
+    pub(crate) fn tick(&mut self, tick: Tick, ring: &mut IoUring) -> Result<()> {
         let Some((lat, lng)) = self.latlng else {
-            return Ok(false);
+            return Ok(());
         };
 
         if tick.is_multiple_of(120) {
-            self.https = Some(get_weather(lat, lng)?);
-            self.drain(ring)
-        } else {
-            Ok(false)
+            let mut https = get_weather(lat, lng)?;
+            https.init(ring)?;
+            self.https = Some(https);
         }
+        Ok(())
     }
 }

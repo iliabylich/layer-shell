@@ -166,6 +166,16 @@ enum Op {
     Read,
     Close,
 }
+const MAX_OP: u8 = Op::Close as u8;
+
+impl TryFrom<u8> for Op {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value <= MAX_OP);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+    }
+}
 
 pub(crate) struct HyprlandWriter {
     fd: i32,
@@ -262,8 +272,8 @@ impl HyprlandWriter {
         }
     }
 
-    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<WriterReply>> {
-        if op_id == Op::Socket as u8 {
+    pub(crate) fn feed(&mut self, op: u8, res: i32) -> Result<Option<WriterReply>> {
+        if op == Op::Socket as u8 {
             ensure!(
                 matches!(self.state, State::SocketRequested),
                 "malformed state, expected SocketRequested, got {:?}",
@@ -277,7 +287,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if op_id == Op::Connect as u8 {
+        if op == Op::Connect as u8 {
             ensure!(
                 matches!(self.state, State::Connecting),
                 "malformed state, expected Connecting, got {:?}",
@@ -289,7 +299,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if op_id == Op::Write as u8 {
+        if op == Op::Write as u8 {
             ensure!(
                 matches!(self.state, State::Writing),
                 "malformed state, expected Writing, got {:?}",
@@ -301,7 +311,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if op_id == Op::Read as u8 {
+        if op == Op::Read as u8 {
             ensure!(
                 matches!(self.state, State::Reading),
                 "malformed state, expected Reading, got {:?}",
@@ -317,7 +327,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if op_id == Op::Close as u8 {
+        if op == Op::Close as u8 {
             ensure!(
                 matches!(self.state, State::Closing),
                 "malformed state, expected Closing, got {:?}",

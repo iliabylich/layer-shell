@@ -23,6 +23,16 @@ pub(crate) struct HyprlandReader {
 enum Op {
     Read,
 }
+const MAX_OP: u8 = Op::Read as u8;
+
+impl TryFrom<u8> for Op {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value <= MAX_OP);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+    }
+}
 
 impl HyprlandReader {
     pub(crate) fn new() -> Result<Box<Self>> {
@@ -55,29 +65,19 @@ impl HyprlandReader {
         }
     }
 
-    pub(crate) fn feed(
-        &mut self,
-        op_id: u8,
-        res: i32,
-        events: &mut Vec<HyprlandEvent>,
-    ) -> Result<()> {
-        if op_id == Op::Read as u8 {
-            ensure!(
-                matches!(self.state, State::Reading),
-                "malformed state, expected Reading, got {:?}",
-                self.state
-            );
-
-            ensure!(res > 0);
-            let len = res as usize;
-            let s = std::str::from_utf8(&self.buf[..len])?;
-            for line in s.lines() {
-                if let Some(event) = HyprlandEvent::try_parse(line)? {
-                    events.push(event)
-                };
+    pub(crate) fn feed(&mut self, op: u8, res: i32, events: &mut Vec<HyprlandEvent>) -> Result<()> {
+        match Op::try_from(op)? {
+            Op::Read => {
+                ensure!(res > 0);
+                let len = res as usize;
+                let s = std::str::from_utf8(&self.buf[..len])?;
+                for line in s.lines() {
+                    if let Some(event) = HyprlandEvent::try_parse(line)? {
+                        events.push(event)
+                    };
+                }
+                self.state = State::CanRead
             }
-
-            self.state = State::CanRead
         }
 
         Ok(())

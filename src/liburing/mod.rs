@@ -30,6 +30,7 @@ static mut NOTIMEOUT: __kernel_timespec = __kernel_timespec {
 
 pub(crate) struct IoUring {
     ring: io_uring,
+    dirty: bool,
 }
 
 impl IoUring {
@@ -37,7 +38,7 @@ impl IoUring {
         let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
         let errno = unsafe { __liburing_queue_init(entries as u32, &mut ring, flags) };
         checkerr(errno)?;
-        Ok(Self { ring })
+        Ok(Self { ring, dirty: false })
     }
 
     pub(crate) fn get_sqe(&mut self) -> Result<Sqe> {
@@ -45,7 +46,14 @@ impl IoUring {
         if sqe.is_null() {
             bail!("got NULL from io_uring_get_sqe");
         }
+        self.dirty = true;
         Ok(Sqe { sqe })
+    }
+
+    pub(crate) fn take_dirty(&mut self) -> bool {
+        let out = self.dirty;
+        self.dirty = false;
+        out
     }
 
     pub(crate) fn submit(&mut self) -> Result<()> {
