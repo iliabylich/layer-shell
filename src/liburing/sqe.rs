@@ -1,9 +1,8 @@
-use libc::sockaddr;
-
 use super::generated::{
     __liburing_prep_close, __liburing_prep_connect, __liburing_prep_openat, __liburing_prep_read,
     __liburing_prep_socket, __liburing_prep_write, io_uring_sqe, mode_t, socklen_t,
 };
+use libc::sockaddr;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Sqe {
@@ -37,7 +36,7 @@ impl Sqe {
         unsafe { __liburing_prep_openat(self.sqe, dfd, path, flags, mode) }
     }
 
-    pub(crate) fn set_user_data(&mut self, data: u64) {
-        (unsafe { self.sqe.as_mut().unwrap() }).user_data = data;
+    pub(crate) fn set_user_data(&mut self, data: impl Into<u64>) {
+        (unsafe { self.sqe.as_mut().unwrap() }).user_data = data.into();
     }
 }

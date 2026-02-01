@@ -20,10 +20,11 @@ use crate::{
     dbus::{DBus, messages::org_freedesktop_dbus::Hello},
     liburing::IoUring,
     modules::{
-        CPU, Clock, Control, ControlRequest, Hyprland, Memory, Network, Sound, Tray, Weather,
+        CPU, Clock, Control, ControlRequest, Hyprland, Location, Memory, Network, Sound, Tray,
+        Weather,
     },
     timerfd::Timerfd,
-    user_data::UserData,
+    user_data::{ModuleId, UserData},
 };
 
 struct IO {
@@ -36,6 +37,7 @@ struct IO {
     session_dbus: Box<DBus>,
     system_dbus: Box<DBus>,
 
+    location: Box<Location>,
     weather: Box<Weather>,
     hyprland: Box<Hyprland>,
     cpu: Box<CPU>,
@@ -64,6 +66,7 @@ impl IO {
             session_dbus: DBus::new_session()?,
             system_dbus: DBus::new_system()?,
 
+            location: Location::new()?,
             weather: Weather::new()?,
             hyprland: Hyprland::new()?,
             cpu: CPU::new()?,
@@ -86,10 +89,8 @@ impl IO {
         let drained = self.timer.drain(&mut self.ring)?;
         assert!(drained);
 
-        self.weather.drain(&mut self.ring)?;
+        self.location.drain(&mut self.ring)?;
         self.hyprland.drain(&mut self.ring)?;
-        self.cpu.drain(&mut self.ring)?;
-        self.memory.drain(&mut self.ring)?;
 
         self.session_dbus.enqueue(&mut Hello.into());
         self.sound.init(&mut self.session_dbus);
@@ -120,52 +121,6 @@ impl IO {
         })
     }
 
-    fn try_handle_timer(&mut self, user_data: UserData) -> Result<bool> {
-        let mut events = vec![];
-
-        if let Some(tick) = self.timer.feed(user_data)? {
-            Clock::on_tick(tick, &mut events);
-            self.weather.on_tick(tick)?;
-            self.cpu.on_tick(tick)?;
-            self.memory.on_tick(tick)?;
-        }
-        let drained = self.timer.drain(&mut self.ring)?;
-
-        for event in events {
-            (self.on_event)(&event);
-        }
-
-        Ok(drained)
-    }
-
-    fn try_handle_actors(
-        &mut self,
-        user_data: UserData,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<bool> {
-        let mut drained = false;
-
-        drained |= {
-            self.weather.feed(user_data, res, events)?;
-            self.weather.drain(&mut self.ring)?
-        };
-        drained |= {
-            self.hyprland.feed(user_data, res, events)?;
-            self.hyprland.drain(&mut self.ring)?
-        };
-        drained |= {
-            self.cpu.feed(user_data, res, events)?;
-            self.cpu.drain(&mut self.ring)?
-        };
-        drained |= {
-            self.memory.feed(user_data, res, events)?;
-            self.memory.drain(&mut self.ring)?
-        };
-
-        Ok(drained)
-    }
-
     fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
         match req {
             ControlRequest::CapsLockToggled => self.hyprland.enqueue_get_caps_lock(),
@@ -175,50 +130,74 @@ impl IO {
         }
     }
 
-    fn try_handle_session_dbus(
-        &mut self,
-        user_data: UserData,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<bool> {
-        if let Some(message) = self.session_dbus.feed(user_data, res)? {
-            self.sound
-                .on_message(&mut self.session_dbus, &message, events);
-            self.tray
-                .on_message(&mut self.session_dbus, &message, events);
-
-            if let Some(req) = self.control.on_message(&message, &mut self.session_dbus) {
-                self.on_control_req(req, events);
-            }
-        }
-        self.session_dbus.drain(&mut self.ring)
-    }
-
-    fn try_handle_system_dbus(
-        &mut self,
-        user_data: UserData,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<bool> {
-        if let Some(message) = self.system_dbus.feed(user_data, res)? {
-            self.network
-                .on_message(&mut self.system_dbus, &message, events);
-        }
-        self.system_dbus.drain(&mut self.ring)
-    }
-
     fn try_handle_readable(&mut self) -> Result<()> {
         let mut drained = false;
         let mut events = vec![];
 
         while let Some(cqe) = self.ring.try_get_cqe()? {
             let res = cqe.res();
-            let (user_data, _request_id) = UserData::from_u64(cqe.user_data(), res);
+            let Ok(UserData {
+                module_id, op_id, ..
+            }) = UserData::try_from(cqe.user_data())
+            else {
+                eprintln!("Unknown user data: {:?}", cqe.user_data());
+                continue;
+            };
 
-            drained |= self.try_handle_timer(user_data)?;
-            drained |= self.try_handle_actors(user_data, res, &mut events)?;
-            drained |= self.try_handle_session_dbus(user_data, res, &mut events)?;
-            drained |= self.try_handle_system_dbus(user_data, res, &mut events)?;
+            match module_id {
+                ModuleId::GeoLocation => {
+                    if let Some((lat, lng)) = self.location.feed(op_id, res)? {
+                        self.weather.set_location(lat, lng)?;
+                        drained |= self.weather.drain(&mut self.ring)?;
+                    }
+                    drained |= self.location.drain(&mut self.ring)?;
+                }
+                ModuleId::Weather => {
+                    self.weather.feed(op_id, res, &mut events)?;
+                    drained |= self.weather.drain(&mut self.ring)?;
+                }
+                ModuleId::HyprlandReader | ModuleId::HyprlandWriter => {
+                    self.hyprland.feed(module_id, op_id, res, &mut events)?;
+                    drained |= self.hyprland.drain(&mut self.ring)?;
+                }
+                ModuleId::SessionDBus => {
+                    if let Some(message) = self.session_dbus.feed(op_id, res)? {
+                        self.sound
+                            .on_message(&mut self.session_dbus, &message, &mut events);
+                        self.tray
+                            .on_message(&mut self.session_dbus, &message, &mut events);
+
+                        if let Some(req) = self.control.on_message(&message, &mut self.session_dbus)
+                        {
+                            self.on_control_req(req, &mut events);
+                        }
+                    }
+                    drained |= self.session_dbus.drain(&mut self.ring)?;
+                }
+                ModuleId::SystemDBus => {
+                    if let Some(message) = self.system_dbus.feed(op_id, res)? {
+                        self.network
+                            .on_message(&mut self.system_dbus, &message, &mut events);
+                    }
+                    drained |= self.system_dbus.drain(&mut self.ring)?;
+                }
+                ModuleId::CPU => {
+                    self.cpu.feed(op_id, res, &mut events)?;
+                }
+                ModuleId::Memory => {
+                    self.memory.feed(op_id, res, &mut events)?;
+                }
+                ModuleId::TimerFD => {
+                    if let Some(tick) = self.timer.feed(op_id)? {
+                        Clock::on_tick(tick, &mut events);
+                        drained |= self.weather.tick(tick, &mut self.ring)?;
+                        drained |= self.cpu.tick(tick, &mut self.ring)?;
+                        drained |= self.memory.tick(tick, &mut self.ring)?;
+                    }
+                    drained |= self.timer.drain(&mut self.ring)?;
+                }
+                ModuleId::Max => unreachable!(),
+            }
 
             self.ring.cqe_seen(cqe);
         }

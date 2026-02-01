@@ -2,6 +2,7 @@ use crate::{
     UserData,
     liburing::IoUring,
     modules::hyprland::{array_writer::ArrayWriter, hyprland_instance_signature, xdg_runtime_dir},
+    user_data::ModuleId,
 };
 use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;
@@ -157,11 +158,14 @@ pub(crate) enum WriterReply {
     None,
 }
 
-const SOCKET_USER_DATA: UserData = UserData::HyprlandWriterSocket;
-const CONNECT_USER_DATA: UserData = UserData::HyprlandWriterConnect;
-const WRITE_USER_DATA: UserData = UserData::HyprlandWriterWrite;
-const READ_USER_DATA: UserData = UserData::HyprlandWriterRead;
-const CLOSE_USER_DATA: UserData = UserData::HyprlandWriterClose;
+#[repr(u8)]
+enum Op {
+    Socket,
+    Connect,
+    Write,
+    Read,
+    Close,
+}
 
 pub(crate) struct HyprlandWriter {
     fd: i32,
@@ -204,7 +208,7 @@ impl HyprlandWriter {
             State::Initial => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
-                sqe.set_user_data(SOCKET_USER_DATA.as_u64());
+                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket as u8));
                 self.state = State::SocketRequested;
                 Ok(true)
             }
@@ -217,7 +221,7 @@ impl HyprlandWriter {
                     (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
                     std::mem::size_of::<sockaddr_un>() as u32,
                 );
-                sqe.set_user_data(CONNECT_USER_DATA.as_u64());
+                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Connect as u8));
                 self.state = State::Connecting;
                 Ok(true)
             }
@@ -230,7 +234,7 @@ impl HyprlandWriter {
 
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, self.buf.as_ptr(), buflen);
-                sqe.set_user_data(WRITE_USER_DATA.as_u64());
+                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Write as u8));
                 self.state = State::Writing;
                 Ok(true)
             }
@@ -239,7 +243,7 @@ impl HyprlandWriter {
             State::Written => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(READ_USER_DATA.as_u64());
+                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Read as u8));
                 self.state = State::Reading;
                 Ok(true)
             }
@@ -248,7 +252,7 @@ impl HyprlandWriter {
             State::Read => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_close(self.fd);
-                sqe.set_user_data(CLOSE_USER_DATA.as_u64());
+                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Close as u8));
                 self.state = State::Closing;
                 Ok(true)
             }
@@ -258,8 +262,8 @@ impl HyprlandWriter {
         }
     }
 
-    pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<Option<WriterReply>> {
-        if user_data == SOCKET_USER_DATA {
+    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<WriterReply>> {
+        if op_id == Op::Socket as u8 {
             ensure!(
                 matches!(self.state, State::SocketRequested),
                 "malformed state, expected SocketRequested, got {:?}",
@@ -273,7 +277,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if user_data == CONNECT_USER_DATA {
+        if op_id == Op::Connect as u8 {
             ensure!(
                 matches!(self.state, State::Connecting),
                 "malformed state, expected Connecting, got {:?}",
@@ -285,7 +289,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if user_data == WRITE_USER_DATA {
+        if op_id == Op::Write as u8 {
             ensure!(
                 matches!(self.state, State::Writing),
                 "malformed state, expected Writing, got {:?}",
@@ -297,7 +301,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if user_data == READ_USER_DATA {
+        if op_id == Op::Read as u8 {
             ensure!(
                 matches!(self.state, State::Reading),
                 "malformed state, expected Reading, got {:?}",
@@ -313,7 +317,7 @@ impl HyprlandWriter {
             return Ok(None);
         }
 
-        if user_data == CLOSE_USER_DATA {
+        if op_id == Op::Close as u8 {
             ensure!(
                 matches!(self.state, State::Closing),
                 "malformed state, expected Closing, got {:?}",

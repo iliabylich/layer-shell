@@ -6,7 +6,7 @@ mod read_write;
 mod requests;
 mod serial;
 
-use crate::{liburing::IoUring, user_data::UserData};
+use crate::{liburing::IoUring, user_data::ModuleId};
 use anyhow::{Context, Result};
 use auth::Auth;
 use read_write::ReadWrite;
@@ -35,18 +35,7 @@ impl DBus {
             .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
         let fd = UnixStream::connect(path)?.into_raw_fd();
 
-        Ok(Box::new(Self::Auth(Auth::new(
-            fd,
-            UserData::SessionDBusAuthWriteZero,
-            UserData::SessionDBusAuthWriteAuthExternal,
-            UserData::SessionDBusAuthReadData,
-            UserData::SessionDBusAuthWriteData,
-            UserData::SessionDBusAuthReadGUID,
-            UserData::SessionDBusAuthWriteBegin,
-            UserData::SessionDBusReadHeader,
-            UserData::SessionDBusReadBody,
-            UserData::SessionDBusWrite,
-        ))))
+        Ok(Box::new(Self::Auth(Auth::new(fd, ModuleId::SessionDBus))))
     }
 
     pub(crate) fn new_system() -> Result<Box<Self>> {
@@ -62,18 +51,7 @@ impl DBus {
 
         let fd = UnixStream::connect(path)?.into_raw_fd();
 
-        Ok(Box::new(Self::Auth(Auth::new(
-            fd,
-            UserData::SystemDBusAuthWriteZero,
-            UserData::SystemDBusAuthWriteAuthExternal,
-            UserData::SystemDBusAuthReadData,
-            UserData::SystemDBusAuthWriteData,
-            UserData::SystemDBusAuthReadGUID,
-            UserData::SystemDBusAuthWriteBegin,
-            UserData::SystemDBusReadHeader,
-            UserData::SystemDBusReadBody,
-            UserData::SystemDBusWrite,
-        ))))
+        Ok(Box::new(Self::Auth(Auth::new(fd, ModuleId::SystemDBus))))
     }
 
     pub(crate) fn enqueue(&mut self, message: &mut Message) {
@@ -90,29 +68,18 @@ impl DBus {
         }
     }
 
-    pub(crate) fn feed(
-        &mut self,
-        user_data: UserData,
-        res: i32,
-    ) -> Result<Option<Message<'static>>> {
+    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<Message<'static>>> {
         match self {
             DBus::Auth(auth) => {
-                if auth.feed(user_data, res)? {
+                if auth.feed(op_id, res)? {
                     let fd = auth.as_raw_fd();
                     let queue = auth.take_queue();
                     let serial = auth.take_serial();
-                    *self = Self::ReadWrite(ReadWrite::new(
-                        fd,
-                        queue,
-                        serial,
-                        auth.read_header_user_data,
-                        auth.read_body_user_data,
-                        auth.write_user_data,
-                    ));
+                    *self = Self::ReadWrite(ReadWrite::new(fd, queue, serial, auth.module_id));
                 }
                 Ok(None)
             }
-            DBus::ReadWrite(rw) => rw.feed(user_data, res),
+            DBus::ReadWrite(rw) => rw.feed(op_id, res),
         }
     }
 }

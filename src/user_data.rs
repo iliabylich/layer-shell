@@ -1,58 +1,46 @@
 use std::cell::Cell;
 
+use anyhow::{Result, ensure};
+
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum UserData {
-    GetLocationSocket = 1,
-    GetLocationConnect,
-    GetLocationRead,
-    GetLocationWrite,
-    GetLocationClose,
-
-    GetWeatherSocket,
-    GetWeatherConnect,
-    GetWeatherRead,
-    GetWeatherWrite,
-    GetWeatherClose,
-
-    HyprlandReaderRead,
-
-    HyprlandWriterSocket,
-    HyprlandWriterConnect,
-    HyprlandWriterWrite,
-    HyprlandWriterRead,
-    HyprlandWriterClose,
-
-    SessionDBusAuthWriteZero,
-    SessionDBusAuthWriteAuthExternal,
-    SessionDBusAuthReadData,
-    SessionDBusAuthWriteData,
-    SessionDBusAuthReadGUID,
-    SessionDBusAuthWriteBegin,
-
-    SessionDBusReadHeader,
-    SessionDBusReadBody,
-    SessionDBusWrite,
-
-    SystemDBusAuthWriteZero,
-    SystemDBusAuthWriteAuthExternal,
-    SystemDBusAuthReadData,
-    SystemDBusAuthWriteData,
-    SystemDBusAuthReadGUID,
-    SystemDBusAuthWriteBegin,
-
-    SystemDBusReadHeader,
-    SystemDBusReadBody,
-    SystemDBusWrite,
-
-    CpuRead,
-
-    MemoryRead,
-
-    TimerfdRead,
-
+pub(crate) enum ModuleId {
+    Weather = 1,
+    GeoLocation,
+    HyprlandReader,
+    HyprlandWriter,
+    SessionDBus,
+    SystemDBus,
+    #[expect(clippy::upper_case_acronyms)]
+    CPU,
+    Memory,
+    TimerFD,
     Max,
 }
+
+impl From<ModuleId> for u8 {
+    fn from(value: ModuleId) -> Self {
+        value as u8
+    }
+}
+
+impl TryFrom<u8> for ModuleId {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(value < Self::Max as u8);
+        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(C, align(8))]
+pub(crate) struct UserData {
+    pub(crate) module_id: ModuleId,
+    pub(crate) op_id: u8,
+    pub(crate) req: u32,
+}
+const _: [u8; 8] = [0; std::mem::size_of::<UserData>()];
 
 thread_local! {
     static NEXT_REQUEST_ID: Cell<u32> = const { Cell::new(1) };
@@ -64,23 +52,41 @@ fn next_request_id() -> u32 {
 }
 
 impl UserData {
-    pub(crate) fn as_u64(self) -> u64 {
-        let request_id = next_request_id();
-        eprintln!("==> {self:?}({request_id})");
-        let mut bytes = [0; 8];
-        bytes[..4].copy_from_slice(&request_id.to_le_bytes());
-        bytes[7] = self as u8;
+    pub(crate) fn new(module_id: ModuleId, op_id: impl Into<u8>) -> Self {
+        Self {
+            module_id,
+            op_id: op_id.into(),
+            req: next_request_id(),
+        }
+    }
+}
+
+impl From<UserData> for u64 {
+    fn from(user_data: UserData) -> Self {
+        let mut bytes = [0_u8; 8];
+        bytes[0] = user_data.module_id.into();
+        bytes[1] = user_data.op_id;
+        bytes[2..6].copy_from_slice(&user_data.req.to_le_bytes());
         u64::from_le_bytes(bytes)
     }
+}
 
-    pub(crate) fn from_u64(n: u64, res: i32) -> (Self, u32) {
-        let bytes: [u8; 8] = n.to_le_bytes();
-        let mut high = [0; 4];
-        high.copy_from_slice(&bytes[..4]);
-        let request_id = { u32::from_le_bytes(high) };
-        assert!(bytes[7] < Self::Max as u8);
-        let this: Self = unsafe { std::mem::transmute(bytes[7]) };
-        eprintln!("<== {this:?}({request_id}, {res})");
-        (this, request_id)
+impl TryFrom<u64> for UserData {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u64) -> Result<Self> {
+        let bytes: [u8; 8] = value.to_le_bytes();
+        let module_id = ModuleId::try_from(bytes[0])?;
+        let op_id = bytes[1];
+        let req = {
+            let mut req = [0; 4];
+            req.copy_from_slice(&bytes[2..6]);
+            u32::from_le_bytes(req)
+        };
+        Ok(Self {
+            module_id,
+            op_id,
+            req,
+        })
     }
 }

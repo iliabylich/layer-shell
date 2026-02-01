@@ -1,7 +1,7 @@
 use crate::{
     dbus::{Message, encoders::MessageEncoder, serial::Serial},
     liburing::IoUring,
-    user_data::UserData,
+    user_data::{ModuleId, UserData},
 };
 use anyhow::{Result, ensure};
 use std::{collections::VecDeque, os::fd::AsRawFd};
@@ -37,54 +37,32 @@ pub(crate) struct Auth {
     buf: [u8; 100],
     queue: VecDeque<Vec<u8>>,
     serial: Serial,
-
-    write_zero_user_data: UserData,
-    write_auth_external_user_data: UserData,
-    read_data_user_data: UserData,
-    write_data_user_data: UserData,
-    read_guid_user_data: UserData,
-    write_begin_user_data: UserData,
-
-    pub(crate) read_header_user_data: UserData,
-    pub(crate) read_body_user_data: UserData,
-    pub(crate) write_user_data: UserData,
+    pub(crate) module_id: ModuleId,
 }
 
 const AUTH_EXTERNAL: &[u8] = b"AUTH EXTERNAL\r\n";
 const DATA: &[u8] = b"DATA\r\n";
 const BEGIN: &[u8] = b"BEGIN\r\n";
 
+#[repr(u8)]
+enum Op {
+    WriteZero,
+    WriteAuthExternal,
+    ReadData,
+    WriteData,
+    ReadGUID,
+    WriteBegin,
+}
+
 impl Auth {
-    #[expect(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        fd: i32,
-        write_zero_user_data: UserData,
-        write_auth_external_user_data: UserData,
-        read_data_user_data: UserData,
-        write_data_user_data: UserData,
-        read_guid_user_data: UserData,
-        write_begin_user_data: UserData,
-        read_header_user_data: UserData,
-        read_body_user_data: UserData,
-        write_user_data: UserData,
-    ) -> Self {
+    pub(crate) fn new(fd: i32, module_id: ModuleId) -> Self {
         Self {
             fd,
             state: State::default(),
             buf: [0; 100],
             queue: VecDeque::new(),
             serial: Serial::zero(),
-
-            write_zero_user_data,
-            write_auth_external_user_data,
-            read_data_user_data,
-            write_data_user_data,
-            read_guid_user_data,
-            write_begin_user_data,
-
-            read_header_user_data,
-            read_body_user_data,
-            write_user_data,
+            module_id,
         }
     }
 
@@ -99,7 +77,7 @@ impl Auth {
             State::CanWriteZero => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, c"".as_ptr().cast(), 1);
-                sqe.set_user_data(self.write_zero_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::WriteZero as u8));
                 self.state = State::WritingZero;
                 Ok(true)
             }
@@ -108,7 +86,7 @@ impl Auth {
             State::CanWriteAuthExternal => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, AUTH_EXTERNAL.as_ptr(), AUTH_EXTERNAL.len());
-                sqe.set_user_data(self.write_auth_external_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::WriteAuthExternal as u8));
                 self.state = State::WritingAuthExternal;
                 Ok(true)
             }
@@ -117,7 +95,7 @@ impl Auth {
             State::CanReadData => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(self.read_data_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::ReadData as u8));
                 self.state = State::ReadingData;
                 Ok(true)
             }
@@ -126,7 +104,7 @@ impl Auth {
             State::CanWriteData => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, DATA.as_ptr(), DATA.len());
-                sqe.set_user_data(self.write_data_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::WriteData as u8));
                 self.state = State::WritingData;
                 Ok(true)
             }
@@ -135,7 +113,7 @@ impl Auth {
             State::CanReadGUID => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(self.read_guid_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::ReadGUID as u8));
                 self.state = State::ReadingGUID;
                 Ok(true)
             }
@@ -144,7 +122,7 @@ impl Auth {
             State::CanWriteBegin => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_write(self.fd, BEGIN.as_ptr(), BEGIN.len());
-                sqe.set_user_data(self.write_begin_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin as u8));
                 self.state = State::WritingBegin;
                 Ok(true)
             }
@@ -154,8 +132,8 @@ impl Auth {
         }
     }
 
-    pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<bool> {
-        if user_data == self.write_zero_user_data {
+    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<bool> {
+        if op_id == Op::WriteZero as u8 {
             ensure!(
                 matches!(self.state, State::WritingZero),
                 "malformed state, expected WritingZero, got {:?}",
@@ -169,7 +147,7 @@ impl Auth {
             return Ok(false);
         }
 
-        if user_data == self.write_auth_external_user_data {
+        if op_id == Op::WriteAuthExternal as u8 {
             ensure!(
                 matches!(self.state, State::WritingAuthExternal),
                 "malformed state, expected WritingAuthExternal, got {:?}",
@@ -183,7 +161,7 @@ impl Auth {
             return Ok(false);
         }
 
-        if user_data == self.read_data_user_data {
+        if op_id == Op::ReadData as u8 {
             ensure!(
                 matches!(self.state, State::ReadingData),
                 "malformed state, expected ReadingData, got {:?}",
@@ -198,7 +176,7 @@ impl Auth {
             return Ok(false);
         }
 
-        if user_data == self.write_data_user_data {
+        if op_id == Op::WriteData as u8 {
             ensure!(
                 matches!(self.state, State::WritingData),
                 "malformed state, expected WritingData, got {:?}",
@@ -212,7 +190,7 @@ impl Auth {
             return Ok(false);
         }
 
-        if user_data == self.read_guid_user_data {
+        if op_id == Op::ReadGUID as u8 {
             ensure!(
                 matches!(self.state, State::ReadingGUID),
                 "malformed state, expected ReadingGUID, got {:?}",
@@ -224,7 +202,7 @@ impl Auth {
             return Ok(false);
         }
 
-        if user_data == self.write_begin_user_data {
+        if op_id == Op::WriteBegin as u8 {
             ensure!(
                 matches!(self.state, State::WritingBegin),
                 "malformed state, expected WritingBegin, got {:?}",

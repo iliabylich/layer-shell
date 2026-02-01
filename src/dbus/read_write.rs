@@ -6,7 +6,7 @@ use crate::{
         serial::Serial,
     },
     liburing::IoUring,
-    user_data::UserData,
+    user_data::{ModuleId, UserData},
 };
 use anyhow::{Context as _, Result, ensure};
 use std::collections::VecDeque;
@@ -33,26 +33,24 @@ pub(crate) struct ReadWrite {
     write_buf: Vec<u8>,
     queue: VecDeque<Vec<u8>>,
     serial: Serial,
+    module_id: ModuleId,
+}
 
-    read_header_user_data: UserData,
-    read_body_user_data: UserData,
-    write_user_data: UserData,
+#[repr(u8)]
+enum Op {
+    ReadHeader,
+    ReadBody,
+    Write,
 }
 
 const HEADER_LEN: usize = HeaderDecoder::LENGTH + std::mem::size_of::<u32>();
-
-// const READ_HEADER_USER_DATA: UserData = UserData::SessionDBusReadHeader;
-// const READ_BODY_USER_DATA: UserData = UserData::SessionDBusReadBody;
-// const WRITE_USER_DATA: UserData = UserData::SessionDBusWrite;
 
 impl ReadWrite {
     pub(crate) fn new(
         fd: i32,
         queue: VecDeque<Vec<u8>>,
         serial: Serial,
-        read_header_user_data: UserData,
-        read_body_user_data: UserData,
-        write_user_data: UserData,
+        module_id: ModuleId,
     ) -> Self {
         Self {
             fd,
@@ -62,10 +60,7 @@ impl ReadWrite {
             write_buf: vec![],
             queue,
             serial,
-
-            read_header_user_data,
-            read_body_user_data,
-            write_user_data,
+            module_id,
         }
     }
 
@@ -85,7 +80,7 @@ impl ReadWrite {
 
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_write(self.fd, self.write_buf.as_ptr(), self.write_buf.len());
-                    sqe.set_user_data(self.write_user_data.as_u64());
+                    sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
 
                     self.write_state = WriteState::Writing;
                     drained |= true;
@@ -98,7 +93,7 @@ impl ReadWrite {
             ReadState::CanReadHeader => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.read_buf.as_mut_ptr(), HEADER_LEN);
-                sqe.set_user_data(self.read_header_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::ReadHeader as u8));
 
                 self.read_state = ReadState::ReadingHeader;
                 drained |= true;
@@ -112,7 +107,7 @@ impl ReadWrite {
                     self.read_buf[HEADER_LEN..].as_mut_ptr(),
                     remaining_len,
                 );
-                sqe.set_user_data(self.read_body_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
 
                 self.read_state = ReadState::ReadingBody;
                 drained |= true;
@@ -123,12 +118,8 @@ impl ReadWrite {
         Ok(drained)
     }
 
-    pub(crate) fn feed(
-        &mut self,
-        user_data: UserData,
-        res: i32,
-    ) -> Result<Option<Message<'static>>> {
-        if user_data == self.write_user_data {
+    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<Message<'static>>> {
+        if op_id == Op::Write as u8 {
             ensure!(
                 matches!(self.write_state, WriteState::Writing),
                 "malformed state, expected Writing, got {:?}",
@@ -144,7 +135,7 @@ impl ReadWrite {
             return Ok(None);
         }
 
-        if user_data == self.read_header_user_data {
+        if op_id == Op::ReadHeader as u8 {
             ensure!(
                 matches!(self.read_state, ReadState::ReadingHeader),
                 "malformed state, expected ReadingHeader, got {:?}",
@@ -165,7 +156,7 @@ impl ReadWrite {
             return Ok(None);
         }
 
-        if user_data == self.read_body_user_data {
+        if op_id == Op::ReadBody as u8 {
             ensure!(
                 matches!(self.read_state, ReadState::ReadingBody),
                 "malformed state, expected ReadingBody, got {:?}",

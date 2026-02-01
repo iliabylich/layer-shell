@@ -1,4 +1,7 @@
-use crate::{liburing::IoUring, user_data::UserData};
+use crate::{
+    liburing::IoUring,
+    user_data::{ModuleId, UserData},
+};
 use anyhow::{Result, ensure};
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
 use std::ptr::null_mut;
@@ -19,7 +22,16 @@ pub(crate) struct Timerfd {
     state: State,
 }
 
-const READ_USER_DATA: UserData = UserData::TimerfdRead;
+#[derive(Debug)]
+#[repr(u8)]
+enum Op {
+    Read = 1,
+}
+impl From<Op> for u8 {
+    fn from(value: Op) -> Self {
+        value as u8
+    }
+}
 
 impl Timerfd {
     pub(crate) fn new() -> Result<Box<Self>> {
@@ -62,7 +74,7 @@ impl Timerfd {
             State::CanRead => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(READ_USER_DATA.as_u64());
+                sqe.set_user_data(UserData::new(ModuleId::TimerFD, Op::Read));
 
                 self.state = State::Reading;
                 Ok(true)
@@ -71,8 +83,8 @@ impl Timerfd {
         }
     }
 
-    pub(crate) fn feed(&mut self, user_data: UserData) -> Result<Option<Tick>> {
-        if user_data == READ_USER_DATA {
+    pub(crate) fn feed(&mut self, op: u8) -> Result<Option<Tick>> {
+        if op == Op::Read as u8 {
             ensure!(
                 matches!(self.state, State::Reading),
                 "malformed state, expected Reading, got {:?}",

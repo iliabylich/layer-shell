@@ -2,6 +2,7 @@ use crate::{
     UserData,
     liburing::IoUring,
     modules::hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
+    user_data::ModuleId,
 };
 use anyhow::{Result, ensure};
 use std::os::{fd::IntoRawFd as _, unix::net::UnixStream};
@@ -18,7 +19,10 @@ pub(crate) struct HyprlandReader {
     state: State,
 }
 
-const READ_USER_DATA: UserData = UserData::HyprlandReaderRead;
+#[repr(u8)]
+enum Op {
+    Read,
+}
 
 impl HyprlandReader {
     pub(crate) fn new() -> Result<Box<Self>> {
@@ -42,7 +46,7 @@ impl HyprlandReader {
             State::CanRead => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(READ_USER_DATA.as_u64());
+                sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read as u8));
 
                 self.state = State::Reading;
                 Ok(true)
@@ -53,11 +57,11 @@ impl HyprlandReader {
 
     pub(crate) fn feed(
         &mut self,
-        user_data: UserData,
+        op_id: u8,
         res: i32,
         events: &mut Vec<HyprlandEvent>,
     ) -> Result<()> {
-        if user_data == READ_USER_DATA {
+        if op_id == Op::Read as u8 {
             ensure!(
                 matches!(self.state, State::Reading),
                 "malformed state, expected Reading, got {:?}",

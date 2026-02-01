@@ -1,4 +1,4 @@
-use crate::{Event, liburing::IoUring, modules::hyprland::writer::CapsLock, user_data::UserData};
+use crate::{Event, liburing::IoUring, modules::hyprland::writer::CapsLock, user_data::ModuleId};
 use anyhow::{Context as _, Result};
 use reader::HyprlandReader;
 use state::HyprlandState;
@@ -70,39 +70,42 @@ impl Hyprland {
 
     pub(crate) fn feed(
         &mut self,
-        user_data: UserData,
+        module_id: ModuleId,
+        op_id: u8,
         res: i32,
         events: &mut Vec<Event>,
     ) -> Result<()> {
-        if let Some(reply) = self.writer.feed(user_data, res)? {
-            match reply {
-                WriterReply::WorkspaceList(workspace_ids) => {
-                    self.state.init_workspace_ids(workspace_ids);
-                    self.writer = writer(Box::new(ActiveWorkspaceResource))?;
-                }
-                WriterReply::ActiveWorkspace(id) => {
-                    self.state.init_active_workspace(id);
-                    self.writer = writer(Box::new(DevicesResource))?;
-                }
-                WriterReply::ActiveKeymap(active_keymap) => {
-                    self.state.init_language(active_keymap);
-
-                    for event in self.state.initial_events() {
-                        events.push(event);
+        if module_id == ModuleId::HyprlandWriter {
+            if let Some(reply) = self.writer.feed(op_id, res)? {
+                match reply {
+                    WriterReply::WorkspaceList(workspace_ids) => {
+                        self.state.init_workspace_ids(workspace_ids);
+                        self.writer = writer(Box::new(ActiveWorkspaceResource))?;
                     }
-                }
-                WriterReply::CapsLock(enabled) => {
-                    events.push(Event::CapsLockToggled { enabled });
-                }
-                WriterReply::None => {}
-            }
-        }
+                    WriterReply::ActiveWorkspace(id) => {
+                        self.state.init_active_workspace(id);
+                        self.writer = writer(Box::new(DevicesResource))?;
+                    }
+                    WriterReply::ActiveKeymap(active_keymap) => {
+                        self.state.init_language(active_keymap);
 
-        let mut hevents = vec![];
-        self.reader.feed(user_data, res, &mut hevents)?;
-        for hevent in hevents {
-            let event = self.state.apply(hevent);
-            events.push(event);
+                        for event in self.state.initial_events() {
+                            events.push(event);
+                        }
+                    }
+                    WriterReply::CapsLock(enabled) => {
+                        events.push(Event::CapsLockToggled { enabled });
+                    }
+                    WriterReply::None => {}
+                }
+            }
+        } else if module_id == ModuleId::HyprlandReader {
+            let mut hevents = vec![];
+            self.reader.feed(op_id, res, &mut hevents)?;
+            for hevent in hevents {
+                let event = self.state.apply(hevent);
+                events.push(event);
+            }
         }
 
         Ok(())

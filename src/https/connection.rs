@@ -1,5 +1,8 @@
 use super::fsm::{FSM, Request, Response, Wants};
-use crate::{liburing::IoUring, user_data::UserData};
+use crate::{
+    liburing::IoUring,
+    user_data::{ModuleId, UserData},
+};
 use anyhow::{Result, bail, ensure};
 use libc::{AF_INET, SOCK_STREAM, addrinfo, freeaddrinfo, gai_strerror, sockaddr_in};
 use rustls::pki_types::ServerName;
@@ -33,27 +36,22 @@ pub(crate) struct HttpsConnection {
     fd: i32,
     state: State,
 
-    socket_user_data: UserData,
-    connect_user_data: UserData,
-    read_user_data: UserData,
-    write_user_data: UserData,
-    close_user_data: UserData,
+    module_id: ModuleId,
 
     response: Option<Response>,
 }
 
+#[repr(u8)]
+enum Op {
+    Socket,
+    Connect,
+    Read,
+    Write,
+    Close,
+}
+
 impl HttpsConnection {
-    #[expect(clippy::too_many_arguments)]
-    pub(crate) fn get(
-        hostname: &str,
-        port: u16,
-        path: &str,
-        socket_user_data: UserData,
-        connect_user_data: UserData,
-        read_user_data: UserData,
-        write_user_data: UserData,
-        close_user_data: UserData,
-    ) -> Result<Self> {
+    pub(crate) fn get(hostname: &str, port: u16, path: &str, module_id: ModuleId) -> Result<Self> {
         let fsm = {
             let server_name = ServerName::try_from(hostname)?.to_owned();
 
@@ -72,11 +70,7 @@ impl HttpsConnection {
             addr,
             fd: -1,
             state: State::CanAcquireSocket,
-            socket_user_data,
-            connect_user_data,
-            read_user_data,
-            write_user_data,
-            close_user_data,
+            module_id,
             response: None,
         })
     }
@@ -92,7 +86,7 @@ impl HttpsConnection {
             State::CanAcquireSocket => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
-                sqe.set_user_data(self.socket_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
 
                 self.state = State::AcquiringSocket;
                 Ok(true)
@@ -106,7 +100,7 @@ impl HttpsConnection {
                     (&self.addr as *const sockaddr_in).cast(),
                     std::mem::size_of::<sockaddr_in>() as u32,
                 );
-                sqe.set_user_data(self.connect_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::Connect as u8));
                 self.state = State::Connecting;
 
                 Ok(true)
@@ -117,7 +111,7 @@ impl HttpsConnection {
                 Wants::Read(buf) => {
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
-                    sqe.set_user_data(self.read_user_data.as_u64());
+                    sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
 
                     self.state = State::Reading;
                     Ok(true)
@@ -125,7 +119,7 @@ impl HttpsConnection {
                 Wants::Write(buf) => {
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
-                    sqe.set_user_data(self.write_user_data.as_u64());
+                    sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
 
                     self.state = State::Writing;
                     Ok(true)
@@ -135,7 +129,7 @@ impl HttpsConnection {
 
                     let mut sqe = ring.get_sqe()?;
                     sqe.prep_close(self.fd);
-                    sqe.set_user_data(self.close_user_data.as_u64());
+                    sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
 
                     self.state = State::Closing;
                     Ok(true)
@@ -148,7 +142,7 @@ impl HttpsConnection {
             State::CanClose => {
                 let mut sqe = ring.get_sqe()?;
                 sqe.prep_close(self.fd);
-                sqe.set_user_data(self.close_user_data.as_u64());
+                sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
 
                 self.state = State::Closing;
                 Ok(true)
@@ -159,8 +153,8 @@ impl HttpsConnection {
         }
     }
 
-    pub(crate) fn feed(&mut self, user_data: UserData, res: i32) -> Result<Option<Response>> {
-        if user_data == self.socket_user_data {
+    pub(crate) fn feed(&mut self, op_id: u8, res: i32) -> Result<Option<Response>> {
+        if op_id == Op::Socket as u8 {
             ensure!(
                 matches!(self.state, State::AcquiringSocket),
                 "malformed state, expected AcquiringSocket, got {:?}",
@@ -174,7 +168,7 @@ impl HttpsConnection {
             return Ok(None);
         }
 
-        if user_data == self.connect_user_data {
+        if op_id == Op::Connect as u8 {
             ensure!(
                 matches!(self.state, State::Connecting),
                 "malformed state, expected Connecting, got {:?}",
@@ -186,7 +180,7 @@ impl HttpsConnection {
             return Ok(None);
         }
 
-        if user_data == self.read_user_data {
+        if op_id == Op::Read as u8 {
             ensure!(
                 matches!(self.state, State::Reading),
                 "malformed state, expected Reading, got {:?}",
@@ -209,7 +203,7 @@ impl HttpsConnection {
             return Ok(None);
         }
 
-        if user_data == self.write_user_data {
+        if op_id == Op::Write as u8 {
             ensure!(
                 matches!(self.state, State::Writing),
                 "malformed state, expected Writing, got {:?}",
@@ -232,7 +226,7 @@ impl HttpsConnection {
             return Ok(None);
         }
 
-        if user_data == self.close_user_data {
+        if op_id == Op::Close as u8 {
             ensure!(
                 matches!(self.state, State::Closing),
                 "malformed state, expected Closing, got {:?}",
