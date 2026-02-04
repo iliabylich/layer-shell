@@ -7,16 +7,9 @@ use crate::{
 use anyhow::{Result, ensure};
 use std::os::{fd::IntoRawFd as _, unix::net::UnixStream};
 
-#[derive(Debug)]
-enum State {
-    CanRead,
-    Reading,
-}
-
 pub(crate) struct HyprlandReader {
     fd: i32,
     buf: [u8; 1_024],
-    state: State,
 }
 
 #[repr(u8)]
@@ -47,25 +40,27 @@ impl HyprlandReader {
         Ok(Box::new(Self {
             fd,
             buf: [0; 1_024],
-            state: State::CanRead,
         }))
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
-        match self.state {
-            State::CanRead => {
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read as u8));
-
-                self.state = State::Reading;
-                Ok(true)
-            }
-            State::Reading => Ok(false),
-        }
+    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
+        self.schedule_read(ring)
     }
 
-    pub(crate) fn feed(&mut self, op: u8, res: i32, events: &mut Vec<HyprlandEvent>) -> Result<()> {
+    fn schedule_read(&mut self, ring: &mut IoUring) -> Result<()> {
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read as u8));
+        Ok(())
+    }
+
+    pub(crate) fn process(
+        &mut self,
+        op: u8,
+        res: i32,
+        ring: &mut IoUring,
+        events: &mut Vec<HyprlandEvent>,
+    ) -> Result<()> {
         match Op::try_from(op)? {
             Op::Read => {
                 ensure!(res > 0);
@@ -76,10 +71,10 @@ impl HyprlandReader {
                         events.push(event)
                     };
                 }
-                self.state = State::CanRead
+
+                self.schedule_read(ring)?;
             }
         }
-
         Ok(())
     }
 }

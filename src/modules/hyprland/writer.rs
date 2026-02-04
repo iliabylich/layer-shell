@@ -126,27 +126,11 @@ impl WriterResource for Dispatch {
     }
 
     fn parse(&self, reply: &str) -> Result<WriterReply> {
-        ensure!(
-            reply == "ok",
-            "invalid response from hyprctl dispatch: expected 'ok', got {reply:?}",
-        );
+        if reply != "ok" {
+            eprintln!("invalid response from hyprctl dispatch: expected 'ok', got {reply:?}");
+        }
         Ok(WriterReply::None)
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum State {
-    Initial,
-    SocketRequested,
-    SocketAcquired,
-    Connecting,
-    Connected,
-    Writing,
-    Written,
-    Reading,
-    Read,
-    Closing,
-    Closed,
 }
 
 #[derive(Debug)]
@@ -158,6 +142,7 @@ pub(crate) enum WriterReply {
     None,
 }
 
+#[derive(Debug)]
 #[repr(u8)]
 enum Op {
     Socket,
@@ -182,7 +167,6 @@ pub(crate) struct HyprlandWriter {
     addr: sockaddr_un,
     buf: [u8; 4_096],
     resource: Box<dyn WriterResource>,
-    state: State,
     reply: Option<WriterReply>,
 }
 
@@ -208,141 +192,91 @@ impl HyprlandWriter {
             addr,
             buf: [0; 4_096],
             resource,
-            state: State::Initial,
             reply: None,
         }))
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<bool> {
-        match self.state {
-            State::Initial => {
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
-                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket as u8));
-                self.state = State::SocketRequested;
-                Ok(true)
-            }
-            State::SocketRequested => Ok(false),
-
-            State::SocketAcquired => {
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_connect(
-                    self.fd,
-                    (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-                    std::mem::size_of::<sockaddr_un>() as u32,
-                );
-                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Connect as u8));
-                self.state = State::Connecting;
-                Ok(true)
-            }
-            State::Connecting => Ok(false),
-
-            State::Connected => {
-                let mut writer = ArrayWriter::new(&mut self.buf);
-                write!(&mut writer, "{}", self.resource.command())?;
-                let buflen = writer.offset();
-
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_write(self.fd, self.buf.as_ptr(), buflen);
-                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Write as u8));
-                self.state = State::Writing;
-                Ok(true)
-            }
-            State::Writing => Ok(false),
-
-            State::Written => {
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Read as u8));
-                self.state = State::Reading;
-                Ok(true)
-            }
-            State::Reading => Ok(false),
-
-            State::Read => {
-                let mut sqe = ring.get_sqe()?;
-                sqe.prep_close(self.fd);
-                sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Close as u8));
-                self.state = State::Closing;
-                Ok(true)
-            }
-            State::Closing => Ok(false),
-
-            State::Closed => Ok(false),
-        }
+    fn schedule_socket(&self, ring: &mut IoUring) -> Result<()> {
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket as u8));
+        Ok(())
     }
 
-    pub(crate) fn feed(&mut self, op: u8, res: i32) -> Result<Option<WriterReply>> {
-        if op == Op::Socket as u8 {
-            ensure!(
-                matches!(self.state, State::SocketRequested),
-                "malformed state, expected SocketRequested, got {:?}",
-                self.state
-            );
+    fn schedule_connect(&self, ring: &mut IoUring) -> Result<()> {
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_connect(
+            self.fd,
+            (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
+            std::mem::size_of::<sockaddr_un>() as u32,
+        );
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Connect as u8));
+        Ok(())
+    }
 
-            let fd = res;
-            ensure!(fd > 0);
-            self.fd = fd;
-            self.state = State::SocketAcquired;
-            return Ok(None);
-        }
+    fn schedule_write(&mut self, ring: &mut IoUring) -> Result<()> {
+        let mut writer = ArrayWriter::new(&mut self.buf);
+        write!(&mut writer, "{}", self.resource.command())?;
+        let buflen = writer.offset();
 
-        if op == Op::Connect as u8 {
-            ensure!(
-                matches!(self.state, State::Connecting),
-                "malformed state, expected Connecting, got {:?}",
-                self.state
-            );
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_write(self.fd, self.buf.as_ptr(), buflen);
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Write as u8));
+        Ok(())
+    }
 
-            ensure!(res >= 0);
-            self.state = State::Connected;
-            return Ok(None);
-        }
+    fn schedule_read(&mut self, ring: &mut IoUring) -> Result<()> {
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Read as u8));
+        Ok(())
+    }
 
-        if op == Op::Write as u8 {
-            ensure!(
-                matches!(self.state, State::Writing),
-                "malformed state, expected Writing, got {:?}",
-                self.state
-            );
+    fn schedule_close(&self, ring: &mut IoUring) -> Result<()> {
+        let mut sqe = ring.get_sqe()?;
+        sqe.prep_close(self.fd);
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Close as u8));
+        Ok(())
+    }
 
-            ensure!(res > 0);
-            self.state = State::Written;
-            return Ok(None);
-        }
+    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
+        self.schedule_socket(ring)
+    }
 
-        if op == Op::Read as u8 {
-            ensure!(
-                matches!(self.state, State::Reading),
-                "malformed state, expected Reading, got {:?}",
-                self.state
-            );
-
-            ensure!(res > 0);
-            let len = res as usize;
-            let json = std::str::from_utf8(&self.buf[..len])?;
-            self.reply = Some(self.resource.parse(json)?);
-            self.state = State::Read;
-
-            return Ok(None);
-        }
-
-        if op == Op::Close as u8 {
-            ensure!(
-                matches!(self.state, State::Closing),
-                "malformed state, expected Closing, got {:?}",
-                self.state
-            );
-
-            ensure!(res >= 0);
-            self.state = State::Closed;
-            return Ok(self.reply.take());
+    pub(crate) fn process(
+        &mut self,
+        op: u8,
+        res: i32,
+        ring: &mut IoUring,
+    ) -> Result<Option<WriterReply>> {
+        match Op::try_from(op)? {
+            Op::Socket => {
+                let fd = res;
+                ensure!(fd > 0);
+                self.fd = fd;
+                self.schedule_connect(ring)?;
+            }
+            Op::Connect => {
+                ensure!(res >= 0);
+                self.schedule_write(ring)?;
+            }
+            Op::Write => {
+                ensure!(res > 0);
+                self.schedule_read(ring)?;
+            }
+            Op::Read => {
+                ensure!(res > 0);
+                let len = res as usize;
+                let json = std::str::from_utf8(&self.buf[..len])?;
+                self.reply = Some(self.resource.parse(json)?);
+                self.schedule_close(ring)?;
+            }
+            Op::Close => {
+                ensure!(res >= 0);
+                return Ok(self.reply.take());
+            }
         }
 
         Ok(None)
-    }
-
-    pub(crate) fn is_finished(&self) -> bool {
-        matches!(self.state, State::Closed)
     }
 }

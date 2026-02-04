@@ -33,7 +33,7 @@ impl Memory {
         }))
     }
 
-    pub(crate) fn feed(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
+    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
         match Op::try_from(op)? {
             Op::Read => {
                 ensure!(res > 0);

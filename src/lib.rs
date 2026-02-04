@@ -47,7 +47,6 @@ struct IO {
     control: Box<Control>,
     network: Box<Network>,
     tray: Box<Tray>,
-
     on_event: extern "C" fn(event: *const Event),
 }
 
@@ -76,7 +75,6 @@ impl IO {
             control: Control::new(),
             network: Network::new(),
             tray: Tray::new(),
-
             on_event,
         };
 
@@ -89,7 +87,7 @@ impl IO {
         self.timer.init(&mut self.ring)?;
 
         self.location.init(&mut self.ring)?;
-        self.hyprland.drain(&mut self.ring)?;
+        self.hyprland.init(&mut self.ring)?;
 
         self.session_dbus.enqueue(&mut Hello.into());
         self.sound.init(&mut self.session_dbus);
@@ -120,13 +118,20 @@ impl IO {
         })
     }
 
-    fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
+    fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) -> Result<()> {
         match req {
-            ControlRequest::CapsLockToggled => self.hyprland.enqueue_get_caps_lock(),
+            ControlRequest::CapsLockToggled => {
+                self.hyprland.enqueue_get_caps_lock(&mut self.ring)?;
+                if self.ring.take_dirty() {
+                    self.ring.submit()?
+                }
+            }
             ControlRequest::Exit => events.push(Event::Exit),
             ControlRequest::ReloadStyles => events.push(Event::ReloadStyles),
             ControlRequest::ToggleSessionScreen => events.push(Event::ToggleSessionScreen),
         }
+
+        Ok(())
     }
 
     fn try_handle_readable(&mut self) -> Result<()> {
@@ -150,9 +155,13 @@ impl IO {
                 ModuleId::Weather => {
                     self.weather.process(op, res, &mut self.ring, &mut events)?;
                 }
-                ModuleId::HyprlandReader | ModuleId::HyprlandWriter => {
-                    self.hyprland.feed(module_id, op, res, &mut events)?;
-                    self.hyprland.drain(&mut self.ring)?;
+                ModuleId::HyprlandReader => {
+                    self.hyprland
+                        .process_reader(op, res, &mut self.ring, &mut events)?;
+                }
+                ModuleId::HyprlandWriter => {
+                    self.hyprland
+                        .process_writer(op, res, &mut self.ring, &mut events)?;
                 }
                 ModuleId::SessionDBus => {
                     if let Some(message) = self.session_dbus.feed(op, res)? {
@@ -163,7 +172,7 @@ impl IO {
 
                         if let Some(req) = self.control.on_message(&message, &mut self.session_dbus)
                         {
-                            self.on_control_req(req, &mut events);
+                            self.on_control_req(req, &mut events)?;
                         }
                     }
                     self.session_dbus.drain(&mut self.ring)?;
@@ -179,7 +188,7 @@ impl IO {
                     self.cpu.process(op, res, &mut events)?;
                 }
                 ModuleId::Memory => {
-                    self.memory.feed(op, res, &mut events)?;
+                    self.memory.process(op, res, &mut events)?;
                 }
                 ModuleId::TimerFD => {
                     let tick = self.timer.process(op, &mut self.ring)?;
@@ -223,11 +232,15 @@ impl IO {
         })
     }
 
-    fn process_command(&mut self, cmd: Command) {
+    fn try_process_command(&mut self, cmd: Command) -> Result<()> {
         macro_rules! hyprctl {
-            ($($arg:tt)*) => {
-                self.hyprland.dispatch(format!($($arg)*))
-            };
+            ($($arg:tt)*) => {{
+                self.hyprland.dispatch(format!($($arg)*), &mut self.ring)?;
+
+                if self.ring.take_dirty() {
+                    self.ring.submit()?
+                }
+            }};
         }
         match cmd {
             Command::GoToWorkspace { workspace } => {
@@ -260,6 +273,15 @@ impl IO {
 
             Command::TriggerTray { uuid } => todo!("{uuid}"),
         }
+
+        Ok(())
+    }
+
+    fn process_command(&mut self, cmd: Command) {
+        self.try_process_command(cmd).unwrap_or_else(|err| {
+            eprintln!("{err:?}");
+            std::process::exit(1);
+        })
     }
 }
 
