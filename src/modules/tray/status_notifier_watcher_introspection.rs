@@ -1,7 +1,11 @@
-use crate::dbus::{
-    DBus, IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
-    types::{CompleteType, Value},
+use crate::{
+    dbus::{
+        DBus, IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
+        types::{CompleteType, Value},
+    },
+    liburing::IoUring,
 };
+use anyhow::Result;
 use std::borrow::Cow;
 
 pub(crate) struct StatusNotifierWatcherIntrospection {
@@ -15,7 +19,13 @@ impl StatusNotifierWatcherIntrospection {
         }
     }
 
-    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str, body: Vec<Value>) {
+    fn reply_ok(
+        dbus: &mut DBus,
+        serial: u32,
+        destination: &str,
+        body: Vec<Value>,
+        ring: &mut IoUring,
+    ) -> Result<()> {
         let mut message = Message::MethodReturn {
             serial: 0,
             reply_serial: serial,
@@ -24,40 +34,46 @@ impl StatusNotifierWatcherIntrospection {
             unix_fds: None,
             body,
         };
-        dbus.enqueue(&mut message);
+        dbus.enqueue(&mut message, ring)
     }
 
-    fn reply_err(dbus: &mut DBus, serial: u32, destination: &str) {
+    fn reply_err(
+        dbus: &mut DBus,
+        serial: u32,
+        destination: &str,
+        ring: &mut IoUring,
+    ) -> Result<()> {
         let mut reply = Message::new_err_no_method(serial, destination);
-        dbus.enqueue(&mut reply);
+        dbus.enqueue(&mut reply, ring)
     }
 
-    pub(crate) fn process_message(&mut self, dbus: &mut DBus, message: &Message) -> bool {
+    pub(crate) fn process_message(
+        &mut self,
+        dbus: &mut DBus,
+        message: &Message,
+        ring: &mut IoUring,
+    ) -> Result<bool> {
         let Ok((serial, sender, req)) = self.introspection.handle(message) else {
-            return false;
+            return Ok(false);
         };
 
         match req {
             IntrospectibleObjectAtRequest::Introspect { path } => match path.as_str() {
-                "/" => {
-                    Self::reply_ok(
-                        dbus,
-                        serial,
-                        &sender,
-                        vec![Value::String(Cow::Owned(root_introspection_xml()))],
-                    );
-                }
-                "/StatusNotifierWatcher" => {
-                    Self::reply_ok(
-                        dbus,
-                        serial,
-                        &sender,
-                        vec![Value::String(Cow::Owned(ksni_introspection_xml()))],
-                    );
-                }
-                _ => {
-                    Self::reply_err(dbus, serial, &sender);
-                }
+                "/" => Self::reply_ok(
+                    dbus,
+                    serial,
+                    &sender,
+                    vec![Value::String(Cow::Owned(root_introspection_xml()))],
+                    ring,
+                )?,
+                "/StatusNotifierWatcher" => Self::reply_ok(
+                    dbus,
+                    serial,
+                    &sender,
+                    vec![Value::String(Cow::Owned(ksni_introspection_xml()))],
+                    ring,
+                )?,
+                _ => Self::reply_err(dbus, serial, &sender, ring)?,
             },
 
             IntrospectibleObjectAtRequest::GetAllProperties { path, interface } => {
@@ -90,12 +106,10 @@ impl StatusNotifierWatcherIntrospection {
                                 ),
                             ],
                         )];
-                        Self::reply_ok(dbus, serial, &sender, body);
+                        Self::reply_ok(dbus, serial, &sender, body, ring)?;
                     }
 
-                    _ => {
-                        Self::reply_err(dbus, serial, &sender);
-                    }
+                    _ => Self::reply_err(dbus, serial, &sender, ring)?,
                 }
             }
 
@@ -124,20 +138,20 @@ impl StatusNotifierWatcherIntrospection {
                     ) => Value::Variant(Box::new(Value::Array(CompleteType::String, vec![]))),
 
                     _ => {
-                        Self::reply_err(dbus, serial, &sender);
-                        return true;
+                        Self::reply_err(dbus, serial, &sender, ring)?;
+                        return Ok(true);
                     }
                 };
 
-                Self::reply_ok(dbus, serial, &sender, vec![value]);
+                Self::reply_ok(dbus, serial, &sender, vec![value], ring)?;
             }
 
             _ => {
-                Self::reply_err(dbus, serial, &sender);
+                Self::reply_err(dbus, serial, &sender, ring)?;
             }
         }
 
-        true
+        Ok(true)
     }
 }
 

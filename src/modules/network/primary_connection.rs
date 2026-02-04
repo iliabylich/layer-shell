@@ -1,7 +1,10 @@
-use crate::dbus::{
-    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-    messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-    types::Value,
+use crate::{
+    dbus::{
+        DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
+        types::Value,
+    },
+    liburing::IoUring,
 };
 use anyhow::{Result, bail};
 
@@ -34,10 +37,11 @@ impl PrimaryConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
-        self.oneshot.start(dbus, ());
+    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
+        self.oneshot.start(dbus, (), ring)?;
         self.subscription
-            .start(dbus, "/org/freedesktop/NetworkManager");
+            .start(dbus, "/org/freedesktop/NetworkManager", ring)?;
+        Ok(())
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryConnectionEvent> {

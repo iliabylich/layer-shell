@@ -42,7 +42,6 @@ struct IO {
     hyprland: Box<Hyprland>,
     cpu: Box<CPU>,
     memory: Box<Memory>,
-
     sound: Box<Sound>,
     control: Box<Control>,
     network: Box<Network>,
@@ -70,7 +69,6 @@ impl IO {
             hyprland: Hyprland::new()?,
             cpu: CPU::new()?,
             memory: Memory::new()?,
-
             sound: Sound::new(),
             control: Control::new(),
             network: Network::new(),
@@ -89,15 +87,17 @@ impl IO {
         self.location.init(&mut self.ring)?;
         self.hyprland.init(&mut self.ring)?;
 
-        self.session_dbus.enqueue(&mut Hello.into());
-        self.sound.init(&mut self.session_dbus);
-        self.control.init(&mut self.session_dbus);
-        self.tray.init(&mut self.session_dbus);
-        self.session_dbus.drain(&mut self.ring)?;
+        self.session_dbus
+            .enqueue(&mut Hello.into(), &mut self.ring)?;
+        self.sound.init(&mut self.session_dbus, &mut self.ring)?;
+        self.control.init(&mut self.session_dbus, &mut self.ring)?;
+        self.tray.init(&mut self.session_dbus, &mut self.ring)?;
+        self.session_dbus.init(&mut self.ring)?;
 
-        self.system_dbus.enqueue(&mut Hello.into());
-        self.network.init(&mut self.system_dbus);
-        self.system_dbus.drain(&mut self.ring)?;
+        self.system_dbus
+            .enqueue(&mut Hello.into(), &mut self.ring)?;
+        self.network.init(&mut self.system_dbus, &mut self.ring)?;
+        self.system_dbus.init(&mut self.ring)?;
 
         self.ring.submit()?;
 
@@ -163,27 +163,57 @@ impl IO {
                     self.hyprland
                         .process_writer(op, res, &mut self.ring, &mut events)?;
                 }
-                ModuleId::SessionDBus => {
-                    if let Some(message) = self.session_dbus.feed(op, res)? {
-                        self.sound
-                            .on_message(&mut self.session_dbus, &message, &mut events);
-                        self.tray
-                            .on_message(&mut self.session_dbus, &message, &mut events);
 
-                        if let Some(req) = self.control.on_message(&message, &mut self.session_dbus)
-                        {
+                ModuleId::SessionDBusAuth => {
+                    self.session_dbus.process_auth(op, res, &mut self.ring)?;
+                }
+                ModuleId::SessionDBusReader => {
+                    if let Some(message) =
+                        self.session_dbus.process_read(op, res, &mut self.ring)?
+                    {
+                        self.sound.on_message(
+                            &mut self.session_dbus,
+                            &message,
+                            &mut events,
+                            &mut self.ring,
+                        )?;
+                        self.tray.on_message(
+                            &mut self.session_dbus,
+                            &message,
+                            &mut events,
+                            &mut self.ring,
+                        )?;
+
+                        if let Some(req) = self.control.on_message(
+                            &message,
+                            &mut self.session_dbus,
+                            &mut self.ring,
+                        )? {
                             self.on_control_req(req, &mut events)?;
                         }
                     }
-                    self.session_dbus.drain(&mut self.ring)?;
                 }
-                ModuleId::SystemDBus => {
-                    if let Some(message) = self.system_dbus.feed(op, res)? {
-                        self.network
-                            .on_message(&mut self.system_dbus, &message, &mut events);
+                ModuleId::SessionDBusWriter => {
+                    self.session_dbus.process_write(op, res, &mut self.ring)?;
+                }
+
+                ModuleId::SystemDBusAuth => {
+                    self.system_dbus.process_auth(op, res, &mut self.ring)?;
+                }
+                ModuleId::SystemDBusReader => {
+                    if let Some(message) = self.system_dbus.process_read(op, res, &mut self.ring)? {
+                        self.network.on_message(
+                            &mut self.system_dbus,
+                            &message,
+                            &mut events,
+                            &mut self.ring,
+                        )?;
                     }
-                    self.system_dbus.drain(&mut self.ring)?;
                 }
+                ModuleId::SystemDBusWriter => {
+                    self.system_dbus.process_write(op, res, &mut self.ring)?;
+                }
+
                 ModuleId::CPU => {
                     self.cpu.process(op, res, &mut events)?;
                 }

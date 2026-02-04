@@ -1,7 +1,10 @@
-use crate::dbus::{
-    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-    messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
-    types::Value,
+use crate::{
+    dbus::{
+        DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
+        types::Value,
+    },
+    liburing::IoUring,
 };
 use anyhow::{Context, Result};
 
@@ -24,14 +27,16 @@ impl TxRx {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+    pub(crate) fn reset(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
         self.oneshot.reset();
-        self.subscription.reset(dbus);
+        self.subscription.reset(dbus, ring)?;
+        Ok(())
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
-        self.oneshot.start(dbus, path.to_string());
-        self.subscription.start(dbus, path);
+    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str, ring: &mut IoUring) -> Result<()> {
+        self.oneshot.start(dbus, path.to_string(), ring)?;
+        self.subscription.start(dbus, path, ring)?;
+        Ok(())
     }
 
     pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {

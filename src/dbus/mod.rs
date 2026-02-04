@@ -2,15 +2,24 @@ mod auth;
 mod decoders;
 mod encoders;
 mod introspectible_object_at;
-mod read_write;
+mod reader;
 mod requests;
 mod serial;
+mod writer;
 
-use crate::{liburing::IoUring, user_data::ModuleId};
+use crate::{
+    dbus::{encoders::MessageEncoder, serial::Serial},
+    liburing::IoUring,
+    user_data::ModuleId,
+};
 use anyhow::{Context, Result};
 use auth::Auth;
-use read_write::ReadWrite;
-use std::os::{fd::IntoRawFd, unix::net::UnixStream};
+use reader::Reader;
+use std::{
+    collections::VecDeque,
+    os::{fd::IntoRawFd, unix::net::UnixStream},
+};
+use writer::Writer;
 
 pub(crate) mod messages;
 pub(crate) mod types;
@@ -18,10 +27,13 @@ pub(crate) use introspectible_object_at::{IntrospectibleObjectAt, Introspectible
 pub(crate) use requests::{Oneshot, OneshotResource, Subscription, SubscriptionResource};
 pub(crate) use types::Message;
 
-#[expect(clippy::large_enum_variant)]
-pub(crate) enum DBus {
-    Auth(Auth),
-    ReadWrite(ReadWrite),
+pub(crate) struct DBus {
+    auth: Auth,
+    reader: Reader,
+    writer: Writer,
+    writer_is_ready: bool,
+    queue: VecDeque<Vec<u8>>,
+    serial: Serial,
 }
 
 impl DBus {
@@ -32,7 +44,12 @@ impl DBus {
             .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
         let fd = UnixStream::connect(path)?.into_raw_fd();
 
-        Ok(Box::new(Self::Auth(Auth::new(fd, ModuleId::SessionDBus))))
+        Ok(Box::new(Self::new(
+            fd,
+            ModuleId::SessionDBusAuth,
+            ModuleId::SessionDBusReader,
+            ModuleId::SessionDBusWriter,
+        )))
     }
 
     pub(crate) fn new_system() -> Result<Box<Self>> {
@@ -48,32 +65,79 @@ impl DBus {
 
         let fd = UnixStream::connect(path)?.into_raw_fd();
 
-        Ok(Box::new(Self::Auth(Auth::new(fd, ModuleId::SystemDBus))))
+        Ok(Box::new(Self::new(
+            fd,
+            ModuleId::SystemDBusAuth,
+            ModuleId::SystemDBusReader,
+            ModuleId::SystemDBusWriter,
+        )))
     }
 
-    pub(crate) fn enqueue(&mut self, message: &mut Message) {
-        match self {
-            Self::Auth(auth) => auth.enqueue(message),
-            Self::ReadWrite(rw) => rw.enqueue(message),
+    fn new(
+        fd: i32,
+        auth_module_id: ModuleId,
+        reader_module_id: ModuleId,
+        writer_module_id: ModuleId,
+    ) -> Self {
+        Self {
+            auth: Auth::new(fd, auth_module_id),
+            reader: Reader::new(fd, reader_module_id),
+            writer: Writer::new(fd, writer_module_id),
+            writer_is_ready: false,
+            queue: VecDeque::new(),
+            serial: Serial::zero(),
         }
     }
 
-    pub(crate) fn drain(&mut self, ring: &mut IoUring) -> Result<()> {
-        match self {
-            DBus::Auth(auth) => auth.drain(ring),
-            DBus::ReadWrite(rw) => rw.drain(ring),
+    pub(crate) fn enqueue(&mut self, message: &mut Message, ring: &mut IoUring) -> Result<()> {
+        *message.serial_mut() = self.serial.increment_and_get();
+        let bytes = MessageEncoder::encode(message);
+
+        if self.writer_is_ready {
+            self.writer.init(bytes, ring)?;
+            self.writer_is_ready = false;
+        } else {
+            self.queue.push_back(bytes);
         }
+
+        Ok(())
     }
 
-    pub(crate) fn feed(&mut self, op: u8, res: i32) -> Result<Option<Message<'static>>> {
-        match self {
-            DBus::Auth(auth) => {
-                if let Some((fd, serial, queue)) = auth.feed(op, res)? {
-                    *self = Self::ReadWrite(ReadWrite::new(fd, serial, queue, auth.module_id));
-                }
-                Ok(None)
+    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
+        self.auth.init(ring)
+    }
+
+    pub(crate) fn process_auth(&mut self, op: u8, res: i32, ring: &mut IoUring) -> Result<()> {
+        let finished = self.auth.process(op, res, ring)?;
+        if finished {
+            self.reader.init(ring)?;
+
+            if let Some(bytes) = self.queue.pop_front() {
+                self.writer.init(bytes, ring)?;
+                self.writer_is_ready = false;
+            } else {
+                self.writer_is_ready = true;
             }
-            DBus::ReadWrite(rw) => rw.feed(op, res),
         }
+        Ok(())
+    }
+
+    pub(crate) fn process_read(
+        &mut self,
+        op: u8,
+        res: i32,
+        ring: &mut IoUring,
+    ) -> Result<Option<Message<'static>>> {
+        self.reader.process(op, res, ring)
+    }
+
+    pub(crate) fn process_write(&mut self, op: u8, res: i32, ring: &mut IoUring) -> Result<()> {
+        self.writer.process(op, res)?;
+        if let Some(bytes) = self.queue.pop_front() {
+            self.writer.init(bytes, ring)?;
+        } else {
+            self.writer_is_ready = true;
+        }
+        Ok(())
     }
 }

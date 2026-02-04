@@ -1,10 +1,12 @@
 use crate::{
     dbus::{DBus, Message},
+    liburing::IoUring,
     modules::network::{
         active_connection_type::ActiveConnectionType,
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
     },
 };
+use anyhow::Result;
 
 #[derive(Default)]
 enum State {
@@ -34,25 +36,26 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
-        self.primary_connection.init(dbus);
+    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
+        self.primary_connection.init(dbus, ring)
     }
 
     fn on_primary_connection_event(
         &mut self,
         dbus: &mut DBus,
         e: PrimaryConnectionEvent,
-    ) -> Option<WirelessConnectionEvent> {
+        ring: &mut IoUring,
+    ) -> Result<Option<WirelessConnectionEvent>> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
-                self.active_connection_type.request(dbus, &path);
+                self.active_connection_type.request(dbus, &path, ring)?;
                 self.state = State::ConnectedAndHavePath;
-                None
+                Ok(None)
             }
             PrimaryConnectionEvent::Disconnected => {
                 self.active_connection_type.reset();
                 self.state = State::Disconnected;
-                Some(WirelessConnectionEvent::Disconnected)
+                Ok(Some(WirelessConnectionEvent::Disconnected))
             }
         }
     }
@@ -75,15 +78,16 @@ impl WirelessConnection {
         &mut self,
         dbus: &mut DBus,
         message: &Message,
-    ) -> Option<WirelessConnectionEvent> {
+        ring: &mut IoUring,
+    ) -> Result<Option<WirelessConnectionEvent>> {
         if let Some(e) = self.primary_connection.on_message(message) {
-            return self.on_primary_connection_event(dbus, e);
+            return self.on_primary_connection_event(dbus, e, ring);
         }
 
         if let Some((is_wireless, path)) = self.active_connection_type.on_message(message) {
-            return self.on_active_connection_type_received(is_wireless, path);
+            return Ok(self.on_active_connection_type_received(is_wireless, path));
         }
 
-        None
+        Ok(None)
     }
 }

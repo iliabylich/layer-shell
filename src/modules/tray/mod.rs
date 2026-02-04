@@ -1,7 +1,9 @@
 use crate::{
     Event,
     dbus::{DBus, Message},
+    liburing::IoUring,
 };
+use anyhow::Result;
 use name_lost_or_changed::NameLostOrNameOwnerChanged;
 use status_notifier_watcher::StatusNotifierWatcher;
 use std::collections::HashMap;
@@ -27,9 +29,10 @@ impl Tray {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
-        self.status_notifier_watcher.init(dbus);
-        self.name_lost_or_changed.init(dbus);
+    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
+        self.status_notifier_watcher.init(dbus, ring)?;
+        self.name_lost_or_changed.init(dbus, ring)?;
+        Ok(())
     }
 
     pub(crate) fn on_message(
@@ -37,13 +40,19 @@ impl Tray {
         dbus: &mut DBus,
         message: &Message,
         events: &mut Vec<Event>,
-    ) {
-        if let Some(address) = self.status_notifier_watcher.on_message(dbus, message) {
+        ring: &mut IoUring,
+    ) -> Result<()> {
+        if let Some(address) = self
+            .status_notifier_watcher
+            .on_message(dbus, message, ring)?
+        {
             self.registry.insert(address.clone(), TrayApp::new(address));
         }
 
         if let Some(address) = self.name_lost_or_changed.on_message(message) {
             self.registry.remove(&address);
         }
+
+        Ok(())
     }
 }

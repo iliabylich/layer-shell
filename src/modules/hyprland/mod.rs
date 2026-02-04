@@ -16,25 +16,23 @@ mod writer;
 
 pub(crate) struct Hyprland {
     reader: Box<HyprlandReader>,
-    writer: Box<HyprlandWriter>,
-    writer_is_ready: bool,
+    writer: Option<Box<HyprlandWriter>>,
     state: HyprlandState,
     queue: VecDeque<Box<dyn WriterResource>>,
 }
 
-fn reader() -> Result<Box<HyprlandReader>> {
+fn new_reader() -> Result<Box<HyprlandReader>> {
     HyprlandReader::new()
 }
-fn writer(resource: Box<dyn WriterResource>) -> Result<Box<HyprlandWriter>> {
+fn new_writer(resource: Box<dyn WriterResource>) -> Result<Box<HyprlandWriter>> {
     HyprlandWriter::new(resource)
 }
 
 impl Hyprland {
     pub(crate) fn new() -> Result<Box<Self>> {
         Ok(Box::new(Self {
-            reader: reader()?,
-            writer: writer(Box::new(WorkspaceListResource))?,
-            writer_is_ready: false,
+            reader: new_reader()?,
+            writer: Some(new_writer(Box::new(WorkspaceListResource))?),
             state: HyprlandState::default(),
             queue: VecDeque::from([
                 Box::new(ActiveWorkspaceResource) as Box<dyn WriterResource>,
@@ -45,7 +43,9 @@ impl Hyprland {
 
     pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
         self.reader.init(ring)?;
-        self.writer.init(ring)?;
+        if let Some(writer) = self.writer.as_mut() {
+            writer.init(ring)?;
+        }
         Ok(())
     }
 
@@ -73,7 +73,9 @@ impl Hyprland {
         ring: &mut IoUring,
         events: &mut Vec<Event>,
     ) -> Result<()> {
-        if let Some(reply) = self.writer.process(op, res, ring)? {
+        if let Some(writer) = self.writer.as_mut()
+            && let Some(reply) = writer.process(op, res, ring)?
+        {
             match reply {
                 WriterReply::WorkspaceList(workspace_ids) => {
                     self.state.init_workspace_ids(workspace_ids);
@@ -93,35 +95,41 @@ impl Hyprland {
                 }
                 WriterReply::None => {}
             }
-
-            self.writer_is_ready = true;
-            self.start_new_writer_if_ready(ring)?;
-        }
-        Ok(())
-    }
-
-    fn start_new_writer_if_ready(&mut self, ring: &mut IoUring) -> Result<()> {
-        if !self.writer_is_ready {
-            return Ok(());
+            self.writer = None;
         }
 
-        if let Some(next) = self.queue.pop_front() {
-            self.writer = writer(next)?;
-            self.writer.init(ring)?;
+        if self.writer.is_none()
+            && let Some(next) = self.queue.pop_front()
+        {
+            let mut writer = new_writer(next)?;
+            writer.init(ring)?;
+            self.writer = Some(writer);
         }
 
         Ok(())
     }
 
     pub(crate) fn enqueue_get_caps_lock(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.queue.push_back(Box::new(CapsLock));
-        self.start_new_writer_if_ready(ring)?;
+        let resource = Box::new(CapsLock);
+        if self.writer.is_none() {
+            let mut writer = new_writer(resource)?;
+            writer.init(ring)?;
+            self.writer = Some(writer)
+        } else {
+            self.queue.push_back(resource);
+        }
         Ok(())
     }
 
     pub(crate) fn dispatch(&mut self, cmd: String, ring: &mut IoUring) -> Result<()> {
-        self.queue.push_back(Box::new(Dispatch::new(cmd)));
-        self.start_new_writer_if_ready(ring)?;
+        let resource = Box::new(Dispatch::new(cmd));
+        if self.writer.is_none() {
+            let mut writer = new_writer(resource)?;
+            writer.init(ring)?;
+            self.writer = Some(writer)
+        } else {
+            self.queue.push_back(resource);
+        }
         Ok(())
     }
 }

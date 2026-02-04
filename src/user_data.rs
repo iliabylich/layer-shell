@@ -9,8 +9,15 @@ pub(crate) enum ModuleId {
     GeoLocation,
     HyprlandReader,
     HyprlandWriter,
-    SessionDBus,
-    SystemDBus,
+
+    SessionDBusAuth,
+    SessionDBusReader,
+    SessionDBusWriter,
+
+    SystemDBusAuth,
+    SystemDBusReader,
+    SystemDBusWriter,
+
     #[expect(clippy::upper_case_acronyms)]
     CPU,
     Memory,
