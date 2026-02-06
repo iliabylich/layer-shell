@@ -26,10 +26,48 @@ impl TryFrom<u8> for Op {
 
 const HEADER_LEN: usize = HeaderDecoder::LENGTH + std::mem::size_of::<u32>();
 
+#[derive(Debug)]
+struct Buffer {
+    bytes: Vec<u8>,
+    target_len: usize,
+    current_len: usize,
+}
+
+impl Buffer {
+    fn new() -> Self {
+        Self {
+            bytes: vec![0; HEADER_LEN],
+            target_len: HEADER_LEN,
+            current_len: 0,
+        }
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.bytes[..self.current_len]
+    }
+
+    fn set_body_len(&mut self, body_len: usize) {
+        self.target_len += body_len;
+        for _ in 0..body_len {
+            self.bytes.push(0);
+        }
+    }
+
+    fn remainder(&mut self) -> (&mut [u8], usize) {
+        let blob = &mut self.bytes[self.current_len..];
+        let len = self.target_len - self.current_len;
+        (blob, len)
+    }
+
+    fn got_bytes(&mut self, len: usize) {
+        self.current_len += len;
+    }
+}
+
 pub(crate) struct Reader {
     fd: i32,
     module_id: ModuleId,
-    buf: [u8; 5_000],
+    buf: Buffer,
 }
 
 impl Reader {
@@ -37,20 +75,22 @@ impl Reader {
         Self {
             fd,
             module_id,
-            buf: [0; _],
+            buf: Buffer::new(),
         }
     }
 
     fn schedule_read_header(&mut self, ring: &mut IoUring) -> Result<()> {
         let mut sqe = ring.get_sqe()?;
-        sqe.prep_read(self.fd, self.buf.as_mut_ptr(), HEADER_LEN);
+        let (bytes, len) = self.buf.remainder();
+        sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadHeader as u8));
         Ok(())
     }
 
-    fn schedule_read_body(&mut self, len: usize, ring: &mut IoUring) -> Result<()> {
+    fn schedule_read_body(&mut self, ring: &mut IoUring) -> Result<()> {
         let mut sqe = ring.get_sqe()?;
-        sqe.prep_read(self.fd, self.buf[HEADER_LEN..].as_mut_ptr(), len);
+        let (bytes, len) = self.buf.remainder();
+        sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
         Ok(())
     }
@@ -67,26 +107,34 @@ impl Reader {
     ) -> Result<Option<Message<'static>>> {
         match Op::try_from(op)? {
             Op::ReadHeader => {
-                ensure!(res > 0, "res is {res}, buf is {:?}", &self.buf[..16]);
+                ensure!(res > 0, "res is {res}, buf is {:?}", self.buf);
                 let bytes_read = res as usize;
                 assert_eq!(bytes_read, HEADER_LEN);
-                let buf = &self.buf[..bytes_read];
+                self.buf.got_bytes(bytes_read);
+                let buf = self.buf.as_slice();
 
                 let mut buf = DecodingBuffer::new(buf);
                 let header = HeaderDecoder::decode(&mut buf)?;
                 let header_fields_len = buf.peek_u32().context("EOF")? as usize;
-                let remaining_len = header_fields_len.next_multiple_of(8) + header.body_len;
-                self.schedule_read_body(remaining_len, ring)?;
+                let body_len = header_fields_len.next_multiple_of(8) + header.body_len;
+                self.buf.set_body_len(body_len);
+                self.schedule_read_body(ring)?;
                 Ok(None)
             }
             Op::ReadBody => {
-                ensure!(res > 0);
+                ensure!(res >= 0);
                 let bytes_read = res as usize;
-                let buf = &self.buf[..HEADER_LEN + bytes_read];
+                self.buf.got_bytes(bytes_read);
 
-                let message = MessageDecoder::decode(buf)?;
-                self.schedule_read_header(ring)?;
-                Ok(Some(message))
+                if bytes_read == 0 {
+                    let message = MessageDecoder::decode(self.buf.as_slice())?;
+                    self.buf = Buffer::new();
+                    self.schedule_read_header(ring)?;
+                    Ok(Some(message))
+                } else {
+                    self.schedule_read_body(ring)?;
+                    Ok(None)
+                }
             }
         }
     }

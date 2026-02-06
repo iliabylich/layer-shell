@@ -32,7 +32,7 @@ impl<'a> DecodingBuffer<'a> {
     }
 
     pub(crate) fn next_u8(&mut self) -> Result<u8> {
-        let byte = self.buf.get(self.pos).context("EOF")?;
+        let byte = self.buf.get(self.pos).context("EOF (next_u8)")?;
         self.pos += 1;
         Ok(*byte)
     }
@@ -103,7 +103,10 @@ impl<'a> DecodingBuffer<'a> {
     }
 
     pub(crate) fn next_n(&mut self, count: usize) -> Result<&[u8]> {
-        let bytes = self.buf.get(self.pos..self.pos + count).context("EOF")?;
+        let bytes = self
+            .buf
+            .get(self.pos..self.pos + count)
+            .context("EOF (next_n)")?;
         self.pos += count;
         Ok(bytes)
     }

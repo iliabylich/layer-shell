@@ -46,11 +46,19 @@ impl Tray {
             .status_notifier_watcher
             .on_message(dbus, message, ring)?
         {
-            self.registry.insert(address.clone(), TrayApp::new(address));
+            println!("Added {address}");
+            let mut tray_app = TrayApp::new(address.clone());
+            tray_app.init(dbus, ring)?;
+            self.registry.insert(address, tray_app);
         }
 
         if let Some(address) = self.name_lost_or_changed.on_message(message) {
+            println!("Removed {address}");
             self.registry.remove(&address);
+        }
+
+        for app in self.registry.values_mut() {
+            app.on_message(message)?;
         }
 
         Ok(())

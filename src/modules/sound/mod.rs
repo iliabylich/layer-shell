@@ -11,7 +11,6 @@ use crate::{
     liburing::IoUring,
 };
 use anyhow::{Context as _, Result};
-use std::collections::HashMap;
 
 pub(crate) struct Sound {
     oneshot: Oneshot<Resource>,
@@ -80,19 +79,9 @@ impl OneshotResource for Resource {
         type_is!(&**key_t, CompleteType::String);
         type_is!(&**value_t, CompleteType::Variant);
 
-        let mut map = HashMap::new();
-        for item in array {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
-            map.insert(key.as_ref(), &**value);
-        }
-
-        let volume = map.remove("Volume").context("no Volume")?;
-        let muted = map.remove("Muted").context("no Muted")?;
-
-        value_is!(*volume, Value::UInt32(volume));
-        value_is!(*muted, Value::Bool(muted));
+        let (volume, muted) = parse(array)?;
+        let volume = volume.context("no Volume")?;
+        let muted = muted.context("no Muted")?;
 
         Ok((volume, muted))
     }
@@ -105,27 +94,31 @@ impl SubscriptionResource for Resource {
         path_is!(path, "/org/local/PipewireDBus");
         interface_is!(interface, "org.local.PipewireDBus");
 
-        let mut volume = None;
-        let mut muted = None;
-
-        for item in items {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
-
-            if key == "Volume" {
-                value_is!(&**value, Value::UInt32(value));
-                volume = Some(*value);
-            }
-
-            if key == "Muted" {
-                value_is!(&**value, Value::Bool(value));
-                muted = Some(*value);
-            }
-        }
-
-        Ok((volume, muted))
+        parse(items)
     }
 
     fn set_path(&mut self, _: String) {}
+}
+
+fn parse(attributes: &[Value]) -> Result<(Option<u32>, Option<bool>)> {
+    let mut volume = None;
+    let mut muted = None;
+
+    for attribute in attributes {
+        value_is!(attribute, Value::DictEntry(key, value));
+        value_is!(&**key, Value::String(key));
+        value_is!(&**value, Value::Variant(value));
+
+        if key == "Volume" {
+            value_is!(&**value, Value::UInt32(value));
+            volume = Some(*value);
+        }
+
+        if key == "Muted" {
+            value_is!(&**value, Value::Bool(value));
+            muted = Some(*value);
+        }
+    }
+
+    Ok((volume, muted))
 }
