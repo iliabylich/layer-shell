@@ -58,7 +58,7 @@ impl Tray {
         }
 
         for app in self.registry.values_mut() {
-            app.on_message(message)?;
+            app.on_message(message, dbus, ring)?;
         }
 
         Ok(())

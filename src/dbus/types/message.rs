@@ -4,11 +4,11 @@ use std::borrow::Cow;
 #[derive(Debug, PartialEq)]
 pub(crate) enum Message<'a> {
     MethodCall {
-        serial: u32,
-        path: Cow<'a, str>,
-        member: Cow<'a, str>,
-        interface: Option<Cow<'a, str>>,
         destination: Option<Cow<'a, str>>,
+        path: Cow<'a, str>,
+        interface: Option<Cow<'a, str>>,
+        serial: u32,
+        member: Cow<'a, str>,
         sender: Option<Cow<'a, str>>,
         unix_fds: Option<u32>,
         body: Vec<Value<'a>>,

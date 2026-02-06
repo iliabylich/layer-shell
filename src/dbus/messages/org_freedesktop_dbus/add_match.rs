@@ -21,6 +21,7 @@ impl<'a> From<AddMatch<'a>> for Message<'a> {
             destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
+            // TODO: there should also be a sender
             body: vec![Value::String(Cow::Owned(format!(
                 "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{}'",
                 value.path
