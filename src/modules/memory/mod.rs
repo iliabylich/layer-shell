@@ -1,60 +1,103 @@
 use crate::{Event, UserData, liburing::IoUring, user_data::ModuleId};
-use anyhow::{Result, ensure};
+use libc::{AT_FDCWD, O_RDONLY};
 use parser::Parser;
-use std::{fs::File, os::fd::IntoRawFd};
 
 mod parser;
 
 pub(crate) struct Memory {
     fd: i32,
     buf: [u8; 1_024],
+    healthy: bool,
 }
 
 #[repr(u8)]
-enum Op {
+#[derive(Debug)]
+enum MemoryOp {
+    OpenAt,
     Read,
 }
-const MAX_OP: u8 = Op::Read as u8;
+const MAX_OP: u8 = MemoryOp::Read as u8;
 
-impl TryFrom<u8> for Op {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value <= MAX_OP);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for MemoryOp {
+    fn from(value: u8) -> Self {
+        if value > MAX_OP {
+            eprintln!("unsupported op in MemoryOp: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
 impl Memory {
-    pub(crate) fn new() -> Result<Box<Self>> {
-        Ok(Box::new(Self {
-            fd: File::open("/proc/meminfo")?.into_raw_fd(),
+    pub(crate) fn new() -> Box<Self> {
+        Box::new(Self {
+            fd: -1,
             buf: [0; 1_024],
-        }))
+            healthy: true,
+        })
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
-        match Op::try_from(op)? {
-            Op::Read => {
-                ensure!(res > 0);
-                let len = res as usize;
-                let s = std::str::from_utf8(&self.buf[..len])?;
-
-                let (used, total) = Parser::parse(s)?;
-                events.push(Event::Memory { used, total });
-            }
-        }
-
-        Ok(())
+    fn schedule_open(&self) {
+        let mut sqe = IoUring::get_sqe();
+        sqe.prep_openat(AT_FDCWD, c"/proc/meminfo".as_ptr(), O_RDONLY, 0);
+        sqe.set_user_data(UserData::new(ModuleId::Memory, MemoryOp::OpenAt as u8));
     }
 
     fn schedule_read(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::Memory, Op::Read as u8));
+        sqe.set_user_data(UserData::new(ModuleId::Memory, MemoryOp::Read as u8));
+    }
+
+    pub(crate) fn init(&self) {
+        self.schedule_open();
+    }
+
+    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
+        if !self.healthy {
+            return;
+        }
+
+        let op = MemoryOp::from(op);
+
+        macro_rules! crash {
+            ($($arg:tt)*) => {{
+                eprintln!($($arg)*);
+                self.healthy = false;
+                return;
+            }};
+        }
+
+        match op {
+            MemoryOp::OpenAt => {
+                if res <= 0 {
+                    crash!("{op:?}: res = {res}");
+                }
+                self.fd = res as i32;
+            }
+
+            MemoryOp::Read => {
+                if res <= 0 {
+                    crash!("{op:?}: res = {res}");
+                }
+                let len = res as usize;
+                let s = match std::str::from_utf8(&self.buf[..len]) {
+                    Ok(ok) => ok,
+                    Err(err) => crash!("{op:?} {err:?}"),
+                };
+
+                let (used, total) = match Parser::parse(s) {
+                    Ok(ok) => ok,
+                    Err(err) => crash!("{op:?} {err:?}"),
+                };
+                events.push(Event::Memory { used, total });
+            }
+        }
     }
 
     pub(crate) fn tick(&mut self) {
-        self.schedule_read();
+        if self.fd != -1 {
+            self.schedule_read();
+        }
     }
 }

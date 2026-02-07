@@ -63,8 +63,8 @@ impl IO {
             location: Location::new(),
             weather: Weather::new(),
             hyprland: Hyprland::new(),
-            cpu: CPU::new()?,
-            memory: Memory::new()?,
+            cpu: CPU::new(),
+            memory: Memory::new(),
             sound: Sound::new(),
             control: Control::new(),
             network: Network::new(),
@@ -82,6 +82,8 @@ impl IO {
 
         self.location.init();
         self.hyprland.init();
+        self.cpu.init();
+        self.memory.init();
 
         self.session_dbus.enqueue(&mut Hello.into());
         self.sound.init(&mut self.session_dbus);
@@ -184,10 +186,10 @@ impl IO {
                 }
 
                 ModuleId::CPU => {
-                    self.cpu.process(op, res, &mut events)?;
+                    self.cpu.process(op, res, &mut events);
                 }
                 ModuleId::Memory => {
-                    self.memory.process(op, res, &mut events)?;
+                    self.memory.process(op, res, &mut events);
                 }
                 ModuleId::TimerFD => {
                     let tick = self.timer.process(op)?;
