@@ -12,13 +12,13 @@ pub(crate) struct Memory {
 
 #[repr(u8)]
 #[derive(Debug)]
-enum MemoryOp {
+enum Op {
     OpenAt,
     Read,
 }
-const MAX_OP: u8 = MemoryOp::Read as u8;
+const MAX_OP: u8 = Op::Read as u8;
 
-impl From<u8> for MemoryOp {
+impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
             eprintln!("unsupported op in MemoryOp: {value}");
@@ -40,13 +40,13 @@ impl Memory {
     fn schedule_open(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_openat(AT_FDCWD, c"/proc/meminfo".as_ptr(), O_RDONLY, 0);
-        sqe.set_user_data(UserData::new(ModuleId::Memory, MemoryOp::OpenAt as u8));
+        sqe.set_user_data(UserData::new(ModuleId::Memory, Op::OpenAt as u8));
     }
 
     fn schedule_read(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::Memory, MemoryOp::Read as u8));
+        sqe.set_user_data(UserData::new(ModuleId::Memory, Op::Read as u8));
     }
 
     pub(crate) fn init(&self) {
@@ -58,7 +58,7 @@ impl Memory {
             return;
         }
 
-        let op = MemoryOp::from(op);
+        let op = Op::from(op);
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
@@ -69,14 +69,14 @@ impl Memory {
         }
 
         match op {
-            MemoryOp::OpenAt => {
+            Op::OpenAt => {
                 if res <= 0 {
                     crash!("{op:?}: res = {res}");
                 }
                 self.fd = res as i32;
             }
 
-            MemoryOp::Read => {
+            Op::Read => {
                 if res <= 0 {
                     crash!("{op:?}: res = {res}");
                 }

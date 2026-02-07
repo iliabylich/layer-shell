@@ -1,5 +1,4 @@
 use crate::{Event, modules::hyprland::writer::CapsLock};
-use anyhow::Result;
 use reader::HyprlandReader;
 use state::HyprlandState;
 use std::collections::VecDeque;
@@ -48,30 +47,18 @@ impl Hyprland {
         }
     }
 
-    pub(crate) fn process_reader(
-        &mut self,
-        op: u8,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<()> {
+    pub(crate) fn process_reader(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
         let mut hevents = vec![];
-        self.reader.process(op, res, &mut hevents)?;
+        self.reader.process(op, res, &mut hevents);
         for hevent in hevents {
             let event = self.state.apply(hevent);
             events.push(event);
         }
-
-        Ok(())
     }
 
-    pub(crate) fn process_writer(
-        &mut self,
-        op: u8,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<()> {
+    pub(crate) fn process_writer(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
         if let Some(writer) = self.writer.as_mut()
-            && let Some(reply) = writer.process(op, res)?
+            && let Some(reply) = writer.process(op, res)
         {
             match reply {
                 WriterReply::WorkspaceList(workspace_ids) => {
@@ -102,8 +89,6 @@ impl Hyprland {
             writer.init();
             self.writer = Some(writer);
         }
-
-        Ok(())
     }
 
     pub(crate) fn enqueue_get_caps_lock(&mut self) {
@@ -129,16 +114,22 @@ impl Hyprland {
     }
 }
 
-fn xdg_runtime_dir() -> String {
-    std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        eprintln!("no XDG_RUNTIME_DIR variable");
-        std::process::exit(1)
-    })
+fn xdg_runtime_dir() -> Option<String> {
+    match std::env::var("XDG_RUNTIME_DIR") {
+        Ok(ok) => Some(ok),
+        Err(_) => {
+            eprintln!("no XDG_RUNTIME_DIR variable");
+            None
+        }
+    }
 }
 
-fn hyprland_instance_signature() -> String {
-    std::env::var("HYPRLAND_INSTANCE_SIGNATURE").unwrap_or_else(|_| {
-        eprintln!("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?");
-        std::process::exit(1);
-    })
+fn hyprland_instance_signature() -> Option<String> {
+    match std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
+        Ok(ok) => Some(ok),
+        Err(_) => {
+            eprintln!("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?");
+            None
+        }
+    }
 }

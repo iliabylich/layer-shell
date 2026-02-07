@@ -146,10 +146,10 @@ impl IO {
                     self.weather.process(op, res, &mut events);
                 }
                 ModuleId::HyprlandReader => {
-                    self.hyprland.process_reader(op, res, &mut events)?;
+                    self.hyprland.process_reader(op, res, &mut events);
                 }
                 ModuleId::HyprlandWriter => {
-                    self.hyprland.process_writer(op, res, &mut events)?;
+                    self.hyprland.process_writer(op, res, &mut events);
                 }
 
                 ModuleId::SessionDBusAuth => {

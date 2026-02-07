@@ -5,12 +5,12 @@ use crate::{
 
 #[repr(u8)]
 #[derive(Debug)]
-enum DBusWriterOp {
+enum Op {
     Write,
 }
-const MAX_OP: u8 = DBusWriterOp::Write as u8;
+const MAX_OP: u8 = Op::Write as u8;
 
-impl From<u8> for DBusWriterOp {
+impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
             eprintln!("unsupported op in DBus Writer: {value}");
@@ -41,7 +41,7 @@ impl Writer {
         self.buf = buf;
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, self.buf.as_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, DBusWriterOp::Write as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
     }
 
     pub(crate) fn process(&mut self, op: u8, res: i32) {
@@ -49,7 +49,7 @@ impl Writer {
             return;
         }
 
-        let op = DBusWriterOp::from(op);
+        let op = Op::from(op);
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
@@ -60,7 +60,7 @@ impl Writer {
         }
 
         match op {
-            DBusWriterOp::Write => {
+            Op::Write => {
                 if res <= 0 {
                     crash!("{op:?}: res is {res}");
                 }

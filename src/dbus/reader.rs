@@ -9,13 +9,13 @@ use crate::{
 
 #[repr(u8)]
 #[derive(Debug)]
-enum DBusReaderOp {
+enum Op {
     ReadHeader,
     ReadBody,
 }
-const MAX_OP: u8 = DBusReaderOp::ReadBody as u8;
+const MAX_OP: u8 = Op::ReadBody as u8;
 
-impl From<u8> for DBusReaderOp {
+impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
             eprintln!("unsupported op in DBus Reader: {value}");
@@ -86,17 +86,14 @@ impl Reader {
         let mut sqe = IoUring::get_sqe();
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
-        sqe.set_user_data(UserData::new(
-            self.module_id,
-            DBusReaderOp::ReadHeader as u8,
-        ));
+        sqe.set_user_data(UserData::new(self.module_id, Op::ReadHeader as u8));
     }
 
     fn schedule_read_body(&mut self) {
         let mut sqe = IoUring::get_sqe();
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
-        sqe.set_user_data(UserData::new(self.module_id, DBusReaderOp::ReadBody as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
     }
 
     pub(crate) fn init(&mut self) {
@@ -108,7 +105,7 @@ impl Reader {
             return None;
         }
 
-        let op = DBusReaderOp::from(op);
+        let op = Op::from(op);
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
@@ -119,7 +116,7 @@ impl Reader {
         }
 
         match op {
-            DBusReaderOp::ReadHeader => {
+            Op::ReadHeader => {
                 if res <= 0 {
                     crash!("{op:?}: res is {res}, buf is {:?}", self.buf);
                 }
@@ -146,7 +143,7 @@ impl Reader {
                 self.schedule_read_body();
                 None
             }
-            DBusReaderOp::ReadBody => {
+            Op::ReadBody => {
                 if res < 0 {
                     crash!("{op:?}: res is {res}")
                 }

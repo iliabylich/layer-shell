@@ -25,16 +25,16 @@ pub(crate) struct HttpsConnection {
 
 #[repr(u8)]
 #[derive(Debug)]
-enum HttpsConnectionOp {
+enum Op {
     Socket,
     Connect,
     Read,
     Write,
     Close,
 }
-const MAX_OP: u8 = HttpsConnectionOp::Close as u8;
+const MAX_OP: u8 = Op::Close as u8;
 
-impl From<u8> for HttpsConnectionOp {
+impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
             eprintln!("unsupported op in HttpsConnection: {value}");
@@ -98,10 +98,7 @@ impl HttpsConnection {
     pub(crate) fn init(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
-        sqe.set_user_data(UserData::new(
-            self.module_id,
-            HttpsConnectionOp::Socket as u8,
-        ));
+        sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
     }
 
     fn call_fsm(&mut self) {
@@ -116,15 +113,12 @@ impl HttpsConnection {
             Wants::Read(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
-                sqe.set_user_data(UserData::new(self.module_id, HttpsConnectionOp::Read as u8));
+                sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
             }
             Wants::Write(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
-                sqe.set_user_data(UserData::new(
-                    self.module_id,
-                    HttpsConnectionOp::Write as u8,
-                ));
+                sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
             }
             Wants::Done(response) => {
                 assert!(self.response.is_none());
@@ -132,10 +126,7 @@ impl HttpsConnection {
 
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_close(self.fd);
-                sqe.set_user_data(UserData::new(
-                    self.module_id,
-                    HttpsConnectionOp::Close as u8,
-                ));
+                sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
             }
         }
     }
@@ -145,7 +136,7 @@ impl HttpsConnection {
             return None;
         }
 
-        let op = HttpsConnectionOp::from(op);
+        let op = Op::from(op);
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
@@ -155,7 +146,7 @@ impl HttpsConnection {
         }
 
         match op {
-            HttpsConnectionOp::Socket => {
+            Op::Socket => {
                 let fd = res;
                 if res <= 0 {
                     crash!("{op:?}: fd < 0: {fd}");
@@ -168,14 +159,11 @@ impl HttpsConnection {
                     (&self.addr as *const sockaddr_in).cast(),
                     std::mem::size_of::<sockaddr_in>() as u32,
                 );
-                sqe.set_user_data(UserData::new(
-                    self.module_id,
-                    HttpsConnectionOp::Connect as u8,
-                ));
+                sqe.set_user_data(UserData::new(self.module_id, Op::Connect as u8));
 
                 None
             }
-            HttpsConnectionOp::Connect => {
+            Op::Connect => {
                 if res < 0 {
                     crash!("{op:?}: res < 0: {res}")
                 }
@@ -184,7 +172,7 @@ impl HttpsConnection {
 
                 None
             }
-            HttpsConnectionOp::Read => {
+            Op::Read => {
                 let read = res;
                 if res < 0 {
                     crash!("{op:?}: res < 0: {res}")
@@ -195,7 +183,7 @@ impl HttpsConnection {
                 self.call_fsm();
                 None
             }
-            HttpsConnectionOp::Write => {
+            Op::Write => {
                 let written = res;
                 if written < 0 {
                     crash!("{op:?}: written < 0: {written}")
@@ -206,7 +194,7 @@ impl HttpsConnection {
                 self.call_fsm();
                 None
             }
-            HttpsConnectionOp::Close => {
+            Op::Close => {
                 eprintln!("HttpsConnection closed");
                 self.response.take()
             }

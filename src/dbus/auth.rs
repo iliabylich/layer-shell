@@ -5,7 +5,7 @@ use crate::{
 
 #[repr(u8)]
 #[derive(Debug)]
-enum DBusAuthOp {
+enum Op {
     WriteZero,
     WriteAuthExternal,
     ReadData,
@@ -13,9 +13,9 @@ enum DBusAuthOp {
     ReadGUID,
     WriteBegin,
 }
-const MAX_OP: u8 = DBusAuthOp::WriteBegin as u8;
+const MAX_OP: u8 = Op::WriteBegin as u8;
 
-impl From<u8> for DBusAuthOp {
+impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
             eprintln!("unsupported op in DBus Auth: {value}");
@@ -50,40 +50,37 @@ impl Auth {
     fn schedule_write_zero(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, c"".as_ptr().cast(), 1);
-        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::WriteZero as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteZero as u8));
     }
 
     fn schedule_write_auth_external(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, AUTH_EXTERNAL.as_ptr(), AUTH_EXTERNAL.len());
-        sqe.set_user_data(UserData::new(
-            self.module_id,
-            DBusAuthOp::WriteAuthExternal as u8,
-        ));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteAuthExternal as u8));
     }
 
     fn schedule_read_data(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::ReadData as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::ReadData as u8));
     }
 
     fn schedule_write_data(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, DATA.as_ptr(), DATA.len());
-        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::WriteData as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteData as u8));
     }
 
     fn schedule_read_guid(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::ReadGUID as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::ReadGUID as u8));
     }
 
     fn schedule_write_begin(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, BEGIN.as_ptr(), BEGIN.len());
-        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::WriteBegin as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin as u8));
     }
 
     pub(crate) fn init(&mut self) {
@@ -103,14 +100,14 @@ impl Auth {
             }};
         }
 
-        let op = DBusAuthOp::from(op);
+        let op = Op::from(op);
 
         if res <= 0 {
             crash!("{op:?} returned {res}");
         }
 
         match op {
-            DBusAuthOp::WriteZero => {
+            Op::WriteZero => {
                 let written = res as usize;
                 if written != 1 {
                     crash!("{op:?} returned {written} bytes (expected 1)");
@@ -118,7 +115,7 @@ impl Auth {
                 self.schedule_write_auth_external();
                 false
             }
-            DBusAuthOp::WriteAuthExternal => {
+            Op::WriteAuthExternal => {
                 let written = res as usize;
                 if written != AUTH_EXTERNAL.len() {
                     crash!(
@@ -129,7 +126,7 @@ impl Auth {
                 self.schedule_read_data();
                 false
             }
-            DBusAuthOp::ReadData => {
+            Op::ReadData => {
                 let read = res as usize;
                 if read != DATA.len() {
                     crash!("{op:?} returned {read} bytes (expected {})", DATA.len());
@@ -144,7 +141,7 @@ impl Auth {
                 self.schedule_write_data();
                 false
             }
-            DBusAuthOp::WriteData => {
+            Op::WriteData => {
                 let written = res as usize;
                 if written != DATA.len() {
                     crash!("{op:?} returned {written} bytes (expected {})", DATA.len());
@@ -152,11 +149,11 @@ impl Auth {
                 self.schedule_read_guid();
                 false
             }
-            DBusAuthOp::ReadGUID => {
+            Op::ReadGUID => {
                 self.schedule_write_begin();
                 false
             }
-            DBusAuthOp::WriteBegin => {
+            Op::WriteBegin => {
                 let written = res as usize;
                 if written != BEGIN.len() {
                     crash!("{op:?} returned {written} bytes (expected {})", BEGIN.len());

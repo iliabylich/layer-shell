@@ -16,13 +16,13 @@ pub(crate) struct CPU {
 
 #[repr(u8)]
 #[derive(Debug)]
-enum CPUOp {
+enum Op {
     OpenAt,
     Read,
 }
-const MAX_OP: u8 = CPUOp::Read as u8;
+const MAX_OP: u8 = Op::Read as u8;
 
-impl From<u8> for CPUOp {
+impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
             eprintln!("unsupported op in CPUOp: {value}");
@@ -45,13 +45,13 @@ impl CPU {
     fn schedule_open(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_openat(AT_FDCWD, c"/proc/stat".as_ptr(), O_RDONLY, 0);
-        sqe.set_user_data(UserData::new(ModuleId::CPU, CPUOp::OpenAt as u8));
+        sqe.set_user_data(UserData::new(ModuleId::CPU, Op::OpenAt as u8));
     }
 
     fn schedule_read(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::CPU, CPUOp::Read as u8));
+        sqe.set_user_data(UserData::new(ModuleId::CPU, Op::Read as u8));
     }
 
     pub(crate) fn init(&self) {
@@ -63,7 +63,7 @@ impl CPU {
             return;
         }
 
-        let op = CPUOp::from(op);
+        let op = Op::from(op);
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
@@ -74,13 +74,13 @@ impl CPU {
         }
 
         match op {
-            CPUOp::OpenAt => {
+            Op::OpenAt => {
                 if res <= 0 {
                     crash!("{op:?}: res = {res}");
                 }
                 self.fd = res as i32;
             }
-            CPUOp::Read => {
+            Op::Read => {
                 if res <= 0 {
                     crash!("{op:?}: res = {res}");
                 }

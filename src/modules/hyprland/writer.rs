@@ -4,7 +4,7 @@ use crate::{
     modules::hyprland::{array_writer::ArrayWriter, hyprland_instance_signature, xdg_runtime_dir},
     user_data::ModuleId,
 };
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result};
 use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 use serde::Deserialize;
@@ -153,12 +153,13 @@ enum Op {
 }
 const MAX_OP: u8 = Op::Close as u8;
 
-impl TryFrom<u8> for Op {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value <= MAX_OP);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for Op {
+    fn from(value: u8) -> Self {
+        if value > MAX_OP {
+            eprintln!("unsupported op in HyprlandWriterOp: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
@@ -168,31 +169,18 @@ pub(crate) struct HyprlandWriter {
     buf: [u8; 4_096],
     resource: Box<dyn WriterResource>,
     reply: Option<WriterReply>,
+    healthy: bool,
 }
 
 impl HyprlandWriter {
     pub(crate) fn new(resource: Box<dyn WriterResource>) -> Box<Self> {
-        let addr = sockaddr_un {
-            sun_family: AF_UNIX as u16,
-            sun_path: {
-                let path = format!(
-                    "{}/hypr/{}/.socket.sock",
-                    xdg_runtime_dir(),
-                    hyprland_instance_signature()
-                );
-                let path = unsafe { std::mem::transmute::<&[u8], &[i8]>(path.as_bytes()) };
-                let mut out = [0; 108];
-                out[..path.len()].copy_from_slice(path);
-                out
-            },
-        };
-
         Box::new(Self {
             fd: -1,
-            addr,
+            addr: unsafe { std::mem::zeroed() },
             buf: [0; 4_096],
             resource,
             reply: None,
+            healthy: true,
         })
     }
 
@@ -202,7 +190,26 @@ impl HyprlandWriter {
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket as u8));
     }
 
-    fn schedule_connect(&self) {
+    fn schedule_connect(&mut self) {
+        let Some(xdg_runtime_dir) = xdg_runtime_dir() else {
+            return;
+        };
+        let Some(hyprland_instance_signature) = hyprland_instance_signature() else {
+            return;
+        };
+
+        self.addr = sockaddr_un {
+            sun_family: AF_UNIX as u16,
+            sun_path: {
+                let path =
+                    format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket.sock");
+                let path = unsafe { std::mem::transmute::<&[u8], &[i8]>(path.as_bytes()) };
+                let mut out = [0; 108];
+                out[..path.len()].copy_from_slice(path);
+                out
+            },
+        };
+
         let mut sqe = IoUring::get_sqe();
         sqe.prep_connect(
             self.fd,
@@ -241,35 +248,64 @@ impl HyprlandWriter {
         self.schedule_socket()
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<WriterReply>> {
-        match Op::try_from(op)? {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<WriterReply> {
+        if !self.healthy {
+            return None;
+        }
+
+        macro_rules! crash {
+            ($($arg:tt)*) => {{
+                eprintln!($($arg)*);
+                self.healthy = false;
+                return None;
+            }};
+        }
+
+        let op = Op::from(op);
+
+        match op {
             Op::Socket => {
-                let fd = res;
-                ensure!(fd > 0);
-                self.fd = fd;
+                if res <= 0 {
+                    crash!("{op:?}: res <= 0: {res}")
+                }
+                self.fd = res as i32;
                 self.schedule_connect();
             }
             Op::Connect => {
-                ensure!(res >= 0);
+                if res < 0 {
+                    crash!("{op:?}: res < 0: {res}")
+                }
                 self.schedule_write();
             }
             Op::Write => {
-                ensure!(res > 0);
+                if res <= 0 {
+                    crash!("{op:?}: res <= 0: {res}")
+                }
                 self.schedule_read();
             }
             Op::Read => {
-                ensure!(res > 0);
+                if res <= 0 {
+                    crash!("{op:?}: res <= 0: {res}")
+                }
                 let len = res as usize;
-                let json = std::str::from_utf8(&self.buf[..len])?;
-                self.reply = Some(self.resource.parse(json)?);
+                let json = match std::str::from_utf8(&self.buf[..len]) {
+                    Ok(ok) => ok,
+                    Err(err) => crash!("{err:?}"),
+                };
+                match self.resource.parse(json) {
+                    Ok(ok) => self.reply = Some(ok),
+                    Err(err) => crash!("{err:?}"),
+                }
                 self.schedule_close();
             }
             Op::Close => {
-                ensure!(res >= 0);
-                return Ok(self.reply.take());
+                if res < 0 {
+                    crash!("{op:?}: res < 0: {res}")
+                }
+                return self.reply.take();
             }
         }
 
-        Ok(None)
+        None
     }
 }
