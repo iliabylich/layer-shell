@@ -2,10 +2,10 @@ use crate::{
     liburing::IoUring,
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Result, ensure};
 
 #[repr(u8)]
-enum Op {
+#[derive(Debug)]
+enum DBusAuthOp {
     WriteZero,
     WriteAuthExternal,
     ReadData,
@@ -13,14 +13,15 @@ enum Op {
     ReadGUID,
     WriteBegin,
 }
-const MAX_OP: u8 = Op::WriteBegin as u8;
+const MAX_OP: u8 = DBusAuthOp::WriteBegin as u8;
 
-impl TryFrom<u8> for Op {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value <= MAX_OP);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for DBusAuthOp {
+    fn from(value: u8) -> Self {
+        if value > MAX_OP {
+            eprintln!("unsupported op in DBus Auth: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
@@ -29,6 +30,7 @@ pub(crate) struct Auth {
     fd: i32,
     buf: [u8; 100],
     module_id: ModuleId,
+    healthy: bool,
 }
 
 const AUTH_EXTERNAL: &[u8] = b"AUTH EXTERNAL\r\n";
@@ -41,90 +43,125 @@ impl Auth {
             fd,
             buf: [0; 100],
             module_id,
+            healthy: true,
         }
     }
 
     fn schedule_write_zero(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, c"".as_ptr().cast(), 1);
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteZero as u8));
+        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::WriteZero as u8));
     }
 
     fn schedule_write_auth_external(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, AUTH_EXTERNAL.as_ptr(), AUTH_EXTERNAL.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteAuthExternal as u8));
+        sqe.set_user_data(UserData::new(
+            self.module_id,
+            DBusAuthOp::WriteAuthExternal as u8,
+        ));
     }
 
     fn schedule_read_data(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::ReadData as u8));
+        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::ReadData as u8));
     }
 
     fn schedule_write_data(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, DATA.as_ptr(), DATA.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteData as u8));
+        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::WriteData as u8));
     }
 
     fn schedule_read_guid(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::ReadGUID as u8));
+        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::ReadGUID as u8));
     }
 
     fn schedule_write_begin(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, BEGIN.as_ptr(), BEGIN.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin as u8));
+        sqe.set_user_data(UserData::new(self.module_id, DBusAuthOp::WriteBegin as u8));
     }
 
     pub(crate) fn init(&mut self) {
         self.schedule_write_zero()
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<bool> {
-        match Op::try_from(op)? {
-            Op::WriteZero => {
-                ensure!(res > 0);
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> bool {
+        if !self.healthy {
+            return false;
+        }
+
+        macro_rules! crash {
+            ($($arg:tt)*) => {{
+                eprintln!($($arg)*);
+                self.healthy = false;
+                return false;
+            }};
+        }
+
+        let op = DBusAuthOp::from(op);
+
+        if res <= 0 {
+            crash!("{op:?} returned {res}");
+        }
+
+        match op {
+            DBusAuthOp::WriteZero => {
                 let written = res as usize;
-                ensure!(written == 1);
+                if written != 1 {
+                    crash!("{op:?} returned {written} bytes (expected 1)");
+                }
                 self.schedule_write_auth_external();
-                Ok(false)
+                false
             }
-            Op::WriteAuthExternal => {
-                ensure!(res > 0);
+            DBusAuthOp::WriteAuthExternal => {
                 let written = res as usize;
-                ensure!(written == AUTH_EXTERNAL.len());
+                if written != AUTH_EXTERNAL.len() {
+                    crash!(
+                        "{op:?} returned {written} bytes (expected {})",
+                        AUTH_EXTERNAL.len()
+                    );
+                }
                 self.schedule_read_data();
-                Ok(false)
+                false
             }
-            Op::ReadData => {
-                ensure!(res > 0);
+            DBusAuthOp::ReadData => {
                 let read = res as usize;
-                ensure!(read == DATA.len());
-                ensure!(&self.buf[..read] == DATA);
+                if read != DATA.len() {
+                    crash!("{op:?} returned {read} bytes (expected {})", DATA.len());
+                }
+                if &self.buf[..read] != DATA {
+                    crash!(
+                        "{op:?} returned {:?} (expected {:?})",
+                        &self.buf[..read],
+                        DATA
+                    );
+                }
                 self.schedule_write_data();
-                Ok(false)
+                false
             }
-            Op::WriteData => {
-                ensure!(res > 0);
+            DBusAuthOp::WriteData => {
                 let written = res as usize;
-                ensure!(written == DATA.len());
+                if written != DATA.len() {
+                    crash!("{op:?} returned {written} bytes (expected {})", DATA.len());
+                }
                 self.schedule_read_guid();
-                Ok(false)
+                false
             }
-            Op::ReadGUID => {
-                ensure!(res > 0);
+            DBusAuthOp::ReadGUID => {
                 self.schedule_write_begin();
-                Ok(false)
+                false
             }
-            Op::WriteBegin => {
-                ensure!(res > 0);
+            DBusAuthOp::WriteBegin => {
                 let written = res as usize;
-                ensure!(written == BEGIN.len());
-                Ok(true)
+                if written != BEGIN.len() {
+                    crash!("{op:?} returned {written} bytes (expected {})", BEGIN.len());
+                }
+                true
             }
         }
     }

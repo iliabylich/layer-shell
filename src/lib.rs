@@ -151,10 +151,10 @@ impl IO {
                 }
 
                 ModuleId::SessionDBusAuth => {
-                    self.session_dbus.process_auth(op, res)?;
+                    self.session_dbus.process_auth(op, res);
                 }
                 ModuleId::SessionDBusReader => {
-                    if let Some(message) = self.session_dbus.process_read(op, res)? {
+                    if let Some(message) = self.session_dbus.process_read(op, res) {
                         self.sound
                             .on_message(&mut self.session_dbus, &message, &mut events);
                         self.tray
@@ -167,20 +167,20 @@ impl IO {
                     }
                 }
                 ModuleId::SessionDBusWriter => {
-                    self.session_dbus.process_write(op, res)?;
+                    self.session_dbus.process_write(op, res);
                 }
 
                 ModuleId::SystemDBusAuth => {
-                    self.system_dbus.process_auth(op, res)?;
+                    self.system_dbus.process_auth(op, res);
                 }
                 ModuleId::SystemDBusReader => {
-                    if let Some(message) = self.system_dbus.process_read(op, res)? {
+                    if let Some(message) = self.system_dbus.process_read(op, res) {
                         self.network
                             .on_message(&mut self.system_dbus, &message, &mut events);
                     }
                 }
                 ModuleId::SystemDBusWriter => {
-                    self.system_dbus.process_write(op, res)?;
+                    self.system_dbus.process_write(op, res);
                 }
 
                 ModuleId::CPU => {

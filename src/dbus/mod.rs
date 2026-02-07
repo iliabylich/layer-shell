@@ -104,8 +104,8 @@ impl DBus {
         self.auth.init()
     }
 
-    pub(crate) fn process_auth(&mut self, op: u8, res: i32) -> Result<()> {
-        let finished = self.auth.process(op, res)?;
+    pub(crate) fn process_auth(&mut self, op: u8, res: i32) {
+        let finished = self.auth.process(op, res);
         if finished {
             self.reader.init();
 
@@ -116,20 +116,18 @@ impl DBus {
                 self.writer_is_ready = true;
             }
         }
-        Ok(())
     }
 
-    pub(crate) fn process_read(&mut self, op: u8, res: i32) -> Result<Option<Message<'static>>> {
+    pub(crate) fn process_read(&mut self, op: u8, res: i32) -> Option<Message<'static>> {
         self.reader.process(op, res)
     }
 
-    pub(crate) fn process_write(&mut self, op: u8, res: i32) -> Result<()> {
-        self.writer.process(op, res)?;
+    pub(crate) fn process_write(&mut self, op: u8, res: i32) {
+        self.writer.process(op, res);
         if let Some(bytes) = self.queue.pop_front() {
             self.writer.init(bytes);
         } else {
             self.writer_is_ready = true;
         }
-        Ok(())
     }
 }

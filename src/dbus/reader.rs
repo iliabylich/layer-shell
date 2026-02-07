@@ -6,21 +6,22 @@ use crate::{
     liburing::IoUring,
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Context as _, Result, ensure};
 
 #[repr(u8)]
-enum Op {
+#[derive(Debug)]
+enum DBusReaderOp {
     ReadHeader,
     ReadBody,
 }
-const MAX_OP: u8 = Op::ReadBody as u8;
+const MAX_OP: u8 = DBusReaderOp::ReadBody as u8;
 
-impl TryFrom<u8> for Op {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value <= MAX_OP);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for DBusReaderOp {
+    fn from(value: u8) -> Self {
+        if value > MAX_OP {
+            eprintln!("unsupported op in DBus Reader: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
@@ -68,6 +69,7 @@ pub(crate) struct Reader {
     fd: i32,
     module_id: ModuleId,
     buf: Buffer,
+    healthy: bool,
 }
 
 impl Reader {
@@ -76,6 +78,7 @@ impl Reader {
             fd,
             module_id,
             buf: Buffer::new(),
+            healthy: true,
         }
     }
 
@@ -83,50 +86,86 @@ impl Reader {
         let mut sqe = IoUring::get_sqe();
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
-        sqe.set_user_data(UserData::new(self.module_id, Op::ReadHeader as u8));
+        sqe.set_user_data(UserData::new(
+            self.module_id,
+            DBusReaderOp::ReadHeader as u8,
+        ));
     }
 
     fn schedule_read_body(&mut self) {
         let mut sqe = IoUring::get_sqe();
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
-        sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
+        sqe.set_user_data(UserData::new(self.module_id, DBusReaderOp::ReadBody as u8));
     }
 
     pub(crate) fn init(&mut self) {
         self.schedule_read_header()
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<Message<'static>>> {
-        match Op::try_from(op)? {
-            Op::ReadHeader => {
-                ensure!(res > 0, "res is {res}, buf is {:?}", self.buf);
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<Message<'static>> {
+        if !self.healthy {
+            return None;
+        }
+
+        let op = DBusReaderOp::from(op);
+
+        macro_rules! crash {
+            ($($arg:tt)*) => {{
+                eprintln!($($arg)*);
+                self.healthy = false;
+                return None;
+            }};
+        }
+
+        match op {
+            DBusReaderOp::ReadHeader => {
+                if res <= 0 {
+                    crash!("{op:?}: res is {res}, buf is {:?}", self.buf);
+                }
                 let bytes_read = res as usize;
                 assert_eq!(bytes_read, HEADER_LEN);
                 self.buf.got_bytes(bytes_read);
                 let buf = self.buf.as_slice();
 
                 let mut buf = DecodingBuffer::new(buf);
-                let header = HeaderDecoder::decode(&mut buf)?;
-                let header_fields_len = buf.peek_u32().context("EOF")? as usize;
+                let header = match HeaderDecoder::decode(&mut buf) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        crash!("DBus Reader header decoding error: {err:?}");
+                    }
+                };
+                let header_fields_len = match buf.peek_u32() {
+                    Some(n) => n as usize,
+                    None => {
+                        crash!("Failed to read u32 from DBus message header");
+                    }
+                };
                 let body_len = header_fields_len.next_multiple_of(8) + header.body_len;
                 self.buf.set_body_len(body_len);
                 self.schedule_read_body();
-                Ok(None)
+                None
             }
-            Op::ReadBody => {
-                ensure!(res >= 0);
+            DBusReaderOp::ReadBody => {
+                if res < 0 {
+                    crash!("{op:?}: res is {res}")
+                }
                 let bytes_read = res as usize;
                 self.buf.got_bytes(bytes_read);
 
                 if bytes_read == 0 {
-                    let message = MessageDecoder::decode(self.buf.as_slice())?;
+                    let message = match MessageDecoder::decode(self.buf.as_slice()) {
+                        Ok(v) => v,
+                        Err(err) => {
+                            crash!("{op:?}: failed to decode full DBus message: {err:?}");
+                        }
+                    };
                     self.buf = Buffer::new();
                     self.schedule_read_header();
-                    Ok(Some(message))
+                    Some(message)
                 } else {
                     self.schedule_read_body();
-                    Ok(None)
+                    None
                 }
             }
         }

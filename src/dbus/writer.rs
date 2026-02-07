@@ -2,20 +2,21 @@ use crate::{
     liburing::IoUring,
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Result, ensure};
 
 #[repr(u8)]
-enum Op {
+#[derive(Debug)]
+enum DBusWriterOp {
     Write,
 }
-const MAX_OP: u8 = Op::Write as u8;
+const MAX_OP: u8 = DBusWriterOp::Write as u8;
 
-impl TryFrom<u8> for Op {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value <= MAX_OP);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for DBusWriterOp {
+    fn from(value: u8) -> Self {
+        if value > MAX_OP {
+            eprintln!("unsupported op in DBus Writer: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
@@ -23,6 +24,7 @@ pub(crate) struct Writer {
     fd: i32,
     module_id: ModuleId,
     buf: Vec<u8>,
+    healthy: bool,
 }
 
 impl Writer {
@@ -31,6 +33,7 @@ impl Writer {
             fd,
             module_id,
             buf: vec![],
+            healthy: true,
         }
     }
 
@@ -38,17 +41,34 @@ impl Writer {
         self.buf = buf;
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, self.buf.as_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
+        sqe.set_user_data(UserData::new(self.module_id, DBusWriterOp::Write as u8));
     }
 
-    pub(crate) fn process(&self, op: u8, res: i32) -> Result<()> {
-        match Op::try_from(op)? {
-            Op::Write => {
-                ensure!(res > 0);
+    pub(crate) fn process(&mut self, op: u8, res: i32) {
+        if !self.healthy {
+            return;
+        }
+
+        let op = DBusWriterOp::from(op);
+
+        macro_rules! crash {
+            ($($arg:tt)*) => {{
+                eprintln!($($arg)*);
+                self.healthy = false;
+                return;
+            }};
+        }
+
+        match op {
+            DBusWriterOp::Write => {
+                if res <= 0 {
+                    crash!("{op:?}: res is {res}");
+                }
                 let written = res as usize;
-                ensure!(written == self.buf.len());
+                if written != self.buf.len() {
+                    crash!("{op:?}: written is wrong: {written} vs {}", self.buf.len());
+                }
             }
         }
-        Ok(())
     }
 }
