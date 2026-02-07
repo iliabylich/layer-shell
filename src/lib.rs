@@ -56,7 +56,7 @@ impl IO {
             config,
             io_config,
 
-            timer: Timerfd::new()?,
+            timer: Timerfd::new(),
             session_dbus: DBus::new_session()?,
             system_dbus: DBus::new_system()?,
 
@@ -124,17 +124,14 @@ impl IO {
         }
     }
 
-    fn try_handle_readable(&mut self) -> Result<()> {
+    fn handle_readable(&mut self) {
         let mut events = vec![];
 
         while let Some(cqe) = IoUring::try_get_cqe() {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
-            let Ok(UserData { module_id, op, .. }) = UserData::try_from(user_data) else {
-                eprintln!("Unknown user data: {:?}", cqe.user_data());
-                continue;
-            };
+            let UserData { module_id, op, .. } = UserData::from(user_data);
 
             match module_id {
                 ModuleId::GeoLocation => {
@@ -192,13 +189,12 @@ impl IO {
                     self.memory.process(op, res, &mut events);
                 }
                 ModuleId::TimerFD => {
-                    let tick = self.timer.process(op)?;
-                    Clock::tick(tick, &mut events);
+                    let tick = self.timer.process(op);
+                    Clock::tick(&mut events);
                     self.weather.tick(tick);
                     self.cpu.tick();
                     self.memory.tick();
                 }
-                ModuleId::Max => unreachable!(),
             }
 
             IoUring::cqe_seen(cqe);
@@ -209,15 +205,6 @@ impl IO {
         }
 
         IoUring::submit_if_dirty();
-
-        Ok(())
-    }
-
-    fn handle_readable(&mut self) {
-        self.try_handle_readable().unwrap_or_else(|err| {
-            eprintln!("{err:?}");
-            std::process::exit(1);
-        })
     }
 
     fn wait_readable(&mut self) {

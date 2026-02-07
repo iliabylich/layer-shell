@@ -2,7 +2,6 @@ use crate::{
     liburing::IoUring,
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Result, ensure};
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
 use std::ptr::null_mut;
 pub(crate) use tick::Tick;
@@ -22,23 +21,27 @@ enum Op {
 }
 const MAX_OP: u8 = Op::Read as u8;
 
-impl TryFrom<u8> for Op {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value <= MAX_OP);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for Op {
+    fn from(value: u8) -> Self {
+        if value > MAX_OP {
+            eprintln!("unsupported op in TimerFdOp: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
 impl Timerfd {
-    pub(crate) fn new() -> Result<Box<Self>> {
+    pub(crate) fn new() -> Box<Self> {
         let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
-        ensure!(
-            fd != -1,
-            "timerfd_create returned -1: {}",
-            std::io::Error::last_os_error()
-        );
+
+        if fd == -1 {
+            eprintln!(
+                "timerfd_create returned -1: {}",
+                std::io::Error::last_os_error()
+            );
+            std::process::exit(1)
+        }
 
         let timer_spec = itimerspec {
             it_interval: timespec {
@@ -57,13 +60,15 @@ impl Timerfd {
         };
 
         let res = unsafe { timerfd_settime(this.fd, 0, &timer_spec, null_mut()) };
-        ensure!(
-            res != -1,
-            "timerfd_settime returned -1: {}",
-            std::io::Error::last_os_error()
-        );
+        if res == -1 {
+            eprintln!(
+                "timerfd_settime returned -1: {}",
+                std::io::Error::last_os_error()
+            );
+            std::process::exit(1);
+        }
 
-        Ok(Box::new(this))
+        Box::new(this)
     }
 
     pub(crate) fn init(&mut self) {
@@ -76,15 +81,15 @@ impl Timerfd {
         sqe.set_user_data(UserData::new(ModuleId::TimerFD, Op::Read as u8));
     }
 
-    pub(crate) fn process(&mut self, op: u8) -> Result<Tick> {
-        match Op::try_from(op)? {
+    pub(crate) fn process(&mut self, op: u8) -> Tick {
+        match Op::from(op) {
             Op::Read => {
                 let ticks = self.ticks;
                 self.ticks += 1;
 
                 self.schedule_read();
 
-                Ok(Tick(ticks))
+                Tick(ticks)
             }
         }
     }

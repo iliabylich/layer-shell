@@ -1,7 +1,5 @@
 use std::cell::Cell;
 
-use anyhow::{Result, ensure};
-
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum ModuleId {
@@ -22,8 +20,9 @@ pub(crate) enum ModuleId {
     CPU,
     Memory,
     TimerFD,
-    Max,
 }
+
+const MAX: ModuleId = ModuleId::TimerFD;
 
 impl From<ModuleId> for u8 {
     fn from(value: ModuleId) -> Self {
@@ -31,12 +30,13 @@ impl From<ModuleId> for u8 {
     }
 }
 
-impl TryFrom<u8> for ModuleId {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value < Self::Max as u8);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for ModuleId {
+    fn from(value: u8) -> Self {
+        if value > MAX as u8 {
+            eprintln!("received malformed ModuleId from io_uring: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
@@ -78,18 +78,16 @@ impl From<UserData> for u64 {
     }
 }
 
-impl TryFrom<u64> for UserData {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u64) -> Result<Self> {
+impl From<u64> for UserData {
+    fn from(value: u64) -> Self {
         let bytes: [u8; 8] = value.to_le_bytes();
-        let module_id = ModuleId::try_from(bytes[0])?;
+        let module_id = ModuleId::from(bytes[0]);
         let op = bytes[1];
         let req = {
             let mut req = [0; 4];
             req.copy_from_slice(&bytes[2..6]);
             u32::from_le_bytes(req)
         };
-        Ok(Self { module_id, op, req })
+        Self { module_id, op, req }
     }
 }
