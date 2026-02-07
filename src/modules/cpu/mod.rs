@@ -56,16 +56,16 @@ impl CPU {
         }
     }
 
-    fn schedule_read(&mut self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_read(&mut self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(ModuleId::CPU, Op::Read as u8));
         Ok(())
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn tick(&mut self, tick: Tick) -> Result<()> {
         if tick.is_multiple_of(1) {
-            self.schedule_read(ring)?;
+            self.schedule_read()?;
         }
         Ok(())
     }

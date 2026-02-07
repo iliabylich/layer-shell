@@ -1,10 +1,7 @@
-use crate::{
-    dbus::{
-        DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-        types::Value,
-    },
-    liburing::IoUring,
+use crate::dbus::{
+    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+    messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
+    types::Value,
 };
 use anyhow::{Result, bail};
 
@@ -36,15 +33,15 @@ impl ActiveAccessPoint {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.subscription.reset(dbus, ring)?;
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.subscription.reset(dbus)?;
         self.oneshot.reset();
         Ok(())
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str, ring: &mut IoUring) -> Result<()> {
-        self.subscription.start(dbus, path, ring)?;
-        self.oneshot.start(dbus, path.to_string(), ring)?;
+    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) -> Result<()> {
+        self.subscription.start(dbus, path)?;
+        self.oneshot.start(dbus, path.to_string())?;
         Ok(())
     }
 

@@ -1,10 +1,7 @@
-use crate::{
-    dbus::{
-        DBus, Message, Oneshot, OneshotResource,
-        messages::{body_is, org_freedesktop_dbus::GetProperty, value_is},
-        types::Value,
-    },
-    liburing::IoUring,
+use crate::dbus::{
+    DBus, Message, Oneshot, OneshotResource,
+    messages::{body_is, org_freedesktop_dbus::GetProperty, value_is},
+    types::Value,
 };
 use anyhow::Result;
 
@@ -21,13 +18,8 @@ impl ActiveConnectionType {
         }
     }
 
-    pub(crate) fn request(
-        &mut self,
-        dbus: &mut DBus,
-        path: &str,
-        ring: &mut IoUring,
-    ) -> Result<()> {
-        self.oneshot.start(dbus, path.to_string(), ring)?;
+    pub(crate) fn request(&mut self, dbus: &mut DBus, path: &str) -> Result<()> {
+        self.oneshot.start(dbus, path.to_string())?;
         self.path = Some(path.to_string());
         Ok(())
     }

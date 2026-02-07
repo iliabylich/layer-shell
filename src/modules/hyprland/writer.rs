@@ -196,15 +196,15 @@ impl HyprlandWriter {
         }))
     }
 
-    fn schedule_socket(&self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_socket(&self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket as u8));
         Ok(())
     }
 
-    fn schedule_connect(&self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_connect(&self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_connect(
             self.fd,
             (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
@@ -214,62 +214,57 @@ impl HyprlandWriter {
         Ok(())
     }
 
-    fn schedule_write(&mut self, ring: &mut IoUring) -> Result<()> {
+    fn schedule_write(&mut self) -> Result<()> {
         let mut writer = ArrayWriter::new(&mut self.buf);
         write!(&mut writer, "{}", self.resource.command())?;
         let buflen = writer.offset();
 
-        let mut sqe = ring.get_sqe()?;
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_write(self.fd, self.buf.as_ptr(), buflen);
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Write as u8));
         Ok(())
     }
 
-    fn schedule_read(&mut self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_read(&mut self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Read as u8));
         Ok(())
     }
 
-    fn schedule_close(&self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_close(&self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_close(self.fd);
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Close as u8));
         Ok(())
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.schedule_socket(ring)
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.schedule_socket()
     }
 
-    pub(crate) fn process(
-        &mut self,
-        op: u8,
-        res: i32,
-        ring: &mut IoUring,
-    ) -> Result<Option<WriterReply>> {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<WriterReply>> {
         match Op::try_from(op)? {
             Op::Socket => {
                 let fd = res;
                 ensure!(fd > 0);
                 self.fd = fd;
-                self.schedule_connect(ring)?;
+                self.schedule_connect()?;
             }
             Op::Connect => {
                 ensure!(res >= 0);
-                self.schedule_write(ring)?;
+                self.schedule_write()?;
             }
             Op::Write => {
                 ensure!(res > 0);
-                self.schedule_read(ring)?;
+                self.schedule_read()?;
             }
             Op::Read => {
                 ensure!(res > 0);
                 let len = res as usize;
                 let json = std::str::from_utf8(&self.buf[..len])?;
                 self.reply = Some(self.resource.parse(json)?);
-                self.schedule_close(ring)?;
+                self.schedule_close()?;
             }
             Op::Close => {
                 ensure!(res >= 0);

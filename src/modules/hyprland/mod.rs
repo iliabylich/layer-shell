@@ -1,4 +1,4 @@
-use crate::{Event, liburing::IoUring, modules::hyprland::writer::CapsLock};
+use crate::{Event, modules::hyprland::writer::CapsLock};
 use anyhow::{Context as _, Result};
 use reader::HyprlandReader;
 use state::HyprlandState;
@@ -41,10 +41,10 @@ impl Hyprland {
         }))
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.reader.init(ring)?;
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.reader.init()?;
         if let Some(writer) = self.writer.as_mut() {
-            writer.init(ring)?;
+            writer.init()?;
         }
         Ok(())
     }
@@ -53,11 +53,10 @@ impl Hyprland {
         &mut self,
         op: u8,
         res: i32,
-        ring: &mut IoUring,
         events: &mut Vec<Event>,
     ) -> Result<()> {
         let mut hevents = vec![];
-        self.reader.process(op, res, ring, &mut hevents)?;
+        self.reader.process(op, res, &mut hevents)?;
         for hevent in hevents {
             let event = self.state.apply(hevent);
             events.push(event);
@@ -70,11 +69,10 @@ impl Hyprland {
         &mut self,
         op: u8,
         res: i32,
-        ring: &mut IoUring,
         events: &mut Vec<Event>,
     ) -> Result<()> {
         if let Some(writer) = self.writer.as_mut()
-            && let Some(reply) = writer.process(op, res, ring)?
+            && let Some(reply) = writer.process(op, res)?
         {
             match reply {
                 WriterReply::WorkspaceList(workspace_ids) => {
@@ -102,18 +100,18 @@ impl Hyprland {
             && let Some(next) = self.queue.pop_front()
         {
             let mut writer = new_writer(next)?;
-            writer.init(ring)?;
+            writer.init()?;
             self.writer = Some(writer);
         }
 
         Ok(())
     }
 
-    pub(crate) fn enqueue_get_caps_lock(&mut self, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn enqueue_get_caps_lock(&mut self) -> Result<()> {
         let resource = Box::new(CapsLock);
         if self.writer.is_none() {
             let mut writer = new_writer(resource)?;
-            writer.init(ring)?;
+            writer.init()?;
             self.writer = Some(writer)
         } else {
             self.queue.push_back(resource);
@@ -121,11 +119,11 @@ impl Hyprland {
         Ok(())
     }
 
-    pub(crate) fn dispatch(&mut self, cmd: String, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn dispatch(&mut self, cmd: String) -> Result<()> {
         let resource = Box::new(Dispatch::new(cmd));
         if self.writer.is_none() {
             let mut writer = new_writer(resource)?;
-            writer.init(ring)?;
+            writer.init()?;
             self.writer = Some(writer)
         } else {
             self.queue.push_back(resource);

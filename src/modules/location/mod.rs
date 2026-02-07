@@ -1,4 +1,4 @@
-use crate::{https::HttpsConnection, liburing::IoUring, user_data::ModuleId};
+use crate::{https::HttpsConnection, user_data::ModuleId};
 use anyhow::Result;
 use response::LocationResponse;
 
@@ -15,17 +15,12 @@ impl Location {
         Ok(Box::new(Self { https }))
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.https.init(ring)
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.https.init()
     }
 
-    pub(crate) fn process(
-        &mut self,
-        op: u8,
-        res: i32,
-        ring: &mut IoUring,
-    ) -> Result<Option<(f64, f64)>> {
-        let Some(response) = self.https.process(op, res, ring)? else {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<(f64, f64)>> {
+        let Some(response) = self.https.process(op, res)? else {
             return Ok(None);
         };
 

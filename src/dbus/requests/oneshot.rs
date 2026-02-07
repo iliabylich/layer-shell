@@ -1,7 +1,4 @@
-use crate::{
-    dbus::{DBus, Message, messages::message_is, types::Value},
-    liburing::IoUring,
-};
+use crate::dbus::{DBus, Message, messages::message_is, types::Value};
 use anyhow::Result;
 
 pub(crate) trait OneshotResource {
@@ -38,18 +35,13 @@ where
         }
     }
 
-    pub(crate) fn start(
-        &mut self,
-        dbus: &mut DBus,
-        input: T::Input,
-        ring: &mut IoUring,
-    ) -> Result<()> {
+    pub(crate) fn start(&mut self, dbus: &mut DBus, input: T::Input) -> Result<()> {
         if !matches!(self.state, OneshotState::None) {
             return Ok(());
         };
 
         let mut message = self.resource.make_request(input);
-        dbus.enqueue(&mut message, ring)?;
+        dbus.enqueue(&mut message)?;
         let reply_serial = message.serial();
         self.state = OneshotState::WaitingForReply(reply_serial);
         Ok(())

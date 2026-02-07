@@ -1,15 +1,12 @@
-use crate::{
-    dbus::{
-        DBus, Message,
-        messages::{
-            body_is, destination_is, interface_is,
-            introspect::{IntrospectRequest, IntrospectResponse},
-            message_is,
-            org_freedesktop_dbus::RequestName,
-            path_is,
-        },
+use crate::dbus::{
+    DBus, Message,
+    messages::{
+        body_is, destination_is, interface_is,
+        introspect::{IntrospectRequest, IntrospectResponse},
+        message_is,
+        org_freedesktop_dbus::RequestName,
+        path_is,
     },
-    liburing::IoUring,
 };
 use anyhow::{Result, bail};
 
@@ -20,32 +17,31 @@ impl Control {
         Box::new(Self)
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
         let mut message: Message = RequestName::new("org.me.LayerShellControl").into();
-        dbus.enqueue(&mut message, ring)
+        dbus.enqueue(&mut message)
     }
 
     pub(crate) fn on_message(
         &mut self,
         message: &Message,
         dbus: &mut DBus,
-        ring: &mut IoUring,
     ) -> Result<Option<ControlRequest>> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
             let mut reply: Message =
                 IntrospectResponse::new(serial, sender, INTROSPECTION.to_string()).into();
-            dbus.enqueue(&mut reply, ring)?;
+            dbus.enqueue(&mut reply)?;
             return Ok(None);
         }
 
         if let Ok((member, sender, serial)) = try_parse_control_req(message) {
             if let Ok(control_req) = ControlRequest::try_parse(member) {
                 let mut reply = Message::new_method_return_no_body(serial, sender);
-                dbus.enqueue(&mut reply, ring)?;
+                dbus.enqueue(&mut reply)?;
                 return Ok(Some(control_req));
             } else {
                 let mut reply = Message::new_err_no_method(serial, sender);
-                dbus.enqueue(&mut reply, ring)?;
+                dbus.enqueue(&mut reply)?;
                 return Ok(None);
             }
         }

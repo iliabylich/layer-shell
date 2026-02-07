@@ -79,32 +79,27 @@ impl Reader {
         }
     }
 
-    fn schedule_read_header(&mut self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_read_header(&mut self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadHeader as u8));
         Ok(())
     }
 
-    fn schedule_read_body(&mut self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_read_body(&mut self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
         Ok(())
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.schedule_read_header(ring)
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.schedule_read_header()
     }
 
-    pub(crate) fn process(
-        &mut self,
-        op: u8,
-        res: i32,
-        ring: &mut IoUring,
-    ) -> Result<Option<Message<'static>>> {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<Message<'static>>> {
         match Op::try_from(op)? {
             Op::ReadHeader => {
                 ensure!(res > 0, "res is {res}, buf is {:?}", self.buf);
@@ -118,7 +113,7 @@ impl Reader {
                 let header_fields_len = buf.peek_u32().context("EOF")? as usize;
                 let body_len = header_fields_len.next_multiple_of(8) + header.body_len;
                 self.buf.set_body_len(body_len);
-                self.schedule_read_body(ring)?;
+                self.schedule_read_body()?;
                 Ok(None)
             }
             Op::ReadBody => {
@@ -129,10 +124,10 @@ impl Reader {
                 if bytes_read == 0 {
                     let message = MessageDecoder::decode(self.buf.as_slice())?;
                     self.buf = Buffer::new();
-                    self.schedule_read_header(ring)?;
+                    self.schedule_read_header()?;
                     Ok(Some(message))
                 } else {
-                    self.schedule_read_body(ring)?;
+                    self.schedule_read_body()?;
                     Ok(None)
                 }
             }

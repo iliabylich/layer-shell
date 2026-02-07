@@ -43,12 +43,12 @@ impl HyprlandReader {
         }))
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.schedule_read(ring)
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.schedule_read()
     }
 
-    fn schedule_read(&mut self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_read(&mut self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read as u8));
         Ok(())
@@ -58,7 +58,6 @@ impl HyprlandReader {
         &mut self,
         op: u8,
         res: i32,
-        ring: &mut IoUring,
         events: &mut Vec<HyprlandEvent>,
     ) -> Result<()> {
         match Op::try_from(op)? {
@@ -72,7 +71,7 @@ impl HyprlandReader {
                     };
                 }
 
-                self.schedule_read(ring)?;
+                self.schedule_read()?;
             }
         }
         Ok(())

@@ -48,9 +48,9 @@ impl Memory {
         Ok(())
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn tick(&mut self, tick: Tick) -> Result<()> {
         if tick.is_multiple_of(1) {
-            let mut sqe = ring.get_sqe()?;
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
             sqe.set_user_data(UserData::new(ModuleId::Memory, Op::Read as u8));
         }

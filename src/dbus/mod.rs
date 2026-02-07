@@ -9,7 +9,6 @@ mod writer;
 
 use crate::{
     dbus::{encoders::MessageEncoder, serial::Serial},
-    liburing::IoUring,
     user_data::ModuleId,
 };
 use anyhow::{Context, Result};
@@ -89,12 +88,12 @@ impl DBus {
         }
     }
 
-    pub(crate) fn enqueue(&mut self, message: &mut Message, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn enqueue(&mut self, message: &mut Message) -> Result<()> {
         *message.serial_mut() = self.serial.increment_and_get();
         let bytes = MessageEncoder::encode(message);
 
         if self.writer_is_ready {
-            self.writer.init(bytes, ring)?;
+            self.writer.init(bytes)?;
             self.writer_is_ready = false;
         } else {
             self.queue.push_back(bytes);
@@ -103,17 +102,17 @@ impl DBus {
         Ok(())
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.auth.init(ring)
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.auth.init()
     }
 
-    pub(crate) fn process_auth(&mut self, op: u8, res: i32, ring: &mut IoUring) -> Result<()> {
-        let finished = self.auth.process(op, res, ring)?;
+    pub(crate) fn process_auth(&mut self, op: u8, res: i32) -> Result<()> {
+        let finished = self.auth.process(op, res)?;
         if finished {
-            self.reader.init(ring)?;
+            self.reader.init()?;
 
             if let Some(bytes) = self.queue.pop_front() {
-                self.writer.init(bytes, ring)?;
+                self.writer.init(bytes)?;
                 self.writer_is_ready = false;
             } else {
                 self.writer_is_ready = true;
@@ -122,19 +121,14 @@ impl DBus {
         Ok(())
     }
 
-    pub(crate) fn process_read(
-        &mut self,
-        op: u8,
-        res: i32,
-        ring: &mut IoUring,
-    ) -> Result<Option<Message<'static>>> {
-        self.reader.process(op, res, ring)
+    pub(crate) fn process_read(&mut self, op: u8, res: i32) -> Result<Option<Message<'static>>> {
+        self.reader.process(op, res)
     }
 
-    pub(crate) fn process_write(&mut self, op: u8, res: i32, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn process_write(&mut self, op: u8, res: i32) -> Result<()> {
         self.writer.process(op, res)?;
         if let Some(bytes) = self.queue.pop_front() {
-            self.writer.init(bytes, ring)?;
+            self.writer.init(bytes)?;
         } else {
             self.writer_is_ready = true;
         }

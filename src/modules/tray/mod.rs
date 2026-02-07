@@ -1,7 +1,6 @@
 use crate::{
     Event,
     dbus::{DBus, Message},
-    liburing::IoUring,
 };
 use anyhow::Result;
 use name_lost_or_changed::NameLostOrNameOwnerChanged;
@@ -29,9 +28,9 @@ impl Tray {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.status_notifier_watcher.init(dbus, ring)?;
-        self.name_lost_or_changed.init(dbus, ring)?;
+    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.status_notifier_watcher.init(dbus)?;
+        self.name_lost_or_changed.init(dbus)?;
         Ok(())
     }
 
@@ -40,15 +39,11 @@ impl Tray {
         dbus: &mut DBus,
         message: &Message,
         events: &mut Vec<Event>,
-        ring: &mut IoUring,
     ) -> Result<()> {
-        if let Some(address) = self
-            .status_notifier_watcher
-            .on_message(dbus, message, ring)?
-        {
+        if let Some(address) = self.status_notifier_watcher.on_message(dbus, message)? {
             println!("Added {address}");
             let mut tray_app = TrayApp::new(address.clone());
-            tray_app.init(dbus, ring)?;
+            tray_app.init(dbus)?;
             self.registry.insert(address, tray_app);
         }
 
@@ -58,7 +53,7 @@ impl Tray {
         }
 
         for app in self.registry.values_mut() {
-            app.on_message(message, dbus, ring)?;
+            app.on_message(message, dbus)?;
         }
 
         Ok(())

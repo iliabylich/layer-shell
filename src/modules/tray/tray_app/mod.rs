@@ -1,15 +1,11 @@
-use crate::{
-    dbus::{
-        DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{
-            body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is,
-            value_is,
-        },
-        types::{CompleteType, Value},
+use crate::dbus::{
+    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+    messages::{
+        body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is, value_is,
     },
-    liburing::IoUring,
+    types::{CompleteType, Value},
 };
-use anyhow::{Context as _, Result, anyhow, bail, ensure};
+use anyhow::{Result, anyhow};
 use std::borrow::Cow;
 
 pub(crate) struct TrayApp {
@@ -29,32 +25,27 @@ impl TrayApp {
         }
     }
 
-    fn request_props(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
+    fn request_props(&mut self, dbus: &mut DBus) -> Result<()> {
         self.new_icon = Oneshot::new(NewIcon);
-        self.new_icon.start(dbus, self.address.clone(), ring)?;
+        self.new_icon.start(dbus, self.address.clone())?;
         Ok(())
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.request_props(dbus, ring)?;
-        self.get_all_props.start(dbus, self.address.clone(), ring)?;
-        self.subscription.start(dbus, "/StatusNotifierItem", ring)?;
+    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.request_props(dbus)?;
+        self.get_all_props.start(dbus, self.address.clone())?;
+        self.subscription.start(dbus, "/StatusNotifierItem")?;
         Ok(())
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        message: &Message,
-        dbus: &mut DBus,
-        ring: &mut IoUring,
-    ) -> Result<()> {
-        if let Some(t) = self.get_all_props.process(message) {
+    pub(crate) fn on_message(&mut self, message: &Message, dbus: &mut DBus) -> Result<()> {
+        if let Some(_) = self.get_all_props.process(message) {
             println!("GOT ONESHOT PROPS FOR {}", self.address);
         }
         if let Some(()) = self.new_icon.process(message) {
-            self.request_props(dbus, ring)?;
+            self.request_props(dbus)?;
         }
-        if let Some(x) = self.subscription.process(message) {
+        if let Some(_) = self.subscription.process(message) {
             println!("GOT SUBSCRIPTION PROPS for {}", self.address)
         }
         Ok(())

@@ -1,7 +1,6 @@
 use crate::{
     Event,
     dbus::{DBus, Message},
-    liburing::IoUring,
 };
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use anyhow::Result;
@@ -41,43 +40,37 @@ impl Network {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.wireless_connection.init(dbus, ring)
+    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.wireless_connection.init(dbus)
     }
 
     fn on_wireless_connection_event(
         &mut self,
         dbus: &mut DBus,
         e: WirelessConnectionEvent,
-        ring: &mut IoUring,
     ) -> Result<()> {
         match e {
             WirelessConnectionEvent::Connected(path) => {
-                self.primary_device.init(path, dbus, ring)?;
+                self.primary_device.init(path, dbus)?;
             }
             WirelessConnectionEvent::Disconnected => {
-                self.primary_device.reset(dbus, ring)?;
+                self.primary_device.reset(dbus)?;
             }
         }
         Ok(())
     }
 
-    fn on_primary_device_event(
-        &mut self,
-        dbus: &mut DBus,
-        e: PrimaryDeviceEvent,
-        ring: &mut IoUring,
-    ) -> Result<()> {
+    fn on_primary_device_event(&mut self, dbus: &mut DBus, e: PrimaryDeviceEvent) -> Result<()> {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
-                self.active_access_point.init(dbus, &path, ring)?;
+                self.active_access_point.init(dbus, &path)?;
                 self.speed.reset();
-                self.tx_rx.init(dbus, &path, ring)?;
+                self.tx_rx.init(dbus, &path)?;
             }
             PrimaryDeviceEvent::Disconnected => {
-                self.active_access_point.reset(dbus, ring)?;
+                self.active_access_point.reset(dbus)?;
                 self.speed.reset();
-                self.tx_rx.reset(dbus, ring)?;
+                self.tx_rx.reset(dbus)?;
             }
         }
 
@@ -88,14 +81,13 @@ impl Network {
         &mut self,
         dbus: &mut DBus,
         e: ActiveAccessPointEvent,
-        ring: &mut IoUring,
     ) -> Result<()> {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
-                self.ssid_and_strength.init(dbus, &path, ring)?;
+                self.ssid_and_strength.init(dbus, &path)?;
             }
             ActiveAccessPointEvent::Disconnected => {
-                self.ssid_and_strength.reset(dbus, ring)?;
+                self.ssid_and_strength.reset(dbus)?;
             }
         }
 
@@ -131,20 +123,19 @@ impl Network {
         dbus: &mut DBus,
         message: &Message,
         events: &mut Vec<Event>,
-        ring: &mut IoUring,
     ) -> Result<()> {
-        if let Some(e) = self.wireless_connection.on_message(dbus, message, ring)? {
-            self.on_wireless_connection_event(dbus, e, ring)?;
+        if let Some(e) = self.wireless_connection.on_message(dbus, message)? {
+            self.on_wireless_connection_event(dbus, e)?;
             return Ok(());
         }
 
         if let Some(e) = self.primary_device.on_message(message) {
-            self.on_primary_device_event(dbus, e, ring)?;
+            self.on_primary_device_event(dbus, e)?;
             return Ok(());
         }
 
         if let Some(e) = self.active_access_point.on_message(message) {
-            self.on_active_access_point_event(dbus, e, ring)?;
+            self.on_active_access_point_event(dbus, e)?;
             return Ok(());
         }
 

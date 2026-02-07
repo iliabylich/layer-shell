@@ -8,7 +8,6 @@ use crate::{
         },
         types::{CompleteType, Value},
     },
-    liburing::IoUring,
 };
 use anyhow::{Context as _, Result};
 
@@ -25,8 +24,8 @@ impl Sound {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.oneshot.start(dbus, (), ring)
+    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.oneshot.start(dbus, ())
     }
 
     pub(crate) fn on_message(
@@ -34,12 +33,10 @@ impl Sound {
         dbus: &mut DBus,
         message: &Message,
         events: &mut Vec<Event>,
-        ring: &mut IoUring,
     ) -> Result<()> {
         if let Some((volume, muted)) = self.oneshot.process(message) {
             events.push(Event::InitialSound { volume, muted });
-            self.subscription
-                .start(dbus, "/org/local/PipewireDBus", ring)?;
+            self.subscription.start(dbus, "/org/local/PipewireDBus")?;
 
             return Ok(());
         }

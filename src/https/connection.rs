@@ -65,22 +65,22 @@ impl HttpsConnection {
         })
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    pub(crate) fn init(&mut self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
         sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
         Ok(())
     }
 
-    fn call_fsm(&mut self, ring: &mut IoUring) -> Result<()> {
+    fn call_fsm(&mut self) -> Result<()> {
         match self.fsm.wants()? {
             Wants::Read(buf) => {
-                let mut sqe = ring.get_sqe()?;
+                let mut sqe = IoUring::get_sqe()?;
                 sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
             }
             Wants::Write(buf) => {
-                let mut sqe = ring.get_sqe()?;
+                let mut sqe = IoUring::get_sqe()?;
                 sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
             }
@@ -88,7 +88,7 @@ impl HttpsConnection {
                 assert!(self.response.is_none());
                 self.response = Some(response);
 
-                let mut sqe = ring.get_sqe()?;
+                let mut sqe = IoUring::get_sqe()?;
                 sqe.prep_close(self.fd);
                 sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
             }
@@ -96,19 +96,14 @@ impl HttpsConnection {
         Ok(())
     }
 
-    pub(crate) fn process(
-        &mut self,
-        op: u8,
-        res: i32,
-        ring: &mut IoUring,
-    ) -> Result<Option<Response>> {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<Response>> {
         match Op::try_from(op)? {
             Op::Socket => {
                 let fd = res;
                 ensure!(fd > 0);
                 self.fd = fd;
 
-                let mut sqe = ring.get_sqe()?;
+                let mut sqe = IoUring::get_sqe()?;
                 sqe.prep_connect(
                     self.fd,
                     (&self.addr as *const sockaddr_in).cast(),
@@ -121,7 +116,7 @@ impl HttpsConnection {
             Op::Connect => {
                 ensure!(res >= 0);
 
-                self.call_fsm(ring)?;
+                self.call_fsm()?;
 
                 Ok(None)
             }
@@ -131,7 +126,7 @@ impl HttpsConnection {
                 let read: usize = read as usize;
                 self.fsm.done_reading(read);
 
-                self.call_fsm(ring)?;
+                self.call_fsm()?;
                 Ok(None)
             }
             Op::Write => {
@@ -140,7 +135,7 @@ impl HttpsConnection {
                 let written = written as usize;
                 self.fsm.done_writing(written);
 
-                self.call_fsm(ring)?;
+                self.call_fsm()?;
                 Ok(None)
             }
             Op::Close => {

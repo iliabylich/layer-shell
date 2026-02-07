@@ -1,4 +1,5 @@
 #[repr(C)]
+#[expect(unused)]
 pub enum COption<T> {
     None,
     Some(T),

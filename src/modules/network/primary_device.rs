@@ -1,10 +1,7 @@
-use crate::{
-    dbus::{
-        DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-        types::{CompleteType, Value},
-    },
-    liburing::IoUring,
+use crate::dbus::{
+    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+    messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
+    types::{CompleteType, Value},
 };
 use anyhow::{Context, Result, bail};
 
@@ -36,15 +33,15 @@ impl PrimaryDevice {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.subscription.reset(dbus, ring)?;
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.subscription.reset(dbus)?;
         self.oneshot.reset();
         Ok(())
     }
 
-    pub(crate) fn init(&mut self, path: String, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.subscription.start(dbus, &path, ring)?;
-        self.oneshot.start(dbus, path, ring)?;
+    pub(crate) fn init(&mut self, path: String, dbus: &mut DBus) -> Result<()> {
+        self.subscription.start(dbus, &path)?;
+        self.oneshot.start(dbus, path)?;
         Ok(())
     }
 

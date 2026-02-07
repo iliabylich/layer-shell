@@ -14,7 +14,7 @@ use command::Command;
 use config::{Config, IOConfig};
 pub use event::Event;
 pub use ffi::{CArray, CString};
-use std::{ffi::c_void, os::fd::AsRawFd};
+use std::ffi::c_void;
 
 use crate::{
     dbus::{DBus, messages::org_freedesktop_dbus::Hello},
@@ -30,8 +30,6 @@ use crate::{
 struct IO {
     config: Config,
     io_config: *const IOConfig,
-
-    ring: IoUring,
 
     timer: Box<Timerfd>,
     session_dbus: Box<DBus>,
@@ -58,8 +56,6 @@ impl IO {
             config,
             io_config,
 
-            ring: IoUring::new(10, 0)?,
-
             timer: Timerfd::new()?,
             session_dbus: DBus::new_session()?,
             system_dbus: DBus::new_system()?,
@@ -82,24 +78,22 @@ impl IO {
     }
 
     fn init(&mut self) -> Result<()> {
-        self.timer.init(&mut self.ring)?;
+        self.timer.init()?;
 
-        self.location.init(&mut self.ring)?;
-        self.hyprland.init(&mut self.ring)?;
+        self.location.init()?;
+        self.hyprland.init()?;
 
-        self.session_dbus
-            .enqueue(&mut Hello.into(), &mut self.ring)?;
-        self.sound.init(&mut self.session_dbus, &mut self.ring)?;
-        self.control.init(&mut self.session_dbus, &mut self.ring)?;
-        self.tray.init(&mut self.session_dbus, &mut self.ring)?;
-        self.session_dbus.init(&mut self.ring)?;
+        self.session_dbus.enqueue(&mut Hello.into())?;
+        self.sound.init(&mut self.session_dbus)?;
+        self.control.init(&mut self.session_dbus)?;
+        self.tray.init(&mut self.session_dbus)?;
+        self.session_dbus.init()?;
 
-        self.system_dbus
-            .enqueue(&mut Hello.into(), &mut self.ring)?;
-        self.network.init(&mut self.system_dbus, &mut self.ring)?;
-        self.system_dbus.init(&mut self.ring)?;
+        self.system_dbus.enqueue(&mut Hello.into())?;
+        self.network.init(&mut self.system_dbus)?;
+        self.system_dbus.init()?;
 
-        self.ring.submit()?;
+        IoUring::submit_if_dirty()?;
 
         Ok(())
     }
@@ -121,10 +115,8 @@ impl IO {
     fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) -> Result<()> {
         match req {
             ControlRequest::CapsLockToggled => {
-                self.hyprland.enqueue_get_caps_lock(&mut self.ring)?;
-                if self.ring.take_dirty() {
-                    self.ring.submit()?
-                }
+                self.hyprland.enqueue_get_caps_lock()?;
+                IoUring::submit_if_dirty()?;
             }
             ControlRequest::Exit => events.push(Event::Exit),
             ControlRequest::ReloadStyles => events.push(Event::ReloadStyles),
@@ -137,7 +129,7 @@ impl IO {
     fn try_handle_readable(&mut self) -> Result<()> {
         let mut events = vec![];
 
-        while let Some(cqe) = self.ring.try_get_cqe()? {
+        while let Some(cqe) = IoUring::try_get_cqe()? {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
@@ -148,70 +140,52 @@ impl IO {
 
             match module_id {
                 ModuleId::GeoLocation => {
-                    if let Some((lat, lng)) = self.location.process(op, res, &mut self.ring)? {
-                        self.weather.init(lat, lng, &mut self.ring)?;
+                    if let Some((lat, lng)) = self.location.process(op, res)? {
+                        self.weather.init(lat, lng)?;
                     }
                 }
                 ModuleId::Weather => {
-                    self.weather.process(op, res, &mut self.ring, &mut events)?;
+                    self.weather.process(op, res, &mut events)?;
                 }
                 ModuleId::HyprlandReader => {
-                    self.hyprland
-                        .process_reader(op, res, &mut self.ring, &mut events)?;
+                    self.hyprland.process_reader(op, res, &mut events)?;
                 }
                 ModuleId::HyprlandWriter => {
-                    self.hyprland
-                        .process_writer(op, res, &mut self.ring, &mut events)?;
+                    self.hyprland.process_writer(op, res, &mut events)?;
                 }
 
                 ModuleId::SessionDBusAuth => {
-                    self.session_dbus.process_auth(op, res, &mut self.ring)?;
+                    self.session_dbus.process_auth(op, res)?;
                 }
                 ModuleId::SessionDBusReader => {
-                    if let Some(message) =
-                        self.session_dbus.process_read(op, res, &mut self.ring)?
-                    {
-                        self.sound.on_message(
-                            &mut self.session_dbus,
-                            &message,
-                            &mut events,
-                            &mut self.ring,
-                        )?;
-                        self.tray.on_message(
-                            &mut self.session_dbus,
-                            &message,
-                            &mut events,
-                            &mut self.ring,
-                        )?;
+                    if let Some(message) = self.session_dbus.process_read(op, res)? {
+                        self.sound
+                            .on_message(&mut self.session_dbus, &message, &mut events)?;
+                        self.tray
+                            .on_message(&mut self.session_dbus, &message, &mut events)?;
 
-                        if let Some(req) = self.control.on_message(
-                            &message,
-                            &mut self.session_dbus,
-                            &mut self.ring,
-                        )? {
+                        if let Some(req) =
+                            self.control.on_message(&message, &mut self.session_dbus)?
+                        {
                             self.on_control_req(req, &mut events)?;
                         }
                     }
                 }
                 ModuleId::SessionDBusWriter => {
-                    self.session_dbus.process_write(op, res, &mut self.ring)?;
+                    self.session_dbus.process_write(op, res)?;
                 }
 
                 ModuleId::SystemDBusAuth => {
-                    self.system_dbus.process_auth(op, res, &mut self.ring)?;
+                    self.system_dbus.process_auth(op, res)?;
                 }
                 ModuleId::SystemDBusReader => {
-                    if let Some(message) = self.system_dbus.process_read(op, res, &mut self.ring)? {
-                        self.network.on_message(
-                            &mut self.system_dbus,
-                            &message,
-                            &mut events,
-                            &mut self.ring,
-                        )?;
+                    if let Some(message) = self.system_dbus.process_read(op, res)? {
+                        self.network
+                            .on_message(&mut self.system_dbus, &message, &mut events)?;
                     }
                 }
                 ModuleId::SystemDBusWriter => {
-                    self.system_dbus.process_write(op, res, &mut self.ring)?;
+                    self.system_dbus.process_write(op, res)?;
                 }
 
                 ModuleId::CPU => {
@@ -221,25 +195,23 @@ impl IO {
                     self.memory.process(op, res, &mut events)?;
                 }
                 ModuleId::TimerFD => {
-                    let tick = self.timer.process(op, &mut self.ring)?;
+                    let tick = self.timer.process(op)?;
                     Clock::tick(tick, &mut events);
-                    self.weather.tick(tick, &mut self.ring)?;
-                    self.cpu.tick(tick, &mut self.ring)?;
-                    self.memory.tick(tick, &mut self.ring)?;
+                    self.weather.tick(tick)?;
+                    self.cpu.tick(tick)?;
+                    self.memory.tick(tick)?;
                 }
                 ModuleId::Max => unreachable!(),
             }
 
-            self.ring.cqe_seen(cqe);
+            IoUring::cqe_seen(cqe);
         }
 
         for event in events {
             (self.on_event)(&event);
         }
 
-        if self.ring.take_dirty() {
-            self.ring.submit()?
-        }
+        IoUring::submit_if_dirty()?;
 
         Ok(())
     }
@@ -252,7 +224,7 @@ impl IO {
     }
 
     fn try_wait_readable(&mut self) -> Result<()> {
-        self.ring.submit_and_wait(1)
+        IoUring::submit_and_wait(1)
     }
 
     fn wait_readable(&mut self) {
@@ -265,11 +237,8 @@ impl IO {
     fn try_process_command(&mut self, cmd: Command) -> Result<()> {
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
-                self.hyprland.dispatch(format!($($arg)*), &mut self.ring)?;
-
-                if self.ring.take_dirty() {
-                    self.ring.submit()?
-                }
+                self.hyprland.dispatch(format!($($arg)*), )?;
+                IoUring::submit_if_dirty()?;
             }};
         }
         match cmd {
@@ -318,7 +287,16 @@ impl IO {
 #[unsafe(no_mangle)]
 pub fn io_init(on_event: fn(event: *const Event)) -> *mut c_void {
     env_logger::init();
+    IoUring::init(10, 0).unwrap_or_else(|err| {
+        eprintln!("{err:?}");
+        std::process::exit(1);
+    });
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
+}
+
+#[unsafe(no_mangle)]
+pub fn io_deinit() {
+    IoUring::deinit();
 }
 
 #[unsafe(no_mangle)]
@@ -332,8 +310,8 @@ pub fn io_wait_readable(io: *mut c_void) {
 }
 
 #[unsafe(no_mangle)]
-pub fn io_as_raw_fd(io: *mut c_void) -> i32 {
-    IO::from_raw(io).ring.as_raw_fd()
+pub fn io_as_raw_fd() -> i32 {
+    IoUring::as_raw_fd()
 }
 
 #[unsafe(no_mangle)]

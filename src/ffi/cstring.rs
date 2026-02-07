@@ -21,6 +21,7 @@ impl CString {
         ptr
     }
 
+    #[expect(dead_code)]
     pub(crate) fn none() -> Self {
         Self::from("none".to_string())
     }

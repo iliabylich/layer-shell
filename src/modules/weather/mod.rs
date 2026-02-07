@@ -1,6 +1,6 @@
 use crate::{
-    Event, https::HttpsConnection, liburing::IoUring,
-    modules::weather::weather_response::WeatherResponse, timerfd::Tick, user_data::ModuleId,
+    Event, https::HttpsConnection, modules::weather::weather_response::WeatherResponse,
+    timerfd::Tick, user_data::ModuleId,
 };
 use anyhow::Result;
 pub(crate) use weather_code::WeatherCode;
@@ -46,39 +46,33 @@ impl Weather {
         }))
     }
 
-    pub(crate) fn init(&mut self, lat: f64, lng: f64, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn init(&mut self, lat: f64, lng: f64) -> Result<()> {
         self.latlng = Some((lat, lng));
         let mut https = get_weather(lat, lng)?;
-        https.init(ring)?;
+        https.init()?;
         self.https = Some(https);
         Ok(())
     }
 
-    pub(crate) fn process(
-        &mut self,
-        op: u8,
-        res: i32,
-        ring: &mut IoUring,
-        events: &mut Vec<Event>,
-    ) -> Result<()> {
+    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
         let Some(https) = self.https.as_mut() else {
             return Ok(());
         };
-        if let Some(response) = https.process(op, res, ring)? {
+        if let Some(response) = https.process(op, res)? {
             let event: Event = WeatherResponse::parse(response)?.try_into()?;
             events.push(event);
         }
         Ok(())
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn tick(&mut self, tick: Tick) -> Result<()> {
         let Some((lat, lng)) = self.latlng else {
             return Ok(());
         };
 
         if tick.is_multiple_of(120) {
             let mut https = get_weather(lat, lng)?;
-            https.init(ring)?;
+            https.init()?;
             self.https = Some(https);
         }
         Ok(())

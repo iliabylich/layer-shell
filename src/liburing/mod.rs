@@ -6,7 +6,7 @@ use generated::{
     __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
 };
 use libc::{ETIME, strerror};
-use std::{mem::MaybeUninit, os::fd::AsRawFd};
+use std::mem::MaybeUninit;
 
 mod cqe;
 #[expect(dead_code, unsafe_op_in_unsafe_fn, non_camel_case_types)]
@@ -28,48 +28,73 @@ static mut NOTIMEOUT: __kernel_timespec = __kernel_timespec {
     tv_nsec: 0,
 };
 
-pub(crate) struct IoUring {
-    ring: io_uring,
-    dirty: bool,
+pub(crate) enum IoUring {}
+
+static mut IO_URING: io_uring = unsafe { std::mem::zeroed() };
+static mut DIRTY: bool = false;
+
+fn ring_init(entries: usize, flags: u32) -> Result<()> {
+    let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
+    let errno = unsafe { __liburing_queue_init(entries as u32, &mut ring, flags) };
+    checkerr(errno)?;
+
+    unsafe {
+        IO_URING = ring;
+        DIRTY = false;
+    }
+
+    Ok(())
+}
+
+fn ring_get() -> &'static mut io_uring {
+    #[expect(static_mut_refs)]
+    unsafe {
+        &mut IO_URING
+    }
+}
+
+fn dirty_get() -> bool {
+    unsafe { DIRTY }
+}
+fn dirty_set(value: bool) {
+    unsafe { DIRTY = value }
 }
 
 impl IoUring {
-    pub(crate) fn new(entries: usize, flags: u32) -> Result<Self> {
-        let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
-        let errno = unsafe { __liburing_queue_init(entries as u32, &mut ring, flags) };
-        checkerr(errno)?;
-        Ok(Self { ring, dirty: false })
+    pub(crate) fn init(entries: usize, flags: u32) -> Result<()> {
+        ring_init(entries, flags)
     }
 
-    pub(crate) fn get_sqe(&mut self) -> Result<Sqe> {
-        let sqe = unsafe { __liburing_get_sqe(&mut self.ring) };
+    pub(crate) fn get_sqe() -> Result<Sqe> {
+        let sqe = unsafe { __liburing_get_sqe(ring_get()) };
         if sqe.is_null() {
             bail!("got NULL from io_uring_get_sqe");
         }
-        self.dirty = true;
+        dirty_set(true);
         Ok(Sqe { sqe })
     }
 
-    pub(crate) fn take_dirty(&mut self) -> bool {
-        let out = self.dirty;
-        self.dirty = false;
-        out
-    }
-
-    pub(crate) fn submit(&mut self) -> Result<()> {
-        let errno = unsafe { __liburing_submit(&mut self.ring) };
+    fn submit() -> Result<()> {
+        let errno = unsafe { __liburing_submit(ring_get()) };
         checkerr(errno)
     }
 
-    pub(crate) fn submit_and_wait(&mut self, n: usize) -> Result<()> {
-        let errno = unsafe { __liburing_submit_and_wait(&mut self.ring, n as u32) };
+    pub(crate) fn submit_if_dirty() -> Result<()> {
+        if dirty_get() {
+            Self::submit()?
+        }
+        Ok(())
+    }
+
+    pub(crate) fn submit_and_wait(n: usize) -> Result<()> {
+        let errno = unsafe { __liburing_submit_and_wait(ring_get(), n as u32) };
         checkerr(errno)
     }
 
     #[allow(dead_code)]
-    pub(crate) fn wait_cqe(&mut self) -> Result<Cqe> {
+    pub(crate) fn wait_cqe() -> Result<Cqe> {
         let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
-        let errno = unsafe { __liburing_wait_cqe(&mut self.ring, &mut cqe) };
+        let errno = unsafe { __liburing_wait_cqe(ring_get(), &mut cqe) };
         checkerr(errno)?;
         if cqe.is_null() {
             bail!("got NULL from io_uring_wait_cqe");
@@ -77,10 +102,10 @@ impl IoUring {
         Ok(Cqe { cqe })
     }
 
-    pub(crate) fn try_get_cqe(&mut self) -> Result<Option<Cqe>> {
+    pub(crate) fn try_get_cqe() -> Result<Option<Cqe>> {
         let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
         let errno =
-            unsafe { __liburing_wait_cqe_timeout(&mut self.ring, &mut cqe, &raw mut NOTIMEOUT) };
+            unsafe { __liburing_wait_cqe_timeout(ring_get(), &mut cqe, &raw mut NOTIMEOUT) };
         if errno == -ETIME {
             return Ok(None);
         }
@@ -91,19 +116,15 @@ impl IoUring {
         Ok(Some(Cqe { cqe }))
     }
 
-    pub(crate) fn cqe_seen(&mut self, cqe: Cqe) {
-        unsafe { __liburing_cqe_seen(&mut self.ring, cqe.cqe) }
+    pub(crate) fn cqe_seen(cqe: Cqe) {
+        unsafe { __liburing_cqe_seen(ring_get(), cqe.cqe) }
     }
-}
 
-impl Drop for IoUring {
-    fn drop(&mut self) {
-        unsafe { __liburing_queue_exit(&mut self.ring) };
+    pub(crate) fn as_raw_fd() -> i32 {
+        ring_get().ring_fd
     }
-}
 
-impl AsRawFd for IoUring {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
-        self.ring.ring_fd
+    pub(crate) fn deinit() {
+        unsafe { __liburing_queue_exit(ring_get()) };
     }
 }

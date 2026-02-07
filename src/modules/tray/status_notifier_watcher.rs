@@ -7,7 +7,6 @@ use crate::{
         },
         types::Value,
     },
-    liburing::IoUring,
     modules::tray::status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
 };
 use anyhow::Result;
@@ -25,41 +24,40 @@ impl StatusNotifierWatcher {
         }
     }
 
-    pub(crate) fn request(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
+    pub(crate) fn request(&mut self, dbus: &mut DBus) -> Result<()> {
         let mut message: Message = RequestName::new("org.kde.StatusNotifierWatcher").into();
-        dbus.enqueue(&mut message, ring)?;
+        dbus.enqueue(&mut message)?;
         self.reply_serial = Some(message.serial());
         Ok(())
     }
 
-    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str, ring: &mut IoUring) -> Result<()> {
+    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str) -> Result<()> {
         let mut reply = Message::new_method_return_no_body(serial, destination);
-        dbus.enqueue(&mut reply, ring)?;
+        dbus.enqueue(&mut reply)?;
         Ok(())
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.request(dbus, ring)
+    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.request(dbus)
     }
 
     pub(crate) fn on_message(
         &mut self,
         dbus: &mut DBus,
         message: &Message,
-        ring: &mut IoUring,
     ) -> Result<Option<String>> {
-        if self.introspection.process_message(dbus, message, ring)? {
+        if self.introspection.process_message(dbus, message)? {
             return Ok(None);
         }
 
         if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    Self::reply_ok(dbus, serial, &sender, ring)?;
+                    Self::reply_ok(dbus, serial, &sender)?;
                     return Ok(Some(address));
                 }
                 KSNIRequest::Other => {
-                    Self::reply_ok(dbus, serial, &sender, ring)?;
+                    Self::reply_ok(dbus, serial, &sender)?;
                     return Ok(None);
                 }
             }

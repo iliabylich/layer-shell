@@ -66,24 +66,24 @@ impl Timerfd {
         Ok(Box::new(this))
     }
 
-    pub(crate) fn init(&mut self, ring: &mut IoUring) -> Result<()> {
-        self.schedule_read(ring)
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.schedule_read()
     }
 
-    fn schedule_read(&mut self, ring: &mut IoUring) -> Result<()> {
-        let mut sqe = ring.get_sqe()?;
+    fn schedule_read(&mut self) -> Result<()> {
+        let mut sqe = IoUring::get_sqe()?;
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(ModuleId::TimerFD, Op::Read as u8));
         Ok(())
     }
 
-    pub(crate) fn process(&mut self, op: u8, ring: &mut IoUring) -> Result<Tick> {
+    pub(crate) fn process(&mut self, op: u8) -> Result<Tick> {
         match Op::try_from(op)? {
             Op::Read => {
                 let ticks = self.ticks;
                 self.ticks += 1;
 
-                self.schedule_read(ring)?;
+                self.schedule_read()?;
 
                 Ok(Tick(ticks))
             }

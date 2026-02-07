@@ -1,9 +1,6 @@
-use crate::{
-    dbus::{
-        DBus, IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
-        types::{CompleteType, Value},
-    },
-    liburing::IoUring,
+use crate::dbus::{
+    DBus, IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
+    types::{CompleteType, Value},
 };
 use anyhow::Result;
 use std::borrow::Cow;
@@ -19,13 +16,7 @@ impl StatusNotifierWatcherIntrospection {
         }
     }
 
-    fn reply_ok(
-        dbus: &mut DBus,
-        serial: u32,
-        destination: &str,
-        body: Vec<Value>,
-        ring: &mut IoUring,
-    ) -> Result<()> {
+    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str, body: Vec<Value>) -> Result<()> {
         let mut message = Message::MethodReturn {
             serial: 0,
             reply_serial: serial,
@@ -34,25 +25,15 @@ impl StatusNotifierWatcherIntrospection {
             unix_fds: None,
             body,
         };
-        dbus.enqueue(&mut message, ring)
+        dbus.enqueue(&mut message)
     }
 
-    fn reply_err(
-        dbus: &mut DBus,
-        serial: u32,
-        destination: &str,
-        ring: &mut IoUring,
-    ) -> Result<()> {
+    fn reply_err(dbus: &mut DBus, serial: u32, destination: &str) -> Result<()> {
         let mut reply = Message::new_err_no_method(serial, destination);
-        dbus.enqueue(&mut reply, ring)
+        dbus.enqueue(&mut reply)
     }
 
-    pub(crate) fn process_message(
-        &mut self,
-        dbus: &mut DBus,
-        message: &Message,
-        ring: &mut IoUring,
-    ) -> Result<bool> {
+    pub(crate) fn process_message(&mut self, dbus: &mut DBus, message: &Message) -> Result<bool> {
         let Ok((serial, sender, req)) = self.introspection.handle(message) else {
             return Ok(false);
         };
@@ -64,16 +45,14 @@ impl StatusNotifierWatcherIntrospection {
                     serial,
                     &sender,
                     vec![Value::String(Cow::Owned(root_introspection_xml()))],
-                    ring,
                 )?,
                 "/StatusNotifierWatcher" => Self::reply_ok(
                     dbus,
                     serial,
                     &sender,
                     vec![Value::String(Cow::Owned(ksni_introspection_xml()))],
-                    ring,
                 )?,
-                _ => Self::reply_err(dbus, serial, &sender, ring)?,
+                _ => Self::reply_err(dbus, serial, &sender)?,
             },
 
             IntrospectibleObjectAtRequest::GetAllProperties { path, interface } => {
@@ -106,10 +85,10 @@ impl StatusNotifierWatcherIntrospection {
                                 ),
                             ],
                         )];
-                        Self::reply_ok(dbus, serial, &sender, body, ring)?;
+                        Self::reply_ok(dbus, serial, &sender, body)?;
                     }
 
-                    _ => Self::reply_err(dbus, serial, &sender, ring)?,
+                    _ => Self::reply_err(dbus, serial, &sender)?,
                 }
             }
 
@@ -138,16 +117,16 @@ impl StatusNotifierWatcherIntrospection {
                     ) => Value::Variant(Box::new(Value::Array(CompleteType::String, vec![]))),
 
                     _ => {
-                        Self::reply_err(dbus, serial, &sender, ring)?;
+                        Self::reply_err(dbus, serial, &sender)?;
                         return Ok(true);
                     }
                 };
 
-                Self::reply_ok(dbus, serial, &sender, vec![value], ring)?;
+                Self::reply_ok(dbus, serial, &sender, vec![value])?;
             }
 
             _ => {
-                Self::reply_err(dbus, serial, &sender, ring)?;
+                Self::reply_err(dbus, serial, &sender)?;
             }
         }
 

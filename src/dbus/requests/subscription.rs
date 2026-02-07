@@ -1,14 +1,11 @@
-use crate::{
-    dbus::{
-        DBus, Message,
-        messages::{
-            body_is, interface_is, message_is,
-            org_freedesktop_dbus::{AddMatch, RemoveMatch},
-            type_is,
-        },
-        types::{CompleteType, Value},
+use crate::dbus::{
+    DBus, Message,
+    messages::{
+        body_is, interface_is, message_is,
+        org_freedesktop_dbus::{AddMatch, RemoveMatch},
+        type_is,
     },
-    liburing::IoUring,
+    types::{CompleteType, Value},
 };
 use anyhow::Result;
 
@@ -38,43 +35,33 @@ where
         }
     }
 
-    fn unsubscribe(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
+    fn unsubscribe(&mut self, dbus: &mut DBus) -> Result<()> {
         let Some(old_path) = self.path.take() else {
             return Ok(());
         };
 
         let mut message: Message = RemoveMatch::new(&old_path).into();
-        dbus.enqueue(&mut message, ring)?;
+        dbus.enqueue(&mut message)?;
         Ok(())
     }
 
-    fn subscribe(
-        &mut self,
-        dbus: &mut DBus,
-        path: impl AsRef<str>,
-        ring: &mut IoUring,
-    ) -> Result<()> {
+    fn subscribe(&mut self, dbus: &mut DBus, path: impl AsRef<str>) -> Result<()> {
         let path = path.as_ref();
         let mut message: Message = AddMatch::new(path).into();
-        dbus.enqueue(&mut message, ring)?;
+        dbus.enqueue(&mut message)?;
         self.path = Some(path.to_string());
         self.resource.set_path(path.to_string());
         Ok(())
     }
 
-    pub(crate) fn start(
-        &mut self,
-        dbus: &mut DBus,
-        path: impl AsRef<str>,
-        ring: &mut IoUring,
-    ) -> Result<()> {
-        self.unsubscribe(dbus, ring)?;
-        self.subscribe(dbus, path, ring)?;
+    pub(crate) fn start(&mut self, dbus: &mut DBus, path: impl AsRef<str>) -> Result<()> {
+        self.unsubscribe(dbus)?;
+        self.subscribe(dbus, path)?;
         Ok(())
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus, ring: &mut IoUring) -> Result<()> {
-        self.unsubscribe(dbus, ring)
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) -> Result<()> {
+        self.unsubscribe(dbus)
     }
 
     fn try_process(&self, message: &Message) -> Result<S::Output> {
