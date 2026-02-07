@@ -24,7 +24,7 @@ impl Sound {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
         self.oneshot.start(dbus, ())
     }
 
@@ -33,12 +33,12 @@ impl Sound {
         dbus: &mut DBus,
         message: &Message,
         events: &mut Vec<Event>,
-    ) -> Result<()> {
+    ) {
         if let Some((volume, muted)) = self.oneshot.process(message) {
             events.push(Event::InitialSound { volume, muted });
-            self.subscription.start(dbus, "/org/local/PipewireDBus")?;
+            self.subscription.start(dbus, "/org/local/PipewireDBus");
 
-            return Ok(());
+            return;
         }
 
         if let Some((volume, muted)) = self.subscription.process(message) {
@@ -50,8 +50,6 @@ impl Sound {
                 events.push(Event::MuteChanged { muted });
             }
         }
-
-        Ok(())
     }
 }
 

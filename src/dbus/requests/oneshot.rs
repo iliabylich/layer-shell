@@ -35,16 +35,15 @@ where
         }
     }
 
-    pub(crate) fn start(&mut self, dbus: &mut DBus, input: T::Input) -> Result<()> {
+    pub(crate) fn start(&mut self, dbus: &mut DBus, input: T::Input) {
         if !matches!(self.state, OneshotState::None) {
-            return Ok(());
+            return;
         };
 
         let mut message = self.resource.make_request(input);
-        dbus.enqueue(&mut message)?;
+        dbus.enqueue(&mut message);
         let reply_serial = message.serial();
         self.state = OneshotState::WaitingForReply(reply_serial);
-        Ok(())
     }
 
     fn try_process(&self, message: &Message) -> Result<T::Output> {

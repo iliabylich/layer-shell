@@ -15,7 +15,7 @@ impl Location {
         Ok(Box::new(Self { https }))
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.https.init()
     }
 

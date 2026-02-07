@@ -35,32 +35,29 @@ where
         }
     }
 
-    fn unsubscribe(&mut self, dbus: &mut DBus) -> Result<()> {
+    fn unsubscribe(&mut self, dbus: &mut DBus) {
         let Some(old_path) = self.path.take() else {
-            return Ok(());
+            return;
         };
 
         let mut message: Message = RemoveMatch::new(&old_path).into();
-        dbus.enqueue(&mut message)?;
-        Ok(())
+        dbus.enqueue(&mut message);
     }
 
-    fn subscribe(&mut self, dbus: &mut DBus, path: impl AsRef<str>) -> Result<()> {
+    fn subscribe(&mut self, dbus: &mut DBus, path: impl AsRef<str>) {
         let path = path.as_ref();
         let mut message: Message = AddMatch::new(path).into();
-        dbus.enqueue(&mut message)?;
+        dbus.enqueue(&mut message);
         self.path = Some(path.to_string());
         self.resource.set_path(path.to_string());
-        Ok(())
     }
 
-    pub(crate) fn start(&mut self, dbus: &mut DBus, path: impl AsRef<str>) -> Result<()> {
-        self.unsubscribe(dbus)?;
-        self.subscribe(dbus, path)?;
-        Ok(())
+    pub(crate) fn start(&mut self, dbus: &mut DBus, path: impl AsRef<str>) {
+        self.unsubscribe(dbus);
+        self.subscribe(dbus, path);
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
         self.unsubscribe(dbus)
     }
 

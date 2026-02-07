@@ -24,16 +24,14 @@ impl TxRx {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
         self.oneshot.reset();
-        self.subscription.reset(dbus)?;
-        Ok(())
+        self.subscription.reset(dbus);
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) -> Result<()> {
-        self.oneshot.start(dbus, path.to_string())?;
-        self.subscription.start(dbus, path)?;
-        Ok(())
+    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
+        self.oneshot.start(dbus, path.to_string());
+        self.subscription.start(dbus, path);
     }
 
     pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {

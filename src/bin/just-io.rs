@@ -1,7 +1,11 @@
 use layer_shell_io::{Event, io_handle_readable, io_init, io_wait_readable};
 
 fn on_event(event: *const Event) {
-    println!("{:?}", unsafe { event.as_ref().unwrap() });
+    let Some(event) = (unsafe { event.as_ref() }) else {
+        eprintln!("NULL event received");
+        std::process::exit(1);
+    };
+    println!("{event:?}");
 }
 
 fn main() {

@@ -79,23 +79,21 @@ impl Reader {
         }
     }
 
-    fn schedule_read_header(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_read_header(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadHeader as u8));
-        Ok(())
     }
 
-    fn schedule_read_body(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_read_body(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         let (bytes, len) = self.buf.remainder();
         sqe.prep_read(self.fd, bytes.as_mut_ptr(), len);
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
-        Ok(())
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.schedule_read_header()
     }
 
@@ -113,7 +111,7 @@ impl Reader {
                 let header_fields_len = buf.peek_u32().context("EOF")? as usize;
                 let body_len = header_fields_len.next_multiple_of(8) + header.body_len;
                 self.buf.set_body_len(body_len);
-                self.schedule_read_body()?;
+                self.schedule_read_body();
                 Ok(None)
             }
             Op::ReadBody => {
@@ -124,10 +122,10 @@ impl Reader {
                 if bytes_read == 0 {
                     let message = MessageDecoder::decode(self.buf.as_slice())?;
                     self.buf = Buffer::new();
-                    self.schedule_read_header()?;
+                    self.schedule_read_header();
                     Ok(Some(message))
                 } else {
-                    self.schedule_read_body()?;
+                    self.schedule_read_body();
                     Ok(None)
                 }
             }

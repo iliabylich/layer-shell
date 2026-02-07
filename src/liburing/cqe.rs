@@ -7,10 +7,10 @@ pub(crate) struct Cqe {
 
 impl Cqe {
     pub(crate) const fn res(&self) -> i32 {
-        unsafe { self.cqe.as_mut() }.unwrap().res
+        unsafe { (*self.cqe).res }
     }
 
     pub(crate) const fn user_data(&self) -> u64 {
-        unsafe { self.cqe.as_mut() }.unwrap().user_data
+        unsafe { (*self.cqe).user_data }
     }
 }

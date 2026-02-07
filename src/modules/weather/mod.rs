@@ -49,7 +49,7 @@ impl Weather {
     pub(crate) fn init(&mut self, lat: f64, lng: f64) -> Result<()> {
         self.latlng = Some((lat, lng));
         let mut https = get_weather(lat, lng)?;
-        https.init()?;
+        https.init();
         self.https = Some(https);
         Ok(())
     }
@@ -72,7 +72,7 @@ impl Weather {
 
         if tick.is_multiple_of(120) {
             let mut https = get_weather(lat, lng)?;
-            https.init()?;
+            https.init();
             self.https = Some(https);
         }
         Ok(())

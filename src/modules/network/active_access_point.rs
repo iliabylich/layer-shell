@@ -33,16 +33,14 @@ impl ActiveAccessPoint {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) -> Result<()> {
-        self.subscription.reset(dbus)?;
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+        self.subscription.reset(dbus);
         self.oneshot.reset();
-        Ok(())
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) -> Result<()> {
-        self.subscription.start(dbus, path)?;
-        self.oneshot.start(dbus, path.to_string())?;
-        Ok(())
+    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
+        self.subscription.start(dbus, path);
+        self.oneshot.start(dbus, path.to_string());
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<ActiveAccessPointEvent> {

@@ -17,7 +17,7 @@ impl Control {
         Box::new(Self)
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
         let mut message: Message = RequestName::new("org.me.LayerShellControl").into();
         dbus.enqueue(&mut message)
     }
@@ -26,27 +26,27 @@ impl Control {
         &mut self,
         message: &Message,
         dbus: &mut DBus,
-    ) -> Result<Option<ControlRequest>> {
+    ) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
             let mut reply: Message =
                 IntrospectResponse::new(serial, sender, INTROSPECTION.to_string()).into();
-            dbus.enqueue(&mut reply)?;
-            return Ok(None);
+            dbus.enqueue(&mut reply);
+            return None;
         }
 
         if let Ok((member, sender, serial)) = try_parse_control_req(message) {
             if let Ok(control_req) = ControlRequest::try_parse(member) {
                 let mut reply = Message::new_method_return_no_body(serial, sender);
-                dbus.enqueue(&mut reply)?;
-                return Ok(Some(control_req));
+                dbus.enqueue(&mut reply);
+                return Some(control_req);
             } else {
                 let mut reply = Message::new_err_no_method(serial, sender);
-                dbus.enqueue(&mut reply)?;
-                return Ok(None);
+                dbus.enqueue(&mut reply);
+                return None;
             }
         }
 
-        Ok(None)
+        None
     }
 }
 

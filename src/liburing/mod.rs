@@ -1,5 +1,4 @@
 pub(crate) use self::{cqe::Cqe, sqe::Sqe};
-use anyhow::{Result, bail};
 use generated::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
     __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait, __liburing_wait_cqe,
@@ -13,13 +12,12 @@ mod cqe;
 mod generated;
 mod sqe;
 
-fn checkerr(errno: i32) -> Result<()> {
-    if errno >= 0 {
-        Ok(())
-    } else {
+fn checkerr(errno: i32) {
+    if errno < 0 {
         let str = unsafe { strerror(errno) };
         let str = unsafe { std::ffi::CStr::from_ptr(str) }.to_string_lossy();
-        bail!("{str}")
+        eprintln!("IoUring error: {str:?}");
+        std::process::exit(1);
     }
 }
 
@@ -33,17 +31,15 @@ pub(crate) enum IoUring {}
 static mut IO_URING: io_uring = unsafe { std::mem::zeroed() };
 static mut DIRTY: bool = false;
 
-fn ring_init(entries: usize, flags: u32) -> Result<()> {
+fn ring_init(entries: usize, flags: u32) {
     let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
     let errno = unsafe { __liburing_queue_init(entries as u32, &mut ring, flags) };
-    checkerr(errno)?;
+    checkerr(errno);
 
     unsafe {
         IO_URING = ring;
         DIRTY = false;
     }
-
-    Ok(())
 }
 
 fn ring_get() -> &'static mut io_uring {
@@ -61,59 +57,61 @@ fn dirty_set(value: bool) {
 }
 
 impl IoUring {
-    pub(crate) fn init(entries: usize, flags: u32) -> Result<()> {
+    pub(crate) fn init(entries: usize, flags: u32) {
         ring_init(entries, flags)
     }
 
-    pub(crate) fn get_sqe() -> Result<Sqe> {
+    pub(crate) fn get_sqe() -> Sqe {
         let sqe = unsafe { __liburing_get_sqe(ring_get()) };
         if sqe.is_null() {
-            bail!("got NULL from io_uring_get_sqe");
+            eprintln!("got NULL from io_uring_get_sqe");
+            std::process::exit(1);
         }
         dirty_set(true);
-        Ok(Sqe { sqe })
+        Sqe { sqe }
     }
 
-    fn submit() -> Result<()> {
+    fn submit() {
         let errno = unsafe { __liburing_submit(ring_get()) };
         checkerr(errno)
     }
 
-    pub(crate) fn submit_if_dirty() -> Result<()> {
+    pub(crate) fn submit_if_dirty() {
         if dirty_get() {
-            Self::submit()?
+            Self::submit()
         }
-        Ok(())
     }
 
-    pub(crate) fn submit_and_wait(n: usize) -> Result<()> {
+    pub(crate) fn submit_and_wait(n: usize) {
         let errno = unsafe { __liburing_submit_and_wait(ring_get(), n as u32) };
         checkerr(errno)
     }
 
     #[allow(dead_code)]
-    pub(crate) fn wait_cqe() -> Result<Cqe> {
+    pub(crate) fn wait_cqe() -> Cqe {
         let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
         let errno = unsafe { __liburing_wait_cqe(ring_get(), &mut cqe) };
-        checkerr(errno)?;
+        checkerr(errno);
         if cqe.is_null() {
-            bail!("got NULL from io_uring_wait_cqe");
+            eprintln!("got NULL from io_uring_wait_cqe");
+            std::process::exit(1)
         }
-        Ok(Cqe { cqe })
+        Cqe { cqe }
     }
 
-    pub(crate) fn try_get_cqe() -> Result<Option<Cqe>> {
+    pub(crate) fn try_get_cqe() -> Option<Cqe> {
         let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
         let errno =
             unsafe { __liburing_wait_cqe_timeout(ring_get(), &mut cqe, &raw mut NOTIMEOUT) };
         if errno == -ETIME {
-            return Ok(None);
+            return None;
         }
-        checkerr(errno)?;
+        checkerr(errno);
         if cqe.is_null() {
-            bail!("got NULL from io_uring_wait_cqe_timeout");
+            eprintln!("got NULL from io_uring_wait_cqe_timeout");
+            std::process::exit(1)
         }
-        Ok(Some(Cqe { cqe }))
+        Some(Cqe { cqe })
     }
 
     pub(crate) fn cqe_seen(cqe: Cqe) {

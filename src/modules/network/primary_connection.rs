@@ -34,11 +34,10 @@ impl PrimaryConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
-        self.oneshot.start(dbus, ())?;
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+        self.oneshot.start(dbus, ());
         self.subscription
-            .start(dbus, "/org/freedesktop/NetworkManager")?;
-        Ok(())
+            .start(dbus, "/org/freedesktop/NetworkManager");
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryConnectionEvent> {

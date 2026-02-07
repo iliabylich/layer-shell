@@ -24,46 +24,40 @@ impl StatusNotifierWatcher {
         }
     }
 
-    pub(crate) fn request(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn request(&mut self, dbus: &mut DBus) {
         let mut message: Message = RequestName::new("org.kde.StatusNotifierWatcher").into();
-        dbus.enqueue(&mut message)?;
+        dbus.enqueue(&mut message);
         self.reply_serial = Some(message.serial());
-        Ok(())
     }
 
-    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str) -> Result<()> {
+    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str) {
         let mut reply = Message::new_method_return_no_body(serial, destination);
-        dbus.enqueue(&mut reply)?;
-        Ok(())
+        dbus.enqueue(&mut reply);
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
         self.request(dbus)
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        dbus: &mut DBus,
-        message: &Message,
-    ) -> Result<Option<String>> {
-        if self.introspection.process_message(dbus, message)? {
-            return Ok(None);
+    pub(crate) fn on_message(&mut self, dbus: &mut DBus, message: &Message) -> Option<String> {
+        if self.introspection.process_message(dbus, message) {
+            return None;
         }
 
         if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    Self::reply_ok(dbus, serial, &sender)?;
-                    return Ok(Some(address));
+                    Self::reply_ok(dbus, serial, &sender);
+                    return Some(address);
                 }
                 KSNIRequest::Other => {
-                    Self::reply_ok(dbus, serial, &sender)?;
-                    return Ok(None);
+                    Self::reply_ok(dbus, serial, &sender);
+                    return None;
                 }
             }
         }
 
-        Ok(None)
+        None
     }
 }
 

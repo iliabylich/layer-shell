@@ -44,49 +44,43 @@ impl Auth {
         }
     }
 
-    fn schedule_write_zero(&self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_write_zero(&self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, c"".as_ptr().cast(), 1);
         sqe.set_user_data(UserData::new(self.module_id, Op::WriteZero as u8));
-        Ok(())
     }
 
-    fn schedule_write_auth_external(&self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_write_auth_external(&self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, AUTH_EXTERNAL.as_ptr(), AUTH_EXTERNAL.len());
         sqe.set_user_data(UserData::new(self.module_id, Op::WriteAuthExternal as u8));
-        Ok(())
     }
 
-    fn schedule_read_data(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_read_data(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadData as u8));
-        Ok(())
     }
 
-    fn schedule_write_data(&self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_write_data(&self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, DATA.as_ptr(), DATA.len());
         sqe.set_user_data(UserData::new(self.module_id, Op::WriteData as u8));
-        Ok(())
     }
 
-    fn schedule_read_guid(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_read_guid(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadGUID as u8));
-        Ok(())
     }
 
-    fn schedule_write_begin(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_write_begin(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, BEGIN.as_ptr(), BEGIN.len());
         sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin as u8));
-        Ok(())
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.schedule_write_zero()
     }
 
@@ -96,14 +90,14 @@ impl Auth {
                 ensure!(res > 0);
                 let written = res as usize;
                 ensure!(written == 1);
-                self.schedule_write_auth_external()?;
+                self.schedule_write_auth_external();
                 Ok(false)
             }
             Op::WriteAuthExternal => {
                 ensure!(res > 0);
                 let written = res as usize;
                 ensure!(written == AUTH_EXTERNAL.len());
-                self.schedule_read_data()?;
+                self.schedule_read_data();
                 Ok(false)
             }
             Op::ReadData => {
@@ -111,19 +105,19 @@ impl Auth {
                 let read = res as usize;
                 ensure!(read == DATA.len());
                 ensure!(&self.buf[..read] == DATA);
-                self.schedule_write_data()?;
+                self.schedule_write_data();
                 Ok(false)
             }
             Op::WriteData => {
                 ensure!(res > 0);
                 let written = res as usize;
                 ensure!(written == DATA.len());
-                self.schedule_read_guid()?;
+                self.schedule_read_guid();
                 Ok(false)
             }
             Op::ReadGUID => {
                 ensure!(res > 0);
-                self.schedule_write_begin()?;
+                self.schedule_write_begin();
                 Ok(false)
             }
             Op::WriteBegin => {

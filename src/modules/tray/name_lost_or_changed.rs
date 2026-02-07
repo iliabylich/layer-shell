@@ -17,7 +17,7 @@ impl NameLostOrNameOwnerChanged {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
         self.name_changed.start(dbus, ())
     }
 

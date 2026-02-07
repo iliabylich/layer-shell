@@ -1,4 +1,4 @@
-use crate::{Event, UserData, liburing::IoUring, timerfd::Tick, user_data::ModuleId};
+use crate::{Event, UserData, liburing::IoUring, user_data::ModuleId};
 use anyhow::{Result, ensure};
 use parser::Parser;
 use std::{fs::File, os::fd::IntoRawFd};
@@ -56,17 +56,13 @@ impl CPU {
         }
     }
 
-    fn schedule_read(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_read(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(ModuleId::CPU, Op::Read as u8));
-        Ok(())
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick) -> Result<()> {
-        if tick.is_multiple_of(1) {
-            self.schedule_read()?;
-        }
-        Ok(())
+    pub(crate) fn tick(&mut self) {
+        self.schedule_read();
     }
 }

@@ -33,16 +33,14 @@ impl PrimaryDevice {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) -> Result<()> {
-        self.subscription.reset(dbus)?;
+    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+        self.subscription.reset(dbus);
         self.oneshot.reset();
-        Ok(())
     }
 
-    pub(crate) fn init(&mut self, path: String, dbus: &mut DBus) -> Result<()> {
-        self.subscription.start(dbus, &path)?;
-        self.oneshot.start(dbus, path)?;
-        Ok(())
+    pub(crate) fn init(&mut self, path: String, dbus: &mut DBus) {
+        self.subscription.start(dbus, &path);
+        self.oneshot.start(dbus, path);
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryDeviceEvent> {

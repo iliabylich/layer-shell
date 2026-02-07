@@ -2,7 +2,6 @@ use crate::dbus::{
     DBus, IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
     types::{CompleteType, Value},
 };
-use anyhow::Result;
 use std::borrow::Cow;
 
 pub(crate) struct StatusNotifierWatcherIntrospection {
@@ -16,7 +15,7 @@ impl StatusNotifierWatcherIntrospection {
         }
     }
 
-    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str, body: Vec<Value>) -> Result<()> {
+    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str, body: Vec<Value>) {
         let mut message = Message::MethodReturn {
             serial: 0,
             reply_serial: serial,
@@ -28,14 +27,14 @@ impl StatusNotifierWatcherIntrospection {
         dbus.enqueue(&mut message)
     }
 
-    fn reply_err(dbus: &mut DBus, serial: u32, destination: &str) -> Result<()> {
+    fn reply_err(dbus: &mut DBus, serial: u32, destination: &str) {
         let mut reply = Message::new_err_no_method(serial, destination);
         dbus.enqueue(&mut reply)
     }
 
-    pub(crate) fn process_message(&mut self, dbus: &mut DBus, message: &Message) -> Result<bool> {
+    pub(crate) fn process_message(&mut self, dbus: &mut DBus, message: &Message) -> bool {
         let Ok((serial, sender, req)) = self.introspection.handle(message) else {
-            return Ok(false);
+            return false;
         };
 
         match req {
@@ -45,14 +44,14 @@ impl StatusNotifierWatcherIntrospection {
                     serial,
                     &sender,
                     vec![Value::String(Cow::Owned(root_introspection_xml()))],
-                )?,
+                ),
                 "/StatusNotifierWatcher" => Self::reply_ok(
                     dbus,
                     serial,
                     &sender,
                     vec![Value::String(Cow::Owned(ksni_introspection_xml()))],
-                )?,
-                _ => Self::reply_err(dbus, serial, &sender)?,
+                ),
+                _ => Self::reply_err(dbus, serial, &sender),
             },
 
             IntrospectibleObjectAtRequest::GetAllProperties { path, interface } => {
@@ -85,10 +84,10 @@ impl StatusNotifierWatcherIntrospection {
                                 ),
                             ],
                         )];
-                        Self::reply_ok(dbus, serial, &sender, body)?;
+                        Self::reply_ok(dbus, serial, &sender, body);
                     }
 
-                    _ => Self::reply_err(dbus, serial, &sender)?,
+                    _ => Self::reply_err(dbus, serial, &sender),
                 }
             }
 
@@ -117,20 +116,20 @@ impl StatusNotifierWatcherIntrospection {
                     ) => Value::Variant(Box::new(Value::Array(CompleteType::String, vec![]))),
 
                     _ => {
-                        Self::reply_err(dbus, serial, &sender)?;
-                        return Ok(true);
+                        Self::reply_err(dbus, serial, &sender);
+                        return true;
                     }
                 };
 
-                Self::reply_ok(dbus, serial, &sender, vec![value])?;
+                Self::reply_ok(dbus, serial, &sender, vec![value]);
             }
 
             _ => {
-                Self::reply_err(dbus, serial, &sender)?;
+                Self::reply_err(dbus, serial, &sender);
             }
         }
 
-        Ok(true)
+        true
     }
 }
 

@@ -18,10 +18,9 @@ impl ActiveConnectionType {
         }
     }
 
-    pub(crate) fn request(&mut self, dbus: &mut DBus, path: &str) -> Result<()> {
-        self.oneshot.start(dbus, path.to_string())?;
+    pub(crate) fn request(&mut self, dbus: &mut DBus, path: &str) {
+        self.oneshot.start(dbus, path.to_string());
         self.path = Some(path.to_string());
-        Ok(())
     }
 
     pub(crate) fn reset(&mut self) {

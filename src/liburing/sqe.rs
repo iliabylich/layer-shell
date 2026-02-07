@@ -37,6 +37,6 @@ impl Sqe {
     }
 
     pub(crate) fn set_user_data(&mut self, data: impl Into<u64>) {
-        (unsafe { self.sqe.as_mut().unwrap() }).user_data = data.into();
+        (unsafe { &mut *self.sqe }).user_data = data.into();
     }
 }

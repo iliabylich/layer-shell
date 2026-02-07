@@ -1,5 +1,5 @@
 use crate::{Event, modules::hyprland::writer::CapsLock};
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 use reader::HyprlandReader;
 use state::HyprlandState;
 use std::collections::VecDeque;
@@ -21,32 +21,31 @@ pub(crate) struct Hyprland {
     queue: VecDeque<Box<dyn WriterResource>>,
 }
 
-fn new_reader() -> Result<Box<HyprlandReader>> {
+fn new_reader() -> Box<HyprlandReader> {
     HyprlandReader::new()
 }
-fn new_writer(resource: Box<dyn WriterResource>) -> Result<Box<HyprlandWriter>> {
+fn new_writer(resource: Box<dyn WriterResource>) -> Box<HyprlandWriter> {
     HyprlandWriter::new(resource)
 }
 
 impl Hyprland {
-    pub(crate) fn new() -> Result<Box<Self>> {
-        Ok(Box::new(Self {
-            reader: new_reader()?,
-            writer: Some(new_writer(Box::new(WorkspaceListResource))?),
+    pub(crate) fn new() -> Box<Self> {
+        Box::new(Self {
+            reader: new_reader(),
+            writer: Some(new_writer(Box::new(WorkspaceListResource))),
             state: HyprlandState::default(),
             queue: VecDeque::from([
                 Box::new(ActiveWorkspaceResource) as Box<dyn WriterResource>,
                 Box::new(DevicesResource),
             ]),
-        }))
+        })
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
-        self.reader.init()?;
+    pub(crate) fn init(&mut self) {
+        self.reader.init();
         if let Some(writer) = self.writer.as_mut() {
-            writer.init()?;
+            writer.init();
         }
-        Ok(())
     }
 
     pub(crate) fn process_reader(
@@ -99,44 +98,47 @@ impl Hyprland {
         if self.writer.is_none()
             && let Some(next) = self.queue.pop_front()
         {
-            let mut writer = new_writer(next)?;
-            writer.init()?;
+            let mut writer = new_writer(next);
+            writer.init();
             self.writer = Some(writer);
         }
 
         Ok(())
     }
 
-    pub(crate) fn enqueue_get_caps_lock(&mut self) -> Result<()> {
+    pub(crate) fn enqueue_get_caps_lock(&mut self) {
         let resource = Box::new(CapsLock);
         if self.writer.is_none() {
-            let mut writer = new_writer(resource)?;
-            writer.init()?;
+            let mut writer = new_writer(resource);
+            writer.init();
             self.writer = Some(writer)
         } else {
             self.queue.push_back(resource);
         }
-        Ok(())
     }
 
-    pub(crate) fn dispatch(&mut self, cmd: String) -> Result<()> {
+    pub(crate) fn dispatch(&mut self, cmd: String) {
         let resource = Box::new(Dispatch::new(cmd));
         if self.writer.is_none() {
-            let mut writer = new_writer(resource)?;
-            writer.init()?;
+            let mut writer = new_writer(resource);
+            writer.init();
             self.writer = Some(writer)
         } else {
             self.queue.push_back(resource);
         }
-        Ok(())
     }
 }
 
-fn xdg_runtime_dir() -> Result<String> {
-    std::env::var("XDG_RUNTIME_DIR").context("no XDG_RUNTIME_DIR variable")
+fn xdg_runtime_dir() -> String {
+    std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+        eprintln!("no XDG_RUNTIME_DIR variable");
+        std::process::exit(1)
+    })
 }
 
-fn hyprland_instance_signature() -> Result<String> {
-    std::env::var("HYPRLAND_INSTANCE_SIGNATURE")
-        .context("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?")
+fn hyprland_instance_signature() -> String {
+    std::env::var("HYPRLAND_INSTANCE_SIGNATURE").unwrap_or_else(|_| {
+        eprintln!("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?");
+        std::process::exit(1);
+    })
 }

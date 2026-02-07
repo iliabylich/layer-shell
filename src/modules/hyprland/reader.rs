@@ -28,30 +28,34 @@ impl TryFrom<u8> for Op {
 }
 
 impl HyprlandReader {
-    pub(crate) fn new() -> Result<Box<Self>> {
+    pub(crate) fn new() -> Box<Self> {
         let path = format!(
             "{}/hypr/{}/.socket2.sock",
-            xdg_runtime_dir()?,
-            hyprland_instance_signature()?
+            xdg_runtime_dir(),
+            hyprland_instance_signature()
         );
 
-        let fd = UnixStream::connect(&path)?.into_raw_fd();
+        let fd = UnixStream::connect(&path)
+            .unwrap_or_else(|err| {
+                eprintln!("{err:?}");
+                std::process::exit(1)
+            })
+            .into_raw_fd();
 
-        Ok(Box::new(Self {
+        Box::new(Self {
             fd,
             buf: [0; 1_024],
-        }))
+        })
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.schedule_read()
     }
 
-    fn schedule_read(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_read(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read as u8));
-        Ok(())
     }
 
     pub(crate) fn process(
@@ -71,7 +75,7 @@ impl HyprlandReader {
                     };
                 }
 
-                self.schedule_read()?;
+                self.schedule_read();
             }
         }
         Ok(())

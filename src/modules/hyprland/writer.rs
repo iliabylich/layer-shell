@@ -171,14 +171,14 @@ pub(crate) struct HyprlandWriter {
 }
 
 impl HyprlandWriter {
-    pub(crate) fn new(resource: Box<dyn WriterResource>) -> Result<Box<Self>> {
+    pub(crate) fn new(resource: Box<dyn WriterResource>) -> Box<Self> {
         let addr = sockaddr_un {
             sun_family: AF_UNIX as u16,
             sun_path: {
                 let path = format!(
                     "{}/hypr/{}/.socket.sock",
-                    xdg_runtime_dir()?,
-                    hyprland_instance_signature()?
+                    xdg_runtime_dir(),
+                    hyprland_instance_signature()
                 );
                 let path = unsafe { std::mem::transmute::<&[u8], &[i8]>(path.as_bytes()) };
                 let mut out = [0; 108];
@@ -187,59 +187,57 @@ impl HyprlandWriter {
             },
         };
 
-        Ok(Box::new(Self {
+        Box::new(Self {
             fd: -1,
             addr,
             buf: [0; 4_096],
             resource,
             reply: None,
-        }))
+        })
     }
 
-    fn schedule_socket(&self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_socket(&self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket as u8));
-        Ok(())
     }
 
-    fn schedule_connect(&self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_connect(&self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_connect(
             self.fd,
             (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
             std::mem::size_of::<sockaddr_un>() as u32,
         );
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Connect as u8));
-        Ok(())
     }
 
-    fn schedule_write(&mut self) -> Result<()> {
+    fn schedule_write(&mut self) {
         let mut writer = ArrayWriter::new(&mut self.buf);
-        write!(&mut writer, "{}", self.resource.command())?;
+        write!(&mut writer, "{}", self.resource.command()).unwrap_or_else(|err| {
+            eprintln!("failed to write command to buffer: {err:?}");
+            std::process::exit(1);
+        });
         let buflen = writer.offset();
 
-        let mut sqe = IoUring::get_sqe()?;
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, self.buf.as_ptr(), buflen);
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Write as u8));
-        Ok(())
     }
 
-    fn schedule_read(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_read(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Read as u8));
-        Ok(())
     }
 
-    fn schedule_close(&self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    fn schedule_close(&self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_close(self.fd);
         sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Close as u8));
-        Ok(())
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.schedule_socket()
     }
 
@@ -249,22 +247,22 @@ impl HyprlandWriter {
                 let fd = res;
                 ensure!(fd > 0);
                 self.fd = fd;
-                self.schedule_connect()?;
+                self.schedule_connect();
             }
             Op::Connect => {
                 ensure!(res >= 0);
-                self.schedule_write()?;
+                self.schedule_write();
             }
             Op::Write => {
                 ensure!(res > 0);
-                self.schedule_read()?;
+                self.schedule_read();
             }
             Op::Read => {
                 ensure!(res > 0);
                 let len = res as usize;
                 let json = std::str::from_utf8(&self.buf[..len])?;
                 self.reply = Some(self.resource.parse(json)?);
-                self.schedule_close()?;
+                self.schedule_close();
             }
             Op::Close => {
                 ensure!(res >= 0);

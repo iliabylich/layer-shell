@@ -65,22 +65,21 @@ impl HttpsConnection {
         })
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
-        let mut sqe = IoUring::get_sqe()?;
+    pub(crate) fn init(&mut self) {
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
         sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
-        Ok(())
     }
 
     fn call_fsm(&mut self) -> Result<()> {
         match self.fsm.wants()? {
             Wants::Read(buf) => {
-                let mut sqe = IoUring::get_sqe()?;
+                let mut sqe = IoUring::get_sqe();
                 sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
             }
             Wants::Write(buf) => {
-                let mut sqe = IoUring::get_sqe()?;
+                let mut sqe = IoUring::get_sqe();
                 sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
             }
@@ -88,7 +87,7 @@ impl HttpsConnection {
                 assert!(self.response.is_none());
                 self.response = Some(response);
 
-                let mut sqe = IoUring::get_sqe()?;
+                let mut sqe = IoUring::get_sqe();
                 sqe.prep_close(self.fd);
                 sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
             }
@@ -103,7 +102,7 @@ impl HttpsConnection {
                 ensure!(fd > 0);
                 self.fd = fd;
 
-                let mut sqe = IoUring::get_sqe()?;
+                let mut sqe = IoUring::get_sqe();
                 sqe.prep_connect(
                     self.fd,
                     (&self.addr as *const sockaddr_in).cast(),

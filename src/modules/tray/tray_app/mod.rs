@@ -25,30 +25,27 @@ impl TrayApp {
         }
     }
 
-    fn request_props(&mut self, dbus: &mut DBus) -> Result<()> {
+    fn request_props(&mut self, dbus: &mut DBus) {
         self.new_icon = Oneshot::new(NewIcon);
-        self.new_icon.start(dbus, self.address.clone())?;
-        Ok(())
+        self.new_icon.start(dbus, self.address.clone());
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
-        self.request_props(dbus)?;
-        self.get_all_props.start(dbus, self.address.clone())?;
-        self.subscription.start(dbus, "/StatusNotifierItem")?;
-        Ok(())
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+        self.request_props(dbus);
+        self.get_all_props.start(dbus, self.address.clone());
+        self.subscription.start(dbus, "/StatusNotifierItem");
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn on_message(&mut self, message: &Message, dbus: &mut DBus) {
         if let Some(_) = self.get_all_props.process(message) {
             println!("GOT ONESHOT PROPS FOR {}", self.address);
         }
         if let Some(()) = self.new_icon.process(message) {
-            self.request_props(dbus)?;
+            self.request_props(dbus);
         }
         if let Some(_) = self.subscription.process(message) {
             println!("GOT SUBSCRIPTION PROPS for {}", self.address)
         }
-        Ok(())
     }
 }
 

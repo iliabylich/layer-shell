@@ -34,12 +34,11 @@ impl Writer {
         }
     }
 
-    pub(crate) fn init(&mut self, buf: Vec<u8>) -> Result<()> {
+    pub(crate) fn init(&mut self, buf: Vec<u8>) {
         self.buf = buf;
-        let mut sqe = IoUring::get_sqe()?;
+        let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, self.buf.as_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
-        Ok(())
     }
 
     pub(crate) fn process(&self, op: u8, res: i32) -> Result<()> {

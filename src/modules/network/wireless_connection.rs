@@ -5,7 +5,6 @@ use crate::{
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
     },
 };
-use anyhow::Result;
 
 #[derive(Default)]
 enum State {
@@ -35,7 +34,7 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) -> Result<()> {
+    pub(crate) fn init(&mut self, dbus: &mut DBus) {
         self.primary_connection.init(dbus)
     }
 
@@ -43,17 +42,17 @@ impl WirelessConnection {
         &mut self,
         dbus: &mut DBus,
         e: PrimaryConnectionEvent,
-    ) -> Result<Option<WirelessConnectionEvent>> {
+    ) -> Option<WirelessConnectionEvent> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
-                self.active_connection_type.request(dbus, &path)?;
+                self.active_connection_type.request(dbus, &path);
                 self.state = State::ConnectedAndHavePath;
-                Ok(None)
+                None
             }
             PrimaryConnectionEvent::Disconnected => {
                 self.active_connection_type.reset();
                 self.state = State::Disconnected;
-                Ok(Some(WirelessConnectionEvent::Disconnected))
+                Some(WirelessConnectionEvent::Disconnected)
             }
         }
     }
@@ -76,15 +75,15 @@ impl WirelessConnection {
         &mut self,
         dbus: &mut DBus,
         message: &Message,
-    ) -> Result<Option<WirelessConnectionEvent>> {
+    ) -> Option<WirelessConnectionEvent> {
         if let Some(e) = self.primary_connection.on_message(message) {
             return self.on_primary_connection_event(dbus, e);
         }
 
         if let Some((is_wireless, path)) = self.active_connection_type.on_message(message) {
-            return Ok(self.on_active_connection_type_received(is_wireless, path));
+            return self.on_active_connection_type_received(is_wireless, path);
         }
 
-        Ok(None)
+        None
     }
 }

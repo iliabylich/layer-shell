@@ -62,7 +62,7 @@ impl IO {
 
             location: Location::new()?,
             weather: Weather::new()?,
-            hyprland: Hyprland::new()?,
+            hyprland: Hyprland::new(),
             cpu: CPU::new()?,
             memory: Memory::new()?,
             sound: Sound::new(),
@@ -72,30 +72,28 @@ impl IO {
             on_event,
         };
 
-        this.init()?;
+        this.init();
 
         Ok(this)
     }
 
-    fn init(&mut self) -> Result<()> {
-        self.timer.init()?;
+    fn init(&mut self) {
+        self.timer.init();
 
-        self.location.init()?;
-        self.hyprland.init()?;
+        self.location.init();
+        self.hyprland.init();
 
-        self.session_dbus.enqueue(&mut Hello.into())?;
-        self.sound.init(&mut self.session_dbus)?;
-        self.control.init(&mut self.session_dbus)?;
-        self.tray.init(&mut self.session_dbus)?;
-        self.session_dbus.init()?;
+        self.session_dbus.enqueue(&mut Hello.into());
+        self.sound.init(&mut self.session_dbus);
+        self.control.init(&mut self.session_dbus);
+        self.tray.init(&mut self.session_dbus);
+        self.session_dbus.init();
 
-        self.system_dbus.enqueue(&mut Hello.into())?;
-        self.network.init(&mut self.system_dbus)?;
-        self.system_dbus.init()?;
+        self.system_dbus.enqueue(&mut Hello.into());
+        self.network.init(&mut self.system_dbus);
+        self.system_dbus.init();
 
-        IoUring::submit_if_dirty()?;
-
-        Ok(())
+        IoUring::submit_if_dirty();
     }
 
     fn new(on_event: fn(event: *const Event)) -> Self {
@@ -112,24 +110,22 @@ impl IO {
         })
     }
 
-    fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) -> Result<()> {
+    fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
         match req {
             ControlRequest::CapsLockToggled => {
-                self.hyprland.enqueue_get_caps_lock()?;
-                IoUring::submit_if_dirty()?;
+                self.hyprland.enqueue_get_caps_lock();
+                IoUring::submit_if_dirty();
             }
             ControlRequest::Exit => events.push(Event::Exit),
             ControlRequest::ReloadStyles => events.push(Event::ReloadStyles),
             ControlRequest::ToggleSessionScreen => events.push(Event::ToggleSessionScreen),
         }
-
-        Ok(())
     }
 
     fn try_handle_readable(&mut self) -> Result<()> {
         let mut events = vec![];
 
-        while let Some(cqe) = IoUring::try_get_cqe()? {
+        while let Some(cqe) = IoUring::try_get_cqe() {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
@@ -160,14 +156,13 @@ impl IO {
                 ModuleId::SessionDBusReader => {
                     if let Some(message) = self.session_dbus.process_read(op, res)? {
                         self.sound
-                            .on_message(&mut self.session_dbus, &message, &mut events)?;
+                            .on_message(&mut self.session_dbus, &message, &mut events);
                         self.tray
-                            .on_message(&mut self.session_dbus, &message, &mut events)?;
+                            .on_message(&mut self.session_dbus, &message, &mut events);
 
-                        if let Some(req) =
-                            self.control.on_message(&message, &mut self.session_dbus)?
+                        if let Some(req) = self.control.on_message(&message, &mut self.session_dbus)
                         {
-                            self.on_control_req(req, &mut events)?;
+                            self.on_control_req(req, &mut events);
                         }
                     }
                 }
@@ -181,7 +176,7 @@ impl IO {
                 ModuleId::SystemDBusReader => {
                     if let Some(message) = self.system_dbus.process_read(op, res)? {
                         self.network
-                            .on_message(&mut self.system_dbus, &message, &mut events)?;
+                            .on_message(&mut self.system_dbus, &message, &mut events);
                     }
                 }
                 ModuleId::SystemDBusWriter => {
@@ -198,8 +193,8 @@ impl IO {
                     let tick = self.timer.process(op)?;
                     Clock::tick(tick, &mut events);
                     self.weather.tick(tick)?;
-                    self.cpu.tick(tick)?;
-                    self.memory.tick(tick)?;
+                    self.cpu.tick();
+                    self.memory.tick();
                 }
                 ModuleId::Max => unreachable!(),
             }
@@ -211,7 +206,7 @@ impl IO {
             (self.on_event)(&event);
         }
 
-        IoUring::submit_if_dirty()?;
+        IoUring::submit_if_dirty();
 
         Ok(())
     }
@@ -223,22 +218,15 @@ impl IO {
         })
     }
 
-    fn try_wait_readable(&mut self) -> Result<()> {
+    fn wait_readable(&mut self) {
         IoUring::submit_and_wait(1)
     }
 
-    fn wait_readable(&mut self) {
-        self.try_wait_readable().unwrap_or_else(|err| {
-            eprintln!("{err:?}");
-            std::process::exit(1);
-        })
-    }
-
-    fn try_process_command(&mut self, cmd: Command) -> Result<()> {
+    fn process_command(&mut self, cmd: Command) {
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
-                self.hyprland.dispatch(format!($($arg)*), )?;
-                IoUring::submit_if_dirty()?;
+                self.hyprland.dispatch(format!($($arg)*), );
+                IoUring::submit_if_dirty();
             }};
         }
         match cmd {
@@ -272,25 +260,13 @@ impl IO {
 
             Command::TriggerTray { uuid } => todo!("{uuid}"),
         }
-
-        Ok(())
-    }
-
-    fn process_command(&mut self, cmd: Command) {
-        self.try_process_command(cmd).unwrap_or_else(|err| {
-            eprintln!("{err:?}");
-            std::process::exit(1);
-        })
     }
 }
 
 #[unsafe(no_mangle)]
 pub fn io_init(on_event: fn(event: *const Event)) -> *mut c_void {
     env_logger::init();
-    IoUring::init(10, 0).unwrap_or_else(|err| {
-        eprintln!("{err:?}");
-        std::process::exit(1);
-    });
+    IoUring::init(10, 0);
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }
 

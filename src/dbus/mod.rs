@@ -88,31 +88,29 @@ impl DBus {
         }
     }
 
-    pub(crate) fn enqueue(&mut self, message: &mut Message) -> Result<()> {
+    pub(crate) fn enqueue(&mut self, message: &mut Message) {
         *message.serial_mut() = self.serial.increment_and_get();
         let bytes = MessageEncoder::encode(message);
 
         if self.writer_is_ready {
-            self.writer.init(bytes)?;
+            self.writer.init(bytes);
             self.writer_is_ready = false;
         } else {
             self.queue.push_back(bytes);
         }
-
-        Ok(())
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.auth.init()
     }
 
     pub(crate) fn process_auth(&mut self, op: u8, res: i32) -> Result<()> {
         let finished = self.auth.process(op, res)?;
         if finished {
-            self.reader.init()?;
+            self.reader.init();
 
             if let Some(bytes) = self.queue.pop_front() {
-                self.writer.init(bytes)?;
+                self.writer.init(bytes);
                 self.writer_is_ready = false;
             } else {
                 self.writer_is_ready = true;
@@ -128,7 +126,7 @@ impl DBus {
     pub(crate) fn process_write(&mut self, op: u8, res: i32) -> Result<()> {
         self.writer.process(op, res)?;
         if let Some(bytes) = self.queue.pop_front() {
-            self.writer.init(bytes)?;
+            self.writer.init(bytes);
         } else {
             self.writer_is_ready = true;
         }
