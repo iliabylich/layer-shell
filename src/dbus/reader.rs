@@ -130,7 +130,7 @@ impl Reader {
 
                 let mut buf = DecodingBuffer::new(buf);
                 let header = match HeaderDecoder::decode(&mut buf) {
-                    Ok(v) => v,
+                    Ok(ok) => ok,
                     Err(err) => {
                         crash!("DBus Reader header decoding error: {err:?}");
                     }
@@ -155,7 +155,7 @@ impl Reader {
 
                 if bytes_read == 0 {
                     let message = match MessageDecoder::decode(self.buf.as_slice()) {
-                        Ok(v) => v,
+                        Ok(ok) => ok,
                         Err(err) => {
                             crash!("{op:?}: failed to decode full DBus message: {err:?}");
                         }

@@ -3,7 +3,7 @@ use crate::{
     liburing::IoUring,
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Result, bail, ensure};
+use anyhow::{Result, bail};
 use libc::{AF_INET, SOCK_STREAM, addrinfo, freeaddrinfo, gai_strerror, sockaddr_in};
 use rustls::pki_types::ServerName;
 use std::{
@@ -13,9 +13,10 @@ use std::{
 };
 
 pub(crate) struct HttpsConnection {
-    fsm: FSM,
-
+    fsm: Option<FSM>,
     addr: sockaddr_in,
+    healthy: bool,
+
     fd: i32,
     module_id: ModuleId,
 
@@ -23,65 +24,107 @@ pub(crate) struct HttpsConnection {
 }
 
 #[repr(u8)]
-enum Op {
+#[derive(Debug)]
+enum HttpsConnectionOp {
     Socket,
     Connect,
     Read,
     Write,
     Close,
 }
-const MAX_OP: u8 = Op::Close as u8;
+const MAX_OP: u8 = HttpsConnectionOp::Close as u8;
 
-impl TryFrom<u8> for Op {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(value <= MAX_OP);
-        unsafe { Ok(std::mem::transmute::<u8, Self>(value)) }
+impl From<u8> for HttpsConnectionOp {
+    fn from(value: u8) -> Self {
+        if value > MAX_OP {
+            eprintln!("unsupported op in HttpsConnection: {value}");
+            std::process::exit(1);
+        }
+        unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }
 
 impl HttpsConnection {
-    pub(crate) fn get(hostname: &str, port: u16, path: &str, module_id: ModuleId) -> Result<Self> {
-        let fsm = {
-            let server_name = ServerName::try_from(hostname)?.to_owned();
+    pub(crate) fn get(hostname: &str, port: u16, path: &str, module_id: ModuleId) -> Self {
+        let mut healthy = true;
 
-            let mut request = Request::get(path);
-            request.add_header("Host", hostname);
-            request.add_header("Connection", "close");
+        let fsm = match ServerName::try_from(hostname) {
+            Ok(server_name) => {
+                let server_name = server_name.to_owned();
 
-            FSM::new(server_name, request)?
+                let mut request = Request::get(path);
+                request.add_header("Host", hostname);
+                request.add_header("Connection", "close");
+
+                match FSM::new(server_name, request) {
+                    Ok(ok) => Some(ok),
+                    Err(err) => {
+                        eprintln!("{err:?}");
+                        healthy = false;
+                        None
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("{err:?}");
+                healthy = false;
+                None
+            }
         };
 
-        let mut addr = getaddrinfo(hostname)?;
-        addr.sin_port = port.to_be();
+        let addr = match getaddrinfo(hostname) {
+            Ok(mut addr) => {
+                addr.sin_port = port.to_be();
+                addr
+            }
+            Err(err) => {
+                eprintln!("{err:?}");
+                healthy = false;
+                unsafe { std::mem::zeroed() }
+            }
+        };
 
-        Ok(Self {
+        Self {
             fsm,
             addr,
+            healthy,
+
             fd: -1,
             module_id,
             response: None,
-        })
+        }
     }
 
-    pub(crate) fn init(&mut self) {
+    pub(crate) fn init(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
-        sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
+        sqe.set_user_data(UserData::new(
+            self.module_id,
+            HttpsConnectionOp::Socket as u8,
+        ));
     }
 
-    fn call_fsm(&mut self) -> Result<()> {
-        match self.fsm.wants()? {
+    fn call_fsm(&mut self) {
+        if !self.healthy {
+            return;
+        }
+
+        let Some(wants) = unsafe { self.fsm.as_mut().unwrap_unchecked() }.wants() else {
+            return;
+        };
+        match wants {
             Wants::Read(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
-                sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
+                sqe.set_user_data(UserData::new(self.module_id, HttpsConnectionOp::Read as u8));
             }
             Wants::Write(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
-                sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
+                sqe.set_user_data(UserData::new(
+                    self.module_id,
+                    HttpsConnectionOp::Write as u8,
+                ));
             }
             Wants::Done(response) => {
                 assert!(self.response.is_none());
@@ -89,17 +132,34 @@ impl HttpsConnection {
 
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_close(self.fd);
-                sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
+                sqe.set_user_data(UserData::new(
+                    self.module_id,
+                    HttpsConnectionOp::Close as u8,
+                ));
             }
         }
-        Ok(())
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<Response>> {
-        match Op::try_from(op)? {
-            Op::Socket => {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<Response> {
+        if !self.healthy {
+            return None;
+        }
+
+        let op = HttpsConnectionOp::from(op);
+
+        macro_rules! crash {
+            ($($arg:tt)*) => {{
+                eprintln!($($arg)*);
+                return None;
+            }};
+        }
+
+        match op {
+            HttpsConnectionOp::Socket => {
                 let fd = res;
-                ensure!(fd > 0);
+                if res <= 0 {
+                    crash!("{op:?}: fd < 0: {fd}");
+                }
                 self.fd = fd;
 
                 let mut sqe = IoUring::get_sqe();
@@ -108,38 +168,47 @@ impl HttpsConnection {
                     (&self.addr as *const sockaddr_in).cast(),
                     std::mem::size_of::<sockaddr_in>() as u32,
                 );
-                sqe.set_user_data(UserData::new(self.module_id, Op::Connect as u8));
+                sqe.set_user_data(UserData::new(
+                    self.module_id,
+                    HttpsConnectionOp::Connect as u8,
+                ));
 
-                Ok(None)
+                None
             }
-            Op::Connect => {
-                ensure!(res >= 0);
+            HttpsConnectionOp::Connect => {
+                if res < 0 {
+                    crash!("{op:?}: res < 0: {res}")
+                }
 
-                self.call_fsm()?;
+                self.call_fsm();
 
-                Ok(None)
+                None
             }
-            Op::Read => {
+            HttpsConnectionOp::Read => {
                 let read = res;
-                ensure!(read >= 0);
+                if res < 0 {
+                    crash!("{op:?}: res < 0: {res}")
+                }
                 let read: usize = read as usize;
-                self.fsm.done_reading(read);
+                unsafe { self.fsm.as_mut().unwrap_unchecked() }.done_reading(read);
 
-                self.call_fsm()?;
-                Ok(None)
+                self.call_fsm();
+                None
             }
-            Op::Write => {
+            HttpsConnectionOp::Write => {
                 let written = res;
-                ensure!(written >= 0);
+                if written < 0 {
+                    crash!("{op:?}: written < 0: {written}")
+                }
                 let written = written as usize;
-                self.fsm.done_writing(written);
+                unsafe { self.fsm.as_mut().unwrap_unchecked() }.done_writing(written);
 
-                self.call_fsm()?;
-                Ok(None)
+                self.call_fsm();
+                None
             }
-            Op::Close => {
+            HttpsConnectionOp::Close => {
                 eprintln!("HttpsConnection closed");
-                Ok(self.response.take())
+                self.response.take()
             }
         }
     }

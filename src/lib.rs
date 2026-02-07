@@ -60,8 +60,8 @@ impl IO {
             session_dbus: DBus::new_session()?,
             system_dbus: DBus::new_system()?,
 
-            location: Location::new()?,
-            weather: Weather::new()?,
+            location: Location::new(),
+            weather: Weather::new(),
             hyprland: Hyprland::new(),
             cpu: CPU::new()?,
             memory: Memory::new()?,
@@ -136,12 +136,12 @@ impl IO {
 
             match module_id {
                 ModuleId::GeoLocation => {
-                    if let Some((lat, lng)) = self.location.process(op, res)? {
-                        self.weather.init(lat, lng)?;
+                    if let Some((lat, lng)) = self.location.process(op, res) {
+                        self.weather.init(lat, lng);
                     }
                 }
                 ModuleId::Weather => {
-                    self.weather.process(op, res, &mut events)?;
+                    self.weather.process(op, res, &mut events);
                 }
                 ModuleId::HyprlandReader => {
                     self.hyprland.process_reader(op, res, &mut events)?;
@@ -192,7 +192,7 @@ impl IO {
                 ModuleId::TimerFD => {
                     let tick = self.timer.process(op)?;
                     Clock::tick(tick, &mut events);
-                    self.weather.tick(tick)?;
+                    self.weather.tick(tick);
                     self.cpu.tick();
                     self.memory.tick();
                 }

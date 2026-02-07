@@ -2,7 +2,6 @@ use crate::{
     Event, https::HttpsConnection, modules::weather::weather_response::WeatherResponse,
     timerfd::Tick, user_data::ModuleId,
 };
-use anyhow::Result;
 pub(crate) use weather_code::WeatherCode;
 
 mod weather_code;
@@ -13,7 +12,7 @@ pub(crate) struct Weather {
     https: Option<HttpsConnection>,
 }
 
-fn get_weather(lat: f64, lng: f64) -> Result<HttpsConnection> {
+fn get_weather(lat: f64, lng: f64) -> HttpsConnection {
     let query = format!(
         "{}={}&{}={}&{}={}&{}={}&{}={}&{}={}",
         "latitude",
@@ -39,42 +38,53 @@ fn get_weather(lat: f64, lng: f64) -> Result<HttpsConnection> {
 }
 
 impl Weather {
-    pub(crate) fn new() -> Result<Box<Self>> {
-        Ok(Box::new(Self {
+    pub(crate) fn new() -> Box<Self> {
+        Box::new(Self {
             latlng: None,
             https: None,
-        }))
+        })
     }
 
-    pub(crate) fn init(&mut self, lat: f64, lng: f64) -> Result<()> {
+    pub(crate) fn init(&mut self, lat: f64, lng: f64) {
         self.latlng = Some((lat, lng));
-        let mut https = get_weather(lat, lng)?;
+        let https = get_weather(lat, lng);
         https.init();
         self.https = Some(https);
-        Ok(())
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
+    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
         let Some(https) = self.https.as_mut() else {
-            return Ok(());
+            return;
         };
-        if let Some(response) = https.process(op, res)? {
-            let event: Event = WeatherResponse::parse(response)?.try_into()?;
-            events.push(event);
-        }
-        Ok(())
+        let Some(response) = https.process(op, res) else {
+            return;
+        };
+        let response = match WeatherResponse::parse(response) {
+            Ok(ok) => ok,
+            Err(err) => {
+                eprintln!("{err:?}");
+                return;
+            }
+        };
+        let event = match Event::try_from(response) {
+            Ok(ok) => ok,
+            Err(err) => {
+                eprintln!("{err:?}");
+                return;
+            }
+        };
+        events.push(event);
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick) -> Result<()> {
+    pub(crate) fn tick(&mut self, tick: Tick) {
         let Some((lat, lng)) = self.latlng else {
-            return Ok(());
+            return;
         };
 
         if tick.is_multiple_of(120) {
-            let mut https = get_weather(lat, lng)?;
+            let https = get_weather(lat, lng);
             https.init();
             self.https = Some(https);
         }
-        Ok(())
     }
 }

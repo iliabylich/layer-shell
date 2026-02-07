@@ -2,7 +2,7 @@ mod client_config;
 mod request;
 mod response;
 
-use anyhow::{Context as _, Result, ensure};
+use anyhow::Result;
 use client_config::get_client_config;
 pub(crate) use request::Request;
 pub(crate) use response::Response;
@@ -17,7 +17,9 @@ use rustls::{
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct FSM {
-    conn: UnbufferedClientConnection,
+    conn: Option<UnbufferedClientConnection>,
+    healthy: bool,
+
     request: Vec<u8>,
     response: Vec<u8>,
 
@@ -51,8 +53,19 @@ impl std::fmt::Debug for Wants<'_> {
 
 impl FSM {
     pub(crate) fn new(server_name: ServerName<'static>, request: Request) -> Result<Self> {
+        let (conn, healthy) =
+            match UnbufferedClientConnection::new(get_client_config(), server_name) {
+                Ok(conn) => (Some(conn), true),
+                Err(err) => {
+                    eprintln!("failed to create UnbufferedClientConnection: {err:?}");
+                    (None, false)
+                }
+            };
+
         Ok(Self {
-            conn: UnbufferedClientConnection::new(get_client_config(), server_name)?,
+            conn,
+            healthy,
+
             request: request.into_bytes(),
             response: vec![],
 
@@ -70,21 +83,39 @@ impl FSM {
         })
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Wants<'_>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants<'_>> {
+        if !self.healthy {
+            return None;
+        }
+
+        macro_rules! crash {
+            ($($arg:tt)*) => {{
+                eprintln!($($arg)*);
+                self.healthy = false;
+                return None;
+            }};
+        }
+
         loop {
-            let UnbufferedStatus { discard, state } = self.conn.process_tls_records(
-                &mut self.incoming_tls[self.incoming_start..self.incoming_end],
-            );
+            let UnbufferedStatus { discard, state } =
+                unsafe { self.conn.as_mut().unwrap_unchecked() }.process_tls_records(
+                    &mut self.incoming_tls[self.incoming_start..self.incoming_end],
+                );
 
             self.incoming_start += discard;
 
-            let state = state.context("malformed internal state")?;
+            let state = match state {
+                Ok(ok) => ok,
+                Err(err) => crash!("malformed internal state: {err:?}"),
+            };
 
             match state {
                 ConnectionState::ReadTraffic(mut state) => {
                     while let Some(res) = state.next_record() {
-                        let AppDataRecord { discard, payload } =
-                            res.context("failed to get AppDataRecord")?;
+                        let AppDataRecord { discard, payload } = match res {
+                            Ok(ok) => ok,
+                            Err(err) => crash!("failed to get AppDataRecord: {err:?}"),
+                        };
 
                         self.incoming_start += discard;
 
@@ -103,11 +134,14 @@ impl FSM {
                         })) => {
                             let new_len = self.outgoing_end + required_size;
                             self.outgoing_tls.resize(new_len, 0);
-                            state.encode(&mut self.outgoing_tls[self.outgoing_end..])?
+                            match state.encode(&mut self.outgoing_tls[self.outgoing_end..]) {
+                                Ok(ok) => ok,
+                                Err(err) => crash!("{err:?}"),
+                            }
                         }
 
-                        Err(e) => {
-                            return Err(e.into());
+                        Err(err) => {
+                            crash!("{err:?}")
                         }
                     };
 
@@ -118,9 +152,14 @@ impl FSM {
                     if let Some(mut may_encrypt) = state.may_encrypt_app_data()
                         && !self.sent_request
                     {
-                        let written = may_encrypt
+                        let written = match may_encrypt
                             .encrypt(&self.request, &mut self.outgoing_tls[self.outgoing_end..])
-                            .context("encrypted request does not fit in `outgoing_tls`")?;
+                        {
+                            Ok(ok) => ok,
+                            Err(err) => {
+                                crash!("encrypted request does not fit in `outgoing_tls`: {err:?}")
+                            }
+                        };
                         self.outgoing_end += written;
                         self.sent_request = true;
                     }
@@ -128,13 +167,13 @@ impl FSM {
                     if self.outgoing_start == self.outgoing_end {
                         state.done();
                     } else {
-                        return Ok(self.wants_write());
+                        return Some(self.wants_write());
                     }
                 }
 
                 ConnectionState::BlockedHandshake { .. } => {
                     self.resize_incoming_if_needed();
-                    return Ok(self.wants_read());
+                    return Some(self.wants_read());
                 }
 
                 ConnectionState::WriteTraffic(mut may_encrypt) => {
@@ -146,7 +185,7 @@ impl FSM {
                         // response which we can read out from the socket
                         self.resize_incoming_if_needed();
 
-                        return Ok(self.wants_read());
+                        return Some(self.wants_read());
                     } else if !self.we_closed {
                         let written = match may_encrypt
                             .queue_close_notify(&mut self.outgoing_tls[self.outgoing_end..])
@@ -158,37 +197,53 @@ impl FSM {
                             })) => {
                                 let new_len = self.outgoing_end + required_size;
                                 self.outgoing_tls.resize(new_len, 0);
-                                may_encrypt.queue_close_notify(
-                                    &mut self.outgoing_tls[self.outgoing_end..],
-                                )?
+                                match may_encrypt
+                                    .queue_close_notify(&mut self.outgoing_tls[self.outgoing_end..])
+                                {
+                                    Ok(ok) => ok,
+                                    Err(err) => crash!("{err:?}"),
+                                }
                             }
 
-                            Err(e) => {
-                                return Err(e.into());
+                            Err(err) => {
+                                crash!("{err:?}")
                             }
                         };
 
                         self.outgoing_end += written;
 
                         self.we_closed = true;
-                        return Ok(self.wants_write());
+                        return Some(self.wants_write());
                     } else {
                         self.resize_incoming_if_needed();
 
-                        return Ok(self.wants_read());
+                        return Some(self.wants_read());
                     }
                 }
 
                 ConnectionState::PeerClosed => {}
 
                 ConnectionState::Closed => {
-                    ensure!(self.sent_request);
-                    ensure!(self.received_response);
-                    ensure!(self.incoming_start == self.incoming_end);
+                    if !self.sent_request {
+                        crash!("request is not sent");
+                    }
+                    if !self.received_response {
+                        crash!("response is not received");
+                    }
+                    if self.incoming_start != self.incoming_end {
+                        crash!(
+                            "self.incoming_start ({}) != self.incoming_end ({})",
+                            self.incoming_start,
+                            self.incoming_end
+                        );
+                    }
 
                     let response = std::mem::take(&mut self.response);
-                    let response = Response::parse(response)?;
-                    return Ok(Wants::Done(response));
+                    let response = match Response::parse(response) {
+                        Ok(ok) => ok,
+                        Err(err) => crash!("{err:?}"),
+                    };
+                    return Some(Wants::Done(response));
                 }
 
                 _ => unreachable!(),

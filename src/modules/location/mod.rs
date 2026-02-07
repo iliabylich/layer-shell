@@ -1,5 +1,4 @@
 use crate::{https::HttpsConnection, user_data::ModuleId};
-use anyhow::Result;
 use response::LocationResponse;
 
 mod response;
@@ -9,21 +8,19 @@ pub(crate) struct Location {
 }
 
 impl Location {
-    pub(crate) fn new() -> Result<Box<Self>> {
-        let https = HttpsConnection::get("myip.ibylich.dev", 443, "/", ModuleId::GeoLocation)?;
+    pub(crate) fn new() -> Box<Self> {
+        let https = HttpsConnection::get("myip.ibylich.dev", 443, "/", ModuleId::GeoLocation);
 
-        Ok(Box::new(Self { https }))
+        Box::new(Self { https })
     }
 
     pub(crate) fn init(&mut self) {
         self.https.init()
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<(f64, f64)>> {
-        let Some(response) = self.https.process(op, res)? else {
-            return Ok(None);
-        };
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<(f64, f64)> {
+        let response = self.https.process(op, res)?;
 
-        Ok(Some(LocationResponse::parse(response)?))
+        LocationResponse::parse(response).ok()
     }
 }
