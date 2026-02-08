@@ -40,6 +40,15 @@ macro_rules! destination_is {
 }
 pub(crate) use destination_is;
 
+macro_rules! sender_is {
+    ($sender:expr, $expected:expr) => {{
+        if $sender != $expected {
+            anyhow::bail!("expected sender to be {:?}, got {:?}", $expected, $sender);
+        }
+    }};
+}
+pub(crate) use sender_is;
+
 macro_rules! path_is {
     ($path:expr, $expected:expr) => {{
         if $path != $expected {

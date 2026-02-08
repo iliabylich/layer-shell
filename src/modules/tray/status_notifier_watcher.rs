@@ -7,7 +7,9 @@ use crate::{
         },
         types::Value,
     },
-    modules::tray::status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
+    modules::tray::{
+        service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
+    },
 };
 use anyhow::Result;
 
@@ -39,7 +41,7 @@ impl StatusNotifierWatcher {
         self.request(dbus)
     }
 
-    pub(crate) fn on_message(&mut self, dbus: &mut DBus, message: &Message) -> Option<String> {
+    pub(crate) fn on_message(&mut self, dbus: &mut DBus, message: &Message) -> Option<Service> {
         if self.introspection.process_message(dbus, message) {
             return None;
         }
@@ -48,7 +50,7 @@ impl StatusNotifierWatcher {
             match req {
                 KSNIRequest::NewItem { address } => {
                     Self::reply_ok(dbus, serial, &sender);
-                    return Some(address);
+                    return Some(Service::new(sender, address));
                 }
                 KSNIRequest::Other => {
                     Self::reply_ok(dbus, serial, &sender);

@@ -61,8 +61,6 @@ impl OneshotResource for GetLayout {
     }
 
     fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        // log::error!("starting parsing...");
-
         let root: &[Value; 2] = body
             .try_into()
             .with_context(|| format!("expected 2 elements, got {}", body.len()))?;
@@ -77,19 +75,17 @@ impl OneshotResource for GetLayout {
             Value::Array(CompleteType::Variant, top_level_items)
         );
 
-        // log::error!("starting parsing (2)...");
         parse_items(&self.service, &self.menu, top_level_items)
     }
 }
 
-pub(crate) fn parse_items(service: &str, menu: &str, items: &[Value]) -> Result<Vec<TrayItem>> {
+fn parse_items(service: &str, menu: &str, items: &[Value]) -> Result<Vec<TrayItem>> {
     let mut out = vec![];
     let mut batch = vec![];
 
     for item in items {
         value_is!(item, Value::Variant(item));
         let item = parse_item(service, menu, item)?;
-        // log::error!("item = {item:?}");
         match item {
             ItemOrSeparator::Skip => continue,
             ItemOrSeparator::Item(item) => batch.push(item),
@@ -117,20 +113,16 @@ pub(crate) fn parse_items(service: &str, menu: &str, items: &[Value]) -> Result<
 }
 
 fn parse_item(service: &str, menu: &str, item: &Value) -> Result<ItemOrSeparator> {
-    // log::error!("1 {item:?}");
     value_is!(item, Value::Struct(fields));
     let fields: &[Value; 3] = fields
         .as_slice()
         .try_into()
         .with_context(|| format!("expected 3 fields, got {}", fields.len()))?;
 
-    // log::error!("2");
     value_is!(&fields[0], Value::Int32(id));
     let id = *id;
     let uuid = UUID::encode(service, menu, id);
-    // log::error!("=== {id}");
 
-    // log::error!("3");
     value_is!(
         &fields[1],
         Value::Array(CompleteType::DictEntry(key_t, value_t), props)
@@ -148,7 +140,6 @@ fn parse_item(service: &str, menu: &str, item: &Value) -> Result<ItemOrSeparator
         value_is!(prop, Value::DictEntry(key, value));
         value_is!(&**key, Value::String(key));
         value_is!(&**value, Value::Variant(value));
-        // log::error!("   {key} = {value:?}");
 
         match key.as_ref() {
             "type" => {
@@ -184,7 +175,6 @@ fn parse_item(service: &str, menu: &str, item: &Value) -> Result<ItemOrSeparator
         }
     }
 
-    // log::error!("4");
     value_is!(
         &fields[2],
         Value::Array(CompleteType::Variant, children_values)
