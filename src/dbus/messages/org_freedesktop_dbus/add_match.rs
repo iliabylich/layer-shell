@@ -2,12 +2,13 @@ use crate::dbus::types::{Message, Value};
 use std::borrow::Cow;
 
 pub(crate) struct AddMatch<'a> {
+    sender: &'a str,
     path: &'a str,
 }
 
 impl<'a> AddMatch<'a> {
-    pub(crate) fn new(path: &'a str) -> Self {
-        Self { path }
+    pub(crate) fn new(sender: &'a str, path: &'a str) -> Self {
+        Self { sender, path }
     }
 }
 
@@ -21,10 +22,9 @@ impl<'a> From<AddMatch<'a>> for Message<'a> {
             destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            // TODO: there should also be a sender
             body: vec![Value::String(Cow::Owned(format!(
-                "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{}'",
-                value.path
+                "type='signal',sender='{}',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{}'",
+                value.sender, value.path
             )))],
         }
     }

@@ -76,7 +76,7 @@ impl App {
         self.all_props_request
             .start(dbus, self.service.name().to_string());
         self.all_props_subscription
-            .start(dbus, "/StatusNotifierItem");
+            .start(dbus, "org.freedesktop.DBus", "/StatusNotifierItem");
     }
 
     pub(crate) fn reset(&mut self, dbus: &mut DBus) {
@@ -207,8 +207,8 @@ impl App {
         });
 
         let mut message = Message::MethodCall {
-            destination: Some(Cow::Owned(self.service.name().to_string())),
-            path: Cow::Owned(self.menu.clone()),
+            destination: Some(Cow::Borrowed(self.service.name())),
+            path: Cow::Borrowed(&self.menu),
             interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
             serial: 0,
             member: Cow::Borrowed("Event"),

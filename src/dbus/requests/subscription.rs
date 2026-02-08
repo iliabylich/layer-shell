@@ -44,17 +44,23 @@ where
         dbus.enqueue(&mut message);
     }
 
-    fn subscribe(&mut self, dbus: &mut DBus, path: impl AsRef<str>) {
+    fn subscribe(&mut self, dbus: &mut DBus, sender: impl AsRef<str>, path: impl AsRef<str>) {
+        let sender = sender.as_ref();
         let path = path.as_ref();
-        let mut message: Message = AddMatch::new(path).into();
+        let mut message: Message = AddMatch::new(sender, path).into();
         dbus.enqueue(&mut message);
         self.path = Some(path.to_string());
         self.resource.set_path(path.to_string());
     }
 
-    pub(crate) fn start(&mut self, dbus: &mut DBus, path: impl AsRef<str>) {
+    pub(crate) fn start(
+        &mut self,
+        dbus: &mut DBus,
+        sender: impl AsRef<str>,
+        path: impl AsRef<str>,
+    ) {
         self.unsubscribe(dbus);
-        self.subscribe(dbus, path);
+        self.subscribe(dbus, sender, path);
     }
 
     pub(crate) fn reset(&mut self, dbus: &mut DBus) {

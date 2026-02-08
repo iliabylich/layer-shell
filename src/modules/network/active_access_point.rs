@@ -39,7 +39,8 @@ impl ActiveAccessPoint {
     }
 
     pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
-        self.subscription.start(dbus, path);
+        self.subscription
+            .start(dbus, "org.freedesktop.NetworkManager", path);
         self.oneshot.start(dbus, path.to_string());
     }
 

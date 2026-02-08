@@ -36,8 +36,11 @@ impl PrimaryConnection {
 
     pub(crate) fn init(&mut self, dbus: &mut DBus) {
         self.oneshot.start(dbus, ());
-        self.subscription
-            .start(dbus, "/org/freedesktop/NetworkManager");
+        self.subscription.start(
+            dbus,
+            "org.freedesktop.NetworkManager",
+            "/org/freedesktop/NetworkManager",
+        );
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryConnectionEvent> {

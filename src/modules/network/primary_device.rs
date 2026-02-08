@@ -39,7 +39,8 @@ impl PrimaryDevice {
     }
 
     pub(crate) fn init(&mut self, path: String, dbus: &mut DBus) {
-        self.subscription.start(dbus, &path);
+        self.subscription
+            .start(dbus, "org.freedesktop.NetworkManager", &path);
         self.oneshot.start(dbus, path);
     }
 

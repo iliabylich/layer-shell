@@ -36,7 +36,8 @@ impl Sound {
     ) {
         if let Some((volume, muted)) = self.oneshot.process(message) {
             events.push(Event::InitialSound { volume, muted });
-            self.subscription.start(dbus, "/org/local/PipewireDBus");
+            self.subscription
+                .start(dbus, "org.local.PipewireDBus", "/org/local/PipewireDBus");
 
             return;
         }

@@ -31,7 +31,8 @@ impl TxRx {
 
     pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
         self.oneshot.start(dbus, path.to_string());
-        self.subscription.start(dbus, path);
+        self.subscription
+            .start(dbus, "org.freedesktop.NetworkManager", path);
     }
 
     pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {
