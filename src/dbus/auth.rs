@@ -1,4 +1,5 @@
 use crate::{
+    dbus::ConnectionKind,
     liburing::IoUring,
     macros::report_and_exit,
     user_data::{ModuleId, UserData},
@@ -38,9 +39,14 @@ const DATA: &[u8] = b"DATA\r\n";
 const BEGIN: &[u8] = b"BEGIN\r\n";
 
 impl Auth {
-    pub(crate) fn new(fd: i32, module_id: ModuleId) -> Self {
+    pub(crate) fn new(kind: ConnectionKind) -> Self {
+        let module_id = match kind {
+            ConnectionKind::Session => ModuleId::SessionDBusAuth,
+            ConnectionKind::System => ModuleId::SystemDBusAuth,
+        };
+
         Self {
-            fd,
+            fd: -1,
             buf: [0; 100],
             module_id,
             healthy: true,
@@ -83,7 +89,8 @@ impl Auth {
         sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin as u8));
     }
 
-    pub(crate) fn init(&mut self) {
+    pub(crate) fn init(&mut self, fd: i32) {
+        self.fd = fd;
         self.schedule_write_zero()
     }
 

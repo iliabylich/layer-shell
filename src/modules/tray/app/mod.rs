@@ -146,54 +146,54 @@ impl App {
 
     pub(crate) fn on_message(&mut self, message: &Message, dbus: &mut DBus) -> Option<TrayEvent> {
         if let Some(AllProps { menu, icon }) = self.all_props_request.process(message) {
-            log::info!("Received requested props for {:?}", self.service);
+            log::info!(target: "Tray", "Received requested props for {:?}", self.service);
 
             self.on_menu_received(menu, dbus);
             return self.on_icon_received(icon);
         }
 
         if let Some(()) = self.new_icon_subscription.process(message) {
-            log::info!("Subscribed to NewIcon");
+            log::info!(target: "Tray", "Subscribed to NewIcon");
             return None;
         }
 
         if let Some(AllPropsUpdate { icon, .. }) = self.all_props_subscription.process(message) {
-            log::info!("Received updated props for {:?}", self.service);
+            log::info!(target: "Tray", "Received updated props for {:?}", self.service);
             if let Some(icon) = icon {
                 return self.on_icon_received(icon);
             }
         }
 
         if let Some(layout) = self.get_layout.process(message) {
-            log::info!("Got layout");
+            log::info!(target: "Tray", "Got layout");
             return self.on_layout_receieved(layout);
         }
 
         if let Some(_) = self.layout_updated_subscription.process(message) {
-            log::info!("Subscribed to LayoutUpdated");
+            log::info!(target: "Tray", "Subscribed to LayoutUpdated");
             return None;
         }
 
         if let Some(_) = self.items_properties_updated_subscription.process(message) {
-            log::info!("Subscribed to ItemPropertiesUpdated");
+            log::info!(target: "Tray", "Subscribed to ItemPropertiesUpdated");
             return None;
         }
 
         if parse_new_icon_signal(message, self.service.raw_address()).is_ok() {
-            log::info!("Received NewIcon signal");
+            log::info!(target: "Tray", "Received NewIcon signal");
             self.schedule_request_props(dbus);
             return None;
         }
 
         if parse_layout_updated_signal(message, self.service.raw_address(), &self.menu).is_ok() {
-            log::info!("Received LayoutUpdated signal");
+            log::info!(target: "Tray", "Received LayoutUpdated signal");
             self.schedule_get_layout(dbus);
             return None;
         }
         if parse_items_properties_updated_signal(message, self.service.raw_address(), &self.menu)
             .is_ok()
         {
-            log::info!("Received ItemsPropertiesUpdated signal");
+            log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
             self.schedule_get_layout(dbus);
             return None;
         }

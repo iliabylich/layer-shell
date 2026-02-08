@@ -199,7 +199,7 @@ impl HttpsConnection {
                 None
             }
             Op::Close => {
-                log::warn!("HttpsConnection closed");
+                log::warn!(target: "HTTPS", "HttpsConnection closed");
                 self.response.take()
             }
         }

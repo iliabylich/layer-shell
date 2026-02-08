@@ -1,4 +1,5 @@
 use crate::{
+    dbus::ConnectionKind,
     liburing::IoUring,
     macros::report_and_exit,
     user_data::{ModuleId, UserData},
@@ -28,9 +29,14 @@ pub(crate) struct Writer {
 }
 
 impl Writer {
-    pub(crate) fn new(fd: i32, module_id: ModuleId) -> Self {
+    pub(crate) fn new(kind: ConnectionKind) -> Self {
+        let module_id = match kind {
+            ConnectionKind::Session => ModuleId::SessionDBusWriter,
+            ConnectionKind::System => ModuleId::SystemDBusWriter,
+        };
+
         Self {
-            fd,
+            fd: -1,
             module_id,
             buf: vec![],
             healthy: true,
@@ -43,7 +49,8 @@ impl Writer {
         sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
     }
 
-    pub(crate) fn init(&mut self, buf: Vec<u8>) {
+    pub(crate) fn init(&mut self, fd: i32, buf: Vec<u8>) {
+        self.fd = fd;
         self.buf = buf;
         self.schedule_write();
     }

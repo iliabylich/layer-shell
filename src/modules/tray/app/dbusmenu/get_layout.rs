@@ -171,7 +171,7 @@ fn parse_item(service: &str, menu: &str, item: &Value) -> Result<ItemOrSeparator
                 children_display = value;
             }
 
-            _ => log::warn!("Unknown dbusmenu prop: {key}"),
+            _ => log::warn!(target: "Tray", "Unknown dbusmenu prop: {key}"),
         }
     }
 

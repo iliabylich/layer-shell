@@ -10,10 +10,12 @@ pub(crate) enum ModuleId {
     HyprlandReader,
     HyprlandWriter,
 
+    SessionDBusConnector,
     SessionDBusAuth,
     SessionDBusReader,
     SessionDBusWriter,
 
+    SystemDBusConnector,
     SystemDBusAuth,
     SystemDBusReader,
     SystemDBusWriter,

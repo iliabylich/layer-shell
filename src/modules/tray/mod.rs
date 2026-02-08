@@ -48,7 +48,7 @@ impl Tray {
         events: &mut Vec<Event>,
     ) {
         if let Some(service) = self.status_notifier_watcher.on_message(dbus, message) {
-            log::info!("Added {service:?}");
+            log::info!(target: "Tray", "Added {service:?}");
             let mut tray_app = App::new(service.clone());
             tray_app.init(dbus);
             self.registry.insert(service, tray_app);
@@ -69,7 +69,7 @@ impl Tray {
                 return;
             };
 
-            log::info!("Removed {address}");
+            log::info!(target: "Tray", "Removed {address}");
             tray_app.reset(dbus);
             events.push(Event::TrayAppRemoved {
                 service: address.into(),

@@ -1,4 +1,5 @@
 mod auth;
+mod connector;
 mod decoders;
 mod encoders;
 mod introspectible_object_at;
@@ -7,17 +8,11 @@ mod requests;
 mod serial;
 mod writer;
 
-use crate::{
-    dbus::{encoders::MessageEncoder, serial::Serial},
-    user_data::ModuleId,
-};
-use anyhow::{Context, Result};
+use crate::dbus::{encoders::MessageEncoder, serial::Serial};
 use auth::Auth;
+use connector::Connector;
 use reader::Reader;
-use std::{
-    collections::VecDeque,
-    os::{fd::IntoRawFd, unix::net::UnixStream},
-};
+use std::collections::VecDeque;
 use writer::Writer;
 
 pub(crate) mod messages;
@@ -26,7 +21,15 @@ pub(crate) use introspectible_object_at::{IntrospectibleObjectAt, Introspectible
 pub(crate) use requests::{Oneshot, OneshotResource, Subscription, SubscriptionResource};
 pub(crate) use types::Message;
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ConnectionKind {
+    Session,
+    System,
+}
+
 pub(crate) struct DBus {
+    fd: i32,
+    connector: Connector,
     auth: Auth,
     reader: Reader,
     writer: Writer,
@@ -36,52 +39,21 @@ pub(crate) struct DBus {
 }
 
 impl DBus {
-    pub(crate) fn new_session() -> Result<Box<Self>> {
-        let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
-        let (_, path) = address
-            .split_once("=")
-            .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
-        let fd = UnixStream::connect(path)?.into_raw_fd();
-
-        Ok(Box::new(Self::new(
-            fd,
-            ModuleId::SessionDBusAuth,
-            ModuleId::SessionDBusReader,
-            ModuleId::SessionDBusWriter,
-        )))
+    pub(crate) fn new_session() -> Box<Self> {
+        Box::new(Self::new(ConnectionKind::Session))
     }
 
-    pub(crate) fn new_system() -> Result<Box<Self>> {
-        let path = std::env::var("DBUS_SYSTEM_BUS_ADDRESS")
-            .context("no DBUS_SYSTEM_BUS_ADDRESS")
-            .and_then(|address| {
-                address
-                    .split_once("=")
-                    .map(|(_, path)| path.to_string())
-                    .context("malformed DBUS_SESSION_BUS_ADDRESS")
-            })
-            .unwrap_or_else(|_| String::from("/var/run/dbus/system_bus_socket"));
-
-        let fd = UnixStream::connect(path)?.into_raw_fd();
-
-        Ok(Box::new(Self::new(
-            fd,
-            ModuleId::SystemDBusAuth,
-            ModuleId::SystemDBusReader,
-            ModuleId::SystemDBusWriter,
-        )))
+    pub(crate) fn new_system() -> Box<Self> {
+        Box::new(Self::new(ConnectionKind::System))
     }
 
-    fn new(
-        fd: i32,
-        auth_module_id: ModuleId,
-        reader_module_id: ModuleId,
-        writer_module_id: ModuleId,
-    ) -> Self {
+    fn new(kind: ConnectionKind) -> Self {
         Self {
-            auth: Auth::new(fd, auth_module_id),
-            reader: Reader::new(fd, reader_module_id),
-            writer: Writer::new(fd, writer_module_id),
+            fd: -1,
+            connector: Connector::new(kind),
+            auth: Auth::new(kind),
+            reader: Reader::new(kind),
+            writer: Writer::new(kind),
             writer_is_ready: false,
             queue: VecDeque::new(),
             serial: Serial::zero(),
@@ -93,7 +65,7 @@ impl DBus {
         let bytes = MessageEncoder::encode(message);
 
         if self.writer_is_ready {
-            self.writer.init(bytes);
+            self.writer.init(self.fd, bytes);
             self.writer_is_ready = false;
         } else {
             self.queue.push_back(bytes);
@@ -101,16 +73,23 @@ impl DBus {
     }
 
     pub(crate) fn init(&mut self) {
-        self.auth.init()
+        self.connector.init();
+    }
+
+    pub(crate) fn process_connector(&mut self, op: u8, res: i32) {
+        if let Some(fd) = self.connector.process(op, res) {
+            self.fd = fd;
+            self.auth.init(fd);
+        }
     }
 
     pub(crate) fn process_auth(&mut self, op: u8, res: i32) {
         let finished = self.auth.process(op, res);
         if finished {
-            self.reader.init();
+            self.reader.init(self.fd);
 
             if let Some(bytes) = self.queue.pop_front() {
-                self.writer.init(bytes);
+                self.writer.init(self.fd, bytes);
                 self.writer_is_ready = false;
             } else {
                 self.writer_is_ready = true;
@@ -125,7 +104,7 @@ impl DBus {
     pub(crate) fn process_write(&mut self, op: u8, res: i32) {
         self.writer.process(op, res);
         if let Some(bytes) = self.queue.pop_front() {
-            self.writer.init(bytes);
+            self.writer.init(self.fd, bytes);
         } else {
             self.writer_is_ready = true;
         }

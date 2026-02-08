@@ -10,7 +10,6 @@ mod modules;
 mod timerfd;
 mod user_data;
 
-use anyhow::Result;
 use command::Command;
 use config::{Config, IOConfig};
 pub use event::Event;
@@ -52,8 +51,8 @@ struct IO {
 }
 
 impl IO {
-    fn try_new(on_event: extern "C" fn(event: *const Event)) -> Result<Self> {
-        let config = Config::read()?;
+    fn new(on_event: extern "C" fn(event: *const Event)) -> Self {
+        let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
         let mut this = Self {
@@ -61,8 +60,8 @@ impl IO {
             io_config,
 
             timer: Timerfd::new(),
-            session_dbus: DBus::new_session()?,
-            system_dbus: DBus::new_system()?,
+            session_dbus: DBus::new_session(),
+            system_dbus: DBus::new_system(),
 
             location: Location::new(),
             weather: Weather::new(),
@@ -80,7 +79,7 @@ impl IO {
 
         this.init();
 
-        Ok(this)
+        this
     }
 
     fn init(&mut self) {
@@ -102,10 +101,6 @@ impl IO {
         self.system_dbus.init();
 
         IoUring::submit_if_dirty();
-    }
-
-    fn new(on_event: extern "C" fn(event: *const Event)) -> Self {
-        Self::try_new(on_event).unwrap_or_else(|err| report_and_exit!("{err:?}"))
     }
 
     fn from_raw(ptr: *mut c_void) -> &'static mut Self {
@@ -154,6 +149,9 @@ impl IO {
                     self.hyprland.process_writer(op, res, &mut events);
                 }
 
+                ModuleId::SessionDBusConnector => {
+                    self.session_dbus.process_connector(op, res);
+                }
                 ModuleId::SessionDBusAuth => {
                     self.session_dbus.process_auth(op, res);
                 }
@@ -174,6 +172,9 @@ impl IO {
                     self.session_dbus.process_write(op, res);
                 }
 
+                ModuleId::SystemDBusConnector => {
+                    self.system_dbus.process_connector(op, res);
+                }
                 ModuleId::SystemDBusAuth => {
                     self.system_dbus.process_auth(op, res);
                 }

@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message,
+        ConnectionKind, Message,
         decoders::{DecodingBuffer, HeaderDecoder, MessageDecoder},
     },
     liburing::IoUring,
@@ -73,9 +73,14 @@ pub(crate) struct Reader {
 }
 
 impl Reader {
-    pub(crate) fn new(fd: i32, module_id: ModuleId) -> Self {
+    pub(crate) fn new(kind: ConnectionKind) -> Self {
+        let module_id = match kind {
+            ConnectionKind::Session => ModuleId::SessionDBusReader,
+            ConnectionKind::System => ModuleId::SystemDBusReader,
+        };
+
         Self {
-            fd,
+            fd: -1,
             module_id,
             buf: Buffer::new(),
             healthy: true,
@@ -96,7 +101,8 @@ impl Reader {
         sqe.set_user_data(UserData::new(self.module_id, Op::ReadBody as u8));
     }
 
-    pub(crate) fn init(&mut self) {
+    pub(crate) fn init(&mut self, fd: i32) {
+        self.fd = fd;
         self.schedule_read_header()
     }
 
