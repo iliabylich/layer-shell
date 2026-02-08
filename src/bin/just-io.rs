@@ -1,6 +1,6 @@
 use layer_shell_io::{Event, io_handle_readable, io_init, io_wait_readable};
 
-fn on_event(event: *const Event) {
+extern "C" fn on_event(event: *const Event) {
     let Some(event) = (unsafe { event.as_ref() }) else {
         log::error!("NULL event received");
         std::process::exit(1);

@@ -63,7 +63,7 @@ static void create_labels(Cpu *self, size_t count) {
   self->labels_count = count;
 }
 
-void cpu_refresh(Cpu *self, IO_CArray_u8 data) {
+void cpu_refresh(Cpu *self, IO_FFIArray_u8 data) {
   if (first_time_init_p(self)) {
     create_labels(self, data.len);
   } else {

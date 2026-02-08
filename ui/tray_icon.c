@@ -68,7 +68,7 @@ static void tray_icon_class_init(TrayIconClass *klass) {
                                            GTK_TYPE_BOX_LAYOUT);
 }
 
-GtkWidget *tray_icon_new(IO_TrayIcon icon, IO_CArray_TrayItem items) {
+GtkWidget *tray_icon_new(IO_TrayIcon icon, IO_FFIArray_TrayItem items) {
   GtkWidget *self = g_object_new(tray_icon_get_type(), NULL);
   tray_icon_update_icon(TRAY_ICON(self), icon);
   tray_icon_update_menu(TRAY_ICON(self), items);
@@ -109,6 +109,6 @@ void tray_icon_update_icon(TrayIcon *self, IO_TrayIcon icon) {
   }
 }
 
-void tray_icon_update_menu(TrayIcon *self, IO_CArray_TrayItem items) {
+void tray_icon_update_menu(TrayIcon *self, IO_FFIArray_TrayItem items) {
   tray_popover_update(TRAY_POPOVER(self->popover), items);
 }

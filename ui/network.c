@@ -10,7 +10,6 @@ LOGGER("Network", 1)
 enum {
   SIGNAL_CLICKED_SETTINGS = 0,
   SIGNAL_CLICKED_PING,
-  SIGNAL_CLICKED_ADDRESS,
   N_SIGNALS,
 };
 static guint signals[N_SIGNALS] = {0};
@@ -39,10 +38,6 @@ static void on_settings_clicked(NetworkPopover *, Network *self) {
 }
 static void on_ping_clicked(NetworkPopover *, Network *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_PING], 0);
-}
-static void on_address_clicked(NetworkPopover *, const char *address,
-                               Network *self) {
-  g_signal_emit(self, signals[SIGNAL_CLICKED_ADDRESS], 0, address);
 }
 
 static void network_init(Network *self) {
@@ -93,8 +88,6 @@ static void network_init(Network *self) {
                    G_CALLBACK(on_settings_clicked), self);
   g_signal_connect(self->popover, "clicked-ping", G_CALLBACK(on_ping_clicked),
                    self);
-  g_signal_connect(self->popover, "clicked-address",
-                   G_CALLBACK(on_address_clicked), self);
 
   self->ssid = NULL;
   self->strength = 0;
@@ -122,9 +115,6 @@ static void network_class_init(NetworkClass *klass) {
   signals[SIGNAL_CLICKED_PING] = g_signal_new_class_handler(
       "clicked-ping", G_OBJECT_CLASS_TYPE(object_class), G_SIGNAL_RUN_LAST,
       NULL, NULL, NULL, NULL, G_TYPE_NONE, 0);
-  signals[SIGNAL_CLICKED_ADDRESS] = g_signal_new_class_handler(
-      "clicked-address", G_OBJECT_CLASS_TYPE(object_class), G_SIGNAL_RUN_LAST,
-      NULL, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 
   gtk_widget_class_set_layout_manager_type(GTK_WIDGET_CLASS(klass),
                                            GTK_TYPE_BOX_LAYOUT);
@@ -142,7 +132,7 @@ static void refresh_ssid_and_strength(Network *self) {
   }
 }
 
-void network_refresh_network_ssid(Network *self, IO_CString ssid) {
+void network_refresh_network_ssid(Network *self, IO_FFIString ssid) {
   if (self->ssid != NULL) {
     free(self->ssid);
   }
@@ -154,9 +144,9 @@ void network_refresh_network_strength(Network *self, uint8_t strength) {
   refresh_ssid_and_strength(self);
 }
 
-void network_refresh_upload_speed(Network *self, IO_CString speed) {
+void network_refresh_upload_speed(Network *self, IO_FFIString speed) {
   gtk_label_set_label(GTK_LABEL(self->upload_speed_label), speed);
 }
-void network_refresh_download_speed(Network *self, IO_CString speed) {
+void network_refresh_download_speed(Network *self, IO_FFIString speed) {
   gtk_label_set_label(GTK_LABEL(self->download_speed_label), speed);
 }

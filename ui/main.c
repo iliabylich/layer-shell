@@ -17,7 +17,7 @@
 #include "ui/terminal.h"
 #include "ui/terminal_window.h"
 #include "ui/top_bar.h"
-// #include "ui/tray.h"
+#include "ui/tray.h"
 #include "ui/weather.h"
 #include "ui/weather_window.h"
 #include "ui/workspaces.h"
@@ -38,7 +38,7 @@ GtkWidget *caps_lock_window;
 
 GtkWidget *workspaces;
 GtkWidget *change_theme;
-// GtkWidget *tray;
+GtkWidget *tray;
 GtkWidget *weather;
 GtkWidget *terminal;
 GtkWidget *language;
@@ -68,22 +68,25 @@ static void on_event(const IO_Event *event) {
     css_reload();
     break;
   }
-  // case IO_Event_TrayAppAdded: {
-  //   tray_add_app(TRAY(tray), event.tray_app_added);
-  //   break;
-  // }
-  // case IO_Event_TrayAppRemoved: {
-  //   tray_remove_app(TRAY(tray), event.tray_app_removed);
-  //   break;
-  // }
-  // case IO_Event_TrayAppIconUpdated: {
-  //   tray_update_icon(TRAY(tray), event.tray_app_icon_updated);
-  //   break;
-  // }
-  // case IO_Event_TrayAppMenuUpdated: {
-  //   tray_update_menu(TRAY(tray), event.tray_app_menu_updated);
-  //   break;
-  // }
+  case IO_Event_TrayAppAdded: {
+    tray_add_app(TRAY(tray), event->tray_app_added.service,
+                 event->tray_app_added.items, event->tray_app_added.icon);
+    break;
+  }
+  case IO_Event_TrayAppRemoved: {
+    tray_remove_app(TRAY(tray), event->tray_app_removed.service);
+    break;
+  }
+  case IO_Event_TrayAppIconUpdated: {
+    tray_update_icon(TRAY(tray), event->tray_app_icon_updated.service,
+                     event->tray_app_icon_updated.icon);
+    break;
+  }
+  case IO_Event_TrayAppMenuUpdated: {
+    tray_update_menu(TRAY(tray), event->tray_app_menu_updated.service,
+                     event->tray_app_menu_updated.items);
+    break;
+  }
   case IO_Event_Weather: {
     weather_refresh(WEATHER(weather), event->weather.temperature,
                     event->weather.code);
@@ -175,9 +178,9 @@ static void on_workspace_switched(Workspaces *, guint idx) {
 
 static void on_theme_change_clicked() { io_change_theme(io); }
 
-// static void on_tray_triggered(Tray *, const char *uuid) {
-//   io_trigger_tray(uuid);
-// }
+static void on_tray_triggered(Tray *, const char *uuid) {
+  io_trigger_tray(io, uuid);
+}
 
 static void on_weather_clicked() {
   weather_window_toggle(WEATHER_WINDOW(weather_window));
@@ -232,9 +235,9 @@ static void on_app_activate() {
   CONNECT(change_theme, "clicked", on_theme_change_clicked);
   top_bar_push_left(TOP_BAR(top_bar), change_theme);
 
-  // tray = tray_new();
-  // CONNECT(tray, "triggered", on_tray_triggered);
-  // top_bar_push_right(TOP_BAR(top_bar), tray);
+  tray = tray_new();
+  CONNECT(tray, "triggered", on_tray_triggered);
+  top_bar_push_right(TOP_BAR(top_bar), tray);
 
   weather = weather_new();
   CONNECT(weather, "clicked", on_weather_clicked);
@@ -257,7 +260,6 @@ static void on_app_activate() {
   network = network_new();
   CONNECT(network, "clicked-settings", on_network_settings_clicked);
   CONNECT(network, "clicked-ping", on_network_ping_clicked);
-  CONNECT(network, "clicked-address", on_network_address_clicked);
   top_bar_push_right(TOP_BAR(top_bar), network);
 
   bluetooth = bluetooth_new();
@@ -290,8 +292,6 @@ static void on_app_activate() {
 #undef CONNECT
 
   gtk_window_present(GTK_WINDOW(top_bar));
-
-  // io_spawn_thread();
 }
 
 static gboolean on_new_events(gint, GIOCondition, gpointer) {
@@ -304,7 +304,7 @@ int main(int argc, char **argv) {
   setenv("GSK_RENDERER", "cairo", true);
   io = io_init(on_event);
   config = io_get_config(io);
-  g_unix_fd_add(io_as_raw_fd(io), G_IO_IN, on_new_events, NULL);
+  g_unix_fd_add(io_as_raw_fd(), G_IO_IN, on_new_events, NULL);
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", on_app_activate, NULL);

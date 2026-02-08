@@ -4,6 +4,8 @@ pragma_once = true
 usize_is_size_t = true
 style = "both"
 
+includes = ["src/bindgen-fix.h"]
+
 [parse]
 parse_deps = false
 include = []
@@ -28,7 +30,9 @@ exclude = [
     "__liburing_prep_close",
     "__liburing_prep_openat",
     "__liburing_queue_init",
+    "FFIArray_TrayItem",
 ]
+include = ["TrayItem"]
 
 [enum]
 prefix_with_name = true

@@ -44,11 +44,11 @@ struct IO {
     control: Box<Control>,
     network: Box<Network>,
     tray: Box<Tray>,
-    on_event: fn(event: *const Event),
+    on_event: extern "C" fn(event: *const Event),
 }
 
 impl IO {
-    fn try_new(on_event: fn(event: *const Event)) -> Result<Self> {
+    fn try_new(on_event: extern "C" fn(event: *const Event)) -> Result<Self> {
         let config = Config::read()?;
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
@@ -98,7 +98,7 @@ impl IO {
         IoUring::submit_if_dirty();
     }
 
-    fn new(on_event: fn(event: *const Event)) -> Self {
+    fn new(on_event: extern "C" fn(event: *const Event)) -> Self {
         Self::try_new(on_event).unwrap_or_else(|err| {
             log::error!("{err:?}");
             std::process::exit(1);
@@ -253,34 +253,34 @@ impl IO {
 }
 
 #[unsafe(no_mangle)]
-pub fn io_init(on_event: fn(event: *const Event)) -> *mut c_void {
+pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event)) -> *mut c_void {
     pretty_env_logger::init();
     IoUring::init(10, 0);
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }
 
 #[unsafe(no_mangle)]
-pub fn io_deinit() {
+pub extern "C" fn io_deinit() {
     IoUring::deinit();
 }
 
 #[unsafe(no_mangle)]
-pub fn io_handle_readable(io: *mut c_void) {
+pub extern "C" fn io_handle_readable(io: *mut c_void) {
     IO::from_raw(io).handle_readable();
 }
 
 #[unsafe(no_mangle)]
-pub fn io_wait_readable(io: *mut c_void) {
+pub extern "C" fn io_wait_readable(io: *mut c_void) {
     IO::from_raw(io).wait_readable();
 }
 
 #[unsafe(no_mangle)]
-pub fn io_as_raw_fd() -> i32 {
+pub extern "C" fn io_as_raw_fd() -> i32 {
     IoUring::as_raw_fd()
 }
 
 #[unsafe(no_mangle)]
-pub fn io_get_config(io: *mut c_void) -> *const IOConfig {
+pub extern "C" fn io_get_config(io: *mut c_void) -> *const IOConfig {
     IO::from_raw(io).io_config
 }
 
@@ -289,27 +289,27 @@ fn process_command(io: *mut c_void, cmd: Command) {
 }
 
 #[unsafe(no_mangle)]
-pub fn io_hyprland_go_to_workspace(io: *mut c_void, workspace: usize) {
+pub extern "C" fn io_hyprland_go_to_workspace(io: *mut c_void, workspace: usize) {
     process_command(io, Command::GoToWorkspace { workspace });
 }
 #[unsafe(no_mangle)]
-pub fn io_lock(io: *mut c_void) {
+pub extern "C" fn io_lock(io: *mut c_void) {
     process_command(io, Command::Lock);
 }
 #[unsafe(no_mangle)]
-pub fn io_reboot(io: *mut c_void) {
+pub extern "C" fn io_reboot(io: *mut c_void) {
     process_command(io, Command::Reboot);
 }
 #[unsafe(no_mangle)]
-pub fn io_shutdown(io: *mut c_void) {
+pub extern "C" fn io_shutdown(io: *mut c_void) {
     process_command(io, Command::Shutdown);
 }
 #[unsafe(no_mangle)]
-pub fn io_logout(io: *mut c_void) {
+pub extern "C" fn io_logout(io: *mut c_void) {
     process_command(io, Command::Logout);
 }
 #[unsafe(no_mangle)]
-pub fn io_trigger_tray(io: *mut c_void, uuid: *const std::ffi::c_char) {
+pub extern "C" fn io_trigger_tray(io: *mut c_void, uuid: *const std::ffi::c_char) {
     process_command(
         io,
         Command::TriggerTray {
@@ -318,18 +318,18 @@ pub fn io_trigger_tray(io: *mut c_void, uuid: *const std::ffi::c_char) {
     );
 }
 #[unsafe(no_mangle)]
-pub fn io_spawn_wifi_editor(io: *mut c_void) {
+pub extern "C" fn io_spawn_wifi_editor(io: *mut c_void) {
     process_command(io, Command::SpawnWiFiEditor);
 }
 #[unsafe(no_mangle)]
-pub fn io_spawn_bluetooh_editor(io: *mut c_void) {
+pub extern "C" fn io_spawn_bluetooh_editor(io: *mut c_void) {
     process_command(io, Command::SpawnBluetoothEditor);
 }
 #[unsafe(no_mangle)]
-pub fn io_spawn_system_monitor(io: *mut c_void) {
+pub extern "C" fn io_spawn_system_monitor(io: *mut c_void) {
     process_command(io, Command::SpawnSystemMonitor);
 }
 #[unsafe(no_mangle)]
-pub fn io_change_theme(io: *mut c_void) {
+pub extern "C" fn io_change_theme(io: *mut c_void) {
     process_command(io, Command::ChangeTheme);
 }

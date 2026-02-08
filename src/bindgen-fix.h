@@ -2,11 +2,8 @@
 
 #include <stddef.h>
 
-#define DECLARE_ARRAY(Type)                                                    \
-  struct IO_##Type;                                                            \
-  typedef struct IO_CArray_##Type {                                            \
-    struct IO_##Type *ptr;                                                     \
-    size_t len;                                                                \
-  } IO_CArray_##Type;
-
-DECLARE_ARRAY(TrayItem)
+struct IO_TrayItem;
+typedef struct IO_FFIArray_TrayItem {
+  struct IO_TrayItem *ptr;
+  size_t len;
+} IO_FFIArray_TrayItem;

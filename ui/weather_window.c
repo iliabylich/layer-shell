@@ -125,7 +125,7 @@ static void temperature_icon_refresh(GtkWidget *icon, IO_WeatherCode code) {
 }
 
 void weather_window_refresh_hourly_forecast(
-    WeatherWindow *self, struct IO_CArray_WeatherOnHour data) {
+    WeatherWindow *self, struct IO_FFIArray_WeatherOnHour data) {
   GtkWidget *child;
   for (size_t row = 0; row < data.len && row < HOURLY_ROWS_COUNT; row++) {
     IO_WeatherOnHour weather_on_hour = data.ptr[row];
@@ -141,8 +141,8 @@ void weather_window_refresh_hourly_forecast(
   }
 }
 
-void weather_window_refresh_daily_forecast(WeatherWindow *self,
-                                           struct IO_CArray_WeatherOnDay data) {
+void weather_window_refresh_daily_forecast(
+    WeatherWindow *self, struct IO_FFIArray_WeatherOnDay data) {
   GtkWidget *child;
 
   for (size_t row = 0; row < data.len && row < DAILY_ROWS_COUNT; row++) {

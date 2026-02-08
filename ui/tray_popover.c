@@ -72,16 +72,17 @@ void tray_popover_open(TrayPopover *self) {
   gtk_popover_popup(GTK_POPOVER(self->root));
 }
 
-static void visit_all(TrayPopover *self, IO_CArray_TrayItem items, GMenu *menu);
+static void visit_all(TrayPopover *self, IO_FFIArray_TrayItem items,
+                      GMenu *menu);
 static void visit(TrayPopover *self, IO_TrayItem tray_item, GMenu *menu);
 
-void tray_popover_update(TrayPopover *self, IO_CArray_TrayItem items) {
+void tray_popover_update(TrayPopover *self, IO_FFIArray_TrayItem items) {
   g_menu_remove_all(self->menu);
 
   visit_all(self, items, self->menu);
 }
 
-static void visit_all(TrayPopover *self, IO_CArray_TrayItem items,
+static void visit_all(TrayPopover *self, IO_FFIArray_TrayItem items,
                       GMenu *menu) {
   for (size_t idx = 0; idx < items.len; idx++) {
     IO_TrayItem child = items.ptr[idx];

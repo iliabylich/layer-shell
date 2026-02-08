@@ -13,6 +13,6 @@ G_DECLARE_FINAL_TYPE(WeatherWindow, weather_window, WEATHER_WINDOW, WINDOW,
 GtkWidget *weather_window_new(GtkApplication *app);
 void weather_window_toggle(WeatherWindow *weather_window);
 void weather_window_refresh_hourly_forecast(
-    WeatherWindow *weather_window, struct IO_CArray_WeatherOnHour data);
-void weather_window_refresh_daily_forecast(WeatherWindow *weather_window,
-                                           struct IO_CArray_WeatherOnDay data);
+    WeatherWindow *weather_window, struct IO_FFIArray_WeatherOnHour data);
+void weather_window_refresh_daily_forecast(
+    WeatherWindow *weather_window, struct IO_FFIArray_WeatherOnDay data);

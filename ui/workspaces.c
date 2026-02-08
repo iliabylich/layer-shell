@@ -71,12 +71,13 @@ GtkWidget *workspaces_new(void) {
   return g_object_new(workspaces_widget_get_type(), NULL);
 }
 
-void workspaces_refresh(Workspaces *self, struct IO_CArray_Workspace data) {
+void workspaces_refresh(Workspaces *self,
+                        struct IO_FFIArray_HyprlandWorkspace data) {
   size_t i = 0;
   GList *ptr = self->buttons;
   while (ptr != NULL) {
     GtkWidget *button = GTK_WIDGET(ptr->data);
-    IO_Workspace workspace = data.ptr[i];
+    IO_HyprlandWorkspace workspace = data.ptr[i];
 
     g_object_set(button, "visible", workspace.visible, "active",
                  workspace.active, NULL);

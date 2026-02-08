@@ -61,33 +61,36 @@ static void tray_class_init(TrayClass *klass) {
 
 GtkWidget *tray_new(void) { return g_object_new(tray_get_type(), NULL); }
 
-void tray_add_app(Tray *self, IO_TrayAppAddedEvent event) {
-  GtkWidget *tray_icon = tray_icon_new(event.icon, event.items);
-  tray_store_insert(self->store, event.service, tray_icon);
+void tray_add_app(Tray *self, IO_FFIString service, IO_FFIArray_TrayItem items,
+                  struct IO_TrayIcon icon) {
+  GtkWidget *tray_icon = tray_icon_new(icon, items);
+  tray_store_insert(self->store, service, tray_icon);
   gtk_box_append(GTK_BOX(self->root), tray_icon);
   g_signal_connect(tray_icon, "triggered", G_CALLBACK(on_trigger), self);
 }
 
-void tray_remove_app(Tray *self, IO_TrayAppRemovedEvent event) {
-  GtkWidget *tray_icon = tray_store_remove(self->store, event.service);
+void tray_remove_app(Tray *self, IO_FFIString service) {
+  GtkWidget *tray_icon = tray_store_remove(self->store, service);
   if (tray_icon == NULL) {
     return;
   }
   gtk_widget_unparent(tray_icon);
 }
 
-void tray_update_icon(Tray *self, IO_TrayAppIconUpdatedEvent event) {
-  GtkWidget *tray_icon = tray_store_lookup(self->store, event.service);
+void tray_update_icon(Tray *self, IO_FFIString service,
+                      struct IO_TrayIcon icon) {
+  GtkWidget *tray_icon = tray_store_lookup(self->store, service);
   if (tray_icon == NULL) {
     return;
   }
-  tray_icon_update_icon(TRAY_ICON(tray_icon), event.icon);
+  tray_icon_update_icon(TRAY_ICON(tray_icon), icon);
 }
 
-void tray_update_menu(Tray *self, IO_TrayAppMenuUpdatedEvent event) {
-  GtkWidget *tray_icon = tray_store_lookup(self->store, event.service);
+void tray_update_menu(Tray *self, IO_FFIString service,
+                      IO_FFIArray_TrayItem items) {
+  GtkWidget *tray_icon = tray_store_lookup(self->store, service);
   if (tray_icon == NULL) {
     return;
   }
-  tray_icon_update_menu(TRAY_ICON(tray_icon), event.items);
+  tray_icon_update_menu(TRAY_ICON(tray_icon), items);
 }

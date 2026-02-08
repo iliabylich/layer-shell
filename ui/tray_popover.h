@@ -11,4 +11,4 @@ G_DECLARE_FINAL_TYPE(TrayPopover, tray_popover, TRAY_POPOVER, WIDGET, GtkWidget)
 GtkWidget *tray_popover_new();
 
 void tray_popover_open(TrayPopover *tray_popover);
-void tray_popover_update(TrayPopover *tray_popover, IO_CArray_TrayItem items);
+void tray_popover_update(TrayPopover *tray_popover, IO_FFIArray_TrayItem items);

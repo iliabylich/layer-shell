@@ -11,4 +11,4 @@ G_DECLARE_FINAL_TYPE(Workspaces, workspaces_widget, WORKSPACES, WIDGET,
 
 GtkWidget *workspaces_new(void);
 void workspaces_refresh(Workspaces *workspaces,
-                        struct IO_CArray_Workspace data);
+                        struct IO_FFIArray_HyprlandWorkspace data);
