@@ -16,7 +16,7 @@ fn checkerr(errno: i32) {
     if errno < 0 {
         let str = unsafe { strerror(errno) };
         let str = unsafe { std::ffi::CStr::from_ptr(str) }.to_string_lossy();
-        eprintln!("IoUring error: {str:?}");
+        log::error!("IoUring error: {str:?}");
         std::process::exit(1);
     }
 }
@@ -64,7 +64,7 @@ impl IoUring {
     pub(crate) fn get_sqe() -> Sqe {
         let sqe = unsafe { __liburing_get_sqe(ring_get()) };
         if sqe.is_null() {
-            eprintln!("got NULL from io_uring_get_sqe");
+            log::error!("got NULL from io_uring_get_sqe");
             std::process::exit(1);
         }
         dirty_set(true);
@@ -93,7 +93,7 @@ impl IoUring {
         let errno = unsafe { __liburing_wait_cqe(ring_get(), &mut cqe) };
         checkerr(errno);
         if cqe.is_null() {
-            eprintln!("got NULL from io_uring_wait_cqe");
+            log::error!("got NULL from io_uring_wait_cqe");
             std::process::exit(1)
         }
         Cqe { cqe }
@@ -108,7 +108,7 @@ impl IoUring {
         }
         checkerr(errno);
         if cqe.is_null() {
-            eprintln!("got NULL from io_uring_wait_cqe_timeout");
+            log::error!("got NULL from io_uring_wait_cqe_timeout");
             std::process::exit(1)
         }
         Some(Cqe { cqe })

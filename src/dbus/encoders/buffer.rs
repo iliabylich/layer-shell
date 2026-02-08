@@ -66,7 +66,7 @@ impl EncodingBuffer {
             .get_mut(at)
             .context("out of bounds")
             .unwrap_or_else(|err| {
-                eprintln!("{err:?}");
+                log::error!("{err:?}");
                 std::process::exit(1);
             }) = value;
     }
@@ -76,7 +76,7 @@ impl EncodingBuffer {
             .get_mut(at..at + 4)
             .context("out of bounds")
             .unwrap_or_else(|err| {
-                eprintln!("{err:?}");
+                log::error!("{err:?}");
                 std::process::exit(1);
             })
             .copy_from_slice(&value.to_le_bytes());

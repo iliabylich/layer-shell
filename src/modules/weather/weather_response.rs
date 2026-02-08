@@ -1,9 +1,5 @@
 use super::WeatherCode;
-use crate::{
-    CArray, Event,
-    event::{WeatherOnDay, WeatherOnHour},
-    https::Response,
-};
+use crate::{CArray, CString, Event, https::Response};
 use anyhow::{Context as _, Result, ensure};
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::Deserialize;
@@ -126,4 +122,39 @@ fn map_daily_forecase(response: DailyWeatherResponse) -> Result<CArray<WeatherOn
 
     ensure!(forecast.len() == 6, "bug");
     Ok(forecast.into())
+}
+
+#[repr(C)]
+pub struct WeatherOnHour {
+    pub hour: CString,
+    pub temperature: f32,
+    pub code: WeatherCode,
+}
+
+impl std::fmt::Debug for WeatherOnHour {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?} - {} - {:?}",
+            self.hour, self.temperature, self.code
+        )
+    }
+}
+
+#[repr(C)]
+pub struct WeatherOnDay {
+    pub day: CString,
+    pub temperature_min: f32,
+    pub temperature_max: f32,
+    pub code: WeatherCode,
+}
+
+impl std::fmt::Debug for WeatherOnDay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?} - {}..{} - {:?}",
+            self.day, self.temperature_min, self.temperature_max, self.code
+        )
+    }
 }

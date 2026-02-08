@@ -3,6 +3,7 @@ use crate::{
     timerfd::Tick, user_data::ModuleId,
 };
 pub(crate) use weather_code::WeatherCode;
+pub use weather_response::{WeatherOnDay, WeatherOnHour};
 
 mod weather_code;
 mod weather_response;
@@ -62,14 +63,14 @@ impl Weather {
         let response = match WeatherResponse::parse(response) {
             Ok(ok) => ok,
             Err(err) => {
-                eprintln!("{err:?}");
+                log::error!("{err:?}");
                 return;
             }
         };
         let event = match Event::try_from(response) {
             Ok(ok) => ok,
             Err(err) => {
-                eprintln!("{err:?}");
+                log::error!("{err:?}");
                 return;
             }
         };

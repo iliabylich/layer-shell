@@ -30,7 +30,7 @@ impl Config {
         let config: Config =
             toml::from_str(&contents).with_context(|| format!("failed to parse {path:?}"))?;
 
-        log::info!("{config:#?}");
+        log::info!(target: "Config", "{config:#?}");
 
         Ok(config)
     }

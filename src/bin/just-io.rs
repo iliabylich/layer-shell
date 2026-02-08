@@ -2,21 +2,21 @@ use layer_shell_io::{Event, io_handle_readable, io_init, io_wait_readable};
 
 fn on_event(event: *const Event) {
     let Some(event) = (unsafe { event.as_ref() }) else {
-        eprintln!("NULL event received");
+        log::error!("NULL event received");
         std::process::exit(1);
     };
-    println!("{event:?}");
+    log::info!("{event:?}");
 }
 
 fn main() {
     let io = io_init(on_event);
 
     loop {
-        // println!("Waiting...");
+        // log::info!("Waiting...");
         io_wait_readable(io);
-        // println!("Wait finished...");
+        // log::info!("Wait finished...");
 
-        // println!("Processing...");
+        // log::info!("Processing...");
         io_handle_readable(io);
     }
 }

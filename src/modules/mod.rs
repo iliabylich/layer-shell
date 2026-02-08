@@ -18,4 +18,4 @@ pub(crate) use memory::Memory;
 pub(crate) use network::Network;
 pub(crate) use sound::Sound;
 pub(crate) use tray::Tray;
-pub(crate) use weather::{Weather, WeatherCode};
+pub(crate) use weather::{Weather, WeatherCode, WeatherOnDay, WeatherOnHour};

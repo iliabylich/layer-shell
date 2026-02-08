@@ -118,7 +118,7 @@ fn xdg_runtime_dir() -> Option<String> {
     match std::env::var("XDG_RUNTIME_DIR") {
         Ok(ok) => Some(ok),
         Err(_) => {
-            eprintln!("no XDG_RUNTIME_DIR variable");
+            log::error!("no XDG_RUNTIME_DIR variable");
             None
         }
     }
@@ -128,7 +128,7 @@ fn hyprland_instance_signature() -> Option<String> {
     match std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
         Ok(ok) => Some(ok),
         Err(_) => {
-            eprintln!("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?");
+            log::error!("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?");
             None
         }
     }

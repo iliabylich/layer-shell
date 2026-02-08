@@ -38,13 +38,13 @@ impl TrayApp {
 
     pub(crate) fn on_message(&mut self, message: &Message, dbus: &mut DBus) {
         if let Some(_) = self.get_all_props.process(message) {
-            println!("GOT ONESHOT PROPS FOR {}", self.address);
+            log::error!("GOT ONESHOT PROPS FOR {}", self.address);
         }
         if let Some(()) = self.new_icon.process(message) {
             self.request_props(dbus);
         }
         if let Some(_) = self.subscription.process(message) {
-            println!("GOT SUBSCRIPTION PROPS for {}", self.address)
+            log::error!("GOT SUBSCRIPTION PROPS for {}", self.address)
         }
     }
 }

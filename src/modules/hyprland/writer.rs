@@ -127,7 +127,7 @@ impl WriterResource for Dispatch {
 
     fn parse(&self, reply: &str) -> Result<WriterReply> {
         if reply != "ok" {
-            eprintln!("invalid response from hyprctl dispatch: expected 'ok', got {reply:?}");
+            log::error!("invalid response from hyprctl dispatch: expected 'ok', got {reply:?}");
         }
         Ok(WriterReply::None)
     }
@@ -156,7 +156,7 @@ const MAX_OP: u8 = Op::Close as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            eprintln!("unsupported op in HyprlandWriterOp: {value}");
+            log::error!("unsupported op in HyprlandWriterOp: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
@@ -222,7 +222,7 @@ impl HyprlandWriter {
     fn schedule_write(&mut self) {
         let mut writer = ArrayWriter::new(&mut self.buf);
         write!(&mut writer, "{}", self.resource.command()).unwrap_or_else(|err| {
-            eprintln!("failed to write command to buffer: {err:?}");
+            log::error!("failed to write command to buffer: {err:?}");
             std::process::exit(1);
         });
         let buflen = writer.offset();
@@ -255,7 +255,7 @@ impl HyprlandWriter {
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
-                eprintln!($($arg)*);
+                log::error!($($arg)*);
                 self.healthy = false;
                 return None;
             }};

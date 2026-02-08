@@ -18,7 +18,7 @@ const MAX_OP: u8 = Op::WriteBegin as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            eprintln!("unsupported op in DBus Auth: {value}");
+            log::error!("unsupported op in DBus Auth: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
@@ -94,7 +94,7 @@ impl Auth {
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
-                eprintln!($($arg)*);
+                log::error!($($arg)*);
                 self.healthy = false;
                 return false;
             }};

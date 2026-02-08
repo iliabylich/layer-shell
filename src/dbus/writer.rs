@@ -13,7 +13,7 @@ const MAX_OP: u8 = Op::Write as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            eprintln!("unsupported op in DBus Writer: {value}");
+            log::error!("unsupported op in DBus Writer: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
@@ -37,11 +37,15 @@ impl Writer {
         }
     }
 
-    pub(crate) fn init(&mut self, buf: Vec<u8>) {
-        self.buf = buf;
+    fn schedule_write(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, self.buf.as_ptr(), self.buf.len());
         sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
+    }
+
+    pub(crate) fn init(&mut self, buf: Vec<u8>) {
+        self.buf = buf;
+        self.schedule_write();
     }
 
     pub(crate) fn process(&mut self, op: u8, res: i32) {
@@ -53,7 +57,7 @@ impl Writer {
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
-                eprintln!($($arg)*);
+                log::error!($($arg)*);
                 self.healthy = false;
                 return;
             }};

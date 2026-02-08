@@ -18,7 +18,7 @@ const MAX_OP: u8 = Op::ReadBody as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            eprintln!("unsupported op in DBus Reader: {value}");
+            log::error!("unsupported op in DBus Reader: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
@@ -109,7 +109,7 @@ impl Reader {
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
-                eprintln!($($arg)*);
+                log::error!($($arg)*);
                 self.healthy = false;
                 return None;
             }};

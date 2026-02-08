@@ -57,7 +57,7 @@ impl FSM {
             match UnbufferedClientConnection::new(get_client_config(), server_name) {
                 Ok(conn) => (Some(conn), true),
                 Err(err) => {
-                    eprintln!("failed to create UnbufferedClientConnection: {err:?}");
+                    log::error!("failed to create UnbufferedClientConnection: {err:?}");
                     (None, false)
                 }
             };
@@ -90,7 +90,7 @@ impl FSM {
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
-                eprintln!($($arg)*);
+                log::error!($($arg)*);
                 self.healthy = false;
                 return None;
             }};

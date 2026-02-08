@@ -37,7 +37,7 @@ const MAX_OP: u8 = Op::Close as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            eprintln!("unsupported op in HttpsConnection: {value}");
+            log::error!("unsupported op in HttpsConnection: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
@@ -59,14 +59,14 @@ impl HttpsConnection {
                 match FSM::new(server_name, request) {
                     Ok(ok) => Some(ok),
                     Err(err) => {
-                        eprintln!("{err:?}");
+                        log::error!("{err:?}");
                         healthy = false;
                         None
                     }
                 }
             }
             Err(err) => {
-                eprintln!("{err:?}");
+                log::error!("{err:?}");
                 healthy = false;
                 None
             }
@@ -78,7 +78,7 @@ impl HttpsConnection {
                 addr
             }
             Err(err) => {
-                eprintln!("{err:?}");
+                log::error!("{err:?}");
                 healthy = false;
                 unsafe { std::mem::zeroed() }
             }
@@ -95,10 +95,14 @@ impl HttpsConnection {
         }
     }
 
-    pub(crate) fn init(&self) {
+    fn schedule_socket(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
         sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
+    }
+
+    pub(crate) fn init(&self) {
+        self.schedule_socket();
     }
 
     fn call_fsm(&mut self) {
@@ -140,7 +144,7 @@ impl HttpsConnection {
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
-                eprintln!($($arg)*);
+                log::error!($($arg)*);
                 return None;
             }};
         }
@@ -195,7 +199,7 @@ impl HttpsConnection {
                 None
             }
             Op::Close => {
-                eprintln!("HttpsConnection closed");
+                log::warn!("HttpsConnection closed");
                 self.response.take()
             }
         }

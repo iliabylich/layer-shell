@@ -33,7 +33,7 @@ impl From<ModuleId> for u8 {
 impl From<u8> for ModuleId {
     fn from(value: u8) -> Self {
         if value > MAX as u8 {
-            eprintln!("received malformed ModuleId from io_uring: {value}");
+            log::error!("received malformed ModuleId from io_uring: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }

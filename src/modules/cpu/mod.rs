@@ -25,7 +25,7 @@ const MAX_OP: u8 = Op::Read as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            eprintln!("unsupported op in CPUOp: {value}");
+            log::error!("unsupported op in CPUOp: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
@@ -67,7 +67,7 @@ impl CPU {
 
         macro_rules! crash {
             ($($arg:tt)*) => {{
-                eprintln!($($arg)*);
+                log::error!($($arg)*);
                 self.healthy = false;
                 return;
             }};

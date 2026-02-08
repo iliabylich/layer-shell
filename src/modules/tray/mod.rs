@@ -39,14 +39,14 @@ impl Tray {
         events: &mut Vec<Event>,
     ) {
         if let Some(address) = self.status_notifier_watcher.on_message(dbus, message) {
-            println!("Added {address}");
+            log::error!("Added {address}");
             let mut tray_app = TrayApp::new(address.clone());
             tray_app.init(dbus);
             self.registry.insert(address, tray_app);
         }
 
         if let Some(address) = self.name_lost_or_changed.on_message(message) {
-            println!("Removed {address}");
+            log::error!("Removed {address}");
             self.registry.remove(&address);
         }
 

@@ -1,6 +1,6 @@
 use crate::{
     ffi::{CArray, CString},
-    modules::WeatherCode,
+    modules::{WeatherCode, WeatherOnDay, WeatherOnHour},
 };
 
 #[derive(Debug)]
@@ -41,7 +41,6 @@ pub enum Event {
     DownloadSpeed {
         speed: CString,
     },
-    // NetworkList(NetworkListEvent),
     // TrayAppAdded(TrayAppAddedEvent),
     // TrayAppIconUpdated(TrayAppIconUpdatedEvent),
     // TrayAppMenuUpdated(TrayAppMenuUpdatedEvent),
@@ -62,23 +61,6 @@ pub enum Event {
         volume: u32,
         muted: bool,
     },
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct WeatherOnHour {
-    pub hour: CString,
-    pub temperature: f32,
-    pub code: WeatherCode,
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct WeatherOnDay {
-    pub day: CString,
-    pub temperature_min: f32,
-    pub temperature_max: f32,
-    pub code: WeatherCode,
 }
 
 #[derive(Debug)]

@@ -100,14 +100,14 @@ impl IO {
 
     fn new(on_event: fn(event: *const Event)) -> Self {
         Self::try_new(on_event).unwrap_or_else(|err| {
-            eprintln!("{err:?}");
+            log::error!("{err:?}");
             std::process::exit(1);
         })
     }
 
     fn from_raw(ptr: *mut c_void) -> &'static mut Self {
         unsafe { ptr.cast::<Self>().as_mut() }.unwrap_or_else(|| {
-            eprintln!("NULL IO pointer given to IO::from_raw()");
+            log::error!("NULL IO pointer given to IO::from_raw()");
             std::process::exit(1);
         })
     }
@@ -254,7 +254,7 @@ impl IO {
 
 #[unsafe(no_mangle)]
 pub fn io_init(on_event: fn(event: *const Event)) -> *mut c_void {
-    env_logger::init();
+    pretty_env_logger::init();
     IoUring::init(10, 0);
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }

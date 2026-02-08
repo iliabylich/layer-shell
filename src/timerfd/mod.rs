@@ -24,7 +24,7 @@ const MAX_OP: u8 = Op::Read as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            eprintln!("unsupported op in TimerFdOp: {value}");
+            log::error!("unsupported op in TimerFdOp: {value}");
             std::process::exit(1);
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
@@ -36,7 +36,7 @@ impl Timerfd {
         let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
         if fd == -1 {
-            eprintln!(
+            log::error!(
                 "timerfd_create returned -1: {}",
                 std::io::Error::last_os_error()
             );
@@ -61,7 +61,7 @@ impl Timerfd {
 
         let res = unsafe { timerfd_settime(this.fd, 0, &timer_spec, null_mut()) };
         if res == -1 {
-            eprintln!(
+            log::error!(
                 "timerfd_settime returned -1: {}",
                 std::io::Error::last_os_error()
             );
