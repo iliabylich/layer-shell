@@ -1,7 +1,7 @@
 use crate::{
     UserData,
     liburing::IoUring,
-    macros::report_and_exit,
+    macros::{define_op, report_and_exit},
     modules::hyprland::{array_writer::ArrayWriter, hyprland_instance_signature, xdg_runtime_dir},
     user_data::ModuleId,
 };
@@ -143,25 +143,7 @@ pub(crate) enum WriterReply {
     None,
 }
 
-#[derive(Debug)]
-#[repr(u8)]
-enum Op {
-    Socket,
-    Connect,
-    Write,
-    Read,
-    Close,
-}
-const MAX_OP: u8 = Op::Close as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in HyprlandWriterOp: {value}")
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+define_op!("Hyprland Writer", Socket, Connect, Write, Read, Close);
 
 pub(crate) struct HyprlandWriter {
     fd: i32,
@@ -187,7 +169,7 @@ impl HyprlandWriter {
     fn schedule_socket(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Socket));
     }
 
     fn schedule_connect(&mut self) {
@@ -216,7 +198,7 @@ impl HyprlandWriter {
             (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
             std::mem::size_of::<sockaddr_un>() as u32,
         );
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Connect as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Connect));
     }
 
     fn schedule_write(&mut self) {
@@ -227,19 +209,19 @@ impl HyprlandWriter {
 
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, self.buf.as_ptr(), buflen);
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Write as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Write));
     }
 
     fn schedule_read(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Read as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Read));
     }
 
     fn schedule_close(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_close(self.fd);
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Close as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandWriter, Op::Close));
     }
 
     pub(crate) fn init(&mut self) {
@@ -251,55 +233,50 @@ impl HyprlandWriter {
             return None;
         }
 
-        macro_rules! crash {
-            ($($arg:tt)*) => {{
-                log::error!($($arg)*);
-                self.healthy = false;
-                return None;
-            }};
-        }
-
         let op = Op::from(op);
+
+        macro_rules! assert_or_unhealthy {
+            ($cond:expr, $($arg:tt)*) => {
+                if !$cond {
+                    log::error!("Hyprland::Writer::{op:?}");
+                    log::error!($($arg)*);
+                    self.healthy = false;
+                    return None;
+                }
+            };
+        }
 
         match op {
             Op::Socket => {
-                if res <= 0 {
-                    crash!("{op:?}: res <= 0: {res}")
-                }
-                self.fd = res as i32;
+                assert_or_unhealthy!(res > 0, "res = {res}");
+                self.fd = res;
                 self.schedule_connect();
             }
             Op::Connect => {
-                if res < 0 {
-                    crash!("{op:?}: res < 0: {res}")
-                }
+                assert_or_unhealthy!(res >= 0, "res = {res}");
                 self.schedule_write();
             }
             Op::Write => {
-                if res <= 0 {
-                    crash!("{op:?}: res <= 0: {res}")
-                }
+                assert_or_unhealthy!(res >= 0, "res = {res}");
                 self.schedule_read();
             }
             Op::Read => {
-                if res <= 0 {
-                    crash!("{op:?}: res <= 0: {res}")
-                }
+                assert_or_unhealthy!(res > 0, "res = {res}");
                 let len = res as usize;
-                let json = match std::str::from_utf8(&self.buf[..len]) {
-                    Ok(ok) => ok,
-                    Err(err) => crash!("{err:?}"),
-                };
-                match self.resource.parse(json) {
-                    Ok(ok) => self.reply = Some(ok),
-                    Err(err) => crash!("{err:?}"),
-                }
+
+                let json = std::str::from_utf8(&self.buf[..len]);
+                assert_or_unhealthy!(json.is_ok(), "decoding error: {json:?}");
+                let json = unsafe { json.unwrap_unchecked() };
+
+                let reply = self.resource.parse(json);
+                assert_or_unhealthy!(reply.is_ok(), "parse error: {reply:?}");
+                let reply = unsafe { reply.unwrap_unchecked() };
+
+                self.reply = Some(reply);
                 self.schedule_close();
             }
             Op::Close => {
-                if res < 0 {
-                    crash!("{op:?}: res < 0: {res}")
-                }
+                assert_or_unhealthy!(res >= 0, "res is {res}");
                 return self.reply.take();
             }
         }

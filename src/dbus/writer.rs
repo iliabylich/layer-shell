@@ -1,27 +1,14 @@
 use crate::{
     dbus::ConnectionKind,
     liburing::IoUring,
-    macros::report_and_exit,
+    macros::define_op,
     user_data::{ModuleId, UserData},
 };
 
-#[repr(u8)]
-#[derive(Debug)]
-enum Op {
-    Write,
-}
-const MAX_OP: u8 = Op::Write as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in DBus Writer: {value}");
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+define_op!("DBus Writer", Write);
 
 pub(crate) struct Writer {
+    kind: ConnectionKind,
     fd: i32,
     module_id: ModuleId,
     buf: Vec<u8>,
@@ -36,6 +23,7 @@ impl Writer {
         };
 
         Self {
+            kind,
             fd: -1,
             module_id,
             buf: vec![],
@@ -46,7 +34,7 @@ impl Writer {
     fn schedule_write(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, self.buf.as_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::Write));
     }
 
     pub(crate) fn init(&mut self, fd: i32, buf: Vec<u8>) {
@@ -62,23 +50,26 @@ impl Writer {
 
         let op = Op::from(op);
 
-        macro_rules! crash {
-            ($($arg:tt)*) => {{
-                log::error!($($arg)*);
-                self.healthy = false;
-                return;
-            }};
+        macro_rules! assert_or_unhealthy {
+            ($cond:expr, $($arg:tt)*) => {
+                if !$cond {
+                    log::error!("DBusWriter({:?})::{op:?}", self.kind);
+                    log::error!($($arg)*);
+                    self.healthy = false;
+                    return;
+                }
+            };
         }
 
         match op {
             Op::Write => {
-                if res <= 0 {
-                    crash!("{op:?}: res is {res}");
-                }
+                assert_or_unhealthy!(res >= 0, "res is {res}");
                 let written = res as usize;
-                if written != self.buf.len() {
-                    crash!("{op:?}: written is wrong: {written} vs {}", self.buf.len());
-                }
+                assert_or_unhealthy!(
+                    written == self.buf.len(),
+                    "written is wrong: {written} vs {}",
+                    self.buf.len()
+                );
             }
         }
     }

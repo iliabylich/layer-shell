@@ -1,5 +1,6 @@
 use anyhow::{Context as _, Result};
 
+#[expect(clippy::upper_case_acronyms)]
 pub(crate) struct UUID;
 
 impl UUID {

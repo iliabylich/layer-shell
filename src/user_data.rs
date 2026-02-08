@@ -1,6 +1,5 @@
+use crate::macros::assert_or_exit;
 use std::cell::Cell;
-
-use crate::macros::report_and_exit;
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -36,9 +35,10 @@ impl From<ModuleId> for u8 {
 
 impl From<u8> for ModuleId {
     fn from(value: u8) -> Self {
-        if value > MAX as u8 {
-            report_and_exit!("received malformed ModuleId from io_uring: {value}");
-        }
+        assert_or_exit!(
+            value <= MAX as u8,
+            "received malformed ModuleId from io_uring: {value}"
+        );
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }
 }

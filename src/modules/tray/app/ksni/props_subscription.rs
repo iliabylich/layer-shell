@@ -91,17 +91,15 @@ pub(crate) fn parse(attributes: &[Value]) -> Result<AllPropsUpdate> {
         }
     }
 
-    let icon = if let Some(name_or_path) = icon_name {
-        if name_or_path.is_empty() {
-            Some(TrayIcon::Unset)
-        } else {
-            Some(TrayIcon::detect_name_or_path(name_or_path))
-        }
-    } else if let Some(pixmap) = icon_pixmap {
-        Some(TrayIcon::Pixmap(pixmap))
-    } else {
-        None
-    };
+    let icon = icon_name
+        .map(|name_or_path| {
+            if name_or_path.is_empty() {
+                TrayIcon::Unset
+            } else {
+                TrayIcon::detect_name_or_path(name_or_path)
+            }
+        })
+        .or_else(|| icon_pixmap.map(TrayIcon::Pixmap));
 
     Ok(AllPropsUpdate { menu, icon })
 }

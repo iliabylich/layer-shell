@@ -1,33 +1,23 @@
 use crate::{
     dbus::ConnectionKind,
     liburing::IoUring,
-    macros::report_and_exit,
+    macros::define_op,
     user_data::{ModuleId, UserData},
 };
 
-#[repr(u8)]
-#[derive(Debug)]
-enum Op {
+define_op!(
+    "DBus Auth",
     WriteZero,
     WriteAuthExternal,
     ReadData,
     WriteData,
     ReadGUID,
     WriteBegin,
-}
-const MAX_OP: u8 = Op::WriteBegin as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in DBus Auth: {value}");
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+);
 
 #[derive(Debug)]
 pub(crate) struct Auth {
+    kind: ConnectionKind,
     fd: i32,
     buf: [u8; 100],
     module_id: ModuleId,
@@ -46,6 +36,7 @@ impl Auth {
         };
 
         Self {
+            kind,
             fd: -1,
             buf: [0; 100],
             module_id,
@@ -56,37 +47,37 @@ impl Auth {
     fn schedule_write_zero(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, c"".as_ptr().cast(), 1);
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteZero as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteZero));
     }
 
     fn schedule_write_auth_external(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, AUTH_EXTERNAL.as_ptr(), AUTH_EXTERNAL.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteAuthExternal as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteAuthExternal));
     }
 
     fn schedule_read_data(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::ReadData as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::ReadData));
     }
 
     fn schedule_write_data(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, DATA.as_ptr(), DATA.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteData as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteData));
     }
 
     fn schedule_read_guid(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::ReadGUID as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::ReadGUID));
     }
 
     fn schedule_write_begin(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_write(self.fd, BEGIN.as_ptr(), BEGIN.len());
-        sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::WriteBegin));
     }
 
     pub(crate) fn init(&mut self, fd: i32) {
@@ -99,60 +90,46 @@ impl Auth {
             return false;
         }
 
-        macro_rules! crash {
-            ($($arg:tt)*) => {{
-                log::error!($($arg)*);
-                self.healthy = false;
-                return false;
-            }};
-        }
-
         let op = Op::from(op);
 
-        if res <= 0 {
-            crash!("{op:?} returned {res}");
+        macro_rules! assert_eq_or_unhealthy {
+            ($actual:expr, $expected:expr) => {
+                if $actual != $expected {
+                    log::error!(
+                        "DBusAuth({:?})::{op:?}: actual ({:?}) != expected ({:?})",
+                        self.kind,
+                        $actual,
+                        $expected
+                    );
+                    self.healthy = false;
+                    return false;
+                }
+            };
         }
 
         match op {
             Op::WriteZero => {
                 let written = res as usize;
-                if written != 1 {
-                    crash!("{op:?} returned {written} bytes (expected 1)");
-                }
+                assert_eq_or_unhealthy!(written, 1);
                 self.schedule_write_auth_external();
                 false
             }
             Op::WriteAuthExternal => {
                 let written = res as usize;
-                if written != AUTH_EXTERNAL.len() {
-                    crash!(
-                        "{op:?} returned {written} bytes (expected {})",
-                        AUTH_EXTERNAL.len()
-                    );
-                }
+                assert_eq_or_unhealthy!(written, AUTH_EXTERNAL.len());
                 self.schedule_read_data();
                 false
             }
             Op::ReadData => {
                 let read = res as usize;
-                if read != DATA.len() {
-                    crash!("{op:?} returned {read} bytes (expected {})", DATA.len());
-                }
-                if &self.buf[..read] != DATA {
-                    crash!(
-                        "{op:?} returned {:?} (expected {:?})",
-                        &self.buf[..read],
-                        DATA
-                    );
-                }
+                assert_eq_or_unhealthy!(read, DATA.len());
+                assert_eq_or_unhealthy!(&self.buf[..read], DATA);
                 self.schedule_write_data();
                 false
             }
             Op::WriteData => {
                 let written = res as usize;
-                if written != DATA.len() {
-                    crash!("{op:?} returned {written} bytes (expected {})", DATA.len());
-                }
+                assert_eq_or_unhealthy!(written, DATA.len());
                 self.schedule_read_guid();
                 false
             }
@@ -162,9 +139,7 @@ impl Auth {
             }
             Op::WriteBegin => {
                 let written = res as usize;
-                if written != BEGIN.len() {
-                    crash!("{op:?} returned {written} bytes (expected {})", BEGIN.len());
-                }
+                assert_eq_or_unhealthy!(written, BEGIN.len());
                 true
             }
         }

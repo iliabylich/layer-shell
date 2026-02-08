@@ -1,4 +1,4 @@
-use crate::macros::report_and_exit;
+use crate::macros::{assert_or_exit, report_and_exit};
 
 pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use generated::{
@@ -64,9 +64,7 @@ impl IoUring {
 
     pub(crate) fn get_sqe() -> Sqe {
         let sqe = unsafe { __liburing_get_sqe(ring_get()) };
-        if sqe.is_null() {
-            report_and_exit!("got NULL from io_uring_get_sqe");
-        }
+        assert_or_exit!(!sqe.is_null(), "got NULL from io_uring_get_sqe");
         dirty_set(true);
         Sqe { sqe }
     }
@@ -92,9 +90,7 @@ impl IoUring {
         let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
         let errno = unsafe { __liburing_wait_cqe(ring_get(), &mut cqe) };
         checkerr(errno);
-        if cqe.is_null() {
-            report_and_exit!("got NULL from io_uring_wait_cqe");
-        }
+        assert_or_exit!(!cqe.is_null(), "got NULL from io_uring_wait_cqe");
         Cqe { cqe }
     }
 
@@ -106,9 +102,7 @@ impl IoUring {
             return None;
         }
         checkerr(errno);
-        if cqe.is_null() {
-            report_and_exit!("got NULL from io_uring_wait_cqe_timeout")
-        }
+        assert_or_exit!(!cqe.is_null(), "got NULL from io_uring_wait_cqe_timeout");
         Some(Cqe { cqe })
     }
 

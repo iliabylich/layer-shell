@@ -1,7 +1,7 @@
 use super::fsm::{FSM, Request, Response, Wants};
 use crate::{
     liburing::IoUring,
-    macros::report_and_exit,
+    macros::define_op,
     user_data::{ModuleId, UserData},
 };
 use anyhow::{Result, bail};
@@ -24,25 +24,7 @@ pub(crate) struct HttpsConnection {
     response: Option<Response>,
 }
 
-#[repr(u8)]
-#[derive(Debug)]
-enum Op {
-    Socket,
-    Connect,
-    Read,
-    Write,
-    Close,
-}
-const MAX_OP: u8 = Op::Close as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in HttpsConnection: {value}")
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+define_op!("HttpsConnection", Socket, Connect, Read, Write, Close,);
 
 impl HttpsConnection {
     pub(crate) fn get(hostname: &str, port: u16, path: &str, module_id: ModuleId) -> Self {
@@ -98,7 +80,17 @@ impl HttpsConnection {
     fn schedule_socket(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_INET, SOCK_STREAM, 0, 0);
-        sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::Socket));
+    }
+
+    fn schedule_connect(&self) {
+        let mut sqe = IoUring::get_sqe();
+        sqe.prep_connect(
+            self.fd,
+            (&self.addr as *const sockaddr_in).cast(),
+            std::mem::size_of::<sockaddr_in>() as u32,
+        );
+        sqe.set_user_data(UserData::new(self.module_id, Op::Connect));
     }
 
     pub(crate) fn init(&self) {
@@ -117,12 +109,12 @@ impl HttpsConnection {
             Wants::Read(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
-                sqe.set_user_data(UserData::new(self.module_id, Op::Read as u8));
+                sqe.set_user_data(UserData::new(self.module_id, Op::Read));
             }
             Wants::Write(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
-                sqe.set_user_data(UserData::new(self.module_id, Op::Write as u8));
+                sqe.set_user_data(UserData::new(self.module_id, Op::Write));
             }
             Wants::Done(response) => {
                 assert!(self.response.is_none());
@@ -130,7 +122,7 @@ impl HttpsConnection {
 
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_close(self.fd);
-                sqe.set_user_data(UserData::new(self.module_id, Op::Close as u8));
+                sqe.set_user_data(UserData::new(self.module_id, Op::Close));
             }
         }
     }
@@ -142,57 +134,40 @@ impl HttpsConnection {
 
         let op = Op::from(op);
 
-        macro_rules! crash {
-            ($($arg:tt)*) => {{
-                log::error!($($arg)*);
-                return None;
-            }};
+        macro_rules! assert_or_unhealthy {
+            ($cond:expr, $($arg:tt)*) => {
+                if !$cond {
+                    log::error!("HttpsConnection::{op:?}");
+                    log::error!($($arg)*);
+                    self.healthy = false;
+                    return None;
+                }
+            };
         }
 
         match op {
             Op::Socket => {
-                let fd = res;
-                if res <= 0 {
-                    crash!("{op:?}: fd < 0: {fd}");
-                }
-                self.fd = fd;
-
-                let mut sqe = IoUring::get_sqe();
-                sqe.prep_connect(
-                    self.fd,
-                    (&self.addr as *const sockaddr_in).cast(),
-                    std::mem::size_of::<sockaddr_in>() as u32,
-                );
-                sqe.set_user_data(UserData::new(self.module_id, Op::Connect as u8));
-
+                assert_or_unhealthy!(res > 0, "res is {res}");
+                self.fd = res;
+                self.schedule_connect();
                 None
             }
             Op::Connect => {
-                if res < 0 {
-                    crash!("{op:?}: res < 0: {res}")
-                }
-
+                assert_or_unhealthy!(res >= 0, "res is {res}");
                 self.call_fsm();
-
                 None
             }
             Op::Read => {
-                let read = res;
-                if res < 0 {
-                    crash!("{op:?}: res < 0: {res}")
-                }
-                let read: usize = read as usize;
+                assert_or_unhealthy!(res >= 0, "res is {res}");
+                let read: usize = res as usize;
                 unsafe { self.fsm.as_mut().unwrap_unchecked() }.done_reading(read);
 
                 self.call_fsm();
                 None
             }
             Op::Write => {
-                let written = res;
-                if written < 0 {
-                    crash!("{op:?}: written < 0: {written}")
-                }
-                let written = written as usize;
+                assert_or_unhealthy!(res >= 0, "res is {res}");
+                let written = res as usize;
                 unsafe { self.fsm.as_mut().unwrap_unchecked() }.done_writing(written);
 
                 self.call_fsm();

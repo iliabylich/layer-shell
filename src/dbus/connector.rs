@@ -1,7 +1,7 @@
 use crate::{
     dbus::ConnectionKind,
     liburing::IoUring,
-    macros::report_and_exit,
+    macros::define_op,
     user_data::{ModuleId, UserData},
 };
 use anyhow::{Context as _, Result};
@@ -15,22 +15,7 @@ pub(crate) struct Connector {
     healthy: bool,
 }
 
-#[repr(u8)]
-#[derive(Debug)]
-enum Op {
-    Socket,
-    Connect,
-}
-const MAX_OP: u8 = Op::Connect as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in DBus connector: {value}")
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+define_op!("DBus Connector", Socket, Connect);
 
 impl Connector {
     pub(crate) fn new(kind: ConnectionKind) -> Self {
@@ -51,19 +36,13 @@ impl Connector {
     fn schedule_socket(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
-        sqe.set_user_data(UserData::new(self.module_id, Op::Socket as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::Socket));
     }
 
     fn schedule_connect(&mut self) {
-        let path = match self.kind {
-            ConnectionKind::Session => match session_socket_path() {
-                Ok(ok) => ok,
-                Err(err) => {
-                    log::error!("failed to get session DBus socket path: {err:?}");
-                    return;
-                }
-            },
-            ConnectionKind::System => system_socket_path(),
+        let Some(path) = socket_path(self.kind) else {
+            self.healthy = false;
+            return;
         };
 
         self.addr = sockaddr_un {
@@ -82,7 +61,7 @@ impl Connector {
             (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
             std::mem::size_of::<sockaddr_un>() as u32,
         );
-        sqe.set_user_data(UserData::new(self.module_id, Op::Connect as u8));
+        sqe.set_user_data(UserData::new(self.module_id, Op::Connect));
     }
 
     pub(crate) fn init(&self) {
@@ -96,30 +75,42 @@ impl Connector {
 
         let op = Op::from(op);
 
-        macro_rules! crash {
-            ($($arg:tt)*) => {{
-                log::error!($($arg)*);
-                self.healthy = false;
-                return None;
-            }};
+        macro_rules! assert_or_unhealthy {
+            ($cond:expr, $($arg:tt)*) => {
+                if !$cond {
+                    log::error!("DBusConnector({:?})::{op:?}", self.kind);
+                    log::error!($($arg)*);
+                    self.healthy = false;
+                    return None;
+                }
+            };
         }
 
         match op {
             Op::Socket => {
-                if res <= 0 {
-                    crash!("{op:?}: res is {res}");
-                }
-                self.fd = res as i32;
+                assert_or_unhealthy!(res > 0, "res is {res}");
+                self.fd = res;
                 self.schedule_connect();
                 None
             }
             Op::Connect => {
-                if res < 0 {
-                    crash!("{op:?}: res is {res}");
-                }
+                assert_or_unhealthy!(res >= 0, "res is {res}");
                 Some(self.fd)
             }
         }
+    }
+}
+
+fn socket_path(kind: ConnectionKind) -> Option<String> {
+    match kind {
+        ConnectionKind::Session => match session_socket_path() {
+            Ok(ok) => Some(ok),
+            Err(err) => {
+                log::error!("failed to get session DBus socket path: {err:?}");
+                None
+            }
+        },
+        ConnectionKind::System => Some(system_socket_path()),
     }
 }
 

@@ -29,14 +29,14 @@ pub(crate) struct App {
     menu: String,
     get_layout: Oneshot<GetLayout>,
 
-    state: IconLayoutState,
+    state: State,
 }
 
-enum IconLayoutState {
-    HaveNothing,
-    HaveOnlyIcon(TrayIcon),
-    HaveOnlyLayout(Vec<TrayItem>),
-    HaveAll,
+enum State {
+    Nothing,
+    OnlyIcon(TrayIcon),
+    OnlyLayout(Vec<TrayItem>),
+    All,
 }
 
 #[derive(Debug)]
@@ -59,7 +59,7 @@ impl App {
             menu: String::new(),
             get_layout: Oneshot::new(GetLayout::new(service.name())),
 
-            state: IconLayoutState::HaveNothing,
+            state: State::Nothing,
         }
     }
 
@@ -108,39 +108,39 @@ impl App {
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
         match &mut self.state {
-            IconLayoutState::HaveNothing => {
-                self.state = IconLayoutState::HaveOnlyIcon(new_icon);
+            State::Nothing => {
+                self.state = State::OnlyIcon(new_icon);
                 None
             }
-            IconLayoutState::HaveOnlyIcon(icon) => {
+            State::OnlyIcon(icon) => {
                 *icon = new_icon;
                 None
             }
-            IconLayoutState::HaveOnlyLayout(layout) => {
+            State::OnlyLayout(layout) => {
                 let layout = std::mem::take(layout);
-                self.state = IconLayoutState::HaveAll;
+                self.state = State::All;
                 Some(TrayEvent::Initialized(new_icon, layout))
             }
-            IconLayoutState::HaveAll => Some(TrayEvent::IconUpdated(new_icon)),
+            State::All => Some(TrayEvent::IconUpdated(new_icon)),
         }
     }
 
     fn on_layout_receieved(&mut self, new_layout: Vec<TrayItem>) -> Option<TrayEvent> {
         match &mut self.state {
-            IconLayoutState::HaveNothing => {
-                self.state = IconLayoutState::HaveOnlyLayout(new_layout);
+            State::Nothing => {
+                self.state = State::OnlyLayout(new_layout);
                 None
             }
-            IconLayoutState::HaveOnlyIcon(icon) => {
+            State::OnlyIcon(icon) => {
                 let icon = std::mem::take(icon);
-                self.state = IconLayoutState::HaveAll;
+                self.state = State::All;
                 Some(TrayEvent::Initialized(icon, new_layout))
             }
-            IconLayoutState::HaveOnlyLayout(layout) => {
+            State::OnlyLayout(layout) => {
                 *layout = new_layout;
                 None
             }
-            IconLayoutState::HaveAll => Some(TrayEvent::MenuUpdated(new_layout)),
+            State::All => Some(TrayEvent::MenuUpdated(new_layout)),
         }
     }
 
@@ -169,12 +169,16 @@ impl App {
             return self.on_layout_receieved(layout);
         }
 
-        if let Some(_) = self.layout_updated_subscription.process(message) {
+        if self.layout_updated_subscription.process(message).is_some() {
             log::info!(target: "Tray", "Subscribed to LayoutUpdated");
             return None;
         }
 
-        if let Some(_) = self.items_properties_updated_subscription.process(message) {
+        if self
+            .items_properties_updated_subscription
+            .process(message)
+            .is_some()
+        {
             log::info!(target: "Tray", "Subscribed to ItemPropertiesUpdated");
             return None;
         }

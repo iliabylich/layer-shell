@@ -1,6 +1,6 @@
 use crate::{
     liburing::IoUring,
-    macros::report_and_exit,
+    macros::{assert_or_exit, define_op},
     user_data::{ModuleId, UserData},
 };
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
@@ -15,32 +15,25 @@ pub(crate) struct Timerfd {
     ticks: u64,
 }
 
-#[derive(Debug)]
-#[repr(u8)]
-enum Op {
-    Read = 1,
-}
-const MAX_OP: u8 = Op::Read as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in TimerFdOp: {value}")
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+define_op!("TimerFD", Read);
 
 impl Timerfd {
     pub(crate) fn new() -> Box<Self> {
+        Box::new(Self {
+            fd: -1,
+            buf: [0; 8],
+            ticks: 0,
+        })
+    }
+
+    fn set_timer(&mut self) {
         let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
-        if fd == -1 {
-            report_and_exit!(
-                "timerfd_create returned -1: {}",
-                std::io::Error::last_os_error()
-            )
-        }
+        assert_or_exit!(
+            fd != -1,
+            "timerfd_create returned -1: {}",
+            std::io::Error::last_os_error()
+        );
 
         let timer_spec = itimerspec {
             it_interval: timespec {
@@ -52,31 +45,26 @@ impl Timerfd {
                 tv_nsec: 1,
             },
         };
-        let this = Self {
-            fd,
-            buf: [0; 8],
-            ticks: 0,
-        };
 
-        let res = unsafe { timerfd_settime(this.fd, 0, &timer_spec, null_mut()) };
-        if res == -1 {
-            report_and_exit!(
-                "timerfd_settime returned -1: {}",
-                std::io::Error::last_os_error()
-            )
-        }
+        let res = unsafe { timerfd_settime(fd, 0, &timer_spec, null_mut()) };
+        assert_or_exit!(
+            res != -1,
+            "timerfd_settime returned -1: {}",
+            std::io::Error::last_os_error()
+        );
 
-        Box::new(this)
+        self.fd = fd;
     }
 
     pub(crate) fn init(&mut self) {
+        self.set_timer();
         self.schedule_read()
     }
 
     fn schedule_read(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::TimerFD, Op::Read as u8));
+        sqe.set_user_data(UserData::new(ModuleId::TimerFD, Op::Read));
     }
 
     pub(crate) fn process(&mut self, op: u8) -> Tick {

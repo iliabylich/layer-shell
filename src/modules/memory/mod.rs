@@ -1,4 +1,4 @@
-use crate::{Event, UserData, liburing::IoUring, macros::report_and_exit, user_data::ModuleId};
+use crate::{Event, UserData, liburing::IoUring, macros::define_op, user_data::ModuleId};
 use libc::{AT_FDCWD, O_RDONLY};
 use parser::Parser;
 
@@ -10,22 +10,7 @@ pub(crate) struct Memory {
     healthy: bool,
 }
 
-#[repr(u8)]
-#[derive(Debug)]
-enum Op {
-    OpenAt,
-    Read,
-}
-const MAX_OP: u8 = Op::Read as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in MemoryOp: {value}")
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+define_op!("Memory", OpenAt, Read);
 
 impl Memory {
     pub(crate) fn new() -> Box<Self> {
@@ -39,13 +24,13 @@ impl Memory {
     fn schedule_open(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_openat(AT_FDCWD, c"/proc/meminfo".as_ptr(), O_RDONLY, 0);
-        sqe.set_user_data(UserData::new(ModuleId::Memory, Op::OpenAt as u8));
+        sqe.set_user_data(UserData::new(ModuleId::Memory, Op::OpenAt));
     }
 
     fn schedule_read(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::Memory, Op::Read as u8));
+        sqe.set_user_data(UserData::new(ModuleId::Memory, Op::Read));
     }
 
     pub(crate) fn init(&self) {
@@ -59,36 +44,35 @@ impl Memory {
 
         let op = Op::from(op);
 
-        macro_rules! crash {
-            ($($arg:tt)*) => {{
-                log::error!($($arg)*);
-                self.healthy = false;
-                return;
-            }};
+        macro_rules! assert_or_unhealthy {
+            ($cond:expr, $($arg:tt)*) => {
+                if !$cond {
+                    log::error!("Memory::{op:?}");
+                    log::error!($($arg)*);
+                    self.healthy = false;
+                    return;
+                }
+            };
         }
 
         match op {
             Op::OpenAt => {
-                if res <= 0 {
-                    crash!("{op:?}: res = {res}");
-                }
-                self.fd = res as i32;
+                assert_or_unhealthy!(res > 0, "res is {res}");
+                self.fd = res;
             }
 
             Op::Read => {
-                if res <= 0 {
-                    crash!("{op:?}: res = {res}");
-                }
+                assert_or_unhealthy!(res > 0, "res is {res}");
                 let len = res as usize;
-                let s = match std::str::from_utf8(&self.buf[..len]) {
-                    Ok(ok) => ok,
-                    Err(err) => crash!("{op:?} {err:?}"),
-                };
 
-                let (used, total) = match Parser::parse(s) {
-                    Ok(ok) => ok,
-                    Err(err) => crash!("{op:?} {err:?}"),
-                };
+                let s = std::str::from_utf8(&self.buf[..len]);
+                assert_or_unhealthy!(s.is_ok(), "decoding error: {s:?}");
+                let s = unsafe { s.unwrap_unchecked() };
+
+                let data = Parser::parse(s);
+                assert_or_unhealthy!(data.is_ok(), "parse error: {data:?}");
+                let (used, total) = unsafe { data.unwrap_unchecked() };
+
                 events.push(Event::Memory { used, total });
             }
         }

@@ -1,7 +1,7 @@
 use crate::{
     UserData,
     liburing::IoUring,
-    macros::report_and_exit,
+    macros::define_op,
     modules::hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
     user_data::ModuleId,
 };
@@ -14,23 +14,7 @@ pub(crate) struct HyprlandReader {
     addr: sockaddr_un,
 }
 
-#[repr(u8)]
-#[derive(Debug)]
-enum Op {
-    Socket,
-    Connect,
-    Read,
-}
-const MAX_OP: u8 = Op::Read as u8;
-
-impl From<u8> for Op {
-    fn from(value: u8) -> Self {
-        if value > MAX_OP {
-            report_and_exit!("unsupported op in HyprlandReaderOp: {value}")
-        }
-        unsafe { std::mem::transmute::<u8, Self>(value) }
-    }
-}
+define_op!("Hyprland Reader", Socket, Connect, Read);
 
 impl HyprlandReader {
     pub(crate) fn new() -> Box<Self> {
@@ -45,7 +29,7 @@ impl HyprlandReader {
     fn schedule_socket(&self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Socket as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Socket));
     }
 
     fn schedule_connect(&mut self) {
@@ -76,13 +60,13 @@ impl HyprlandReader {
             (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
             std::mem::size_of::<sockaddr_un>() as u32,
         );
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Connect as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Connect));
     }
 
     fn schedule_read(&mut self) {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read as u8));
+        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read));
     }
 
     pub(crate) fn init(&mut self) {
@@ -94,44 +78,42 @@ impl HyprlandReader {
             return;
         }
 
-        macro_rules! crash {
-            ($($arg:tt)*) => {{
-                log::error!($($arg)*);
-                self.healthy = false;
-                return;
-            }};
-        }
-
         let op = Op::from(op);
+
+        macro_rules! assert_or_unhealthy {
+            ($cond:expr, $($arg:tt)*) => {
+                if !$cond {
+                    log::error!("Hyprland::Reader::{op:?}");
+                    log::error!($($arg)*);
+                    self.healthy = false;
+                    return;
+                }
+            };
+        }
 
         match op {
             Op::Socket => {
-                if res <= 0 {
-                    crash!("{op:?}: res < 0: {res}");
-                }
-                self.fd = res as i32;
+                assert_or_unhealthy!(res > 0, "res = {res}");
+                self.fd = res;
                 self.schedule_connect();
             }
             Op::Connect => {
-                if res < 0 {
-                    crash!("{op:?}: res = {res}");
-                }
+                assert_or_unhealthy!(res >= 0, "res = {res}");
                 self.schedule_read();
             }
             Op::Read => {
-                if res <= 0 {
-                    crash!("{op:?}: res = {res}");
-                }
+                assert_or_unhealthy!(res > 0, "res = {res}");
                 let len = res as usize;
-                let s = match std::str::from_utf8(&self.buf[..len]) {
-                    Ok(ok) => ok,
-                    Err(err) => crash!("{op:?}: {err:?}"),
-                };
+
+                let s = std::str::from_utf8(&self.buf[..len]);
+                assert_or_unhealthy!(s.is_ok(), "decoding error: {s:?}");
+                let s = unsafe { s.unwrap_unchecked() };
+
                 for line in s.lines() {
-                    let event = match HyprlandEvent::try_parse(line) {
-                        Ok(ok) => ok,
-                        Err(err) => crash!("{err:?}"),
-                    };
+                    let event = HyprlandEvent::try_parse(line);
+                    assert_or_unhealthy!(event.is_ok(), "parse error: {event:?}");
+                    let event = unsafe { event.unwrap_unchecked() };
+
                     if let Some(event) = event {
                         events.push(event)
                     };
