@@ -247,7 +247,10 @@ impl IO {
                 hyprctl!("exec {}", self.config.change_theme)
             }
 
-            Command::TriggerTray { uuid } => todo!("{uuid}"),
+            Command::TriggerTray { uuid } => {
+                self.tray.trigger(&uuid, &mut self.session_dbus);
+                IoUring::submit_if_dirty();
+            }
         }
     }
 }

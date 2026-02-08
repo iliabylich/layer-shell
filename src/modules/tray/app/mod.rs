@@ -1,5 +1,7 @@
+use std::borrow::Cow;
+
 use crate::{
-    dbus::{DBus, Message, Oneshot, Subscription},
+    dbus::{DBus, Message, Oneshot, Subscription, types::Value},
     modules::{TrayIcon, TrayItem, tray::service::Service},
 };
 use dbusmenu::{
@@ -196,5 +198,30 @@ impl App {
         }
 
         None
+    }
+
+    pub(crate) fn trigger(&self, id: i32, dbus: &mut DBus) {
+        let timestamp = u32::try_from(chrono::Utc::now().timestamp()).unwrap_or_else(|err| {
+            log::error!(target: "Tray", "can't construct u32 from chrono timestamp: {err:?}");
+            std::process::exit(1)
+        });
+
+        let mut message = Message::MethodCall {
+            destination: Some(Cow::Owned(self.service.name().to_string())),
+            path: Cow::Owned(self.menu.clone()),
+            interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
+            serial: 0,
+            member: Cow::Borrowed("Event"),
+            sender: None,
+            unix_fds: None,
+            body: vec![
+                Value::Int32(id),
+                Value::String(Cow::Borrowed("clicked")),
+                Value::Variant(Box::new(Value::Int32(0))),
+                Value::UInt32(timestamp),
+            ],
+        };
+
+        dbus.enqueue(&mut message);
     }
 }

@@ -121,7 +121,7 @@ fn parse_item(service: &str, menu: &str, item: &Value) -> Result<ItemOrSeparator
 
     value_is!(&fields[0], Value::Int32(id));
     let id = *id;
-    let uuid = UUID::encode(service, menu, id);
+    let uuid = UUID::encode(service, id);
 
     value_is!(
         &fields[1],
@@ -171,7 +171,7 @@ fn parse_item(service: &str, menu: &str, item: &Value) -> Result<ItemOrSeparator
                 children_display = value;
             }
 
-            _ => log::error!("Unknown dbusmenu prop: {key}"),
+            _ => log::warn!("Unknown dbusmenu prop: {key}"),
         }
     }
 

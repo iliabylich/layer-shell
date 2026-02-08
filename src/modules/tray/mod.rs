@@ -10,6 +10,7 @@ use name_lost_or_changed::NameLostOrNameOwnerChanged;
 use service::Service;
 use status_notifier_watcher::StatusNotifierWatcher;
 use std::collections::HashMap;
+use uuid::UUID;
 
 mod app;
 mod icon;
@@ -47,7 +48,7 @@ impl Tray {
         events: &mut Vec<Event>,
     ) {
         if let Some(service) = self.status_notifier_watcher.on_message(dbus, message) {
-            log::error!("Added {service:?}");
+            log::info!("Added {service:?}");
             let mut tray_app = App::new(service.clone());
             tray_app.init(dbus);
             self.registry.insert(service, tray_app);
@@ -58,7 +59,7 @@ impl Tray {
             let Some(key) = self
                 .registry
                 .keys()
-                .find(|k| k.name() == address && k.raw_address() == address)
+                .find(|k| k.name() == address || k.raw_address() == address)
                 .cloned()
             else {
                 return;
@@ -68,7 +69,7 @@ impl Tray {
                 return;
             };
 
-            log::error!("Removed {address}");
+            log::info!("Removed {address}");
             tray_app.reset(dbus);
             events.push(Event::TrayAppRemoved {
                 service: address.into(),
@@ -94,5 +95,29 @@ impl Tray {
                 events.push(event);
             }
         }
+    }
+
+    pub(crate) fn trigger(&self, uuid: &str, dbus: &mut DBus) {
+        let Ok((service, id)) = UUID::decode(uuid) else {
+            log::error!("malformed UUID: {uuid:?}");
+            return;
+        };
+
+        let Some(key) = self
+            .registry
+            .keys()
+            .find(|k| k.name() == service || k.raw_address() == service)
+            .cloned()
+        else {
+            log::info!("service {service} doesn't exist");
+            return;
+        };
+
+        let Some(tray_app) = self.registry.get(&key) else {
+            log::info!("service {service} doesn't exist");
+            return;
+        };
+
+        tray_app.trigger(id, dbus);
     }
 }
