@@ -1,4 +1,4 @@
-use crate::ffi::CString;
+use crate::ffi::FFIString;
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -47,20 +47,20 @@ fn config_dir() -> Result<PathBuf> {
 
 #[repr(C)]
 pub struct IOConfig {
-    pub lock: CString,
-    pub reboot: CString,
-    pub shutdown: CString,
-    pub edit_wifi: CString,
-    pub edit_bluetooth: CString,
-    pub open_system_monitor: CString,
-    pub change_theme: CString,
+    pub lock: FFIString,
+    pub reboot: FFIString,
+    pub shutdown: FFIString,
+    pub edit_wifi: FFIString,
+    pub edit_bluetooth: FFIString,
+    pub open_system_monitor: FFIString,
+    pub change_theme: FFIString,
 
     pub ping: *mut *mut std::ffi::c_char,
     pub terminal: IOTerminal,
 }
 #[repr(C)]
 pub struct IOTerminal {
-    pub label: CString,
+    pub label: FFIString,
     pub command: *mut *mut std::ffi::c_char,
 }
 
@@ -93,7 +93,7 @@ impl From<&Terminal> for IOTerminal {
 fn vec_of_string_to_null_terminated_c_array(cmd: Vec<String>) -> *mut *mut std::ffi::c_char {
     let mut cmd = cmd
         .into_iter()
-        .map(|s| CString::from(s).into_raw())
+        .map(|s| FFIString::from(s).into_raw())
         .collect::<Vec<_>>();
     cmd.push(std::ptr::null_mut());
     let mut cmd = cmd.into_boxed_slice();

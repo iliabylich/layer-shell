@@ -1,10 +1,10 @@
-use crate::{CArray, CString};
+use crate::{FFIArray, FFIString};
 
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub enum TrayIcon {
-    Path { path: CString },
-    Name { name: CString },
+    Path { path: FFIString },
+    Name { name: FFIString },
     Pixmap(TrayIconPixmap),
     Unset,
 }
@@ -28,7 +28,7 @@ impl TrayIcon {
 pub struct TrayIconPixmap {
     pub width: i32,
     pub height: i32,
-    pub bytes: CArray<u8>,
+    pub bytes: FFIArray<u8>,
 }
 
 impl std::fmt::Debug for TrayIconPixmap {

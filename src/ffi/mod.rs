@@ -1,9 +1,9 @@
-mod cstring;
-pub use cstring::CString;
+mod string;
+pub use string::FFIString;
 
-mod carray;
-pub use carray::CArray;
+mod array;
+pub use array::FFIArray;
 
-mod coption;
+mod option;
 #[expect(unused_imports)]
-pub use coption::COption;
+pub use option::FFIOption;

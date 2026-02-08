@@ -1,5 +1,5 @@
 use super::WeatherCode;
-use crate::{CArray, CString, Event, https::Response};
+use crate::{FFIArray, FFIString, Event, https::Response};
 use anyhow::{Context as _, Result, ensure};
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::Deserialize;
@@ -58,7 +58,7 @@ impl TryFrom<WeatherResponse> for Event {
     }
 }
 
-fn map_hourly_forecase(response: HourlyWeatherResponse) -> Result<CArray<WeatherOnHour>> {
+fn map_hourly_forecase(response: HourlyWeatherResponse) -> Result<FFIArray<WeatherOnHour>> {
     let HourlyWeatherResponse {
         time,
         temperature_2m,
@@ -88,7 +88,7 @@ fn map_hourly_forecase(response: HourlyWeatherResponse) -> Result<CArray<Weather
     Ok(forecast.into())
 }
 
-fn map_daily_forecase(response: DailyWeatherResponse) -> Result<CArray<WeatherOnDay>> {
+fn map_daily_forecase(response: DailyWeatherResponse) -> Result<FFIArray<WeatherOnDay>> {
     let DailyWeatherResponse {
         time,
         temperature_2m_min,
@@ -126,7 +126,7 @@ fn map_daily_forecase(response: DailyWeatherResponse) -> Result<CArray<WeatherOn
 
 #[repr(C)]
 pub struct WeatherOnHour {
-    pub hour: CString,
+    pub hour: FFIString,
     pub temperature: f32,
     pub code: WeatherCode,
 }
@@ -143,7 +143,7 @@ impl std::fmt::Debug for WeatherOnHour {
 
 #[repr(C)]
 pub struct WeatherOnDay {
-    pub day: CString,
+    pub day: FFIString,
     pub temperature_min: f32,
     pub temperature_max: f32,
     pub code: WeatherCode,

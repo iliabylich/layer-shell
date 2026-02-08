@@ -1,11 +1,11 @@
 #[repr(C)]
 #[expect(unused)]
-pub enum COption<T> {
+pub enum FFIOption<T> {
     None,
     Some(T),
 }
 
-impl<T, U> From<Option<T>> for COption<U>
+impl<T, U> From<Option<T>> for FFIOption<U>
 where
     U: From<T>,
 {
@@ -17,7 +17,7 @@ where
     }
 }
 
-impl<T> std::fmt::Debug for COption<T>
+impl<T> std::fmt::Debug for FFIOption<T>
 where
     T: std::fmt::Debug,
 {

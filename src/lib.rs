@@ -13,7 +13,7 @@ use anyhow::Result;
 use command::Command;
 use config::{Config, IOConfig};
 pub use event::Event;
-pub use ffi::{CArray, CString};
+pub use ffi::{FFIArray, FFIString};
 use std::ffi::c_void;
 
 use crate::{
@@ -313,7 +313,7 @@ pub fn io_trigger_tray(io: *mut c_void, uuid: *const std::ffi::c_char) {
     process_command(
         io,
         Command::TriggerTray {
-            uuid: CString::from(uuid).into(),
+            uuid: FFIString::from(uuid).into(),
         },
     );
 }

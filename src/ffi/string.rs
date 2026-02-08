@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 #[repr(transparent)]
-pub struct CString {
+pub struct FFIString {
     pub ptr: *mut std::ffi::c_char,
 }
 
-impl CString {
+impl FFIString {
     pub(crate) fn as_str(&self) -> &str {
         unsafe { std::ffi::CStr::from_ptr(self.ptr.cast()) }
             .to_str()
@@ -27,7 +27,7 @@ impl CString {
     }
 }
 
-impl From<String> for CString {
+impl From<String> for FFIString {
     fn from(s: String) -> Self {
         let cstring = std::ffi::CString::new(s).unwrap_or_else(|err| {
             log::error!("{:?}", err);
@@ -39,8 +39,8 @@ impl From<String> for CString {
     }
 }
 
-impl From<CString> for String {
-    fn from(s: CString) -> Self {
+impl From<FFIString> for String {
+    fn from(s: FFIString) -> Self {
         let out = unsafe { std::ffi::CString::from_raw(s.ptr) }
             .to_str()
             .unwrap_or_else(|err| {
@@ -53,15 +53,15 @@ impl From<CString> for String {
     }
 }
 
-impl From<Arc<str>> for CString {
+impl From<Arc<str>> for FFIString {
     fn from(value: Arc<str>) -> Self {
         Self::from(value.as_ref().to_string())
     }
 }
 
-impl From<*const std::ffi::c_char> for CString {
+impl From<*const std::ffi::c_char> for FFIString {
     fn from(ptr: *const std::ffi::c_char) -> Self {
-        fn ptr_to_self(ptr: *const std::ffi::c_char) -> CString {
+        fn ptr_to_self(ptr: *const std::ffi::c_char) -> FFIString {
             unsafe { std::ffi::CStr::from_ptr(ptr) }
                 .to_str()
                 .unwrap_or_else(|err| {
@@ -75,10 +75,10 @@ impl From<*const std::ffi::c_char> for CString {
     }
 }
 
-unsafe impl Send for CString {}
-unsafe impl Sync for CString {}
+unsafe impl Send for FFIString {}
+unsafe impl Sync for FFIString {}
 
-impl Drop for CString {
+impl Drop for FFIString {
     fn drop(&mut self) {
         unsafe {
             drop(std::ffi::CString::from_raw(self.ptr));
@@ -86,7 +86,7 @@ impl Drop for CString {
     }
 }
 
-impl std::fmt::Debug for CString {
+impl std::fmt::Debug for FFIString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = unsafe { std::ffi::CString::from_raw(self.ptr) };
         write!(f, "{:?}", s)?;
@@ -95,7 +95,7 @@ impl std::fmt::Debug for CString {
     }
 }
 
-impl Clone for CString {
+impl Clone for FFIString {
     fn clone(&self) -> Self {
         let s = unsafe { std::ffi::CString::from_raw(self.ptr) };
         let out = Self {
@@ -106,16 +106,16 @@ impl Clone for CString {
     }
 }
 
-impl Default for CString {
+impl Default for FFIString {
     fn default() -> Self {
         Self::from(String::default())
     }
 }
 
-impl PartialEq for CString {
+impl PartialEq for FFIString {
     fn eq(&self, other: &Self) -> bool {
         self.as_str() == other.as_str()
     }
 }
 
-impl Eq for CString {}
+impl Eq for FFIString {}

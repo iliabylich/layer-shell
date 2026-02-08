@@ -1,37 +1,37 @@
-use crate::{CArray, CString};
+use crate::{FFIArray, FFIString};
 
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub enum TrayItem {
     Regular {
         id: i32,
-        uuid: CString,
-        label: CString,
+        uuid: FFIString,
+        label: FFIString,
     },
     Disabled {
         id: i32,
-        uuid: CString,
-        label: CString,
+        uuid: FFIString,
+        label: FFIString,
     },
     Checkbox {
         id: i32,
-        uuid: CString,
-        label: CString,
+        uuid: FFIString,
+        label: FFIString,
         checked: bool,
     },
     Radio {
         id: i32,
-        uuid: CString,
-        label: CString,
+        uuid: FFIString,
+        label: FFIString,
         selected: bool,
     },
     Nested {
         id: i32,
-        uuid: CString,
-        label: CString,
-        children: CArray<TrayItem>,
+        uuid: FFIString,
+        label: FFIString,
+        children: FFIArray<TrayItem>,
     },
     Section {
-        children: CArray<TrayItem>,
+        children: FFIArray<TrayItem>,
     },
 }

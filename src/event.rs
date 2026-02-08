@@ -1,5 +1,5 @@
 use crate::{
-    ffi::{CArray, CString},
+    ffi::{FFIArray, FFIString},
     modules::{HyprlandWorkspace, TrayIcon, TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour},
 };
 
@@ -12,50 +12,50 @@ pub enum Event {
         total: f64,
     },
     CpuUsage {
-        usage_per_core: CArray<u8>,
+        usage_per_core: FFIArray<u8>,
     },
     Clock {
-        time: CString,
+        time: FFIString,
     },
     Workspaces {
-        workspaces: CArray<HyprlandWorkspace>,
+        workspaces: FFIArray<HyprlandWorkspace>,
     },
     Language {
-        lang: CString,
+        lang: FFIString,
     },
     Weather {
         temperature: f32,
         code: WeatherCode,
-        hourly_forecast: CArray<WeatherOnHour>,
-        daily_forecast: CArray<WeatherOnDay>,
+        hourly_forecast: FFIArray<WeatherOnHour>,
+        daily_forecast: FFIArray<WeatherOnDay>,
     },
     NetworkSsid {
-        ssid: CString,
+        ssid: FFIString,
     },
     NetworkStrength {
         strength: u8,
     },
     UploadSpeed {
-        speed: CString,
+        speed: FFIString,
     },
     DownloadSpeed {
-        speed: CString,
+        speed: FFIString,
     },
     TrayAppAdded {
-        service: CString,
-        items: CArray<TrayItem>,
+        service: FFIString,
+        items: FFIArray<TrayItem>,
         icon: TrayIcon,
     },
     TrayAppIconUpdated {
-        service: CString,
+        service: FFIString,
         icon: TrayIcon,
     },
     TrayAppMenuUpdated {
-        service: CString,
-        items: CArray<TrayItem>,
+        service: FFIString,
+        items: FFIArray<TrayItem>,
     },
     TrayAppRemoved {
-        service: CString,
+        service: FFIString,
     },
     ToggleSessionScreen,
     ReloadStyles,
