@@ -18,4 +18,8 @@ pub(crate) use memory::Memory;
 pub(crate) use network::Network;
 pub(crate) use sound::Sound;
 pub(crate) use tray::Tray;
-pub(crate) use weather::{Weather, WeatherCode, WeatherOnDay, WeatherOnHour};
+pub(crate) use weather::Weather;
+
+pub use hyprland::HyprlandWorkspace;
+pub use tray::{TrayIcon, TrayIconPixmap, TrayItem};
+pub use weather::{WeatherCode, WeatherOnDay, WeatherOnHour};

@@ -1,7 +1,4 @@
-use crate::{
-    event::{Event, Workspace},
-    modules::hyprland::event::HyprlandEvent,
-};
+use crate::{event::Event, modules::hyprland::event::HyprlandEvent};
 use std::collections::HashSet;
 
 #[derive(Default)]
@@ -28,7 +25,7 @@ impl HyprlandState {
 
     fn workspaces_event(&self) -> Event {
         let workspaces = (1..=10)
-            .map(|id| Workspace {
+            .map(|id| HyprlandWorkspace {
                 visible: id <= 5 || self.workspace_ids.contains(&id),
                 active: self.active_workspace_id == id,
             })
@@ -68,4 +65,11 @@ impl HyprlandState {
         self.lang = lang;
         self.language_event()
     }
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct HyprlandWorkspace {
+    pub visible: bool,
+    pub active: bool,
 }

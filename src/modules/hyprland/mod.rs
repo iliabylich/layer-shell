@@ -1,6 +1,7 @@
 use crate::{Event, modules::hyprland::writer::CapsLock};
 use reader::HyprlandReader;
 use state::HyprlandState;
+pub use state::HyprlandWorkspace;
 use std::collections::VecDeque;
 use writer::{
     ActiveWorkspaceResource, DevicesResource, Dispatch, HyprlandWriter, WorkspaceListResource,

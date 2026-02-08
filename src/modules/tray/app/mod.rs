@@ -8,14 +8,14 @@ use crate::dbus::{
 use anyhow::{Result, anyhow};
 use std::borrow::Cow;
 
-pub(crate) struct TrayApp {
+pub(crate) struct App {
     address: String,
     get_all_props: Oneshot<GetAllPropsOneshot>,
     new_icon: Oneshot<NewIcon>,
     subscription: Subscription<AllPropsSubscription>,
 }
 
-impl TrayApp {
+impl App {
     pub(crate) fn new(name: String) -> Self {
         Self {
             address: name,

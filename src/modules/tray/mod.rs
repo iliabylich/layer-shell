@@ -2,20 +2,24 @@ use crate::{
     Event,
     dbus::{DBus, Message},
 };
+use app::App;
+pub use icon::{TrayIcon, TrayIconPixmap};
+pub use item::TrayItem;
 use name_lost_or_changed::NameLostOrNameOwnerChanged;
 use status_notifier_watcher::StatusNotifierWatcher;
 use std::collections::HashMap;
-use tray_app::TrayApp;
 
+mod app;
+mod icon;
+mod item;
 mod name_lost_or_changed;
 mod status_notifier_watcher;
 mod status_notifier_watcher_introspection;
-mod tray_app;
 
 pub(crate) struct Tray {
     status_notifier_watcher: StatusNotifierWatcher,
     name_lost_or_changed: NameLostOrNameOwnerChanged,
-    registry: HashMap<String, TrayApp>,
+    registry: HashMap<String, App>,
 }
 
 impl Tray {
@@ -40,7 +44,7 @@ impl Tray {
     ) {
         if let Some(address) = self.status_notifier_watcher.on_message(dbus, message) {
             log::error!("Added {address}");
-            let mut tray_app = TrayApp::new(address.clone());
+            let mut tray_app = App::new(address.clone());
             tray_app.init(dbus);
             self.registry.insert(address, tray_app);
         }

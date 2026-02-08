@@ -1,6 +1,6 @@
 use crate::{
     ffi::{CArray, CString},
-    modules::{WeatherCode, WeatherOnDay, WeatherOnHour},
+    modules::{HyprlandWorkspace, TrayIcon, TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour},
 };
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub enum Event {
         time: CString,
     },
     Workspaces {
-        workspaces: CArray<Workspace>,
+        workspaces: CArray<HyprlandWorkspace>,
     },
     Language {
         lang: CString,
@@ -41,10 +41,22 @@ pub enum Event {
     DownloadSpeed {
         speed: CString,
     },
-    // TrayAppAdded(TrayAppAddedEvent),
-    // TrayAppIconUpdated(TrayAppIconUpdatedEvent),
-    // TrayAppMenuUpdated(TrayAppMenuUpdatedEvent),
-    // TrayAppRemoved(TrayAppRemovedEvent),
+    TrayAppAdded {
+        service: CString,
+        items: CArray<TrayItem>,
+        icon: TrayIcon,
+    },
+    TrayAppIconUpdated {
+        service: CString,
+        icon: TrayIcon,
+    },
+    TrayAppMenuUpdated {
+        service: CString,
+        items: CArray<TrayItem>,
+    },
+    TrayAppRemoved {
+        service: CString,
+    },
     ToggleSessionScreen,
     ReloadStyles,
     CapsLockToggled {
@@ -61,11 +73,4 @@ pub enum Event {
         volume: u32,
         muted: bool,
     },
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct Workspace {
-    pub visible: bool,
-    pub active: bool,
 }

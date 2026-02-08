@@ -2,7 +2,7 @@ use crate::{
     Event, https::HttpsConnection, modules::weather::weather_response::WeatherResponse,
     timerfd::Tick, user_data::ModuleId,
 };
-pub(crate) use weather_code::WeatherCode;
+pub use weather_code::WeatherCode;
 pub use weather_response::{WeatherOnDay, WeatherOnHour};
 
 mod weather_code;
