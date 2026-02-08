@@ -1,11 +1,16 @@
 use crate::{FFIArray, FFIString};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[repr(C)]
 pub enum TrayIcon {
-    Path { path: FFIString },
-    Name { name: FFIString },
+    Path {
+        path: FFIString,
+    },
+    Name {
+        name: FFIString,
+    },
     Pixmap(TrayIconPixmap),
+    #[default]
     Unset,
 }
 
