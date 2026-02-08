@@ -1,3 +1,5 @@
+use crate::macros::report_and_exit;
+
 pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use generated::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
@@ -16,8 +18,7 @@ fn checkerr(errno: i32) {
     if errno < 0 {
         let str = unsafe { strerror(errno) };
         let str = unsafe { std::ffi::CStr::from_ptr(str) }.to_string_lossy();
-        log::error!("IoUring error: {str:?}");
-        std::process::exit(1);
+        report_and_exit!("IoUring error: {str:?}")
     }
 }
 
@@ -64,8 +65,7 @@ impl IoUring {
     pub(crate) fn get_sqe() -> Sqe {
         let sqe = unsafe { __liburing_get_sqe(ring_get()) };
         if sqe.is_null() {
-            log::error!("got NULL from io_uring_get_sqe");
-            std::process::exit(1);
+            report_and_exit!("got NULL from io_uring_get_sqe");
         }
         dirty_set(true);
         Sqe { sqe }
@@ -93,8 +93,7 @@ impl IoUring {
         let errno = unsafe { __liburing_wait_cqe(ring_get(), &mut cqe) };
         checkerr(errno);
         if cqe.is_null() {
-            log::error!("got NULL from io_uring_wait_cqe");
-            std::process::exit(1)
+            report_and_exit!("got NULL from io_uring_wait_cqe");
         }
         Cqe { cqe }
     }
@@ -108,8 +107,7 @@ impl IoUring {
         }
         checkerr(errno);
         if cqe.is_null() {
-            log::error!("got NULL from io_uring_wait_cqe_timeout");
-            std::process::exit(1)
+            report_and_exit!("got NULL from io_uring_wait_cqe_timeout")
         }
         Some(Cqe { cqe })
     }

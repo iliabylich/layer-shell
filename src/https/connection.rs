@@ -1,6 +1,7 @@
 use super::fsm::{FSM, Request, Response, Wants};
 use crate::{
     liburing::IoUring,
+    macros::report_and_exit,
     user_data::{ModuleId, UserData},
 };
 use anyhow::{Result, bail};
@@ -37,8 +38,7 @@ const MAX_OP: u8 = Op::Close as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            log::error!("unsupported op in HttpsConnection: {value}");
-            std::process::exit(1);
+            report_and_exit!("unsupported op in HttpsConnection: {value}")
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }

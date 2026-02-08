@@ -1,5 +1,6 @@
 use crate::{
     liburing::IoUring,
+    macros::report_and_exit,
     user_data::{ModuleId, UserData},
 };
 
@@ -18,8 +19,7 @@ const MAX_OP: u8 = Op::WriteBegin as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            log::error!("unsupported op in DBus Auth: {value}");
-            std::process::exit(1);
+            report_and_exit!("unsupported op in DBus Auth: {value}");
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }

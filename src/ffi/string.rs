@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::macros::report_and_exit;
+
 #[repr(transparent)]
 pub struct FFIString {
     pub ptr: *mut std::ffi::c_char,
@@ -9,10 +11,7 @@ impl FFIString {
     pub(crate) fn as_str(&self) -> &str {
         unsafe { std::ffi::CStr::from_ptr(self.ptr.cast()) }
             .to_str()
-            .unwrap_or_else(|err| {
-                log::error!("{:?}", err);
-                std::process::exit(1)
-            })
+            .unwrap_or_else(|err| report_and_exit!("{:?}", err))
     }
 
     pub(crate) fn into_raw(self) -> *mut std::ffi::c_char {
@@ -29,10 +28,7 @@ impl FFIString {
 
 impl From<String> for FFIString {
     fn from(s: String) -> Self {
-        let cstring = std::ffi::CString::new(s).unwrap_or_else(|err| {
-            log::error!("{:?}", err);
-            std::process::exit(1)
-        });
+        let cstring = std::ffi::CString::new(s).unwrap_or_else(|err| report_and_exit!("{:?}", err));
         Self {
             ptr: cstring.into_raw(),
         }
@@ -43,10 +39,7 @@ impl From<FFIString> for String {
     fn from(s: FFIString) -> Self {
         let out = unsafe { std::ffi::CString::from_raw(s.ptr) }
             .to_str()
-            .unwrap_or_else(|err| {
-                log::error!("{:?}", err);
-                std::process::exit(1)
-            })
+            .unwrap_or_else(|err| report_and_exit!("{:?}", err))
             .to_string();
         std::mem::forget(s);
         out
@@ -64,10 +57,7 @@ impl From<*const std::ffi::c_char> for FFIString {
         fn ptr_to_self(ptr: *const std::ffi::c_char) -> FFIString {
             unsafe { std::ffi::CStr::from_ptr(ptr) }
                 .to_str()
-                .unwrap_or_else(|err| {
-                    log::error!("{:?}", err);
-                    std::process::exit(1)
-                })
+                .unwrap_or_else(|err| report_and_exit!("{:?}", err))
                 .to_string()
                 .into()
         }

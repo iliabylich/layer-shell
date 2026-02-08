@@ -1,6 +1,7 @@
 use crate::{
     UserData,
     liburing::IoUring,
+    macros::report_and_exit,
     modules::hyprland::{array_writer::ArrayWriter, hyprland_instance_signature, xdg_runtime_dir},
     user_data::ModuleId,
 };
@@ -156,8 +157,7 @@ const MAX_OP: u8 = Op::Close as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            log::error!("unsupported op in HyprlandWriterOp: {value}");
-            std::process::exit(1);
+            report_and_exit!("unsupported op in HyprlandWriterOp: {value}")
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }
@@ -221,10 +221,8 @@ impl HyprlandWriter {
 
     fn schedule_write(&mut self) {
         let mut writer = ArrayWriter::new(&mut self.buf);
-        write!(&mut writer, "{}", self.resource.command()).unwrap_or_else(|err| {
-            log::error!("failed to write command to buffer: {err:?}");
-            std::process::exit(1);
-        });
+        write!(&mut writer, "{}", self.resource.command())
+            .unwrap_or_else(|err| report_and_exit!("failed to write command to buffer: {err:?}"));
         let buflen = writer.offset();
 
         let mut sqe = IoUring::get_sqe();

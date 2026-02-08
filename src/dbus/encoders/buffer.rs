@@ -1,5 +1,7 @@
 use anyhow::Context as _;
 
+use crate::macros::report_and_exit;
+
 #[derive(Debug)]
 pub(crate) struct EncodingBuffer {
     buf: Vec<u8>,
@@ -66,8 +68,7 @@ impl EncodingBuffer {
             .get_mut(at)
             .context("out of bounds")
             .unwrap_or_else(|err| {
-                log::error!("{err:?}");
-                std::process::exit(1);
+                report_and_exit!("{err:?}");
             }) = value;
     }
 
@@ -75,10 +76,7 @@ impl EncodingBuffer {
         self.buf
             .get_mut(at..at + 4)
             .context("out of bounds")
-            .unwrap_or_else(|err| {
-                log::error!("{err:?}");
-                std::process::exit(1);
-            })
+            .unwrap_or_else(|err| report_and_exit!("{err:?}"))
             .copy_from_slice(&value.to_le_bytes());
     }
 }

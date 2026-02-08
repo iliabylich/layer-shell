@@ -1,5 +1,7 @@
 use std::cell::Cell;
 
+use crate::macros::report_and_exit;
+
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum ModuleId {
@@ -33,8 +35,7 @@ impl From<ModuleId> for u8 {
 impl From<u8> for ModuleId {
     fn from(value: u8) -> Self {
         if value > MAX as u8 {
-            log::error!("received malformed ModuleId from io_uring: {value}");
-            std::process::exit(1);
+            report_and_exit!("received malformed ModuleId from io_uring: {value}");
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }

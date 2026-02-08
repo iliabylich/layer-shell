@@ -1,5 +1,6 @@
 use crate::{
     liburing::IoUring,
+    macros::report_and_exit,
     user_data::{ModuleId, UserData},
 };
 use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
@@ -24,8 +25,7 @@ const MAX_OP: u8 = Op::Read as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            log::error!("unsupported op in TimerFdOp: {value}");
-            std::process::exit(1);
+            report_and_exit!("unsupported op in TimerFdOp: {value}")
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }
@@ -36,11 +36,10 @@ impl Timerfd {
         let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
         if fd == -1 {
-            log::error!(
+            report_and_exit!(
                 "timerfd_create returned -1: {}",
                 std::io::Error::last_os_error()
-            );
-            std::process::exit(1)
+            )
         }
 
         let timer_spec = itimerspec {
@@ -61,11 +60,10 @@ impl Timerfd {
 
         let res = unsafe { timerfd_settime(this.fd, 0, &timer_spec, null_mut()) };
         if res == -1 {
-            log::error!(
+            report_and_exit!(
                 "timerfd_settime returned -1: {}",
                 std::io::Error::last_os_error()
-            );
-            std::process::exit(1);
+            )
         }
 
         Box::new(this)

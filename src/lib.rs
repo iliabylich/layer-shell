@@ -5,6 +5,7 @@ mod event;
 mod ffi;
 mod https;
 mod liburing;
+mod macros;
 mod modules;
 mod timerfd;
 mod user_data;
@@ -19,6 +20,7 @@ use std::ffi::c_void;
 use crate::{
     dbus::{DBus, messages::org_freedesktop_dbus::Hello},
     liburing::IoUring,
+    macros::report_and_exit,
     modules::{
         CPU, Clock, Control, ControlRequest, Hyprland, Location, Memory, Network, Sound, Tray,
         Weather,
@@ -103,17 +105,12 @@ impl IO {
     }
 
     fn new(on_event: extern "C" fn(event: *const Event)) -> Self {
-        Self::try_new(on_event).unwrap_or_else(|err| {
-            log::error!("{err:?}");
-            std::process::exit(1);
-        })
+        Self::try_new(on_event).unwrap_or_else(|err| report_and_exit!("{err:?}"))
     }
 
     fn from_raw(ptr: *mut c_void) -> &'static mut Self {
-        unsafe { ptr.cast::<Self>().as_mut() }.unwrap_or_else(|| {
-            log::error!("NULL IO pointer given to IO::from_raw()");
-            std::process::exit(1);
-        })
+        unsafe { ptr.cast::<Self>().as_mut() }
+            .unwrap_or_else(|| report_and_exit!("NULL IO pointer given to IO::from_raw()"))
     }
 
     fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {

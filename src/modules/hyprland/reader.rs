@@ -1,6 +1,7 @@
 use crate::{
     UserData,
     liburing::IoUring,
+    macros::report_and_exit,
     modules::hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
     user_data::ModuleId,
 };
@@ -25,8 +26,7 @@ const MAX_OP: u8 = Op::Read as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            log::error!("unsupported op in HyprlandReaderOp: {value}");
-            std::process::exit(1);
+            report_and_exit!("unsupported op in HyprlandReaderOp: {value}")
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }

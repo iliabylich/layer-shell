@@ -1,4 +1,4 @@
-use crate::{Event, UserData, liburing::IoUring, user_data::ModuleId};
+use crate::{Event, UserData, liburing::IoUring, macros::report_and_exit, user_data::ModuleId};
 use libc::{AT_FDCWD, O_RDONLY};
 use parser::Parser;
 use store::Store;
@@ -25,8 +25,7 @@ const MAX_OP: u8 = Op::Read as u8;
 impl From<u8> for Op {
     fn from(value: u8) -> Self {
         if value > MAX_OP {
-            log::error!("unsupported op in CPUOp: {value}");
-            std::process::exit(1);
+            report_and_exit!("unsupported op in CPUOp: {value}")
         }
         unsafe { std::mem::transmute::<u8, Self>(value) }
     }
