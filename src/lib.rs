@@ -44,7 +44,9 @@ struct IO {
     control: Box<Control>,
     network: Box<Network>,
     tray: Box<Tray>,
+
     on_event: extern "C" fn(event: *const Event),
+    running: bool,
 }
 
 impl IO {
@@ -69,7 +71,9 @@ impl IO {
             control: Control::new(),
             network: Network::new(),
             tray: Tray::new(),
+
             on_event,
+            running: true,
         };
 
         this.init();
@@ -125,6 +129,10 @@ impl IO {
     }
 
     fn handle_readable(&mut self) {
+        if !self.running {
+            return;
+        }
+
         let mut events = vec![];
 
         while let Some(cqe) = IoUring::try_get_cqe() {
@@ -200,11 +208,11 @@ impl IO {
             IoUring::cqe_seen(cqe);
         }
 
+        IoUring::submit_if_dirty();
+
         for event in events {
             (self.on_event)(&event);
         }
-
-        IoUring::submit_if_dirty();
     }
 
     fn wait_readable(&mut self) {
@@ -212,6 +220,10 @@ impl IO {
     }
 
     fn process_command(&mut self, cmd: Command) {
+        if !self.running {
+            return;
+        }
+
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
                 self.hyprland.dispatch(format!($($arg)*), );
@@ -253,6 +265,11 @@ impl IO {
             }
         }
     }
+
+    fn deinit(&mut self) {
+        self.running = false;
+        IoUring::deinit();
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -263,8 +280,8 @@ pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event)) -> *mut 
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_deinit() {
-    IoUring::deinit();
+pub extern "C" fn io_deinit(io: *mut c_void) {
+    IO::from_raw(io).deinit();
 }
 
 #[unsafe(no_mangle)]

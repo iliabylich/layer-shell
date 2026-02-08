@@ -157,7 +157,7 @@ static void on_event(const IO_Event *event) {
   }
   case IO_Event_Exit: {
     LOG("Received exit...");
-    // io_finalize();
+    io_deinit(io);
     LOG("Removing windows...");
     remove_window(&top_bar);
     remove_window(&weather_window);
@@ -196,18 +196,6 @@ static void on_network_settings_clicked() { io_spawn_wifi_editor(io); }
 
 static void on_network_ping_clicked() {
   ping_window_toggle(PING_WINDOW(ping_window));
-}
-
-static void on_network_address_clicked(Network *, const char *ip) {
-  GdkDisplay *display = gdk_display_get_default();
-  GdkClipboard *clipboard = gdk_display_get_clipboard(display);
-  gdk_clipboard_set_text(clipboard, ip);
-
-  char buf[100];
-  checked_fmt(buf, "Copied %s", ip);
-
-  GNotification *notification = g_notification_new(buf);
-  g_application_send_notification(G_APPLICATION(app), NULL, notification);
 }
 
 static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(io); }
