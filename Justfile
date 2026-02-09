@@ -1,6 +1,3 @@
-dbus-generate:
-    ./dbus/generate.sh
-
 liburing-generate:
     bindgen \
         src/liburing-wrapper.h \

@@ -7,6 +7,7 @@ use crate::{
     macros::define_op,
     user_data::{ModuleId, UserData},
 };
+use anyhow::{Context as _, Result, ensure};
 
 define_op!("DBus Reader", ReadHeader, ReadBody);
 
@@ -93,27 +94,10 @@ impl Reader {
         self.schedule_read_header()
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<Message<'static>> {
-        if !self.healthy {
-            return None;
-        }
-
-        let op = Op::from(op);
-
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("DBusReader({:?})::{op:?}", self.kind);
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return None;
-                }
-            };
-        }
-
+    fn try_process(&mut self, op: Op, res: i32) -> Result<Option<Message<'static>>> {
         match op {
             Op::ReadHeader => {
-                assert_or_unhealthy!(res > 0, "res is {res}");
+                ensure!(res > 0);
                 let bytes_read = res as usize;
                 assert_eq!(bytes_read, HEADER_LEN);
                 self.buf.got_bytes(bytes_read);
@@ -121,36 +105,47 @@ impl Reader {
 
                 let mut buf = DecodingBuffer::new(buf);
 
-                let header = HeaderDecoder::decode(&mut buf);
-                assert_or_unhealthy!(header.is_ok(), "header decoding error: {header:?}");
-                let header = unsafe { header.unwrap_unchecked() };
-
-                let header_fields_len = buf.peek_u32();
-                assert_or_unhealthy!(header_fields_len.is_some(), "failed to read u32");
-                let header_fields_len = unsafe { header_fields_len.unwrap_unchecked() } as usize;
+                let header = HeaderDecoder::decode(&mut buf).context("header decoding error")?;
+                let header_fields_len = buf.peek_u32().context("failed to read u32")? as usize;
 
                 let body_len = header_fields_len.next_multiple_of(8) + header.body_len;
                 self.buf.set_body_len(body_len);
                 self.schedule_read_body();
-                None
+                Ok(None)
             }
             Op::ReadBody => {
-                assert_or_unhealthy!(res >= 0, "res is {res}");
+                ensure!(res >= 0);
                 let bytes_read = res as usize;
                 self.buf.got_bytes(bytes_read);
 
                 if bytes_read == 0 {
-                    let message = MessageDecoder::decode(self.buf.as_slice());
-                    assert_or_unhealthy!(message.is_ok(), "mesage decoding error: {message:?}");
-                    let message = unsafe { message.unwrap_unchecked() };
+                    let message =
+                        MessageDecoder::decode(self.buf.as_slice()).context("decoding error")?;
 
                     self.buf = Buffer::new();
                     self.schedule_read_header();
-                    Some(message)
+                    Ok(Some(message))
                 } else {
                     self.schedule_read_body();
-                    None
+                    Ok(None)
                 }
+            }
+        }
+    }
+
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<Message<'static>> {
+        if !self.healthy {
+            return None;
+        }
+
+        let op = Op::from(op);
+
+        match self.try_process(op, res) {
+            Ok(ok) => ok,
+            Err(err) => {
+                log::error!("DBusReader({:?})::{op:?}({res} {err:?}", self.kind);
+                self.healthy = false;
+                None
             }
         }
     }

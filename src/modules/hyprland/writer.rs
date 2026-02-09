@@ -5,7 +5,7 @@ use crate::{
     modules::hyprland::{array_writer::ArrayWriter, hyprland_instance_signature, xdg_runtime_dir},
     user_data::ModuleId,
 };
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 use serde::Deserialize;
@@ -228,6 +228,42 @@ impl HyprlandWriter {
         self.schedule_socket()
     }
 
+    fn try_process(&mut self, op: Op, res: i32) -> Result<Option<WriterReply>> {
+        match op {
+            Op::Socket => {
+                ensure!(res > 0);
+                self.fd = res;
+                self.schedule_connect();
+                Ok(None)
+            }
+            Op::Connect => {
+                ensure!(res >= 0);
+                self.schedule_write();
+                Ok(None)
+            }
+            Op::Write => {
+                ensure!(res >= 0);
+                self.schedule_read();
+                Ok(None)
+            }
+            Op::Read => {
+                ensure!(res > 0);
+                let len = res as usize;
+
+                let json = std::str::from_utf8(&self.buf[..len]).context("decoding error")?;
+                let reply = self.resource.parse(json).context("parse error")?;
+
+                self.reply = Some(reply);
+                self.schedule_close();
+                Ok(None)
+            }
+            Op::Close => {
+                ensure!(res >= 0, "res is {res}");
+                Ok(self.reply.take())
+            }
+        }
+    }
+
     pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<WriterReply> {
         if !self.healthy {
             return None;
@@ -235,52 +271,13 @@ impl HyprlandWriter {
 
         let op = Op::from(op);
 
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("Hyprland::Writer::{op:?}");
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return None;
-                }
-            };
-        }
-
-        match op {
-            Op::Socket => {
-                assert_or_unhealthy!(res > 0, "res = {res}");
-                self.fd = res;
-                self.schedule_connect();
-            }
-            Op::Connect => {
-                assert_or_unhealthy!(res >= 0, "res = {res}");
-                self.schedule_write();
-            }
-            Op::Write => {
-                assert_or_unhealthy!(res >= 0, "res = {res}");
-                self.schedule_read();
-            }
-            Op::Read => {
-                assert_or_unhealthy!(res > 0, "res = {res}");
-                let len = res as usize;
-
-                let json = std::str::from_utf8(&self.buf[..len]);
-                assert_or_unhealthy!(json.is_ok(), "decoding error: {json:?}");
-                let json = unsafe { json.unwrap_unchecked() };
-
-                let reply = self.resource.parse(json);
-                assert_or_unhealthy!(reply.is_ok(), "parse error: {reply:?}");
-                let reply = unsafe { reply.unwrap_unchecked() };
-
-                self.reply = Some(reply);
-                self.schedule_close();
-            }
-            Op::Close => {
-                assert_or_unhealthy!(res >= 0, "res is {res}");
-                return self.reply.take();
+        match self.try_process(op, res) {
+            Ok(ok) => ok,
+            Err(err) => {
+                log::error!("Hyprland::Writer::{op:?}({res} {err:?}");
+                self.healthy = false;
+                None
             }
         }
-
-        None
     }
 }

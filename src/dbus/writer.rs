@@ -4,6 +4,7 @@ use crate::{
     macros::define_op,
     user_data::{ModuleId, UserData},
 };
+use anyhow::{Result, ensure};
 
 define_op!("DBus Writer", Write);
 
@@ -43,6 +44,21 @@ impl Writer {
         self.schedule_write();
     }
 
+    fn try_process(&self, op: Op, res: i32) -> Result<()> {
+        match op {
+            Op::Write => {
+                ensure!(res >= 0);
+                let written = res as usize;
+                ensure!(
+                    written == self.buf.len(),
+                    "written is wrong: {written} vs {}",
+                    self.buf.len()
+                );
+                Ok(())
+            }
+        }
+    }
+
     pub(crate) fn process(&mut self, op: u8, res: i32) {
         if !self.healthy {
             return;
@@ -50,27 +66,9 @@ impl Writer {
 
         let op = Op::from(op);
 
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("DBusWriter({:?})::{op:?}", self.kind);
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return;
-                }
-            };
-        }
-
-        match op {
-            Op::Write => {
-                assert_or_unhealthy!(res >= 0, "res is {res}");
-                let written = res as usize;
-                assert_or_unhealthy!(
-                    written == self.buf.len(),
-                    "written is wrong: {written} vs {}",
-                    self.buf.len()
-                );
-            }
+        if let Err(err) = self.try_process(op, res) {
+            log::error!("DBusReader({:?})::{op:?}({res} {err:?}", self.kind);
+            self.healthy = false;
         }
     }
 }

@@ -11,7 +11,7 @@ pub(crate) use report_and_exit;
 macro_rules! define_op {
     ($name:expr, $($variant:ident),+ $(,)?) => {
         #[repr(u8)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         enum Op {
             $($variant),+
         }

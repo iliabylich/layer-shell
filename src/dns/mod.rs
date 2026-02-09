@@ -2,15 +2,15 @@ mod name;
 mod request;
 mod response;
 
-use libc::{AF_INET, SOCK_DGRAM, in_addr, sockaddr, sockaddr_in};
-use request::Request;
-use response::Response;
-
 use crate::{
     liburing::IoUring,
     macros::define_op,
     user_data::{ModuleId, UserData},
 };
+use anyhow::{Result, ensure};
+use libc::{AF_INET, SOCK_DGRAM, in_addr, sockaddr, sockaddr_in};
+use request::Request;
+use response::Response;
 
 const DNS_SERVER: u32 = 0x08_08_08_08;
 const DNS_PORT: u16 = 53;
@@ -95,45 +95,45 @@ impl DnsResolver {
         self.schedule_socket();
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<sockaddr_in> {
-        let op = Op::from(op);
-
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("DnsResolver({:?})::{op:?}", self.module_id);
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return None;
-                }
-            };
-        }
-
+    fn try_process(&mut self, op: Op, res: i32) -> Result<Option<sockaddr_in>> {
         match op {
             Op::Socket => {
-                assert_or_unhealthy!(res > 0, "res = {res}");
+                ensure!(res > 0);
                 self.fd = res;
                 self.schedule_connect();
-                None
+                Ok(None)
             }
             Op::Connect => {
-                assert_or_unhealthy!(res >= 0, "res = {res}");
+                ensure!(res >= 0);
                 self.schedule_write();
-                None
+                Ok(None)
             }
             Op::Write => {
-                assert_or_unhealthy!(res > 0, "res = {res}");
+                ensure!(res > 0);
                 self.schedule_read();
-                None
+                Ok(None)
             }
             Op::Read => {
-                assert_or_unhealthy!(res > 0, "res = {res}");
+                ensure!(res > 0);
                 let len = res as usize;
                 self.answer = Response::parse(&self.reply[..len]);
                 self.schedule_close();
+                Ok(None)
+            }
+            Op::Close => Ok(self.answer.take()),
+        }
+    }
+
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<sockaddr_in> {
+        let op = Op::from(op);
+
+        match self.try_process(op, res) {
+            Ok(ok) => ok,
+            Err(err) => {
+                log::error!("DnsResolver({:?})::{op:?}({res} {err:?}", self.module_id);
+                self.healthy = false;
                 None
             }
-            Op::Close => self.answer.take(),
         }
     }
 }

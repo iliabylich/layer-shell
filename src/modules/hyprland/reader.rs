@@ -5,6 +5,7 @@ use crate::{
     modules::hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
     user_data::ModuleId,
 };
+use anyhow::{Context as _, Result, ensure};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
 pub(crate) struct HyprlandReader {
@@ -73,6 +74,36 @@ impl HyprlandReader {
         self.schedule_socket()
     }
 
+    fn try_process(&mut self, op: Op, res: i32, events: &mut Vec<HyprlandEvent>) -> Result<()> {
+        match op {
+            Op::Socket => {
+                ensure!(res > 0);
+                self.fd = res;
+                self.schedule_connect();
+                Ok(())
+            }
+            Op::Connect => {
+                ensure!(res >= 0);
+                self.schedule_read();
+                Ok(())
+            }
+            Op::Read => {
+                ensure!(res > 0);
+                let len = res as usize;
+
+                let s = std::str::from_utf8(&self.buf[..len]).context("decoding error")?;
+                for line in s.lines() {
+                    if let Some(event) = HyprlandEvent::try_parse(line).context("parse error")? {
+                        events.push(event)
+                    };
+                }
+
+                self.schedule_read();
+                Ok(())
+            }
+        }
+    }
+
     pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<HyprlandEvent>) {
         if !self.healthy {
             return;
@@ -80,47 +111,9 @@ impl HyprlandReader {
 
         let op = Op::from(op);
 
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("Hyprland::Reader::{op:?}");
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return;
-                }
-            };
-        }
-
-        match op {
-            Op::Socket => {
-                assert_or_unhealthy!(res > 0, "res = {res}");
-                self.fd = res;
-                self.schedule_connect();
-            }
-            Op::Connect => {
-                assert_or_unhealthy!(res >= 0, "res = {res}");
-                self.schedule_read();
-            }
-            Op::Read => {
-                assert_or_unhealthy!(res > 0, "res = {res}");
-                let len = res as usize;
-
-                let s = std::str::from_utf8(&self.buf[..len]);
-                assert_or_unhealthy!(s.is_ok(), "decoding error: {s:?}");
-                let s = unsafe { s.unwrap_unchecked() };
-
-                for line in s.lines() {
-                    let event = HyprlandEvent::try_parse(line);
-                    assert_or_unhealthy!(event.is_ok(), "parse error: {event:?}");
-                    let event = unsafe { event.unwrap_unchecked() };
-
-                    if let Some(event) = event {
-                        events.push(event)
-                    };
-                }
-
-                self.schedule_read();
-            }
+        if let Err(err) = self.try_process(op, res, events) {
+            log::error!("Hyprland::Reader::{op:?}({res} {err:?}");
+            self.healthy = false;
         }
     }
 }

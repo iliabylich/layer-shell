@@ -4,7 +4,7 @@ use crate::{
     macros::define_op,
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, ensure};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
 pub(crate) struct Connector {
@@ -68,6 +68,21 @@ impl Connector {
         self.schedule_socket();
     }
 
+    fn try_process(&mut self, op: Op, res: i32) -> Result<Option<i32>> {
+        match op {
+            Op::Socket => {
+                ensure!(res > 0);
+                self.fd = res;
+                self.schedule_connect();
+                Ok(None)
+            }
+            Op::Connect => {
+                ensure!(res >= 0);
+                Ok(Some(self.fd))
+            }
+        }
+    }
+
     pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<i32> {
         if !self.healthy {
             return None;
@@ -75,27 +90,12 @@ impl Connector {
 
         let op = Op::from(op);
 
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("DBusConnector({:?})::{op:?}", self.kind);
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return None;
-                }
-            };
-        }
-
-        match op {
-            Op::Socket => {
-                assert_or_unhealthy!(res > 0, "res is {res}");
-                self.fd = res;
-                self.schedule_connect();
+        match self.try_process(op, res) {
+            Ok(ok) => ok,
+            Err(err) => {
+                log::error!("DBusConnector({:?})::{op:?}({res} {err:?}", self.kind);
+                self.healthy = false;
                 None
-            }
-            Op::Connect => {
-                assert_or_unhealthy!(res >= 0, "res is {res}");
-                Some(self.fd)
             }
         }
     }

@@ -1,4 +1,5 @@
 use crate::{Event, UserData, liburing::IoUring, macros::define_op, user_data::ModuleId};
+use anyhow::{Context as _, Result, ensure};
 use libc::{AT_FDCWD, O_RDONLY};
 use parser::Parser;
 
@@ -37,6 +38,27 @@ impl Memory {
         self.schedule_open();
     }
 
+    fn try_process(&mut self, op: Op, res: i32, events: &mut Vec<Event>) -> Result<()> {
+        match op {
+            Op::OpenAt => {
+                ensure!(res > 0);
+                self.fd = res;
+                Ok(())
+            }
+
+            Op::Read => {
+                ensure!(res > 0);
+                let len = res as usize;
+
+                let s = std::str::from_utf8(&self.buf[..len]).context("decoding error")?;
+                let (used, total) = Parser::parse(s).context("parse error")?;
+
+                events.push(Event::Memory { used, total });
+                Ok(())
+            }
+        }
+    }
+
     pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
         if !self.healthy {
             return;
@@ -44,37 +66,9 @@ impl Memory {
 
         let op = Op::from(op);
 
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("Memory::{op:?}");
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return;
-                }
-            };
-        }
-
-        match op {
-            Op::OpenAt => {
-                assert_or_unhealthy!(res > 0, "res is {res}");
-                self.fd = res;
-            }
-
-            Op::Read => {
-                assert_or_unhealthy!(res > 0, "res is {res}");
-                let len = res as usize;
-
-                let s = std::str::from_utf8(&self.buf[..len]);
-                assert_or_unhealthy!(s.is_ok(), "decoding error: {s:?}");
-                let s = unsafe { s.unwrap_unchecked() };
-
-                let data = Parser::parse(s);
-                assert_or_unhealthy!(data.is_ok(), "parse error: {data:?}");
-                let (used, total) = unsafe { data.unwrap_unchecked() };
-
-                events.push(Event::Memory { used, total });
-            }
+        if let Err(err) = self.try_process(op, res, events) {
+            log::error!("Memory::{op:?}({res} {err:?}");
+            self.healthy = false;
         }
     }
 

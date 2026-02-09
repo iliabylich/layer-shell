@@ -4,6 +4,7 @@ use crate::{
     macros::define_op,
     user_data::{ModuleId, UserData},
 };
+use anyhow::{Context as _, Result, ensure};
 use libc::{AF_INET, SOCK_STREAM, sockaddr_in};
 use rustls::pki_types::ServerName;
 
@@ -111,6 +112,48 @@ impl HttpsConnection {
         }
     }
 
+    fn try_process(&mut self, op: Op, res: i32) -> Result<Option<Response>> {
+        match op {
+            Op::Socket => {
+                ensure!(res > 0);
+                self.fd = res;
+                self.schedule_connect();
+                Ok(None)
+            }
+            Op::Connect => {
+                ensure!(res >= 0);
+                self.call_fsm();
+                Ok(None)
+            }
+            Op::Read => {
+                ensure!(res >= 0);
+                let read: usize = res as usize;
+                self.fsm
+                    .as_mut()
+                    .context("internal error: no FSM")?
+                    .done_reading(read);
+
+                self.call_fsm();
+                Ok(None)
+            }
+            Op::Write => {
+                ensure!(res >= 0);
+                let written = res as usize;
+                self.fsm
+                    .as_mut()
+                    .context("internal error: no FSM")?
+                    .done_writing(written);
+
+                self.call_fsm();
+                Ok(None)
+            }
+            Op::Close => {
+                log::warn!(target: "HTTPS", "HttpsConnection closed");
+                Ok(self.response.take())
+            }
+        }
+    }
+
     pub(crate) fn process(&mut self, op: u8, res: i32) -> Option<Response> {
         if !self.healthy {
             return None;
@@ -118,48 +161,12 @@ impl HttpsConnection {
 
         let op = Op::from(op);
 
-        macro_rules! assert_or_unhealthy {
-            ($cond:expr, $($arg:tt)*) => {
-                if !$cond {
-                    log::error!("HttpsConnection::{op:?}");
-                    log::error!($($arg)*);
-                    self.healthy = false;
-                    return None;
-                }
-            };
-        }
-
-        match op {
-            Op::Socket => {
-                assert_or_unhealthy!(res > 0, "res is {res}");
-                self.fd = res;
-                self.schedule_connect();
+        match self.try_process(op, res) {
+            Ok(ok) => ok,
+            Err(err) => {
+                log::error!("HttpsConnection::{op:?}({res} {err:?}");
+                self.healthy = false;
                 None
-            }
-            Op::Connect => {
-                assert_or_unhealthy!(res >= 0, "res is {res}");
-                self.call_fsm();
-                None
-            }
-            Op::Read => {
-                assert_or_unhealthy!(res >= 0, "res is {res}");
-                let read: usize = res as usize;
-                unsafe { self.fsm.as_mut().unwrap_unchecked() }.done_reading(read);
-
-                self.call_fsm();
-                None
-            }
-            Op::Write => {
-                assert_or_unhealthy!(res >= 0, "res is {res}");
-                let written = res as usize;
-                unsafe { self.fsm.as_mut().unwrap_unchecked() }.done_writing(written);
-
-                self.call_fsm();
-                None
-            }
-            Op::Close => {
-                log::warn!(target: "HTTPS", "HttpsConnection closed");
-                self.response.take()
             }
         }
     }
