@@ -3,7 +3,7 @@ use crate::{
     macros::{assert_or_exit, define_op},
     user_data::{ModuleId, UserData},
 };
-use libc::{CLOCK_MONOTONIC, close, itimerspec, timerfd_create, timerfd_settime, timespec};
+use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
 use std::ptr::null_mut;
 pub(crate) use tick::Tick;
 
@@ -27,33 +27,7 @@ impl Timerfd {
     }
 
     fn set_timer(&mut self) {
-        let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
-
-        assert_or_exit!(
-            fd != -1,
-            "timerfd_create returned -1: {}",
-            std::io::Error::last_os_error()
-        );
-
-        let timer_spec = itimerspec {
-            it_interval: timespec {
-                tv_sec: 1,
-                tv_nsec: 0,
-            },
-            it_value: timespec {
-                tv_sec: 0,
-                tv_nsec: 1,
-            },
-        };
-
-        let res = unsafe { timerfd_settime(fd, 0, &timer_spec, null_mut()) };
-        assert_or_exit!(
-            res != -1,
-            "timerfd_settime returned -1: {}",
-            std::io::Error::last_os_error()
-        );
-
-        self.fd = fd;
+        self.fd = create_timer();
     }
 
     pub(crate) fn init(&mut self) {
@@ -81,8 +55,32 @@ impl Timerfd {
     }
 }
 
-impl Drop for Timerfd {
-    fn drop(&mut self) {
-        unsafe { close(self.fd) };
-    }
+fn create_timer() -> i32 {
+    let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
+
+    assert_or_exit!(
+        fd != -1,
+        "timerfd_create returned -1: {}",
+        std::io::Error::last_os_error()
+    );
+
+    let timer_spec = itimerspec {
+        it_interval: timespec {
+            tv_sec: 1,
+            tv_nsec: 0,
+        },
+        it_value: timespec {
+            tv_sec: 0,
+            tv_nsec: 1,
+        },
+    };
+
+    let res = unsafe { timerfd_settime(fd, 0, &timer_spec, null_mut()) };
+    assert_or_exit!(
+        res != -1,
+        "timerfd_settime returned -1: {}",
+        std::io::Error::last_os_error()
+    );
+
+    fd
 }

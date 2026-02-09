@@ -82,24 +82,26 @@ impl HttpsConnection {
         self.schedule_socket();
     }
 
-    fn call_fsm(&mut self) {
+    fn call_fsm(&mut self) -> Result<()> {
         if !self.healthy {
-            return;
+            return Ok(());
         }
 
-        let Some(wants) = unsafe { self.fsm.as_mut().unwrap_unchecked() }.wants() else {
-            return;
+        let Some(wants) = self.fsm.as_mut().context("internal error: no FSM")?.wants() else {
+            return Ok(());
         };
         match wants {
             Wants::Read(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_read(self.fd, buf.as_mut_ptr(), buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::Read));
+                Ok(())
             }
             Wants::Write(buf) => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_write(self.fd, buf.as_ptr(), buf.len());
                 sqe.set_user_data(UserData::new(self.module_id, Op::Write));
+                Ok(())
             }
             Wants::Done(response) => {
                 assert!(self.response.is_none());
@@ -108,6 +110,7 @@ impl HttpsConnection {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_close(self.fd);
                 sqe.set_user_data(UserData::new(self.module_id, Op::Close));
+                Ok(())
             }
         }
     }
@@ -122,7 +125,7 @@ impl HttpsConnection {
             }
             Op::Connect => {
                 ensure!(res >= 0);
-                self.call_fsm();
+                self.call_fsm()?;
                 Ok(None)
             }
             Op::Read => {
@@ -133,7 +136,7 @@ impl HttpsConnection {
                     .context("internal error: no FSM")?
                     .done_reading(read);
 
-                self.call_fsm();
+                self.call_fsm()?;
                 Ok(None)
             }
             Op::Write => {
@@ -144,7 +147,7 @@ impl HttpsConnection {
                     .context("internal error: no FSM")?
                     .done_writing(written);
 
-                self.call_fsm();
+                self.call_fsm()?;
                 Ok(None)
             }
             Op::Close => {

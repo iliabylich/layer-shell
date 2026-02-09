@@ -2,6 +2,7 @@ use crate::{
     dbus::ConnectionKind,
     liburing::IoUring,
     macros::define_op,
+    unix_socket::{new_unix_socket, zero_unix_socket},
     user_data::{ModuleId, UserData},
 };
 use anyhow::{Context as _, Result, ensure};
@@ -26,7 +27,7 @@ impl Connector {
 
         Self {
             module_id,
-            addr: unsafe { std::mem::zeroed() },
+            addr: zero_unix_socket(),
             kind,
             fd: -1,
             healthy: true,
@@ -45,15 +46,7 @@ impl Connector {
             return;
         };
 
-        self.addr = sockaddr_un {
-            sun_family: AF_UNIX as u16,
-            sun_path: {
-                let path = unsafe { std::mem::transmute::<&[u8], &[i8]>(path.as_bytes()) };
-                let mut out = [0; 108];
-                out[..path.len()].copy_from_slice(path);
-                out
-            },
-        };
+        self.addr = new_unix_socket(path.as_bytes());
 
         let mut sqe = IoUring::get_sqe();
         sqe.prep_connect(

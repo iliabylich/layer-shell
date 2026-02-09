@@ -9,6 +9,7 @@ mod liburing;
 mod macros;
 mod modules;
 mod timerfd;
+mod unix_socket;
 mod user_data;
 
 use command::Command;

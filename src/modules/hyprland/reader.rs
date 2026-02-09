@@ -3,6 +3,7 @@ use crate::{
     liburing::IoUring,
     macros::define_op,
     modules::hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
+    unix_socket::{new_unix_socket, zero_unix_socket},
     user_data::ModuleId,
 };
 use anyhow::{Context as _, Result, ensure};
@@ -23,7 +24,7 @@ impl HyprlandReader {
             fd: -1,
             buf: [0; 1_024],
             healthy: true,
-            addr: unsafe { std::mem::zeroed() },
+            addr: zero_unix_socket(),
         })
     }
 
@@ -43,17 +44,10 @@ impl HyprlandReader {
             return;
         };
 
-        self.addr = sockaddr_un {
-            sun_family: AF_UNIX as u16,
-            sun_path: {
-                let path =
-                    format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket2.sock");
-                let path = unsafe { std::mem::transmute::<&[u8], &[i8]>(path.as_bytes()) };
-                let mut out = [0; 108];
-                out[..path.len()].copy_from_slice(path);
-                out
-            },
-        };
+        self.addr = new_unix_socket(
+            format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket2.sock")
+                .as_bytes(),
+        );
 
         let mut sqe = IoUring::get_sqe();
         sqe.prep_connect(
