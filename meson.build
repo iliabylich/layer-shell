@@ -37,6 +37,7 @@ executable(
         dependency('gtk4-layer-shell-0'),
         dependency('vte-2.91-gtk4'),
         dependency('liburing'),
+        dependency('openssl'),
     ],
     link_args: ['-lm'] + asan_options,
     c_pch: 'ui/pch/pch.h',

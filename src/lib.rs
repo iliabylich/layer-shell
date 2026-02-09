@@ -283,6 +283,9 @@ impl IO {
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event)) -> *mut c_void {
     pretty_env_logger::init();
+    rustls_openssl::default_provider()
+        .install_default()
+        .unwrap_or_else(|_| report_and_exit!("failed to install OpenSSL CryptoProvider"));
     IoUring::init(10, 0);
     (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
 }
