@@ -1,6 +1,7 @@
 mod command;
 mod config;
 mod dbus;
+mod dns;
 mod event;
 mod ffi;
 mod https;
@@ -134,14 +135,22 @@ impl IO {
             let UserData { module_id, op, .. } = UserData::from(user_data);
 
             match module_id {
-                ModuleId::GeoLocation => {
-                    if let Some((lat, lng)) = self.location.process(op, res) {
+                ModuleId::GeoLocationDNS => {
+                    self.location.process_dns(op, res);
+                }
+                ModuleId::GeoLocationHTTPS => {
+                    if let Some((lat, lng)) = self.location.process_https(op, res) {
                         self.weather.init(lat, lng);
                     }
                 }
-                ModuleId::Weather => {
-                    self.weather.process(op, res, &mut events);
+
+                ModuleId::WeatherDNS => {
+                    self.weather.process_dns(op, res);
                 }
+                ModuleId::WeatherHTTPS => {
+                    self.weather.process_https(op, res, &mut events);
+                }
+
                 ModuleId::HyprlandReader => {
                     self.hyprland.process_reader(op, res, &mut events);
                 }

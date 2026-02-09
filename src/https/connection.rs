@@ -4,18 +4,12 @@ use crate::{
     macros::define_op,
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Result, bail};
-use libc::{AF_INET, SOCK_STREAM, addrinfo, freeaddrinfo, gai_strerror, sockaddr_in};
+use libc::{AF_INET, SOCK_STREAM, sockaddr_in};
 use rustls::pki_types::ServerName;
-use std::{
-    ffi::{CStr, CString},
-    mem::MaybeUninit,
-    ptr::null_mut,
-};
 
 pub(crate) struct HttpsConnection {
     fsm: Option<FSM>,
-    addr: sockaddr_in,
+    address: sockaddr_in,
     healthy: bool,
 
     fd: i32,
@@ -27,7 +21,7 @@ pub(crate) struct HttpsConnection {
 define_op!("HttpsConnection", Socket, Connect, Read, Write, Close,);
 
 impl HttpsConnection {
-    pub(crate) fn get(hostname: &str, port: u16, path: &str, module_id: ModuleId) -> Self {
+    pub(crate) fn new(hostname: &str, path: &str, module_id: ModuleId) -> Self {
         let mut healthy = true;
 
         let fsm = match ServerName::try_from(hostname) {
@@ -54,21 +48,9 @@ impl HttpsConnection {
             }
         };
 
-        let addr = match getaddrinfo(hostname) {
-            Ok(mut addr) => {
-                addr.sin_port = port.to_be();
-                addr
-            }
-            Err(err) => {
-                log::error!("{err:?}");
-                healthy = false;
-                unsafe { std::mem::zeroed() }
-            }
-        };
-
         Self {
             fsm,
-            addr,
+            address: unsafe { std::mem::zeroed() },
             healthy,
 
             fd: -1,
@@ -87,13 +69,15 @@ impl HttpsConnection {
         let mut sqe = IoUring::get_sqe();
         sqe.prep_connect(
             self.fd,
-            (&self.addr as *const sockaddr_in).cast(),
+            (&self.address as *const sockaddr_in).cast(),
             std::mem::size_of::<sockaddr_in>() as u32,
         );
         sqe.set_user_data(UserData::new(self.module_id, Op::Connect));
     }
 
-    pub(crate) fn init(&self) {
+    pub(crate) fn init(&mut self, mut address: sockaddr_in, port: u16) {
+        address.sin_port = port.to_be();
+        self.address = address;
         self.schedule_socket();
     }
 
@@ -179,32 +163,4 @@ impl HttpsConnection {
             }
         }
     }
-}
-
-fn getaddrinfo(hostname: &str) -> Result<sockaddr_in> {
-    let node = CString::new(hostname)?;
-    let mut hints = unsafe { MaybeUninit::<addrinfo>::zeroed().assume_init() };
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    let mut result = null_mut();
-
-    let res = unsafe { libc::getaddrinfo(node.as_ptr(), null_mut(), &hints, &mut result) };
-    if res != 0 {
-        bail!("{}", unsafe { CStr::from_ptr(gai_strerror(res)) }.to_str()?)
-    }
-
-    let mut rp = result;
-    while !rp.is_null() {
-        if unsafe { *rp }.ai_family == AF_INET {
-            let ip = unsafe { *(*rp).ai_addr.cast::<sockaddr_in>() };
-            unsafe { freeaddrinfo(rp) }
-            return Ok(ip);
-        }
-
-        rp = (unsafe { *rp }).ai_next;
-    }
-    unsafe { freeaddrinfo(rp) }
-
-    bail!("failed to resolve DNS name: {hostname}")
 }
