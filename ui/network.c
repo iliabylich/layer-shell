@@ -68,7 +68,7 @@ static void network_init(Network *self) {
   self->upload_speed_label = gtk_label_new("??");
   gtk_widget_add_css_class(self->upload_speed_label, "network-speed-label");
 
-  GtkWidget *upload_speed_icon = gtk_label_new("󰇚");
+  GtkWidget *upload_speed_icon = gtk_label_new("󰕒");
   gtk_widget_add_css_class(upload_speed_icon, "network-icon");
 
   GtkWidget *wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
