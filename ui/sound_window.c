@@ -1,14 +1,11 @@
 #include "ui/sound_window.h"
-#include "ui/base_window.h"
 #include "ui/logger.h"
-#include <gtk4-layer-shell.h>
 
 LOGGER("SoundWindow", 0)
 
 struct _SoundWindow {
   GtkWidget parent_instance;
 
-  GtkWidget *root;
   GtkWidget *icon;
   GtkWidget *scale;
 
@@ -24,27 +21,7 @@ G_DEFINE_TYPE(SoundWindow, sound_window, BASE_WINDOW_TYPE)
 
 static void sound_window_init(SoundWindow *self) {
   LOG("init");
-
-  gtk_layer_init_for_window(GTK_WINDOW(self));
-  gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(GTK_WINDOW(self), "LayerShell/Sound");
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, true);
-  gtk_layer_set_margin(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, 100);
-  gtk_widget_add_css_class(GTK_WIDGET(self), "sound-window");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "notification-window");
-
-  self->root = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
-  gtk_widget_add_css_class(self->root, "wrapper");
-
-  self->icon = gtk_label_new("?");
-  gtk_box_append(GTK_BOX(self->root), self->icon);
-
-  self->scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
-  gtk_box_append(GTK_BOX(self->root), self->scale);
-  g_object_set(G_OBJECT(self->scale), "width-request", 300, NULL);
-
-  gtk_window_set_child(GTK_WINDOW(self), self->root);
-
+  gtk_widget_init_template(GTK_WIDGET(self));
   self->ready_to_show = false;
 }
 
@@ -58,6 +35,12 @@ static void sound_window_class_init(SoundWindowClass *klass) {
 
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->dispose = sound_window_dispose;
+
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
+  gtk_widget_class_set_template_from_resource(widget_class,
+                                              "/layer-shell/sound_window.ui");
+  gtk_widget_class_bind_template_child(widget_class, SoundWindow, icon);
+  gtk_widget_class_bind_template_child(widget_class, SoundWindow, scale);
 }
 
 GtkWidget *sound_window_new(GtkApplication *app) {

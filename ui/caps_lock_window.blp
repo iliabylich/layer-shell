@@ -1,0 +1,22 @@
+using Gtk 4.0;
+
+template $CapsLockWindow: $BaseWindow {
+  layer-namespace: "LayerShell/CapsLock";
+  anchor-bottom-margin: 100;
+  styles ["caps-lock-window", "notification-window"]
+  Box {
+    orientation: horizontal;
+    spacing: 20;
+    styles ["wrapper"]
+
+    Label icon {
+      label: "?";
+      styles ["icon"]
+    }
+
+    Label label {
+      label: "?";
+      styles ["status"]
+    }
+  }
+}

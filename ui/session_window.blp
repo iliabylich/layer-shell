@@ -1,0 +1,36 @@
+using Gtk 4.0;
+
+template $SessionWindow: $BaseWindow {
+  layer-namespace: "LayerShell/SessionScreen";
+  keyboard-exclusive: true;
+  toggle-on-escape: true;
+  width-request: 400;
+  height-request: 300;
+  styles ["session-window"]
+  Box {
+    orientation: vertical;
+    spacing: 20;
+    homogeneous: true;
+    styles ["wrapper"]
+
+    Button lock {
+      label: "Lock";
+      clicked => $on_lock() swapped;
+    }
+
+    Button reboot {
+      label: "Reboot";
+      clicked => $on_reboot() swapped;
+    }
+
+    Button shutdown {
+      label: "Shutdown";
+      clicked => $on_shutdown() swapped;
+    }
+
+    Button logout {
+      label: "Logout";
+      clicked => $on_logout() swapped;
+    }
+  }
+}

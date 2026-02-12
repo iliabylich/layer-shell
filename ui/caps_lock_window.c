@@ -1,14 +1,11 @@
 #include "ui/caps_lock_window.h"
-#include "ui/base_window.h"
 #include "ui/logger.h"
-#include <gtk4-layer-shell.h>
 
 LOGGER("CapsLockWindow", 0)
 
 struct _CapsLockWindow {
   GtkWidget parent_instance;
 
-  GtkWidget *root;
   GtkWidget *icon;
   GtkWidget *label;
 
@@ -21,27 +18,7 @@ G_DEFINE_TYPE(CapsLockWindow, caps_lock_window, BASE_WINDOW_TYPE)
 
 static void caps_lock_window_init(CapsLockWindow *self) {
   LOG("init");
-
-  gtk_layer_init_for_window(GTK_WINDOW(self));
-  gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_namespace(GTK_WINDOW(self), "LayerShell/CapsLock");
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, true);
-  gtk_layer_set_margin(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_BOTTOM, 100);
-  gtk_widget_add_css_class(GTK_WIDGET(self), "caps-lock-window");
-  gtk_widget_add_css_class(GTK_WIDGET(self), "notification-window");
-
-  self->root = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
-  gtk_widget_add_css_class(self->root, "wrapper");
-
-  self->icon = gtk_label_new("?");
-  gtk_widget_add_css_class(self->icon, "icon");
-  gtk_box_append(GTK_BOX(self->root), self->icon);
-
-  self->label = gtk_label_new("?");
-  gtk_widget_add_css_class(self->label, "status");
-  gtk_box_append(GTK_BOX(self->root), self->label);
-
-  gtk_window_set_child(GTK_WINDOW(self), self->root);
+  gtk_widget_init_template(GTK_WIDGET(self));
 }
 
 static void caps_lock_window_dispose(GObject *object) {
@@ -54,6 +31,12 @@ static void caps_lock_window_class_init(CapsLockWindowClass *klass) {
 
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->dispose = caps_lock_window_dispose;
+
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
+  gtk_widget_class_set_template_from_resource(
+      widget_class, "/layer-shell/caps_lock_window.ui");
+  gtk_widget_class_bind_template_child(widget_class, CapsLockWindow, icon);
+  gtk_widget_class_bind_template_child(widget_class, CapsLockWindow, label);
 }
 
 GtkWidget *caps_lock_window_new(GtkApplication *app) {

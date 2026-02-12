@@ -1,0 +1,32 @@
+using Gtk 4.0;
+
+template $WeatherWindow: $BaseWindow {
+  layer-namespace: "LayerShell/Weather";
+  keyboard-exclusive: true;
+  toggle-on-escape: true;
+  styles ["weather-window"]
+  Box {
+    orientation: horizontal;
+    spacing: 50;
+
+    Box {
+      orientation: vertical;
+
+      Label {
+        label: "Hourly";
+      }
+
+      Grid hourly {}
+    }
+
+    Box {
+      orientation: vertical;
+
+      Label {
+        label: "Daily";
+      }
+
+      Grid daily {}
+    }
+  }
+}

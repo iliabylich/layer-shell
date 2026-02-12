@@ -1,26 +1,14 @@
 #include "bindings.h"
-#include "ui/assertions.h"
-#include "ui/bluetooth.h"
+#include "ui/io_model.h"
 #include "ui/caps_lock_window.h"
-#include "ui/change_theme.h"
-#include "ui/clock.h"
-#include "ui/cpu.h"
 #include "ui/css.h"
-#include "ui/language.h"
 #include "ui/logger.h"
-#include "ui/memory.h"
-#include "ui/network.h"
 #include "ui/ping_window.h"
-#include "ui/power.h"
 #include "ui/session_window.h"
 #include "ui/sound_window.h"
-#include "ui/terminal.h"
 #include "ui/terminal_window.h"
 #include "ui/top_bar.h"
-#include "ui/tray.h"
-#include "ui/weather.h"
 #include "ui/weather_window.h"
-#include "ui/workspaces.h"
 #include <glib-unix.h>
 #include <gtk/gtk.h>
 
@@ -36,21 +24,9 @@ GtkWidget *session_window;
 GtkWidget *sound_window;
 GtkWidget *caps_lock_window;
 
-GtkWidget *workspaces;
-GtkWidget *change_theme;
-GtkWidget *tray;
-GtkWidget *weather;
-GtkWidget *terminal;
-GtkWidget *language;
-GtkWidget *cpu;
-GtkWidget *memory;
-GtkWidget *network;
-GtkWidget *bluetooth;
-GtkWidget *clock_;
-GtkWidget *power;
-
 void *io;
 const IO_IOConfig *config;
+IOModel *model;
 bool exiting = false;
 
 static void remove_window(GtkWidget **win) {
@@ -60,102 +36,81 @@ static void remove_window(GtkWidget **win) {
 
 static void on_event(const IO_Event *event) {
   switch (event->tag) {
-  case IO_Event_Workspaces: {
-    workspaces_refresh(WORKSPACES(workspaces), event->workspaces.workspaces);
+  case IO_Event_Workspaces:
+    io_model_set_workspaces(model, event->workspaces.workspaces);
     break;
-  }
-  case IO_Event_ReloadStyles: {
+  case IO_Event_ReloadStyles:
     css_reload();
     break;
-  }
-  case IO_Event_TrayAppAdded: {
-    tray_add_app(TRAY(tray), event->tray_app_added.service,
-                 event->tray_app_added.items, event->tray_app_added.icon);
+  case IO_Event_TrayAppAdded:
+    io_model_tray_add_app(model, event->tray_app_added.service,
+                          event->tray_app_added.icon,
+                          event->tray_app_added.items);
     break;
-  }
-  case IO_Event_TrayAppRemoved: {
-    tray_remove_app(TRAY(tray), event->tray_app_removed.service);
+  case IO_Event_TrayAppRemoved:
+    io_model_tray_remove_app(model, event->tray_app_removed.service);
     break;
-  }
-  case IO_Event_TrayAppIconUpdated: {
-    tray_update_icon(TRAY(tray), event->tray_app_icon_updated.service,
-                     event->tray_app_icon_updated.icon);
+  case IO_Event_TrayAppIconUpdated:
+    io_model_tray_set_icon(model, event->tray_app_icon_updated.service,
+                              event->tray_app_icon_updated.icon);
     break;
-  }
-  case IO_Event_TrayAppMenuUpdated: {
-    tray_update_menu(TRAY(tray), event->tray_app_menu_updated.service,
-                     event->tray_app_menu_updated.items);
+  case IO_Event_TrayAppMenuUpdated:
+    io_model_tray_set_menu(model, event->tray_app_menu_updated.service,
+                              event->tray_app_menu_updated.items);
     break;
-  }
-  case IO_Event_Weather: {
-    weather_refresh(WEATHER(weather), event->weather.temperature,
-                    event->weather.code);
+  case IO_Event_Weather:
+    io_model_set_weather(model, event->weather.temperature,
+                            event->weather.code);
     weather_window_refresh_hourly_forecast(WEATHER_WINDOW(weather_window),
                                            event->weather.hourly_forecast);
     weather_window_refresh_daily_forecast(WEATHER_WINDOW(weather_window),
                                           event->weather.daily_forecast);
     break;
-  }
-  case IO_Event_Language: {
-    language_refresh(LANGUAGE(language), event->language.lang);
+  case IO_Event_Language:
+    io_model_set_language(model, event->language.lang);
     break;
-  }
-  case IO_Event_CpuUsage: {
-    cpu_refresh(CPU(cpu), event->cpu_usage.usage_per_core);
+  case IO_Event_CpuUsage:
+    io_model_set_cpu(model, event->cpu_usage.usage_per_core);
     break;
-  }
-  case IO_Event_Memory: {
-    memory_refresh(MEMORY(memory), event->memory.used, event->memory.total);
+  case IO_Event_Memory:
+    io_model_set_memory(model, event->memory.used, event->memory.total);
     break;
-  }
-  case IO_Event_NetworkSsid: {
-    network_refresh_network_ssid(NETWORK(network), event->network_ssid.ssid);
+  case IO_Event_NetworkSsid:
+    io_model_set_network_ssid(model, event->network_ssid.ssid);
     break;
-  }
-  case IO_Event_NetworkStrength: {
-    network_refresh_network_strength(NETWORK(network),
-                                     event->network_strength.strength);
+  case IO_Event_NetworkStrength:
+    io_model_set_network_strength(model, event->network_strength.strength);
     break;
-  }
-  case IO_Event_DownloadSpeed: {
-    network_refresh_download_speed(NETWORK(network),
-                                   event->download_speed.speed);
+  case IO_Event_DownloadSpeed:
+    io_model_set_download_speed(model, event->download_speed.speed);
     break;
-  }
-  case IO_Event_UploadSpeed: {
-    network_refresh_upload_speed(NETWORK(network), event->upload_speed.speed);
+  case IO_Event_UploadSpeed:
+    io_model_set_upload_speed(model, event->upload_speed.speed);
     break;
-  }
-  case IO_Event_Clock: {
-    clock_refresh(CLOCK(clock_), event->clock.time);
+  case IO_Event_Clock:
+    io_model_set_clock_text(model, event->clock.time);
     break;
-  }
-  case IO_Event_ToggleSessionScreen: {
+  case IO_Event_ToggleSessionScreen:
     session_window_toggle(SESSION_WINDOW(session_window));
     break;
-  }
-  case IO_Event_InitialSound: {
+  case IO_Event_InitialSound:
     sound_window_set_initial_sound(SOUND_WINDOW(sound_window),
                                    event->initial_sound.volume,
                                    event->initial_sound.muted);
     break;
-  }
-  case IO_Event_VolumeChanged: {
+  case IO_Event_VolumeChanged:
     sound_window_refresh_volume(SOUND_WINDOW(sound_window),
                                 event->volume_changed.volume);
     break;
-  }
-  case IO_Event_MuteChanged: {
+  case IO_Event_MuteChanged:
     sound_window_refresh_mute(SOUND_WINDOW(sound_window),
                               event->mute_changed.muted);
     break;
-  }
-  case IO_Event_CapsLockToggled: {
+  case IO_Event_CapsLockToggled:
     caps_lock_window_refresh(CAPS_LOCK_WINDOW(caps_lock_window),
                              event->caps_lock_toggled.enabled);
     break;
-  }
-  case IO_Event_Exit: {
+  case IO_Event_Exit:
     LOG("Received exit...");
     io_deinit(io);
     LOG("Removing windows...");
@@ -169,116 +124,77 @@ static void on_event(const IO_Event *event) {
     exiting = true;
     break;
   }
-  }
 }
 
-static void on_workspace_switched(Workspaces *, guint idx) {
-  io_hyprland_go_to_workspace(io, idx);
+static gboolean on_new_events(gint, GIOCondition, gpointer);
+
+static void on_workspace_switched(TopBar *, guint num) {
+  io_hyprland_go_to_workspace(io, num);
 }
-
-static void on_theme_change_clicked() { io_change_theme(io); }
-
-static void on_tray_triggered(Tray *, const char *uuid) {
+static void on_change_theme_clicked() { io_change_theme(io); }
+static void on_tray_triggered(TopBar *, const char *uuid) {
   io_trigger_tray(io, uuid);
 }
-
 static void on_weather_clicked() {
   weather_window_toggle(WEATHER_WINDOW(weather_window));
 }
-
 static void on_terminal_clicked() {
   terminal_window_toggle(TERMINAL_WINDOW(terminal_window));
 }
-
 static void on_memory_clicked() { io_spawn_system_monitor(io); }
-
 static void on_network_settings_clicked() { io_spawn_wifi_editor(io); }
-
 static void on_network_ping_clicked() {
   ping_window_toggle(PING_WINDOW(ping_window));
 }
-
 static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(io); }
-
 static void on_power_clicked() {
   session_window_toggle(SESSION_WINDOW(session_window));
 }
-
 static void on_lock_clicked() { io_lock(io); }
 static void on_reboot_clicked() { io_reboot(io); }
 static void on_shutdown_clicked() { io_shutdown(io); }
 static void on_logout_clicked() { io_logout(io); }
 
 static void on_app_activate() {
+  model = io_model_new();
   top_bar = top_bar_new(app);
+  top_bar_set_model(TOP_BAR(top_bar), model);
+  top_bar_set_terminal_label(TOP_BAR(top_bar), config->terminal.label);
 
-#define CONNECT(widget, signal, callback)                                      \
-  g_signal_connect(widget, signal, G_CALLBACK(callback), NULL)
+#define CONNECT(signal, callback)                                              \
+  g_signal_connect(top_bar, signal, G_CALLBACK(callback), NULL)
 
-  workspaces = workspaces_new();
-  CONNECT(workspaces, "switched", on_workspace_switched);
-  top_bar_push_left(TOP_BAR(top_bar), workspaces);
-
-  change_theme = change_theme_new();
-  CONNECT(change_theme, "clicked", on_theme_change_clicked);
-  top_bar_push_left(TOP_BAR(top_bar), change_theme);
-
-  tray = tray_new();
-  CONNECT(tray, "triggered", on_tray_triggered);
-  top_bar_push_right(TOP_BAR(top_bar), tray);
-
-  weather = weather_new();
-  CONNECT(weather, "clicked", on_weather_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), weather);
-
-  terminal = terminal_new();
-  CONNECT(terminal, "clicked", on_terminal_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), terminal);
-
-  language = language_new();
-  top_bar_push_right(TOP_BAR(top_bar), language);
-
-  cpu = cpu_new();
-  top_bar_push_right(TOP_BAR(top_bar), cpu);
-
-  memory = memory_new();
-  CONNECT(memory, "clicked", on_memory_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), memory);
-
-  network = network_new();
-  CONNECT(network, "clicked-settings", on_network_settings_clicked);
-  CONNECT(network, "clicked-ping", on_network_ping_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), network);
-
-  bluetooth = bluetooth_new();
-  CONNECT(bluetooth, "clicked", on_bluetooth_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), bluetooth);
-
-  clock_ = clock_new();
-  top_bar_push_right(TOP_BAR(top_bar), clock_);
-
-  power = power_new();
-  CONNECT(power, "clicked", on_power_clicked);
-  top_bar_push_right(TOP_BAR(top_bar), power);
-
-  weather_window = weather_window_new(app);
-
-  terminal_window = terminal_window_new(app);
-
-  ping_window = ping_window_new(app);
-
-  session_window = session_window_new(app);
-  CONNECT(session_window, "clicked-lock", on_lock_clicked);
-  CONNECT(session_window, "clicked-shutdown", on_shutdown_clicked);
-  CONNECT(session_window, "clicked-reboot", on_reboot_clicked);
-  CONNECT(session_window, "clicked-logout", on_logout_clicked);
-
-  sound_window = sound_window_new(app);
-
-  caps_lock_window = caps_lock_window_new(app);
+  CONNECT("workspace-switched", on_workspace_switched);
+  CONNECT("change-theme-clicked", on_change_theme_clicked);
+  CONNECT("tray-triggered", on_tray_triggered);
+  CONNECT("weather-clicked", on_weather_clicked);
+  CONNECT("terminal-clicked", on_terminal_clicked);
+  CONNECT("memory-clicked", on_memory_clicked);
+  CONNECT("network-settings-clicked", on_network_settings_clicked);
+  CONNECT("network-ping-clicked", on_network_ping_clicked);
+  CONNECT("bluetooth-clicked", on_bluetooth_clicked);
+  CONNECT("power-clicked", on_power_clicked);
 
 #undef CONNECT
 
+  weather_window = weather_window_new(app);
+  terminal_window = terminal_window_new(app);
+  ping_window = ping_window_new(app);
+
+  session_window = session_window_new(app);
+  g_signal_connect(session_window, "clicked-lock", G_CALLBACK(on_lock_clicked),
+                   NULL);
+  g_signal_connect(session_window, "clicked-shutdown",
+                   G_CALLBACK(on_shutdown_clicked), NULL);
+  g_signal_connect(session_window, "clicked-reboot",
+                   G_CALLBACK(on_reboot_clicked), NULL);
+  g_signal_connect(session_window, "clicked-logout",
+                   G_CALLBACK(on_logout_clicked), NULL);
+
+  sound_window = sound_window_new(app);
+  caps_lock_window = caps_lock_window_new(app);
+
+  g_unix_fd_add(io_as_raw_fd(), G_IO_IN, on_new_events, NULL);
   gtk_window_present(GTK_WINDOW(top_bar));
 }
 
@@ -292,7 +208,6 @@ int main(int argc, char **argv) {
   setenv("GSK_RENDERER", "cairo", true);
   io = io_init(on_event);
   config = io_get_config(io);
-  g_unix_fd_add(io_as_raw_fd(), G_IO_IN, on_new_events, NULL);
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", on_app_activate, NULL);

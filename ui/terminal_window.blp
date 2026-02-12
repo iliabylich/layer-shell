@@ -1,0 +1,9 @@
+using Gtk 4.0;
+
+template $TerminalWindow: $BaseWindow {
+  layer-namespace: "LayerShell/Terminal";
+  keyboard-exclusive: true;
+  toggle-on-escape: true;
+  width-request: 1000;
+  height-request: 700;
+}

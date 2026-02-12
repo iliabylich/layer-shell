@@ -1,0 +1,26 @@
+using Gtk 4.0;
+
+template $SoundWindow: $BaseWindow {
+  layer-namespace: "LayerShell/Sound";
+  anchor-bottom-margin: 100;
+  styles ["sound-window", "notification-window"]
+  Box {
+    orientation: horizontal;
+    spacing: 20;
+    styles ["wrapper"]
+
+    Label icon {
+      label: "?";
+    }
+
+    Scale scale {
+      orientation: horizontal;
+      adjustment: Adjustment {
+        lower: 0;
+        upper: 100;
+        step-increment: 1;
+      };
+      width-request: 300;
+    }
+  }
+}

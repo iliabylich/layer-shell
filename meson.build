@@ -8,6 +8,7 @@ project(
     ],
 )
 
+gnome = import('gnome')
 sources = []
 subdir('ui')
 subdir('src')

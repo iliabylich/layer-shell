@@ -1,0 +1,180 @@
+using Gtk 4.0;
+using Gdk 4.0;
+using GLib 2.0;
+
+template $TopBar: Window {
+  styles ["top-bar-window"]
+  CenterBox {
+    styles ["wrapper"]
+    halign: fill;
+
+    [start]
+    Box {
+      orientation: horizontal;
+      spacing: 4;
+
+      ListView {
+        orientation: horizontal;
+        styles ["widget", "workspaces"]
+
+        factory: BuilderListItemFactory {
+          template ListItem {
+            child: ToggleButton {
+              cursor: Gdk.Cursor { name: "pointer"; };
+              label: bind $format_workspace_num(template.item as <$WorkspaceItem>.num) as <string>;
+              active: bind template.item as <$WorkspaceItem>.active;
+              action-name: "ws.switch";
+              action-target: bind $workspace_action_target(template.item as <$WorkspaceItem>.num) as <GLib.Variant>;
+            };
+          }
+        };
+
+        model: NoSelection {
+          model: bind template.model as <$IOModel>.workspaces;
+        };
+      }
+      Button change_theme {
+        cursor: Gdk.Cursor { name: "pointer"; };
+        label: "";
+        styles ["widget", "change-theme", "padded", "clickable"]
+      }
+    }
+
+    [end]
+    Box {
+      orientation: horizontal;
+      spacing: 4;
+
+      ListView {
+        orientation: horizontal;
+        styles ["widget", "tray", "padded"]
+
+        factory: BuilderListItemFactory {
+          template ListItem {
+            child: MenuButton {
+              cursor: Gdk.Cursor { name: "pointer"; };
+              popover: bind template.item as <$TrayAppItem>.popover;
+
+              Image {
+                paintable: bind template.item as <$TrayAppItem>.paintable;
+              }
+            };
+          }
+        };
+
+        model: NoSelection {
+          model: bind template.model as <$IOModel>.tray-apps;
+        };
+      }
+      Button weather {
+        cursor: Gdk.Cursor { name: "pointer"; };
+        label: bind template.model as <$IOModel>.weather-text;
+        styles ["widget", "weather", "padded", "clickable"]
+      }
+      Button terminal {
+        cursor: Gdk.Cursor { name: "pointer"; };
+        label: "";
+        styles ["widget", "terminal", "padded", "clickable"]
+      }
+      Label {
+        label: bind template.model as <$IOModel>.language-text;
+        styles ["widget", "language", "padded"]
+      }
+      ListView {
+        orientation: horizontal;
+        styles ["widget", "cpu", "padded"]
+
+        factory: BuilderListItemFactory {
+          template ListItem {
+            child: Label {
+              use-markup: true;
+              label: bind $format_cpu_load(template.item as <$CpuItem>.load) as <string>;
+            };
+          }
+        };
+
+        model: NoSelection {
+          model: bind template.model as <$IOModel>.cpu-cores;
+        };
+      }
+      Button memory {
+        cursor: Gdk.Cursor { name: "pointer"; };
+        label: bind template.model as <$IOModel>.memory-text;
+        styles ["widget", "memory", "padded", "clickable"]
+      }
+      MenuButton {
+        cursor: Gdk.Cursor { name: "pointer"; };
+        styles ["widget", "network", "padded", "clickable"]
+
+        Box {
+          orientation: horizontal;
+
+          Label {
+            label: bind template.model as <$IOModel>.network-name;
+          }
+
+          Label {
+            label: "";
+            styles ["network-icon"]
+          }
+
+          Separator {
+            orientation: vertical;
+            styles ["separator"]
+          }
+
+          Label {
+            label: bind template.model as <$IOModel>.download-speed;
+            styles ["network-speed-label"]
+          }
+
+          Label {
+            label: "󰇚";
+            styles ["network-icon"]
+          }
+
+          Label {
+            label: bind template.model as <$IOModel>.upload-speed;
+            styles ["network-speed-label"]
+          }
+
+          Label {
+            label: "󰕒";
+            styles ["network-icon"]
+          }
+        }
+
+        popover: PopoverMenu {
+          has-arrow: false;
+          menu-model: network_menu;
+        };
+      }
+      Button bluetooth {
+        cursor: Gdk.Cursor { name: "pointer"; };
+        label: "󰂯";
+        styles ["widget", "bluetooth", "padded", "clickable"]
+      }
+      Label {
+        label: bind template.model as <$IOModel>.clock-text;
+        styles ["widget", "clock", "padded"]
+      }
+      Button power {
+        cursor: Gdk.Cursor { name: "pointer"; };
+        label: "";
+        styles ["widget", "power", "padded", "clickable"]
+      }
+    }
+  }
+}
+
+menu network_menu {
+  item {
+    label: "Settings (iwmenu)";
+    action: "network.settings";
+  }
+
+  item {
+    label: "Ping";
+    action: "network.ping";
+  }
+}
