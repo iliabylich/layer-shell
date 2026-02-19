@@ -6,7 +6,7 @@ extern "C" fn on_event(event: *const Event) {
 }
 
 fn main() {
-    let io = io_init(on_event);
+    let io = io_init(on_event, false);
 
     loop {
         // log::info!("Waiting...");

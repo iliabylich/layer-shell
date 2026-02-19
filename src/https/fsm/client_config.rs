@@ -1,6 +1,5 @@
-use std::sync::{Arc, LazyLock};
-
 use rustls::{ClientConfig, RootCertStore, version::TLS13};
+use std::sync::{Arc, LazyLock};
 
 static ROOT_CERT_STORE: LazyLock<Arc<RootCertStore>> = LazyLock::new(|| {
     Arc::new(RootCertStore {

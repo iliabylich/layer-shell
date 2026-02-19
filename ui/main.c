@@ -1,7 +1,7 @@
 #include "bindings.h"
-#include "ui/io_model.h"
 #include "ui/caps_lock_window.h"
 #include "ui/css.h"
+#include "ui/io_model.h"
 #include "ui/logger.h"
 #include "ui/ping_window.h"
 #include "ui/session_window.h"
@@ -52,15 +52,15 @@ static void on_event(const IO_Event *event) {
     break;
   case IO_Event_TrayAppIconUpdated:
     io_model_tray_set_icon(model, event->tray_app_icon_updated.service,
-                              event->tray_app_icon_updated.icon);
+                           event->tray_app_icon_updated.icon);
     break;
   case IO_Event_TrayAppMenuUpdated:
     io_model_tray_set_menu(model, event->tray_app_menu_updated.service,
-                              event->tray_app_menu_updated.items);
+                           event->tray_app_menu_updated.items);
     break;
   case IO_Event_Weather:
     io_model_set_weather(model, event->weather.temperature,
-                            event->weather.code);
+                         event->weather.code);
     weather_window_refresh_hourly_forecast(WEATHER_WINDOW(weather_window),
                                            event->weather.hourly_forecast);
     weather_window_refresh_daily_forecast(WEATHER_WINDOW(weather_window),
@@ -206,7 +206,7 @@ static gboolean on_new_events(gint, GIOCondition, gpointer) {
 
 int main(int argc, char **argv) {
   setenv("GSK_RENDERER", "cairo", true);
-  io = io_init(on_event);
+  io = io_init(on_event, true);
   config = io_get_config(io);
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);

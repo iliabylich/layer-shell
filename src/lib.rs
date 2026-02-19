@@ -6,6 +6,7 @@ mod event;
 mod ffi;
 mod https;
 mod liburing;
+mod logger;
 mod macros;
 mod modules;
 mod timerfd;
@@ -21,6 +22,7 @@ use std::ffi::c_void;
 use crate::{
     dbus::{DBus, messages::org_freedesktop_dbus::Hello},
     liburing::IoUring,
+    logger::Logger,
     macros::report_and_exit,
     modules::{
         CPU, Clock, Control, ControlRequest, Hyprland, Location, Memory, Network, Sound, Tray,
@@ -50,10 +52,11 @@ struct IO {
 
     on_event: extern "C" fn(event: *const Event),
     running: bool,
+    logging_enabled: bool,
 }
 
 impl IO {
-    fn new(on_event: extern "C" fn(event: *const Event)) -> Self {
+    fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Self {
         let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
@@ -77,6 +80,7 @@ impl IO {
 
             on_event,
             running: true,
+            logging_enabled,
         };
 
         this.init();
@@ -219,6 +223,9 @@ impl IO {
         IoUring::submit_if_dirty();
 
         for event in events {
+            if self.logging_enabled {
+                log::info!(target: "IO", "{event:?}");
+            }
             (self.on_event)(&event);
         }
     }
@@ -281,13 +288,17 @@ impl IO {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event)) -> *mut c_void {
-    pretty_env_logger::init();
+pub extern "C" fn io_init(
+    on_event: extern "C" fn(event: *const Event),
+    logging_enabled: bool,
+) -> *mut c_void {
+    Logger::init();
+
     rustls_openssl::default_provider()
         .install_default()
         .unwrap_or_else(|_| report_and_exit!("failed to install OpenSSL CryptoProvider"));
     IoUring::init(10, 0);
-    (Box::leak(Box::new(IO::new(on_event))) as *mut IO).cast()
+    (Box::leak(Box::new(IO::new(on_event, logging_enabled))) as *mut IO).cast()
 }
 
 #[unsafe(no_mangle)]

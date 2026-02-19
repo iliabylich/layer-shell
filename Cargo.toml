@@ -13,7 +13,6 @@ anyhow = { version = "1", default-features = false, features = [
     "backtrace",
 ] }
 log = { version = "0.4", default-features = false }
-pretty_env_logger = { version = "0.5", default-features = false }
 rustls = { version = "0.23", features = [
     "tls12",
     "std",
