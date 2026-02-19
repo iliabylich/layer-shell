@@ -1,11 +1,8 @@
 use anyhow::{Context as _, Result, bail};
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub(crate) struct Response {
     pub(crate) status: u16,
-    #[allow(dead_code)]
-    pub(crate) headers: HashMap<String, String>,
     pub(crate) body: String,
 }
 
@@ -26,29 +23,21 @@ impl Response {
             .parse::<u16>()
             .context("non-numeric HTTP status")?;
 
-        let headers = {
-            let mut out = HashMap::new();
-            for line in headers.split("\r\n") {
-                let (name, value) = line.split_once(": ").context("malformed header")?;
-                out.insert(name.to_string(), value.to_string());
+        let mut transfer_encoding = None;
+        for line in headers.split("\r\n") {
+            let (name, value) = line.split_once(": ").context("malformed header")?;
+            if name == "Transfer-Encoding" {
+                transfer_encoding = Some(value);
             }
-            out
-        };
+        }
 
-        let body = if headers
-            .get("Transfer-Encoding")
-            .is_some_and(|s| s == "chunked")
-        {
+        let body = if transfer_encoding.is_some_and(|s| s == "chunked") {
             decode_chunked_body(body)?
         } else {
             body.to_string()
         };
 
-        Ok(Self {
-            status,
-            headers,
-            body,
-        })
+        Ok(Self { status, body })
     }
 }
 

@@ -22,16 +22,14 @@ pub(crate) struct HttpsConnection {
 define_op!("HttpsConnection", Socket, Connect, Read, Write, Close,);
 
 impl HttpsConnection {
-    pub(crate) fn new(hostname: &str, path: &str, module_id: ModuleId) -> Self {
+    pub(crate) fn new(hostname: &'static str, path: &str, module_id: ModuleId) -> Self {
         let mut healthy = true;
 
         let fsm = match ServerName::try_from(hostname) {
             Ok(server_name) => {
                 let server_name = server_name.to_owned();
 
-                let mut request = Request::get(path);
-                request.add_header("Host", hostname);
-                request.add_header("Connection", "close");
+                let request = Request::get(hostname, path);
 
                 match FSM::new(server_name, request) {
                     Ok(ok) => Some(ok),

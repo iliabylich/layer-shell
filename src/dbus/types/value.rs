@@ -24,15 +24,6 @@ pub(crate) enum Value<'a> {
 }
 
 impl<'a> Value<'a> {
-    #[allow(dead_code)]
-    pub(crate) fn new_non_empty_auto_array(items: Vec<Value<'a>>) -> Self {
-        let Some(first_item) = items.first() else {
-            panic!("an array must be non-empty");
-        };
-        let item_type = first_item.complete_type();
-        Self::Array(item_type, items)
-    }
-
     pub(crate) fn complete_type(&self) -> CompleteType {
         match self {
             Self::Byte(_) => CompleteType::Byte,

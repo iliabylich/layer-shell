@@ -6,7 +6,6 @@ use crate::dbus::{
     types::{CompleteType, Value},
 };
 use anyhow::{Context as _, Result};
-use std::collections::HashMap;
 
 pub(crate) struct SsidAndStrength {
     oneshot: Oneshot<Resource>,
@@ -80,18 +79,24 @@ impl OneshotResource for Resource {
         type_is!(&**key_t, CompleteType::String);
         type_is!(&**value_t, CompleteType::Variant);
 
-        let mut map = HashMap::new();
+        let mut ssid = None;
+        let mut strength = None;
+
         for item in array {
             value_is!(item, Value::DictEntry(key, value));
             value_is!(&**key, Value::String(key));
             value_is!(&**value, Value::Variant(value));
-            map.insert(key.as_ref(), &**value);
+            match key.as_ref() {
+                "Ssid" => ssid = Some(&**value),
+                "Strength" => strength = Some(&**value),
+                _ => {}
+            }
         }
 
-        let ssid = map.remove("Ssid").context("no Ssid")?;
+        let ssid = ssid.context("no Ssid")?;
         let ssid = parse_ssid(ssid)?;
 
-        let strength = map.remove("Strength").context("no Strength")?;
+        let strength = strength.context("no Strength")?;
         value_is!(strength, Value::Byte(strength));
 
         Ok(SsidAndStrengthEvent {
