@@ -109,12 +109,12 @@ impl Tray {
             .find(|k| k.name() == service || k.raw_address() == service)
             .cloned()
         else {
-            log::info!("service {service} doesn't exist");
+            log::info!(target: "Tray", "service {service} doesn't exist");
             return;
         };
 
         let Some(tray_app) = self.registry.get(&key) else {
-            log::info!("service {service} doesn't exist");
+            log::info!(target: "Tray", "service {service} doesn't exist");
             return;
         };
 
