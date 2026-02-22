@@ -28,7 +28,7 @@ impl ActiveConnectionType {
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<(bool, String)> {
-        let is_wireless = self.oneshot.process(message)?;
+        let is_wireless = self.oneshot.process(message).ok().flatten()?;
         Some((is_wireless, self.path.clone()?))
     }
 }

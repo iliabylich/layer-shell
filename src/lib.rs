@@ -214,6 +214,7 @@ impl IO {
                     self.weather.tick(tick);
                     self.cpu.tick();
                     self.memory.tick();
+                    self.sound.tick(tick, &mut self.session_dbus);
                 }
             }
 

@@ -8,12 +8,14 @@ use crate::{
         },
         types::{CompleteType, Value},
     },
+    timerfd::Tick,
 };
 use anyhow::{Context as _, Result};
 
 pub(crate) struct Sound {
     oneshot: Oneshot<Resource>,
     subscription: Subscription<Resource>,
+    healthy: bool,
 }
 
 impl Sound {
@@ -21,6 +23,7 @@ impl Sound {
         Box::new(Self {
             oneshot: Oneshot::new(Resource),
             subscription: Subscription::new(Resource),
+            healthy: true,
         })
     }
 
@@ -34,12 +37,20 @@ impl Sound {
         message: &Message,
         events: &mut Vec<Event>,
     ) {
-        if let Some((volume, muted)) = self.oneshot.process(message) {
-            events.push(Event::InitialSound { volume, muted });
-            self.subscription
-                .start(dbus, "org.local.PipewireDBus", "/org/local/PipewireDBus");
+        match self.oneshot.process(message) {
+            Ok(Some((volume, muted))) => {
+                events.push(Event::InitialSound { volume, muted });
+                self.subscription
+                    .start(dbus, "org.local.PipewireDBus", "/org/local/PipewireDBus");
 
-            return;
+                return;
+            }
+            Ok(None) => {}
+            Err(err) => {
+                log::error!("{err:?}");
+                self.healthy = false;
+                return;
+            }
         }
 
         if let Some((volume, muted)) = self.subscription.process(message) {
@@ -50,6 +61,14 @@ impl Sound {
             if let Some(muted) = muted {
                 events.push(Event::MuteChanged { muted });
             }
+        }
+    }
+
+    pub(crate) fn tick(&mut self, tick: Tick, dbus: &mut DBus) {
+        if !self.healthy && tick.is_multiple_of(2) {
+            self.healthy = true;
+            self.oneshot = Oneshot::new(Resource);
+            self.oneshot.start(dbus, ());
         }
     }
 }

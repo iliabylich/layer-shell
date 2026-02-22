@@ -31,7 +31,6 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &Record) {
-        dbg!(1);
         const RED: &str = "\x1b[0;31m";
         const GREEN: &str = "\x1b[0;32m";
         const YELLOW: &str = "\x1b[0;33m";

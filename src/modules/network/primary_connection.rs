@@ -44,7 +44,7 @@ impl PrimaryConnection {
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryConnectionEvent> {
-        None.or_else(|| self.oneshot.process(message))
+        None.or_else(|| self.oneshot.process(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(PrimaryConnectionEvent::from)
     }

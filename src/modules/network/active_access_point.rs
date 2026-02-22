@@ -45,7 +45,7 @@ impl ActiveAccessPoint {
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<ActiveAccessPointEvent> {
-        None.or_else(|| self.oneshot.process(message))
+        None.or_else(|| self.oneshot.process(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(ActiveAccessPointEvent::from)
     }

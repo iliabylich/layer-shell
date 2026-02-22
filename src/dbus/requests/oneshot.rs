@@ -1,5 +1,5 @@
-use crate::dbus::{DBus, Message, messages::message_is, types::Value};
-use anyhow::Result;
+use crate::dbus::{DBus, Message, types::Value};
+use anyhow::{Result, bail};
 
 pub(crate) trait OneshotResource {
     type Input;
@@ -46,21 +46,26 @@ where
         self.state = OneshotState::WaitingForReply(reply_serial);
     }
 
-    fn try_process(&self, message: &Message) -> Result<T::Output> {
-        message_is!(message, Message::MethodReturn { body, .. });
-        self.resource.try_process(body)
+    fn try_process(&self, message: &Message) -> Result<Option<T::Output>> {
+        match message {
+            Message::Error { error_name, .. } => {
+                bail!("DBus error: {error_name}")
+            }
+            Message::MethodReturn { body, .. } => Ok(self.resource.try_process(body).ok()),
+            _ => Ok(None),
+        }
     }
 
-    pub(crate) fn process(&mut self, message: &Message) -> Option<T::Output> {
+    pub(crate) fn process(&mut self, message: &Message) -> Result<Option<T::Output>> {
         let OneshotState::WaitingForReply(reply_serial) = self.state else {
-            return None;
+            return Ok(None);
         };
         if message.reply_serial() != Some(reply_serial) {
-            return None;
+            return Ok(None);
         }
         self.state = OneshotState::ReplyReceived;
 
-        self.try_process(message).ok()
+        self.try_process(message)
     }
 
     pub(crate) fn reset(&mut self) {

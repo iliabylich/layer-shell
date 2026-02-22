@@ -145,14 +145,16 @@ impl App {
     }
 
     pub(crate) fn on_message(&mut self, message: &Message, dbus: &mut DBus) -> Option<TrayEvent> {
-        if let Some(AllProps { menu, icon }) = self.all_props_request.process(message) {
+        if let Some(AllProps { menu, icon }) =
+            self.all_props_request.process(message).ok().flatten()
+        {
             log::info!(target: "Tray", "Received requested props for {:?}", self.service);
 
             self.on_menu_received(menu, dbus);
             return self.on_icon_received(icon);
         }
 
-        if let Some(()) = self.new_icon_subscription.process(message) {
+        if let Some(()) = self.new_icon_subscription.process(message).ok().flatten() {
             log::info!(target: "Tray", "Subscribed to NewIcon");
             return None;
         }
@@ -164,12 +166,18 @@ impl App {
             }
         }
 
-        if let Some(layout) = self.get_layout.process(message) {
+        if let Some(layout) = self.get_layout.process(message).ok().flatten() {
             log::info!(target: "Tray", "Got layout");
             return self.on_layout_receieved(layout);
         }
 
-        if self.layout_updated_subscription.process(message).is_some() {
+        if self
+            .layout_updated_subscription
+            .process(message)
+            .ok()
+            .flatten()
+            .is_some()
+        {
             log::info!(target: "Tray", "Subscribed to LayoutUpdated");
             return None;
         }
@@ -177,6 +185,8 @@ impl App {
         if self
             .items_properties_updated_subscription
             .process(message)
+            .ok()
+            .flatten()
             .is_some()
         {
             log::info!(target: "Tray", "Subscribed to ItemPropertiesUpdated");
