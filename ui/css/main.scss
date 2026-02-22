@@ -115,7 +115,8 @@ popover {
                 padding: 0;
                 background: none;
 
-                &:hover, &:focus {
+                &:hover,
+                &:focus {
                     background: none;
                 }
             }
@@ -139,13 +140,20 @@ popover {
             }
         }
 
+        &.tray {
+            row {
+                padding: 0 4px;
+            }
+        }
+
         &.cpu {
             row {
                 padding: 0 1px;
                 margin: 0;
                 min-height: 0;
 
-                &:hover, &:focus {
+                &:hover,
+                &:focus {
                     background: none;
                 }
             }
