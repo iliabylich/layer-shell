@@ -31,15 +31,15 @@ impl<'a> From<SetProperty<'a>> for Message<'a> {
     fn from(message: SetProperty<'a>) -> Self {
         Message::MethodCall {
             serial: 0,
-            path: message.path.clone(),
+            path: message.path,
             member: Cow::Borrowed("Set"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus.Properties")),
-            destination: Some(message.destination.clone()),
+            destination: Some(message.destination),
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::String(message.interface.clone()),
-                Value::String(message.property.clone()),
+                Value::String(message.interface),
+                Value::String(message.property),
                 Value::Variant(Box::new(message.value)),
             ],
         }

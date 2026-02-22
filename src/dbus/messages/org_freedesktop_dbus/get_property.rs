@@ -29,15 +29,15 @@ impl<'a> From<GetProperty<'a>> for Message<'a> {
     fn from(value: GetProperty<'a>) -> Self {
         Message::MethodCall {
             serial: 0,
-            path: value.path.clone(),
+            path: value.path,
             member: Cow::Borrowed("Get"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus.Properties")),
-            destination: Some(value.destination.clone()),
+            destination: Some(value.destination),
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::String(value.interface.clone()),
-                Value::String(value.property.clone()),
+                Value::String(value.interface),
+                Value::String(value.property),
             ],
         }
     }

@@ -24,13 +24,13 @@ impl<'a> From<GetAllProperties<'a>> for Message<'a> {
     fn from(value: GetAllProperties<'a>) -> Self {
         Message::MethodCall {
             serial: 0,
-            path: value.path.clone(),
+            path: value.path,
             member: Cow::Borrowed("GetAll"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus.Properties")),
-            destination: Some(value.destination.clone()),
+            destination: Some(value.destination),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(value.interface.clone())],
+            body: vec![Value::String(value.interface)],
         }
     }
 }

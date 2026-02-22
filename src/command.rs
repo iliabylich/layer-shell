@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[must_use]
 pub(crate) enum Command {
     GoToWorkspace { workspace: usize },
