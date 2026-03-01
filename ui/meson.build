@@ -15,6 +15,8 @@ sources += files(
     'tray_app_item.c',
     'tray_model.c',
     'weather_helper.c',
+    'weather_day_item.c',
+    'weather_hour_item.c',
     'weather_window.c',
     'workspace_item.c',
     'workspaces_model.c',
