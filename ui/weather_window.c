@@ -8,8 +8,8 @@ LOGGER("WeatherWindow", 0)
 struct _WeatherWindow {
   GtkWidget parent_instance;
 
-  GtkWidget *hourly;
-  GtkWidget *daily;
+  GtkGrid *hourly;
+  GtkGrid *daily;
 };
 
 G_DEFINE_TYPE(WeatherWindow, weather_window, BASE_WINDOW_TYPE)
@@ -28,21 +28,16 @@ static void weather_window_init(WeatherWindow *self) {
   gtk_widget_init_template(GTK_WIDGET(self));
 
   for (size_t row = 0; row < HOURLY_ROWS_COUNT; row++) {
-    gtk_grid_attach(GTK_GRID(self->hourly), gtk_label_new("??"), 0, row, 1, 1);
-    gtk_grid_attach(GTK_GRID(self->hourly), temperature_label_new(), 1, row, 1,
-                    1);
-    gtk_grid_attach(GTK_GRID(self->hourly), temperature_icon_new(), 2, row, 1,
-                    1);
+    gtk_grid_attach(self->hourly, gtk_label_new("??"), 0, row, 1, 1);
+    gtk_grid_attach(self->hourly, temperature_label_new(), 1, row, 1, 1);
+    gtk_grid_attach(self->hourly, temperature_icon_new(), 2, row, 1, 1);
   }
 
   for (size_t row = 0; row < DAILY_ROWS_COUNT; row++) {
-    gtk_grid_attach(GTK_GRID(self->daily), gtk_label_new("??"), 0, row, 1, 1);
-    gtk_grid_attach(GTK_GRID(self->daily), temperature_label_new(), 1, row, 1,
-                    1);
-    gtk_grid_attach(GTK_GRID(self->daily), temperature_label_new(), 2, row, 1,
-                    1);
-    gtk_grid_attach(GTK_GRID(self->daily), temperature_icon_new(), 3, row, 1,
-                    1);
+    gtk_grid_attach(self->daily, gtk_label_new("??"), 0, row, 1, 1);
+    gtk_grid_attach(self->daily, temperature_label_new(), 1, row, 1, 1);
+    gtk_grid_attach(self->daily, temperature_label_new(), 2, row, 1, 1);
+    gtk_grid_attach(self->daily, temperature_icon_new(), 3, row, 1, 1);
   }
 }
 
@@ -96,13 +91,13 @@ void weather_window_refresh_hourly_forecast(
   for (size_t row = 0; row < data.len && row < HOURLY_ROWS_COUNT; row++) {
     IO_WeatherOnHour weather_on_hour = data.ptr[row];
 
-    child = gtk_grid_get_child_at(GTK_GRID(self->hourly), 0, row);
+    child = gtk_grid_get_child_at(self->hourly, 0, row);
     gtk_label_set_text(GTK_LABEL(child), weather_on_hour.hour);
 
-    child = gtk_grid_get_child_at(GTK_GRID(self->hourly), 1, row);
+    child = gtk_grid_get_child_at(self->hourly, 1, row);
     temperature_label_refresh(child, weather_on_hour.temperature);
 
-    child = gtk_grid_get_child_at(GTK_GRID(self->hourly), 2, row);
+    child = gtk_grid_get_child_at(self->hourly, 2, row);
     temperature_icon_refresh(child, weather_on_hour.code);
   }
 }
@@ -114,16 +109,16 @@ void weather_window_refresh_daily_forecast(
   for (size_t row = 0; row < data.len && row < DAILY_ROWS_COUNT; row++) {
     IO_WeatherOnDay weather_on_day = data.ptr[row];
 
-    child = gtk_grid_get_child_at(GTK_GRID(self->daily), 0, row);
+    child = gtk_grid_get_child_at(self->daily, 0, row);
     gtk_label_set_text(GTK_LABEL(child), weather_on_day.day);
 
-    child = gtk_grid_get_child_at(GTK_GRID(self->daily), 1, row);
+    child = gtk_grid_get_child_at(self->daily, 1, row);
     temperature_label_refresh(child, weather_on_day.temperature_min);
 
-    child = gtk_grid_get_child_at(GTK_GRID(self->daily), 2, row);
+    child = gtk_grid_get_child_at(self->daily, 2, row);
     temperature_label_refresh(child, weather_on_day.temperature_max);
 
-    child = gtk_grid_get_child_at(GTK_GRID(self->daily), 3, row);
+    child = gtk_grid_get_child_at(self->daily, 3, row);
     temperature_icon_refresh(child, weather_on_day.code);
   }
 }
