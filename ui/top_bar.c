@@ -36,6 +36,12 @@ static char *format_cpu_load(GObject *, guint load) {
   return g_strdup(CPU_INDICATORS[idx]);
 }
 
+static char *format_memory_label(GObject *, double used, double total) {
+  if (total <= 0.0)
+    return g_strdup("RAM --");
+  return g_strdup_printf("RAM %.1fG/%.1fG", used, total);
+}
+
 struct _TopBar {
   GtkWidget parent_instance;
 
@@ -245,6 +251,7 @@ static void top_bar_class_init(TopBarClass *klass) {
   gtk_widget_class_bind_template_callback(widget_class,
                                           workspace_action_target);
   gtk_widget_class_bind_template_callback(widget_class, format_cpu_load);
+  gtk_widget_class_bind_template_callback(widget_class, format_memory_label);
   gtk_widget_class_bind_template_child(widget_class, TopBar, change_theme);
   gtk_widget_class_bind_template_child(widget_class, TopBar, weather);
   gtk_widget_class_bind_template_child(widget_class, TopBar, terminal);

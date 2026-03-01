@@ -99,7 +99,10 @@ template $TopBar: Window {
       }
       Button memory {
         cursor: Gdk.Cursor { name: "pointer"; };
-        label: bind template.model as <$IOModel>.memory-text;
+        label: bind $format_memory_label(
+            template.model as <$IOModel>.memory-used,
+            template.model as <$IOModel>.memory-total
+        ) as <string>;
         styles ["widget", "memory", "padded", "clickable"]
       }
       MenuButton {

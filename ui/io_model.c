@@ -10,7 +10,8 @@ struct _IOModel {
 
   char *clock_text;
   char *language_text;
-  char *memory_text;
+  double memory_used;
+  double memory_total;
   char *weather_text;
   char *network_name;
   char *download_speed;
@@ -28,7 +29,8 @@ G_DEFINE_TYPE(IOModel, io_model, G_TYPE_OBJECT)
 enum {
   PROP_CLOCK_TEXT = 1,
   PROP_LANGUAGE_TEXT,
-  PROP_MEMORY_TEXT,
+  PROP_MEMORY_USED,
+  PROP_MEMORY_TOTAL,
   PROP_WEATHER_TEXT,
   PROP_NETWORK_NAME,
   PROP_DOWNLOAD_SPEED,
@@ -51,8 +53,11 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_LANGUAGE_TEXT:
     g_value_set_string(value, self->language_text);
     break;
-  case PROP_MEMORY_TEXT:
-    g_value_set_string(value, self->memory_text);
+  case PROP_MEMORY_USED:
+    g_value_set_double(value, self->memory_used);
+    break;
+  case PROP_MEMORY_TOTAL:
+    g_value_set_double(value, self->memory_total);
     break;
   case PROP_WEATHER_TEXT:
     g_value_set_string(value, self->weather_text);
@@ -94,7 +99,6 @@ static void io_model_finalize(GObject *object) {
   IOModel *self = IO_MODEL(object);
   g_free(self->clock_text);
   g_free(self->language_text);
-  g_free(self->memory_text);
   g_free(self->weather_text);
   g_free(self->network_name);
   g_free(self->download_speed);
@@ -109,7 +113,8 @@ static void io_model_finalize(GObject *object) {
 static void io_model_init(IOModel *self) {
   self->clock_text = g_strdup("--");
   self->language_text = g_strdup("--");
-  self->memory_text = g_strdup("--");
+  self->memory_used = 0.0;
+  self->memory_total = 0.0;
   self->weather_text = g_strdup("--");
   self->network_name = g_strdup("--");
   self->download_speed = g_strdup("??");
@@ -131,8 +136,10 @@ static void io_model_class_init(IOModelClass *klass) {
       g_param_spec_string("clock-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_LANGUAGE_TEXT] =
       g_param_spec_string("language-text", NULL, NULL, "--", G_PARAM_READABLE);
-  properties[PROP_MEMORY_TEXT] =
-      g_param_spec_string("memory-text", NULL, NULL, "--", G_PARAM_READABLE);
+  properties[PROP_MEMORY_USED] = g_param_spec_double(
+      "memory-used", NULL, NULL, 0.0, G_MAXDOUBLE, 0.0, G_PARAM_READABLE);
+  properties[PROP_MEMORY_TOTAL] = g_param_spec_double(
+      "memory-total", NULL, NULL, 0.0, G_MAXDOUBLE, 0.0, G_PARAM_READABLE);
   properties[PROP_WEATHER_TEXT] =
       g_param_spec_string("weather-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_NETWORK_NAME] =
@@ -203,11 +210,10 @@ void io_model_set_cpu(IOModel *self, IO_FFIArray_u8 data) {
 }
 
 void io_model_set_memory(IOModel *self, float used, float total) {
-  char buffer[100];
-  snprintf(buffer, sizeof(buffer), "RAM %.1fG/%.1fG", used, total);
-  g_free(self->memory_text);
-  self->memory_text = g_strdup(buffer);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_MEMORY_TEXT]);
+  self->memory_used = used;
+  self->memory_total = total;
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_MEMORY_USED]);
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_MEMORY_TOTAL]);
 }
 
 static void refresh_network_name(IOModel *self) {
