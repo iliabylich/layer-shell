@@ -3,6 +3,7 @@ using Gtk 4.0;
 template $SoundWindow: $BaseWindow {
   layer-namespace: "LayerShell/Sound";
   anchor-bottom-margin: 100;
+  visible: bind template.window-model as <$SoundWindowModel>.visible;
   styles ["sound-window", "notification-window"]
   Box {
     orientation: horizontal;

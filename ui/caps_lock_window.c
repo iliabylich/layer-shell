@@ -35,12 +35,12 @@ static void caps_lock_window_init(CapsLockWindow *self) {
 
 static void hide(gpointer data) {
   CapsLockWindow *self = data;
-  gtk_widget_set_visible(GTK_WIDGET(self), false);
+  g_object_set(self->model, "caps-lock-popup-visible", false, NULL);
   self->timer = 0;
 }
 
 static void show(CapsLockWindow *self) {
-  gtk_widget_set_visible(GTK_WIDGET(self), true);
+  g_object_set(self->model, "caps-lock-popup-visible", true, NULL);
 
   if (self->timer) {
     g_assert(g_source_remove(self->timer));

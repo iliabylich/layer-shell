@@ -9,7 +9,9 @@ sources += files(
     'main.c',
     'ping_window.c',
     'session_window.c',
+    'session_window_model.c',
     'sound_window.c',
+    'sound_window_model.c',
     'terminal_window.c',
     'top_bar.c',
     'tray_app_item.c',
@@ -18,6 +20,8 @@ sources += files(
     'weather_day_item.c',
     'weather_hour_item.c',
     'weather_window.c',
+    'weather_window_model.c',
+    'window_model.c',
     'workspace_item.c',
     'workspaces_model.c',
 )

@@ -38,6 +38,19 @@ static void window_toggle(GtkWidget *, gpointer data) {
   gtk_widget_set_visible(window, !gtk_widget_get_visible(window));
 }
 
+static void state_toggle(GtkWidget *, gpointer data) {
+  WindowModel *state = NULL;
+  const char *model_prop = data;
+  g_object_get(model, model_prop, &state, NULL);
+  if (state == NULL) {
+    return;
+  }
+  gboolean visible = false;
+  g_object_get(state, "visible", &visible, NULL);
+  g_object_set(state, "visible", !visible, NULL);
+  g_clear_object(&state);
+}
+
 static void event_received(const IO_Event *event) {
 #define SET(prop, val) g_object_set(model, prop, val, NULL)
 
@@ -93,8 +106,7 @@ static void event_received(const IO_Event *event) {
     SET("clock-unix-seconds", event->clock.unix_seconds);
     break;
   case IO_Event_ToggleSessionScreen:
-    gtk_widget_set_visible(session_window,
-                           !gtk_widget_get_visible(session_window));
+    state_toggle(NULL, "session-window-model");
     break;
   case IO_Event_InitialSound:
     SET("sound-volume", event->initial_sound.volume);
@@ -142,7 +154,13 @@ static void tray_triggered(TopBar *, const char *uuid) {
 }
 
 static void create_widgets() {
+  SoundWindowModel *sound_window_model = NULL;
+  WeatherWindowModel *weather_window_model = NULL;
+  SessionWindowModel *session_window_model = NULL;
   model = io_model_new();
+  g_object_get(model, "sound-window-model", &sound_window_model, NULL);
+  g_object_get(model, "weather-window-model", &weather_window_model,
+               "session-window-model", &session_window_model, NULL);
   top_bar = top_bar_new(app, model);
   top_bar_set_terminal_label(TOP_BAR(top_bar), config->terminal.label);
 
@@ -156,25 +174,28 @@ static void create_widgets() {
   CONNECT(top_bar, "network-settings-clicked", io_spawn_wifi_editor, NULL);
   CONNECT(top_bar, "bluetooth-clicked", io_spawn_bluetooh_editor, NULL);
 
-  weather_window = weather_window_new(app, model);
+  weather_window = weather_window_new(app, model, weather_window_model);
   terminal_window = terminal_window_new(app);
   ping_window = ping_window_new(app);
 
-  session_window = session_window_new(app);
+  session_window = session_window_new(app, session_window_model);
   CONNECT(session_window, "clicked-lock", io_lock, NULL);
   CONNECT(session_window, "clicked-shutdown", io_shutdown, NULL);
   CONNECT(session_window, "clicked-reboot", io_reboot, NULL);
   CONNECT(session_window, "clicked-logout", io_logout, NULL);
 
-  CONNECT(top_bar, "weather-clicked", window_toggle, weather_window);
+  CONNECT(top_bar, "weather-clicked", state_toggle, "weather-window-model");
   CONNECT(top_bar, "terminal-clicked", window_toggle, terminal_window);
   CONNECT(top_bar, "network-ping-clicked", window_toggle, ping_window);
-  CONNECT(top_bar, "power-clicked", window_toggle, session_window);
+  CONNECT(top_bar, "power-clicked", state_toggle, "session-window-model");
 
 #undef CONNECT
 
-  sound_window = sound_window_new(app, model);
+  sound_window = sound_window_new(app, model, sound_window_model);
   caps_lock_window = caps_lock_window_new(app, model);
+  g_clear_object(&sound_window_model);
+  g_clear_object(&weather_window_model);
+  g_clear_object(&session_window_model);
 
   g_unix_fd_add(io_as_raw_fd(), G_IO_IN, read_io_events, NULL);
   gtk_window_present(GTK_WINDOW(top_bar));

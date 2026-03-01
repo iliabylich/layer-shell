@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bindings.h"
+#include "ui/sound_window_model.h"
 #include <gtk/gtk.h>
 
 G_DECLARE_FINAL_TYPE(IOModel, io_model, IO, MODEL, GObject)

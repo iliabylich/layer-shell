@@ -4,6 +4,7 @@ template $WeatherWindow: $BaseWindow {
   layer-namespace: "LayerShell/Weather";
   keyboard-exclusive: true;
   toggle-on-escape: true;
+  visible: bind template.window-state as <$WindowModel>.visible;
   styles ["weather-window"]
   Box {
     orientation: horizontal;

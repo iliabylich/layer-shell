@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/window_model.h"
 #include <gtk/gtk.h>
 
 G_DECLARE_DERIVABLE_TYPE(BaseWindow, base_window, BASE_WINDOW, WINDOW,
@@ -14,3 +15,5 @@ struct _BaseWindowClass {
 };
 
 void base_window_vte(BaseWindow *self, char **command);
+void base_window_set_window_visible(BaseWindow *self, bool visible);
+void base_window_toggle_window_visible(BaseWindow *self);

@@ -7,6 +7,7 @@ struct _SoundWindow {
   GtkWidget parent_instance;
 
   IOModel *model;
+  SoundWindowModel *window_model;
   GtkAdjustment *sound_adjustment;
   bool sound_initialized;
 
@@ -17,6 +18,7 @@ G_DEFINE_TYPE(SoundWindow, sound_window, BASE_WINDOW_TYPE)
 
 enum {
   PROP_MODEL = 1,
+  PROP_WINDOW_MODEL,
   N_PROPERTIES,
 };
 static GParamSpec *properties[N_PROPERTIES] = {0};
@@ -51,7 +53,7 @@ static gboolean transform_sound_volume(GBinding *, const GValue *from_value,
 
 static void hide(gpointer data) {
   SoundWindow *self = data;
-  gtk_widget_set_visible(GTK_WIDGET(self), false);
+  g_object_set(self->window_model, "visible", false, NULL);
   self->timer = 0;
 }
 
@@ -59,7 +61,7 @@ static void show(SoundWindow *self) {
   if (!self->sound_initialized)
     return;
 
-  gtk_widget_set_visible(GTK_WIDGET(self), true);
+  g_object_set(self->window_model, "visible", true, NULL);
 
   if (self->timer) {
     g_assert(g_source_remove(self->timer));
@@ -86,6 +88,9 @@ static void sound_window_get_property(GObject *object, guint property_id,
   case PROP_MODEL:
     g_value_set_object(value, self->model);
     break;
+  case PROP_WINDOW_MODEL:
+    g_value_set_object(value, self->window_model);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;
@@ -109,6 +114,9 @@ static void sound_window_set_property(GObject *object, guint property_id,
     g_signal_connect_object(self->model, "notify::sound-muted",
                             G_CALLBACK(sound_value_changed), self, 0);
     break;
+  case PROP_WINDOW_MODEL:
+    g_set_object(&self->window_model, g_value_get_object(value));
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;
@@ -119,6 +127,7 @@ static void sound_window_init(SoundWindow *self) {
   LOG("init");
   gtk_widget_init_template(GTK_WIDGET(self));
   self->model = NULL;
+  self->window_model = NULL;
   self->sound_initialized = false;
 }
 
@@ -126,6 +135,7 @@ static void sound_window_dispose(GObject *object) {
   LOG("dispose");
   SoundWindow *self = SOUND_WINDOW(object);
   g_clear_object(&self->model);
+  g_clear_object(&self->window_model);
   G_OBJECT_CLASS(sound_window_parent_class)->dispose(object);
 }
 
@@ -140,6 +150,9 @@ static void sound_window_class_init(SoundWindowClass *klass) {
   properties[PROP_MODEL] =
       g_param_spec_object("model", NULL, NULL, io_model_get_type(),
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+  properties[PROP_WINDOW_MODEL] = g_param_spec_object(
+      "window-model", NULL, NULL, sound_window_model_get_type(),
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
@@ -150,7 +163,8 @@ static void sound_window_class_init(SoundWindowClass *klass) {
   gtk_widget_class_bind_template_callback(widget_class, format_sound_icon);
 }
 
-GtkWidget *sound_window_new(GtkApplication *app, IOModel *model) {
+GtkWidget *sound_window_new(GtkApplication *app, IOModel *model,
+                            SoundWindowModel *window_model) {
   return g_object_new(sound_window_get_type(), "application", app, "model",
-                      model, NULL);
+                      model, "window-model", window_model, NULL);
 }

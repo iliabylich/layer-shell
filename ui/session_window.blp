@@ -4,6 +4,7 @@ template $SessionWindow: $BaseWindow {
   layer-namespace: "LayerShell/SessionScreen";
   keyboard-exclusive: true;
   toggle-on-escape: true;
+  visible: bind template.window-state as <$WindowModel>.visible;
   width-request: 400;
   height-request: 300;
   styles ["session-window"]

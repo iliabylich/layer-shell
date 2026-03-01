@@ -121,7 +121,8 @@ static void weather_window_class_init(WeatherWindowClass *klass) {
   gtk_widget_class_bind_template_callback(widget_class, format_day_label);
 }
 
-GtkWidget *weather_window_new(GtkApplication *app, IOModel *model) {
+GtkWidget *weather_window_new(GtkApplication *app, IOModel *model,
+                              WeatherWindowModel *state) {
   return g_object_new(weather_window_get_type(), "application", app, "model",
-                      model, NULL);
+                      model, "window-state", state, NULL);
 }

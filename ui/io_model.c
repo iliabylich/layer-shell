@@ -1,9 +1,12 @@
 #include "ui/io_model.h"
 #include "ui/cpu_model.h"
+#include "ui/session_window_model.h"
+#include "ui/sound_window_model.h"
 #include "ui/tray_model.h"
 #include "ui/weather_day_item.h"
 #include "ui/weather_helper.h"
 #include "ui/weather_hour_item.h"
+#include "ui/weather_window_model.h"
 #include "ui/workspaces_model.h"
 #include <string.h>
 
@@ -15,13 +18,17 @@ struct _IOModel {
   double memory_used;
   double memory_total;
   char *weather_text;
+  WeatherWindowModel *weather_window_model;
   char *network_name;
   uint64_t download_bytes_per_sec;
   uint64_t upload_bytes_per_sec;
   uint32_t sound_volume;
   gboolean sound_muted;
   gboolean sound_ready;
+  SoundWindowModel *sound_window_model;
+  SessionWindowModel *session_window_model;
   gboolean caps_lock_enabled;
+  gboolean caps_lock_popup_visible;
   CpuModel *cpu;
   GListStore *weather_hourly_forecast;
   GListStore *weather_daily_forecast;
@@ -40,6 +47,7 @@ enum {
   PROP_MEMORY_USED,
   PROP_MEMORY_TOTAL,
   PROP_WEATHER_TEXT,
+  PROP_WEATHER_WINDOW_MODEL,
   PROP_NETWORK_SSID,
   PROP_NETWORK_STRENGTH,
   PROP_NETWORK_NAME,
@@ -48,7 +56,10 @@ enum {
   PROP_SOUND_VOLUME,
   PROP_SOUND_MUTED,
   PROP_SOUND_READY,
+  PROP_SOUND_WINDOW_MODEL,
+  PROP_SESSION_WINDOW_MODEL,
   PROP_CAPS_LOCK_ENABLED,
+  PROP_CAPS_LOCK_POPUP_VISIBLE,
   PROP_WEATHER_HOURLY_FORECAST,
   PROP_WEATHER_DAILY_FORECAST,
   PROP_WORKSPACES,
@@ -100,6 +111,9 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_WEATHER_TEXT:
     g_value_set_string(value, self->weather_text);
     break;
+  case PROP_WEATHER_WINDOW_MODEL:
+    g_value_set_object(value, self->weather_window_model);
+    break;
   case PROP_NETWORK_SSID:
     g_value_set_string(value, self->network_ssid);
     break;
@@ -124,8 +138,17 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_SOUND_READY:
     g_value_set_boolean(value, self->sound_ready);
     break;
+  case PROP_SOUND_WINDOW_MODEL:
+    g_value_set_object(value, self->sound_window_model);
+    break;
+  case PROP_SESSION_WINDOW_MODEL:
+    g_value_set_object(value, self->session_window_model);
+    break;
   case PROP_CAPS_LOCK_ENABLED:
     g_value_set_boolean(value, self->caps_lock_enabled);
+    break;
+  case PROP_CAPS_LOCK_POPUP_VISIBLE:
+    g_value_set_boolean(value, self->caps_lock_popup_visible);
     break;
   case PROP_WEATHER_HOURLY_FORECAST:
     g_value_set_object(value, self->weather_hourly_forecast);
@@ -220,6 +243,10 @@ static void io_model_set_property(GObject *object, guint property_id,
     self->caps_lock_enabled = g_value_get_boolean(value);
     g_object_notify_by_pspec(object, properties[PROP_CAPS_LOCK_ENABLED]);
     break;
+  case PROP_CAPS_LOCK_POPUP_VISIBLE:
+    self->caps_lock_popup_visible = g_value_get_boolean(value);
+    g_object_notify_by_pspec(object, properties[PROP_CAPS_LOCK_POPUP_VISIBLE]);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;
@@ -232,6 +259,9 @@ static void io_model_finalize(GObject *object) {
   g_free(self->weather_text);
   g_free(self->network_name);
   g_free(self->network_ssid);
+  g_clear_object(&self->weather_window_model);
+  g_clear_object(&self->sound_window_model);
+  g_clear_object(&self->session_window_model);
   g_clear_object(&self->cpu);
   g_clear_object(&self->weather_hourly_forecast);
   g_clear_object(&self->weather_daily_forecast);
@@ -246,13 +276,17 @@ static void io_model_init(IOModel *self) {
   self->memory_used = 0.0;
   self->memory_total = 0.0;
   self->weather_text = g_strdup("--");
+  self->weather_window_model = weather_window_model_new();
   self->network_name = g_strdup("--");
   self->download_bytes_per_sec = G_MAXUINT64;
   self->upload_bytes_per_sec = G_MAXUINT64;
   self->sound_volume = 0;
   self->sound_muted = false;
   self->sound_ready = false;
+  self->sound_window_model = sound_window_model_new();
+  self->session_window_model = session_window_model_new();
   self->caps_lock_enabled = false;
+  self->caps_lock_popup_visible = false;
   self->weather_hourly_forecast =
       g_list_store_new(weather_hour_item_get_type());
   self->weather_daily_forecast = g_list_store_new(weather_day_item_get_type());
@@ -284,6 +318,9 @@ static void io_model_class_init(IOModelClass *klass) {
                           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_WEATHER_TEXT] =
       g_param_spec_string("weather-text", NULL, NULL, "--", G_PARAM_READABLE);
+  properties[PROP_WEATHER_WINDOW_MODEL] =
+      g_param_spec_object("weather-window-model", NULL, NULL,
+                          weather_window_model_get_type(), G_PARAM_READABLE);
   properties[PROP_NETWORK_SSID] =
       g_param_spec_string("network-ssid", NULL, NULL, NULL,
                           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
@@ -307,8 +344,17 @@ static void io_model_class_init(IOModelClass *klass) {
   properties[PROP_SOUND_READY] =
       g_param_spec_boolean("sound-ready", NULL, NULL, false,
                            G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_SOUND_WINDOW_MODEL] =
+      g_param_spec_object("sound-window-model", NULL, NULL,
+                          sound_window_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_SESSION_WINDOW_MODEL] =
+      g_param_spec_object("session-window-model", NULL, NULL,
+                          session_window_model_get_type(), G_PARAM_READABLE);
   properties[PROP_CAPS_LOCK_ENABLED] =
       g_param_spec_boolean("caps-lock-enabled", NULL, NULL, false,
+                           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_CAPS_LOCK_POPUP_VISIBLE] =
+      g_param_spec_boolean("caps-lock-popup-visible", NULL, NULL, false,
                            G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_WEATHER_HOURLY_FORECAST] =
       g_param_spec_object("weather-hourly-forecast", NULL, NULL,

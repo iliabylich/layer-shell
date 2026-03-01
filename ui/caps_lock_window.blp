@@ -3,6 +3,7 @@ using Gtk 4.0;
 template $CapsLockWindow: $BaseWindow {
   layer-namespace: "LayerShell/CapsLock";
   anchor-bottom-margin: 100;
+  visible: bind template.model as <$IOModel>.caps-lock-popup-visible;
   styles ["caps-lock-window", "notification-window"]
   Box {
     orientation: horizontal;
