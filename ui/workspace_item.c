@@ -72,10 +72,10 @@ static void workspace_item_class_init(WorkspaceItemClass *klass) {
 
   properties[PROP_NUM] =
       g_param_spec_uint("num", NULL, NULL, 0, 100, 0, G_PARAM_READWRITE);
-  properties[PROP_VISIBLE] = g_param_spec_boolean("visible", NULL, NULL, FALSE,
-                                                  G_PARAM_READWRITE);
-  properties[PROP_ACTIVE] = g_param_spec_boolean("active", NULL, NULL, FALSE,
-                                                 G_PARAM_READWRITE);
+  properties[PROP_VISIBLE] =
+      g_param_spec_boolean("visible", NULL, NULL, FALSE, G_PARAM_READWRITE);
+  properties[PROP_ACTIVE] =
+      g_param_spec_boolean("active", NULL, NULL, FALSE, G_PARAM_READWRITE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 }
 

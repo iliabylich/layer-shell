@@ -90,45 +90,6 @@ static void io_model_get_property(GObject *object, guint property_id,
   }
 }
 
-static void io_model_set_property(GObject *object, guint property_id,
-                                  const GValue *value, GParamSpec *pspec) {
-  IOModel *self = IO_MODEL(object);
-
-  switch (property_id) {
-  case PROP_CLOCK_TEXT:
-    g_free(self->clock_text);
-    self->clock_text = g_value_dup_string(value);
-    break;
-  case PROP_LANGUAGE_TEXT:
-    g_free(self->language_text);
-    self->language_text = g_value_dup_string(value);
-    break;
-  case PROP_MEMORY_TEXT:
-    g_free(self->memory_text);
-    self->memory_text = g_value_dup_string(value);
-    break;
-  case PROP_WEATHER_TEXT:
-    g_free(self->weather_text);
-    self->weather_text = g_value_dup_string(value);
-    break;
-  case PROP_NETWORK_NAME:
-    g_free(self->network_name);
-    self->network_name = g_value_dup_string(value);
-    break;
-  case PROP_DOWNLOAD_SPEED:
-    g_free(self->download_speed);
-    self->download_speed = g_value_dup_string(value);
-    break;
-  case PROP_UPLOAD_SPEED:
-    g_free(self->upload_speed);
-    self->upload_speed = g_value_dup_string(value);
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
-    break;
-  }
-}
-
 static void io_model_finalize(GObject *object) {
   IOModel *self = IO_MODEL(object);
   g_free(self->clock_text);
@@ -164,30 +125,22 @@ static void io_model_init(IOModel *self) {
 static void io_model_class_init(IOModelClass *klass) {
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->get_property = io_model_get_property;
-  object_class->set_property = io_model_set_property;
   object_class->finalize = io_model_finalize;
 
   properties[PROP_CLOCK_TEXT] =
-      g_param_spec_string("clock-text", NULL, NULL, "--",
-                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+      g_param_spec_string("clock-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_LANGUAGE_TEXT] =
-      g_param_spec_string("language-text", NULL, NULL, "--",
-                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+      g_param_spec_string("language-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_MEMORY_TEXT] =
-      g_param_spec_string("memory-text", NULL, NULL, "--",
-                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+      g_param_spec_string("memory-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_WEATHER_TEXT] =
-      g_param_spec_string("weather-text", NULL, NULL, "--",
-                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+      g_param_spec_string("weather-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_NETWORK_NAME] =
-      g_param_spec_string("network-name", NULL, NULL, "--",
-                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+      g_param_spec_string("network-name", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_DOWNLOAD_SPEED] =
-      g_param_spec_string("download-speed", NULL, NULL, "??",
-                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+      g_param_spec_string("download-speed", NULL, NULL, "??", G_PARAM_READABLE);
   properties[PROP_UPLOAD_SPEED] =
-      g_param_spec_string("upload-speed", NULL, NULL, "??",
-                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+      g_param_spec_string("upload-speed", NULL, NULL, "??", G_PARAM_READABLE);
   properties[PROP_WORKSPACES] = g_param_spec_object(
       "workspaces", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
   properties[PROP_CPU_CORES] = g_param_spec_object(

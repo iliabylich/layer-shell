@@ -43,8 +43,8 @@ static void cpu_model_class_init(CpuModelClass *klass) {
   object_class->get_property = cpu_model_get_property;
   object_class->finalize = cpu_model_finalize;
 
-  properties[PROP_CORES] = g_param_spec_object("cores", NULL, NULL,
-                                               G_TYPE_LIST_MODEL, G_PARAM_READABLE);
+  properties[PROP_CORES] = g_param_spec_object(
+      "cores", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 }
 

@@ -22,7 +22,8 @@ static GParamSpec *properties[N_PROPERTIES] = {0};
 
 static void base_window_get_property(GObject *object, guint property_id,
                                      GValue *value, GParamSpec *pspec) {
-  BaseWindowPrivate *priv = base_window_get_instance_private(BASE_WINDOW(object));
+  BaseWindowPrivate *priv =
+      base_window_get_instance_private(BASE_WINDOW(object));
   switch (property_id) {
   case PROP_LAYER_NAMESPACE:
     g_value_set_string(value, priv->layer_namespace);
@@ -44,7 +45,8 @@ static void base_window_get_property(GObject *object, guint property_id,
 
 static void base_window_set_property(GObject *object, guint property_id,
                                      const GValue *value, GParamSpec *pspec) {
-  BaseWindowPrivate *priv = base_window_get_instance_private(BASE_WINDOW(object));
+  BaseWindowPrivate *priv =
+      base_window_get_instance_private(BASE_WINDOW(object));
   switch (property_id) {
   case PROP_LAYER_NAMESPACE:
     g_free(priv->layer_namespace);
@@ -105,7 +107,8 @@ static void base_window_constructed(GObject *object) {
 }
 
 static void base_window_finalize(GObject *object) {
-  BaseWindowPrivate *priv = base_window_get_instance_private(BASE_WINDOW(object));
+  BaseWindowPrivate *priv =
+      base_window_get_instance_private(BASE_WINDOW(object));
   g_free(priv->layer_namespace);
   G_OBJECT_CLASS(base_window_parent_class)->finalize(object);
 }

@@ -29,15 +29,20 @@ static void weather_window_init(WeatherWindow *self) {
 
   for (size_t row = 0; row < HOURLY_ROWS_COUNT; row++) {
     gtk_grid_attach(GTK_GRID(self->hourly), gtk_label_new("??"), 0, row, 1, 1);
-    gtk_grid_attach(GTK_GRID(self->hourly), temperature_label_new(), 1, row, 1, 1);
-    gtk_grid_attach(GTK_GRID(self->hourly), temperature_icon_new(), 2, row, 1, 1);
+    gtk_grid_attach(GTK_GRID(self->hourly), temperature_label_new(), 1, row, 1,
+                    1);
+    gtk_grid_attach(GTK_GRID(self->hourly), temperature_icon_new(), 2, row, 1,
+                    1);
   }
 
   for (size_t row = 0; row < DAILY_ROWS_COUNT; row++) {
     gtk_grid_attach(GTK_GRID(self->daily), gtk_label_new("??"), 0, row, 1, 1);
-    gtk_grid_attach(GTK_GRID(self->daily), temperature_label_new(), 1, row, 1, 1);
-    gtk_grid_attach(GTK_GRID(self->daily), temperature_label_new(), 2, row, 1, 1);
-    gtk_grid_attach(GTK_GRID(self->daily), temperature_icon_new(), 3, row, 1, 1);
+    gtk_grid_attach(GTK_GRID(self->daily), temperature_label_new(), 1, row, 1,
+                    1);
+    gtk_grid_attach(GTK_GRID(self->daily), temperature_label_new(), 2, row, 1,
+                    1);
+    gtk_grid_attach(GTK_GRID(self->daily), temperature_icon_new(), 3, row, 1,
+                    1);
   }
 }
 

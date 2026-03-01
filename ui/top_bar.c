@@ -1,7 +1,7 @@
 #include "ui/top_bar.h"
+#include "ui/cpu_item.h"
 #include "ui/io_model.h"
 #include "ui/logger.h"
-#include "ui/cpu_item.h"
 #include "ui/tray_app_item.h"
 #include "ui/workspace_item.h"
 #include <gtk4-layer-shell.h>
@@ -113,7 +113,7 @@ static void on_ws_switch(GSimpleAction *, GVariant *parameter, gpointer data) {
 }
 
 #define FORWARD_CLICKED(name, sig)                                             \
-  static void name(GtkButton *, gpointer data) {                              \
+  static void name(GtkButton *, gpointer data) {                               \
     g_signal_emit(data, signals[sig], 0);                                      \
   }
 
@@ -215,9 +215,9 @@ static void top_bar_class_init(TopBarClass *klass) {
       NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
 
 #define SIGNAL_CLICKED(id, name)                                               \
-  signals[id] = g_signal_new(name, G_TYPE_FROM_CLASS(klass),                   \
-                              G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,          \
-                              G_TYPE_NONE, 0)
+  signals[id] =                                                                \
+      g_signal_new(name, G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL, \
+                   NULL, NULL, G_TYPE_NONE, 0)
 
   SIGNAL_CLICKED(SIGNAL_CHANGE_THEME_CLICKED, "change-theme-clicked");
   SIGNAL_CLICKED(SIGNAL_WEATHER_CLICKED, "weather-clicked");
@@ -242,7 +242,8 @@ static void top_bar_class_init(TopBarClass *klass) {
   gtk_widget_class_set_template_from_resource(widget_class,
                                               "/layer-shell/top_bar.ui");
   gtk_widget_class_bind_template_callback(widget_class, format_workspace_num);
-  gtk_widget_class_bind_template_callback(widget_class, workspace_action_target);
+  gtk_widget_class_bind_template_callback(widget_class,
+                                          workspace_action_target);
   gtk_widget_class_bind_template_callback(widget_class, format_cpu_load);
   gtk_widget_class_bind_template_child(widget_class, TopBar, change_theme);
   gtk_widget_class_bind_template_child(widget_class, TopBar, weather);
@@ -263,5 +264,3 @@ void top_bar_set_model(TopBar *self, IOModel *model) {
 void top_bar_set_terminal_label(TopBar *self, const char *label) {
   gtk_button_set_label(GTK_BUTTON(self->terminal), label);
 }
-
-
