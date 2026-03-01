@@ -1,5 +1,5 @@
 use super::WeatherCode;
-use crate::{FFIArray, FFIString, Event, https::Response};
+use crate::{Event, FFIArray, FFIString, https::Response};
 use anyhow::{Context as _, Result, ensure};
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::Deserialize;

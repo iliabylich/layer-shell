@@ -42,6 +42,19 @@ static char *format_memory_label(GObject *, double used, double total) {
   return g_strdup_printf("RAM %.1fG/%.1fG", used, total);
 }
 
+static char *format_clock_label(GObject *, int64_t unix_seconds) {
+  if (unix_seconds <= 0)
+    return g_strdup("--");
+
+  GDateTime *dt = g_date_time_new_from_unix_local(unix_seconds);
+  if (!dt)
+    return g_strdup("--");
+
+  char *formatted = g_date_time_format(dt, "%H:%M:%S | %b %e | %a");
+  g_date_time_unref(dt);
+  return formatted ? formatted : g_strdup("--");
+}
+
 struct _TopBar {
   GtkWidget parent_instance;
 
@@ -252,6 +265,7 @@ static void top_bar_class_init(TopBarClass *klass) {
                                           workspace_action_target);
   gtk_widget_class_bind_template_callback(widget_class, format_cpu_load);
   gtk_widget_class_bind_template_callback(widget_class, format_memory_label);
+  gtk_widget_class_bind_template_callback(widget_class, format_clock_label);
   gtk_widget_class_bind_template_child(widget_class, TopBar, change_theme);
   gtk_widget_class_bind_template_child(widget_class, TopBar, weather);
   gtk_widget_class_bind_template_child(widget_class, TopBar, terminal);

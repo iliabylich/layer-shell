@@ -158,7 +158,9 @@ template $TopBar: Window {
         styles ["widget", "bluetooth", "padded", "clickable"]
       }
       Label {
-        label: bind template.model as <$IOModel>.clock-text;
+        label: bind $format_clock_label(
+            template.model as <$IOModel>.clock-unix-seconds
+        ) as <string>;
         styles ["widget", "clock", "padded"]
       }
       Button power {

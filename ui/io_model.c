@@ -8,7 +8,7 @@
 struct _IOModel {
   GObject parent_instance;
 
-  char *clock_text;
+  int64_t clock_unix_seconds;
   char *language_text;
   double memory_used;
   double memory_total;
@@ -27,7 +27,7 @@ struct _IOModel {
 G_DEFINE_TYPE(IOModel, io_model, G_TYPE_OBJECT)
 
 enum {
-  PROP_CLOCK_TEXT = 1,
+  PROP_CLOCK_UNIX_SECONDS = 1,
   PROP_LANGUAGE_TEXT,
   PROP_MEMORY_USED,
   PROP_MEMORY_TOTAL,
@@ -47,8 +47,8 @@ static void io_model_get_property(GObject *object, guint property_id,
   IOModel *self = IO_MODEL(object);
 
   switch (property_id) {
-  case PROP_CLOCK_TEXT:
-    g_value_set_string(value, self->clock_text);
+  case PROP_CLOCK_UNIX_SECONDS:
+    g_value_set_int64(value, self->clock_unix_seconds);
     break;
   case PROP_LANGUAGE_TEXT:
     g_value_set_string(value, self->language_text);
@@ -97,7 +97,6 @@ static void io_model_get_property(GObject *object, guint property_id,
 
 static void io_model_finalize(GObject *object) {
   IOModel *self = IO_MODEL(object);
-  g_free(self->clock_text);
   g_free(self->language_text);
   g_free(self->weather_text);
   g_free(self->network_name);
@@ -111,7 +110,7 @@ static void io_model_finalize(GObject *object) {
 }
 
 static void io_model_init(IOModel *self) {
-  self->clock_text = g_strdup("--");
+  self->clock_unix_seconds = 0;
   self->language_text = g_strdup("--");
   self->memory_used = 0.0;
   self->memory_total = 0.0;
@@ -132,8 +131,8 @@ static void io_model_class_init(IOModelClass *klass) {
   object_class->get_property = io_model_get_property;
   object_class->finalize = io_model_finalize;
 
-  properties[PROP_CLOCK_TEXT] =
-      g_param_spec_string("clock-text", NULL, NULL, "--", G_PARAM_READABLE);
+  properties[PROP_CLOCK_UNIX_SECONDS] = g_param_spec_int64(
+      "clock-unix-seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
   properties[PROP_LANGUAGE_TEXT] =
       g_param_spec_string("language-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_MEMORY_USED] = g_param_spec_double(
@@ -159,10 +158,9 @@ static void io_model_class_init(IOModelClass *klass) {
 
 IOModel *io_model_new(void) { return g_object_new(io_model_get_type(), NULL); }
 
-void io_model_set_clock_text(IOModel *self, const char *text) {
-  g_free(self->clock_text);
-  self->clock_text = g_strdup(text);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_CLOCK_TEXT]);
+void io_model_set_clock_unix_seconds(IOModel *self, int64_t unix_seconds) {
+  self->clock_unix_seconds = unix_seconds;
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_CLOCK_UNIX_SECONDS]);
 }
 
 void io_model_set_download_speed(IOModel *self, const char *text) {

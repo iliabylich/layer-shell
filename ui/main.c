@@ -88,7 +88,7 @@ static void on_event(const IO_Event *event) {
     io_model_set_upload_speed(model, event->upload_speed.speed);
     break;
   case IO_Event_Clock:
-    io_model_set_clock_text(model, event->clock.time);
+    io_model_set_clock_unix_seconds(model, event->clock.unix_seconds);
     break;
   case IO_Event_ToggleSessionScreen:
     session_window_toggle(SESSION_WINDOW(session_window));

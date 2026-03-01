@@ -10,7 +10,7 @@ G_DECLARE_FINAL_TYPE(IOModel, io_model, IO, MODEL, GObject)
 
 IOModel *io_model_new(void);
 
-void io_model_set_clock_text(IOModel *self, const char *text);
+void io_model_set_clock_unix_seconds(IOModel *self, int64_t unix_seconds);
 void io_model_set_download_speed(IOModel *self, const char *text);
 void io_model_set_upload_speed(IOModel *self, const char *text);
 

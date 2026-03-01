@@ -15,7 +15,7 @@ pub enum Event {
         usage_per_core: FFIArray<u8>,
     },
     Clock {
-        time: FFIString,
+        unix_seconds: i64,
     },
     Workspaces {
         workspaces: FFIArray<HyprlandWorkspace>,
