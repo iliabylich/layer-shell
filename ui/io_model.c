@@ -40,6 +40,8 @@ enum {
   PROP_MEMORY_USED,
   PROP_MEMORY_TOTAL,
   PROP_WEATHER_TEXT,
+  PROP_NETWORK_SSID,
+  PROP_NETWORK_STRENGTH,
   PROP_NETWORK_NAME,
   PROP_DOWNLOAD_BYTES_PER_SEC,
   PROP_UPLOAD_BYTES_PER_SEC,
@@ -55,6 +57,28 @@ enum {
   N_PROPERTIES,
 };
 static GParamSpec *properties[N_PROPERTIES] = {0};
+
+static void refresh_network_name(IOModel *self) {
+  char buffer[100];
+  if (self->network_ssid)
+    snprintf(buffer, sizeof(buffer), "%s (%d)%% ", self->network_ssid,
+             self->network_strength);
+  else
+    snprintf(buffer, sizeof(buffer), "Not connected");
+  g_free(self->network_name);
+  self->network_name = g_strdup(buffer);
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_NETWORK_NAME]);
+}
+
+static const char *to_language_text(const char *lang) {
+  if (lang == NULL)
+    return "??";
+  if (strcmp(lang, "English (US)") == 0)
+    return "EN";
+  if (strcmp(lang, "Polish") == 0)
+    return "PL";
+  return "??";
+}
 
 static void io_model_get_property(GObject *object, guint property_id,
                                   GValue *value, GParamSpec *pspec) {
@@ -75,6 +99,12 @@ static void io_model_get_property(GObject *object, guint property_id,
     break;
   case PROP_WEATHER_TEXT:
     g_value_set_string(value, self->weather_text);
+    break;
+  case PROP_NETWORK_SSID:
+    g_value_set_string(value, self->network_ssid);
+    break;
+  case PROP_NETWORK_STRENGTH:
+    g_value_set_uchar(value, self->network_strength);
     break;
   case PROP_NETWORK_NAME:
     g_value_set_string(value, self->network_name);
@@ -127,6 +157,75 @@ static void io_model_get_property(GObject *object, guint property_id,
   }
 }
 
+static void io_model_set_property(GObject *object, guint property_id,
+                                  const GValue *value, GParamSpec *pspec) {
+  IOModel *self = IO_MODEL(object);
+
+  switch (property_id) {
+  case PROP_CLOCK_UNIX_SECONDS:
+    self->clock_unix_seconds = g_value_get_int64(value);
+    g_object_notify_by_pspec(object, properties[PROP_CLOCK_UNIX_SECONDS]);
+    break;
+  case PROP_LANGUAGE_TEXT: {
+    const char *text = to_language_text(g_value_get_string(value));
+    g_free(self->language_text);
+    self->language_text = g_strdup(text);
+    g_object_notify_by_pspec(object, properties[PROP_LANGUAGE_TEXT]);
+    break;
+  }
+  case PROP_MEMORY_USED:
+    self->memory_used = g_value_get_double(value);
+    g_object_notify_by_pspec(object, properties[PROP_MEMORY_USED]);
+    break;
+  case PROP_MEMORY_TOTAL:
+    self->memory_total = g_value_get_double(value);
+    g_object_notify_by_pspec(object, properties[PROP_MEMORY_TOTAL]);
+    break;
+  case PROP_NETWORK_SSID:
+    g_free(self->network_ssid);
+    self->network_ssid = g_value_dup_string(value);
+    g_object_notify_by_pspec(object, properties[PROP_NETWORK_SSID]);
+    refresh_network_name(self);
+    break;
+  case PROP_NETWORK_STRENGTH:
+    self->network_strength = g_value_get_uchar(value);
+    g_object_notify_by_pspec(object, properties[PROP_NETWORK_STRENGTH]);
+    refresh_network_name(self);
+    break;
+  case PROP_DOWNLOAD_BYTES_PER_SEC:
+    self->download_bytes_per_sec = g_value_get_uint64(value);
+    g_object_notify_by_pspec(object, properties[PROP_DOWNLOAD_BYTES_PER_SEC]);
+    break;
+  case PROP_UPLOAD_BYTES_PER_SEC:
+    self->upload_bytes_per_sec = g_value_get_uint64(value);
+    g_object_notify_by_pspec(object, properties[PROP_UPLOAD_BYTES_PER_SEC]);
+    break;
+  case PROP_SOUND_VOLUME:
+    self->sound_volume = g_value_get_uint(value);
+    if (self->sound_ready) {
+      g_object_notify_by_pspec(object, properties[PROP_SOUND_VOLUME]);
+    }
+    break;
+  case PROP_SOUND_MUTED:
+    self->sound_muted = g_value_get_boolean(value);
+    if (self->sound_ready) {
+      g_object_notify_by_pspec(object, properties[PROP_SOUND_MUTED]);
+    }
+    break;
+  case PROP_SOUND_READY:
+    self->sound_ready = g_value_get_boolean(value);
+    g_object_notify_by_pspec(object, properties[PROP_SOUND_READY]);
+    break;
+  case PROP_CAPS_LOCK_ENABLED:
+    self->caps_lock_enabled = g_value_get_boolean(value);
+    g_object_notify_by_pspec(object, properties[PROP_CAPS_LOCK_ENABLED]);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+    break;
+  }
+}
+
 static void io_model_finalize(GObject *object) {
   IOModel *self = IO_MODEL(object);
   g_free(self->language_text);
@@ -168,34 +267,49 @@ static void io_model_init(IOModel *self) {
 static void io_model_class_init(IOModelClass *klass) {
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->get_property = io_model_get_property;
+  object_class->set_property = io_model_set_property;
   object_class->finalize = io_model_finalize;
 
-  properties[PROP_CLOCK_UNIX_SECONDS] = g_param_spec_int64(
-      "clock-unix-seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
+  properties[PROP_CLOCK_UNIX_SECONDS] =
+      g_param_spec_int64("clock-unix-seconds", NULL, NULL, 0, G_MAXINT64, 0,
+                         G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_LANGUAGE_TEXT] =
-      g_param_spec_string("language-text", NULL, NULL, "--", G_PARAM_READABLE);
-  properties[PROP_MEMORY_USED] = g_param_spec_double(
-      "memory-used", NULL, NULL, 0.0, G_MAXDOUBLE, 0.0, G_PARAM_READABLE);
-  properties[PROP_MEMORY_TOTAL] = g_param_spec_double(
-      "memory-total", NULL, NULL, 0.0, G_MAXDOUBLE, 0.0, G_PARAM_READABLE);
+      g_param_spec_string("language-text", NULL, NULL, "--",
+                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_MEMORY_USED] =
+      g_param_spec_double("memory-used", NULL, NULL, 0.0, G_MAXDOUBLE, 0.0,
+                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_MEMORY_TOTAL] =
+      g_param_spec_double("memory-total", NULL, NULL, 0.0, G_MAXDOUBLE, 0.0,
+                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_WEATHER_TEXT] =
       g_param_spec_string("weather-text", NULL, NULL, "--", G_PARAM_READABLE);
+  properties[PROP_NETWORK_SSID] =
+      g_param_spec_string("network-ssid", NULL, NULL, NULL,
+                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_NETWORK_STRENGTH] =
+      g_param_spec_uchar("network-strength", NULL, NULL, 0, G_MAXUINT8, 0,
+                         G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_NETWORK_NAME] =
       g_param_spec_string("network-name", NULL, NULL, "--", G_PARAM_READABLE);
-  properties[PROP_DOWNLOAD_BYTES_PER_SEC] =
-      g_param_spec_uint64("download-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64,
-                          G_MAXUINT64, G_PARAM_READABLE);
-  properties[PROP_UPLOAD_BYTES_PER_SEC] =
-      g_param_spec_uint64("upload-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64,
-                          G_MAXUINT64, G_PARAM_READABLE);
-  properties[PROP_SOUND_VOLUME] = g_param_spec_uint(
-      "sound-volume", NULL, NULL, 0, G_MAXUINT, 0, G_PARAM_READABLE);
+  properties[PROP_DOWNLOAD_BYTES_PER_SEC] = g_param_spec_uint64(
+      "download-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64, G_MAXUINT64,
+      G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_UPLOAD_BYTES_PER_SEC] = g_param_spec_uint64(
+      "upload-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64, G_MAXUINT64,
+      G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_SOUND_VOLUME] =
+      g_param_spec_uint("sound-volume", NULL, NULL, 0, G_MAXUINT, 0,
+                        G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_SOUND_MUTED] =
-      g_param_spec_boolean("sound-muted", NULL, NULL, false, G_PARAM_READABLE);
+      g_param_spec_boolean("sound-muted", NULL, NULL, false,
+                           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_SOUND_READY] =
-      g_param_spec_boolean("sound-ready", NULL, NULL, false, G_PARAM_READABLE);
-  properties[PROP_CAPS_LOCK_ENABLED] = g_param_spec_boolean(
-      "caps-lock-enabled", NULL, NULL, false, G_PARAM_READABLE);
+      g_param_spec_boolean("sound-ready", NULL, NULL, false,
+                           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_CAPS_LOCK_ENABLED] =
+      g_param_spec_boolean("caps-lock-enabled", NULL, NULL, false,
+                           G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_WEATHER_HOURLY_FORECAST] =
       g_param_spec_object("weather-hourly-forecast", NULL, NULL,
                           G_TYPE_LIST_MODEL, G_PARAM_READABLE);
@@ -212,24 +326,6 @@ static void io_model_class_init(IOModelClass *klass) {
 }
 
 IOModel *io_model_new(void) { return g_object_new(io_model_get_type(), NULL); }
-
-void io_model_set_clock_unix_seconds(IOModel *self, int64_t unix_seconds) {
-  self->clock_unix_seconds = unix_seconds;
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_CLOCK_UNIX_SECONDS]);
-}
-
-void io_model_set_download_bytes_per_sec(IOModel *self,
-                                         uint64_t bytes_per_sec) {
-  self->download_bytes_per_sec = bytes_per_sec;
-  g_object_notify_by_pspec(G_OBJECT(self),
-                           properties[PROP_DOWNLOAD_BYTES_PER_SEC]);
-}
-
-void io_model_set_upload_bytes_per_sec(IOModel *self, uint64_t bytes_per_sec) {
-  self->upload_bytes_per_sec = bytes_per_sec;
-  g_object_notify_by_pspec(G_OBJECT(self),
-                           properties[PROP_UPLOAD_BYTES_PER_SEC]);
-}
 
 void io_model_set_workspaces(IOModel *self,
                              struct IO_FFIArray_HyprlandWorkspace data) {
@@ -261,75 +357,8 @@ void io_model_set_weather(IOModel *self,
   }
 }
 
-void io_model_set_language(IOModel *self, const char *lang) {
-  const char *text;
-  if (strcmp(lang, "English (US)") == 0)
-    text = "EN";
-  else if (strcmp(lang, "Polish") == 0)
-    text = "PL";
-  else
-    text = "??";
-  g_free(self->language_text);
-  self->language_text = g_strdup(text);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_LANGUAGE_TEXT]);
-}
-
 void io_model_set_cpu(IOModel *self, IO_FFIArray_u8 data) {
   cpu_model_update(self->cpu, data);
-}
-
-void io_model_set_memory(IOModel *self, float used, float total) {
-  self->memory_used = used;
-  self->memory_total = total;
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_MEMORY_USED]);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_MEMORY_TOTAL]);
-}
-
-static void refresh_network_name(IOModel *self) {
-  char buffer[100];
-  if (self->network_ssid)
-    snprintf(buffer, sizeof(buffer), "%s (%d)%% ", self->network_ssid,
-             self->network_strength);
-  else
-    snprintf(buffer, sizeof(buffer), "Not connected");
-  g_free(self->network_name);
-  self->network_name = g_strdup(buffer);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_NETWORK_NAME]);
-}
-
-void io_model_set_network_ssid(IOModel *self, const char *ssid) {
-  g_free(self->network_ssid);
-  self->network_ssid = g_strdup(ssid);
-  refresh_network_name(self);
-}
-
-void io_model_set_network_strength(IOModel *self, uint8_t strength) {
-  self->network_strength = strength;
-  refresh_network_name(self);
-}
-
-void io_model_set_sound_initial(IOModel *self, uint32_t volume, bool muted) {
-  self->sound_volume = volume;
-  self->sound_muted = muted;
-  self->sound_ready = true;
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_VOLUME]);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_MUTED]);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_READY]);
-}
-
-void io_model_set_sound_volume(IOModel *self, uint32_t volume) {
-  self->sound_volume = volume;
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_VOLUME]);
-}
-
-void io_model_set_sound_muted(IOModel *self, bool muted) {
-  self->sound_muted = muted;
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_MUTED]);
-}
-
-void io_model_set_caps_lock_enabled(IOModel *self, bool enabled) {
-  self->caps_lock_enabled = enabled;
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_CAPS_LOCK_ENABLED]);
 }
 
 void io_model_tray_add_app(IOModel *self, const char *service, IO_TrayIcon icon,

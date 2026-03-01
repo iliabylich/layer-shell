@@ -39,6 +39,8 @@ static void window_toggle(GtkWidget *, gpointer data) {
 }
 
 static void event_received(const IO_Event *event) {
+#define SET(prop, val) g_object_set(model, prop, val, NULL)
+
   switch (event->tag) {
   case IO_Event_Workspaces:
     io_model_set_workspaces(model, event->workspaces.workspaces);
@@ -66,46 +68,47 @@ static void event_received(const IO_Event *event) {
     io_model_set_weather(model, event->weather);
     break;
   case IO_Event_Language:
-    io_model_set_language(model, event->language.lang);
+    SET("language-text", event->language.lang);
     break;
   case IO_Event_CpuUsage:
     io_model_set_cpu(model, event->cpu_usage.usage_per_core);
     break;
   case IO_Event_Memory:
-    io_model_set_memory(model, event->memory.used, event->memory.total);
+    SET("memory-used", event->memory.used);
+    SET("memory-total", event->memory.total);
     break;
   case IO_Event_NetworkSsid:
-    io_model_set_network_ssid(model, event->network_ssid.ssid);
+    SET("network-ssid", event->network_ssid.ssid);
     break;
   case IO_Event_NetworkStrength:
-    io_model_set_network_strength(model, event->network_strength.strength);
+    SET("network-strength", event->network_strength.strength);
     break;
   case IO_Event_DownloadSpeed:
-    io_model_set_download_bytes_per_sec(model,
-                                        event->download_speed.bytes_per_sec);
+    SET("download-bytes-per-sec", event->download_speed.bytes_per_sec);
     break;
   case IO_Event_UploadSpeed:
-    io_model_set_upload_bytes_per_sec(model, event->upload_speed.bytes_per_sec);
+    SET("upload-bytes-per-sec", event->upload_speed.bytes_per_sec);
     break;
   case IO_Event_Clock:
-    io_model_set_clock_unix_seconds(model, event->clock.unix_seconds);
+    SET("clock-unix-seconds", event->clock.unix_seconds);
     break;
   case IO_Event_ToggleSessionScreen:
     gtk_widget_set_visible(session_window,
                            !gtk_widget_get_visible(session_window));
     break;
   case IO_Event_InitialSound:
-    io_model_set_sound_initial(model, event->initial_sound.volume,
-                               event->initial_sound.muted);
+    SET("sound-volume", event->initial_sound.volume);
+    SET("sound-muted", event->initial_sound.muted);
+    SET("sound-ready", true);
     break;
   case IO_Event_VolumeChanged:
-    io_model_set_sound_volume(model, event->volume_changed.volume);
+    SET("sound-volume", event->volume_changed.volume);
     break;
   case IO_Event_MuteChanged:
-    io_model_set_sound_muted(model, event->mute_changed.muted);
+    SET("sound-muted", event->mute_changed.muted);
     break;
   case IO_Event_CapsLockToggled:
-    io_model_set_caps_lock_enabled(model, event->caps_lock_toggled.enabled);
+    SET("caps-lock-enabled", event->caps_lock_toggled.enabled);
     break;
   case IO_Event_Exit:
     LOG("Received exit...");
@@ -121,6 +124,8 @@ static void event_received(const IO_Event *event) {
     exiting = true;
     break;
   }
+
+#undef SET
 }
 
 static gboolean read_io_events(gint, GIOCondition, gpointer) {
