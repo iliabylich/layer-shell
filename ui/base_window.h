@@ -13,5 +13,4 @@ struct _BaseWindowClass {
   GtkWindowClass parent_class;
 };
 
-void base_window_toggle(BaseWindow *self);
 void base_window_vte(BaseWindow *self, char **command);

@@ -70,7 +70,8 @@ static void base_window_set_property(GObject *object, guint property_id,
 static bool on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
                            GdkModifierType, BaseWindow *window) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
-    base_window_toggle(window);
+    gtk_widget_set_visible(GTK_WIDGET(window),
+                           !gtk_widget_get_visible(GTK_WIDGET(window)));
     return true;
   }
   return false;
@@ -131,11 +132,6 @@ static void base_window_class_init(BaseWindowClass *klass) {
   properties[PROP_ANCHOR_BOTTOM_MARGIN] = g_param_spec_int(
       "anchor-bottom-margin", NULL, NULL, 0, G_MAXINT, 0, G_PARAM_READWRITE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
-}
-
-void base_window_toggle(BaseWindow *self) {
-  gtk_widget_set_visible(GTK_WIDGET(self),
-                         !gtk_widget_get_visible(GTK_WIDGET(self)));
 }
 
 void base_window_vte(BaseWindow *self, char **command) {

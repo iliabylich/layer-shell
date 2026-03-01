@@ -18,24 +18,29 @@ struct _SessionWindow {
 
 G_DEFINE_TYPE(SessionWindow, session_window, BASE_WINDOW_TYPE)
 
+static void toggle_visible(SessionWindow *self) {
+  gtk_widget_set_visible(GTK_WIDGET(self),
+                         !gtk_widget_get_visible(GTK_WIDGET(self)));
+}
+
 static void on_lock(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_LOCK], 0);
-  base_window_toggle(BASE_WINDOW(self));
+  toggle_visible(self);
 }
 
 static void on_reboot(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_REBOOT], 0);
-  base_window_toggle(BASE_WINDOW(self));
+  toggle_visible(self);
 }
 
 static void on_shutdown(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_SHUTDOWN], 0);
-  base_window_toggle(BASE_WINDOW(self));
+  toggle_visible(self);
 }
 
 static void on_logout(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_LOGOUT], 0);
-  base_window_toggle(BASE_WINDOW(self));
+  toggle_visible(self);
 }
 
 static void session_window_init(SessionWindow *self) {
