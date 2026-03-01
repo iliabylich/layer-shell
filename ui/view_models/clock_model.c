@@ -49,7 +49,7 @@ static void clock_model_class_init(ClockModelClass *klass) {
   object_class->set_property = clock_model_set_property;
 
   properties[PROP_UNIX_SECONDS] =
-      g_param_spec_int64("unix_seconds", NULL, NULL, 0, G_MAXINT64, 0,
+      g_param_spec_int64("unix-seconds", NULL, NULL, 0, G_MAXINT64, 0,
                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 }

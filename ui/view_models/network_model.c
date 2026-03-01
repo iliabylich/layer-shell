@@ -119,10 +119,10 @@ static void network_model_class_init(NetworkModelClass *klass) {
   properties[PROP_NAME] =
       g_param_spec_string("name", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_DOWNLOAD_BYTES_PER_SEC] = g_param_spec_uint64(
-      "download_bytes_per_sec", NULL, NULL, 0, G_MAXUINT64, G_MAXUINT64,
+      "download-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64, G_MAXUINT64,
       G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_UPLOAD_BYTES_PER_SEC] = g_param_spec_uint64(
-      "upload_bytes_per_sec", NULL, NULL, 0, G_MAXUINT64, G_MAXUINT64,
+      "upload-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64, G_MAXUINT64,
       G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 }

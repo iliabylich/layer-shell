@@ -10,6 +10,3 @@ G_DECLARE_FINAL_TYPE(WorkspacesModel, workspaces_model, WORKSPACES, MODEL,
   G_TYPE_CHECK_INSTANCE_CAST(obj, workspaces_model_get_type(), WorkspacesModel)
 
 WorkspacesModel *workspaces_model_new(void);
-
-void workspaces_model_update(WorkspacesModel *self,
-                             struct IO_FFIArray_HyprlandWorkspace data);

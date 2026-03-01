@@ -1,4 +1,5 @@
 #include "ui/caps_lock_overlay.h"
+#include "ui/gobject_helper.h"
 #include "ui/logger.h"
 
 LOGGER("CapsLockOverlay", 0)
@@ -35,12 +36,12 @@ static void caps_lock_overlay_init(CapsLockOverlay *self) {
 
 static void hide(gpointer data) {
   CapsLockOverlay *self = data;
-  g_object_set(self->model, "overlays_caps_lock_visible", false, NULL);
+  gobject_set_nested(G_OBJECT(self->model), "overlays", "caps-lock", false);
   self->timer = 0;
 }
 
 static void show(CapsLockOverlay *self) {
-  g_object_set(self->model, "overlays_caps_lock_visible", true, NULL);
+  gobject_set_nested(G_OBJECT(self->model), "overlays", "caps-lock", true);
 
   if (self->timer) {
     g_assert(g_source_remove(self->timer));
@@ -70,11 +71,15 @@ static void caps_lock_overlay_set_property(GObject *object, guint property_id,
                                            GParamSpec *pspec) {
   CapsLockOverlay *self = CAPS_LOCK_OVERLAY(object);
   switch (property_id) {
-  case PROP_MODEL:
+  case PROP_MODEL: {
+    GObject *caps_lock = NULL;
     g_set_object(&self->model, g_value_get_object(value));
-    g_signal_connect_object(self->model, "notify::caps-lock-enabled",
+    g_object_get(self->model, "caps-lock", &caps_lock, NULL);
+    g_signal_connect_object(caps_lock, "notify::enabled",
                             G_CALLBACK(caps_lock_changed), self, 0);
+    g_object_unref(caps_lock);
     break;
+  }
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;

@@ -63,7 +63,7 @@ static void weather_hour_item_class_init(WeatherHourItemClass *klass) {
   object_class->finalize = weather_hour_item_finalize;
 
   properties[PROP_UNIX_SECONDS] = g_param_spec_int64(
-      "unix_seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
+      "unix-seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
   properties[PROP_TEMPERATURE] =
       g_param_spec_double("temperature", NULL, NULL, -G_MAXDOUBLE, G_MAXDOUBLE,
                           0.0, G_PARAM_READABLE);

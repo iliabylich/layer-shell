@@ -10,5 +10,3 @@ G_DECLARE_FINAL_TYPE(WeatherModel, weather_model, WEATHER,
   G_TYPE_CHECK_INSTANCE_CAST(obj, weather_model_get_type(), WeatherModel)
 
 WeatherModel *weather_model_new(void);
-void weather_model_set_weather(WeatherModel *self,
-                               struct IO_Event_IO_Weather_Body weather);

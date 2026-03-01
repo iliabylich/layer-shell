@@ -9,4 +9,3 @@ G_DECLARE_FINAL_TYPE(SoundModel, sound_model, SOUND,
   G_TYPE_CHECK_INSTANCE_CAST(obj, sound_model_get_type(), SoundModel)
 
 SoundModel *sound_model_new(void);
-void sound_model_set_initial(SoundModel *self, guint volume, gboolean muted);

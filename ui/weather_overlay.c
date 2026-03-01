@@ -1,4 +1,5 @@
 #include "ui/weather_overlay.h"
+#include "ui/gobject_helper.h"
 #include "ui/logger.h"
 #include "ui/view_models/weather_day_item.h"
 #include "ui/view_models/weather_hour_item.h"
@@ -51,12 +52,7 @@ static char *format_day_label(GObject *, int64_t unix_seconds) {
 
 static void toggle_requested(BaseOverlay *, gpointer data) {
   WeatherOverlay *self = WEATHER_OVERLAY(data);
-  if (!self->model) {
-    return;
-  }
-  gboolean visible = false;
-  g_object_get(self->model, "overlays_weather_visible", &visible, NULL);
-  g_object_set(self->model, "overlays_weather_visible", !visible, NULL);
+  gobject_toggle_nested(G_OBJECT(self->model), "overlays", "weather");
 }
 
 static void weather_overlay_get_property(GObject *object, guint property_id,

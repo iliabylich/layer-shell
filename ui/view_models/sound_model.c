@@ -1,3 +1,4 @@
+#include "bindings.h"
 #include "ui/view_models/sound_model.h"
 
 struct _SoundModel {
@@ -12,6 +13,7 @@ G_DEFINE_TYPE(SoundModel, sound_model, G_TYPE_OBJECT)
 enum {
   PROP_VOLUME = 1,
   PROP_MUTED,
+  PROP_INITIAL,
   N_PROPERTIES,
 };
 static GParamSpec *properties[N_PROPERTIES] = {0};
@@ -59,6 +61,17 @@ static void sound_model_set_property(GObject *object, guint property_id,
     g_object_notify_by_pspec(object, properties[PROP_MUTED]);
     request_overlay_show_if_initialized(self);
     break;
+  case PROP_INITIAL: {
+    IO_Event_IO_InitialSound_Body *data = g_value_get_pointer(value);
+    if (data) {
+      self->volume = data->volume;
+      self->muted = data->muted;
+      self->has_initial_state = true;
+      g_object_notify_by_pspec(object, properties[PROP_VOLUME]);
+      g_object_notify_by_pspec(object, properties[PROP_MUTED]);
+    }
+    break;
+  }
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;
@@ -81,6 +94,8 @@ static void sound_model_class_init(SoundModelClass *klass) {
                         G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   properties[PROP_MUTED] = g_param_spec_boolean(
       "muted", NULL, NULL, false, G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+  properties[PROP_INITIAL] =
+      g_param_spec_pointer("initial", NULL, NULL, G_PARAM_WRITABLE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
   signals[SIGNAL_OVERLAY_SHOW_REQUESTED] = g_signal_new(
@@ -90,12 +105,4 @@ static void sound_model_class_init(SoundModelClass *klass) {
 
 SoundModel *sound_model_new(void) {
   return g_object_new(sound_model_get_type(), NULL);
-}
-
-void sound_model_set_initial(SoundModel *self, guint volume, gboolean muted) {
-  self->volume = volume;
-  self->muted = muted;
-  self->has_initial_state = true;
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_VOLUME]);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_MUTED]);
 }

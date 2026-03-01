@@ -3,7 +3,7 @@ using Gtk 4.0;
 template $PingOverlay: $BaseOverlay {
   layer-namespace: "LayerShell/Ping";
   keyboard-exclusive: true;
-  visible: bind template.model as <$IOModel>.overlays_ping_visible;
+  visible: bind template.model as <$IOModel>.overlays as <$OverlaysModel>.ping;
   width-request: 1000;
   height-request: 700;
 }

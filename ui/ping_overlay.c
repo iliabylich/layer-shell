@@ -1,5 +1,6 @@
 #include "ui/ping_overlay.h"
 #include "bindings.h"
+#include "ui/gobject_helper.h"
 #include "ui/logger.h"
 
 extern const IO_IOConfig *config;
@@ -22,12 +23,7 @@ static GParamSpec *properties[N_PROPERTIES] = {0};
 
 static void toggle_requested(BaseOverlay *, gpointer data) {
   PingOverlay *self = PING_OVERLAY(data);
-  if (!self->model) {
-    return;
-  }
-  gboolean visible = false;
-  g_object_get(self->model, "overlays_ping_visible", &visible, NULL);
-  g_object_set(self->model, "overlays_ping_visible", !visible, NULL);
+  gobject_toggle_nested(G_OBJECT(self->model), "overlays", "ping");
 }
 
 static void ping_overlay_get_property(GObject *object, guint property_id,

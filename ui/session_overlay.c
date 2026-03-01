@@ -1,4 +1,5 @@
 #include "ui/session_overlay.h"
+#include "ui/gobject_helper.h"
 #include "ui/logger.h"
 
 LOGGER("SessionOverlay", 0)
@@ -27,9 +28,7 @@ enum {
 static GParamSpec *properties[N_PROPERTIES] = {0};
 
 static void set_visible(SessionOverlay *self, gboolean visible) {
-  if (self->model) {
-    g_object_set(self->model, "overlays_session_visible", visible, NULL);
-  }
+  gobject_set_nested(G_OBJECT(self->model), "overlays", "session", visible);
 }
 
 static void lock_clicked(SessionOverlay *self) {
@@ -54,12 +53,7 @@ static void logout_clicked(SessionOverlay *self) {
 
 static void toggle_requested(BaseOverlay *, gpointer data) {
   SessionOverlay *self = SESSION_OVERLAY(data);
-  if (!self->model) {
-    return;
-  }
-  gboolean visible = false;
-  g_object_get(self->model, "overlays_session_visible", &visible, NULL);
-  g_object_set(self->model, "overlays_session_visible", !visible, NULL);
+  gobject_toggle_nested(G_OBJECT(self->model), "overlays", "session");
 }
 
 static void session_overlay_init(SessionOverlay *self) {

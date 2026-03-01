@@ -63,12 +63,16 @@ static void sound_overlay_set_property(GObject *object, guint property_id,
                                        const GValue *value, GParamSpec *pspec) {
   SoundOverlay *self = SOUND_OVERLAY(object);
   switch (property_id) {
-  case PROP_MODEL:
+  case PROP_MODEL: {
+    GObject *sound = NULL;
     g_set_object(&self->model, g_value_get_object(value));
-    g_object_bind_property_full(
-        self->model, "sound_volume", self->sound_adjustment, "value",
-        G_BINDING_SYNC_CREATE, transform_sound_volume, NULL, NULL, NULL);
+    g_object_get(self->model, "sound", &sound, NULL);
+    g_object_bind_property_full(sound, "volume", self->sound_adjustment,
+                                "value", G_BINDING_SYNC_CREATE,
+                                transform_sound_volume, NULL, NULL, NULL);
+    g_object_unref(sound);
     break;
+  }
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;

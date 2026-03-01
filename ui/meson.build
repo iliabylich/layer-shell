@@ -12,6 +12,7 @@ sources += files(
     'view_models/overlays_model.c',
     'css.c',
     'logger.c',
+    'gobject_helper.c',
     'main.c',
     'ping_overlay.c',
     'session_overlay.c',

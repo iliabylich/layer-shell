@@ -1,6 +1,7 @@
 #include "bindings.h"
 #include "ui/caps_lock_overlay.h"
 #include "ui/css.h"
+#include "ui/gobject_helper.h"
 #include "ui/logger.h"
 #include "ui/ping_overlay.h"
 #include "ui/session_overlay.h"
@@ -33,19 +34,18 @@ static void remove_window(GtkWidget **win) {
   g_clear_pointer(win, g_object_unref);
 }
 
-static void state_toggle(GtkWidget *, gpointer data) {
-  gboolean visible = false;
-  const char *model_prop = data;
-  g_object_get(model, model_prop, &visible, NULL);
-  g_object_set(model, model_prop, !visible, NULL);
+static void toggle_overlay_by_name(GtkWidget *, gpointer data) {
+  const char *overlay_prop = data;
+  gobject_toggle_nested(G_OBJECT(model), "overlays", overlay_prop);
 }
 
 static void event_received(const IO_Event *event) {
-#define SET(prop, val) g_object_set(model, prop, val, NULL)
+#define SET(child, prop, val)                                                  \
+  gobject_set_nested(G_OBJECT(model), child, prop, val)
 
   switch (event->tag) {
   case IO_Event_Workspaces:
-    io_model_set_workspaces(model, event->workspaces.workspaces);
+    SET("workspaces", "data", (gpointer)&event->workspaces.workspaces);
     break;
   case IO_Event_ReloadStyles:
     css_reload();
@@ -67,48 +67,49 @@ static void event_received(const IO_Event *event) {
                            event->tray_app_menu_updated.items);
     break;
   case IO_Event_Weather:
-    io_model_set_weather(model, event->weather);
+    SET("weather", "data", (gpointer)&event->weather);
     break;
   case IO_Event_Language:
-    SET("language_text", event->language.lang);
+    SET("language", "text", event->language.lang);
     break;
   case IO_Event_CpuUsage:
-    io_model_set_cpu(model, event->cpu_usage.usage_per_core);
+    SET("cpu", "data", (gpointer)&event->cpu_usage.usage_per_core);
     break;
   case IO_Event_Memory:
-    SET("memory_used", event->memory.used);
-    SET("memory_total", event->memory.total);
+    SET("memory", "used", event->memory.used);
+    SET("memory", "total", event->memory.total);
     break;
   case IO_Event_NetworkSsid:
-    SET("network_ssid", event->network_ssid.ssid);
+    SET("network", "ssid", event->network_ssid.ssid);
     break;
   case IO_Event_NetworkStrength:
-    SET("network_strength", event->network_strength.strength);
+    SET("network", "strength", event->network_strength.strength);
     break;
   case IO_Event_DownloadSpeed:
-    SET("network_download_bytes_per_sec", event->download_speed.bytes_per_sec);
+    SET("network", "download-bytes-per-sec",
+        event->download_speed.bytes_per_sec);
     break;
   case IO_Event_UploadSpeed:
-    SET("network_upload_bytes_per_sec", event->upload_speed.bytes_per_sec);
+    SET("network", "upload-bytes-per-sec", event->upload_speed.bytes_per_sec);
     break;
-  case IO_Event_Clock:
-    SET("clock_unix_seconds", event->clock.unix_seconds);
+  case IO_Event_Clock: {
+    SET("clock", "unix-seconds", event->clock.unix_seconds);
     break;
+  }
   case IO_Event_ToggleSessionScreen:
-    state_toggle(NULL, "overlays_session_visible");
+    toggle_overlay_by_name(NULL, "session");
     break;
   case IO_Event_InitialSound:
-    io_model_set_initial_sound(model, event->initial_sound.volume,
-                               event->initial_sound.muted);
+    SET("sound", "initial", (gpointer)&event->initial_sound);
     break;
   case IO_Event_VolumeChanged:
-    SET("sound_volume", event->volume_changed.volume);
+    SET("sound", "volume", event->volume_changed.volume);
     break;
   case IO_Event_MuteChanged:
-    SET("sound_muted", event->mute_changed.muted);
+    SET("sound", "muted", event->mute_changed.muted);
     break;
   case IO_Event_CapsLockToggled:
-    SET("caps_lock_enabled", event->caps_lock_toggled.enabled);
+    SET("caps-lock", "enabled", event->caps_lock_toggled.enabled);
     break;
   case IO_Event_Exit:
     LOG("Received exit...");
@@ -166,12 +167,10 @@ static void create_widgets() {
   CONNECT(session_overlay, "clicked-reboot", io_reboot, NULL);
   CONNECT(session_overlay, "clicked-logout", io_logout, NULL);
 
-  CONNECT(top_bar, "weather-clicked", state_toggle, "overlays_weather_visible");
-  CONNECT(top_bar, "terminal-clicked", state_toggle,
-          "overlays_terminal_visible");
-  CONNECT(top_bar, "network-ping-clicked", state_toggle,
-          "overlays_ping_visible");
-  CONNECT(top_bar, "power-clicked", state_toggle, "overlays_session_visible");
+  CONNECT(top_bar, "weather-clicked", toggle_overlay_by_name, "weather");
+  CONNECT(top_bar, "terminal-clicked", toggle_overlay_by_name, "terminal");
+  CONNECT(top_bar, "network-ping-clicked", toggle_overlay_by_name, "ping");
+  CONNECT(top_bar, "power-clicked", toggle_overlay_by_name, "session");
 
 #undef CONNECT
 

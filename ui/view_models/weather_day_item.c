@@ -69,12 +69,12 @@ static void weather_day_item_class_init(WeatherDayItemClass *klass) {
   object_class->finalize = weather_day_item_finalize;
 
   properties[PROP_UNIX_SECONDS] = g_param_spec_int64(
-      "unix_seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
+      "unix-seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
   properties[PROP_TEMPERATURE_MIN] =
-      g_param_spec_double("temperature_min", NULL, NULL, -G_MAXDOUBLE,
+      g_param_spec_double("temperature-min", NULL, NULL, -G_MAXDOUBLE,
                           G_MAXDOUBLE, 0.0, G_PARAM_READABLE);
   properties[PROP_TEMPERATURE_MAX] =
-      g_param_spec_double("temperature_max", NULL, NULL, -G_MAXDOUBLE,
+      g_param_spec_double("temperature-max", NULL, NULL, -G_MAXDOUBLE,
                           G_MAXDOUBLE, 0.0, G_PARAM_READABLE);
   properties[PROP_ICON] =
       g_param_spec_string("icon", NULL, NULL, "", G_PARAM_READABLE);

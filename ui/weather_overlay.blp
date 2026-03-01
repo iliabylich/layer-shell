@@ -3,7 +3,7 @@ using Gtk 4.0;
 template $WeatherOverlay: $BaseOverlay {
   layer-namespace: "LayerShell/Weather";
   keyboard-exclusive: true;
-  visible: bind template.model as <$IOModel>.overlays_weather_visible;
+  visible: bind template.model as <$IOModel>.overlays as <$OverlaysModel>.weather;
   styles ["weather-overlay"]
   Box {
     orientation: horizontal;
@@ -23,7 +23,7 @@ template $WeatherOverlay: $BaseOverlay {
         show-column-separators: false;
 
         model: NoSelection {
-          model: bind template.model as <$IOModel>.weather_hourly_forecast;
+          model: bind template.model as <$IOModel>.weather as <$WeatherModel>.hourly-forecast;
         };
 
         ColumnViewColumn {
@@ -34,7 +34,7 @@ template $WeatherOverlay: $BaseOverlay {
               child: Label {
                 xalign: 0;
                 label: bind $format_hour_label(
-                    template.item as <$WeatherHourItem>.unix_seconds
+                    template.item as <$WeatherHourItem>.unix-seconds
                 ) as <string>;
               };
             }
@@ -87,7 +87,7 @@ template $WeatherOverlay: $BaseOverlay {
         show-column-separators: false;
 
         model: NoSelection {
-          model: bind template.model as <$IOModel>.weather_daily_forecast;
+          model: bind template.model as <$IOModel>.weather as <$WeatherModel>.daily-forecast;
         };
 
         ColumnViewColumn {
@@ -98,7 +98,7 @@ template $WeatherOverlay: $BaseOverlay {
               child: Label {
                 xalign: 0;
                 label: bind $format_day_label(
-                    template.item as <$WeatherDayItem>.unix_seconds
+                    template.item as <$WeatherDayItem>.unix-seconds
                 ) as <string>;
               };
             }
@@ -113,7 +113,7 @@ template $WeatherOverlay: $BaseOverlay {
               child: Label {
                 xalign: 1;
                 label: bind $format_temperature(
-                    template.item as <$WeatherDayItem>.temperature_min
+                    template.item as <$WeatherDayItem>.temperature-min
                 ) as <string>;
               };
             }
@@ -128,7 +128,7 @@ template $WeatherOverlay: $BaseOverlay {
               child: Label {
                 xalign: 1;
                 label: bind $format_temperature(
-                    template.item as <$WeatherDayItem>.temperature_max
+                    template.item as <$WeatherDayItem>.temperature-max
                 ) as <string>;
               };
             }

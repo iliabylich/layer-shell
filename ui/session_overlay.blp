@@ -3,7 +3,7 @@ using Gtk 4.0;
 template $SessionOverlay: $BaseOverlay {
   layer-namespace: "LayerShell/SessionScreen";
   keyboard-exclusive: true;
-  visible: bind template.model as <$IOModel>.overlays_session_visible;
+  visible: bind template.model as <$IOModel>.overlays as <$OverlaysModel>.session;
   width-request: 400;
   height-request: 300;
   styles ["session-overlay"]
