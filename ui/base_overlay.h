@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/view_models/io_model.h"
 #include <gtk/gtk.h>
 
 G_DECLARE_DERIVABLE_TYPE(BaseOverlay, base_overlay, BASE_OVERLAY, WINDOW,
@@ -14,3 +15,4 @@ struct _BaseOverlayClass {
 };
 
 void base_overlay_vte(BaseOverlay *self, char **command);
+IOModel *base_overlay_get_model(BaseOverlay *self);

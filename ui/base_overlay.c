@@ -3,6 +3,7 @@
 #include <vte/vte.h>
 
 typedef struct {
+  IOModel *model;
   char *layer_namespace;
   gboolean keyboard_exclusive;
   int anchor_bottom_margin;
@@ -11,7 +12,8 @@ typedef struct {
 G_DEFINE_TYPE_WITH_PRIVATE(BaseOverlay, base_overlay, GTK_TYPE_WINDOW)
 
 enum {
-  PROP_LAYER_NAMESPACE = 1,
+  PROP_MODEL = 1,
+  PROP_LAYER_NAMESPACE,
   PROP_KEYBOARD_EXCLUSIVE,
   PROP_ANCHOR_BOTTOM_MARGIN,
   N_PROPERTIES,
@@ -29,6 +31,9 @@ static void base_overlay_get_property(GObject *object, guint property_id,
   BaseOverlayPrivate *priv =
       base_overlay_get_instance_private(BASE_OVERLAY(object));
   switch (property_id) {
+  case PROP_MODEL:
+    g_value_set_object(value, priv->model);
+    break;
   case PROP_LAYER_NAMESPACE:
     g_value_set_string(value, priv->layer_namespace);
     break;
@@ -49,6 +54,9 @@ static void base_overlay_set_property(GObject *object, guint property_id,
   BaseOverlayPrivate *priv =
       base_overlay_get_instance_private(BASE_OVERLAY(object));
   switch (property_id) {
+  case PROP_MODEL:
+    g_set_object(&priv->model, g_value_get_object(value));
+    break;
   case PROP_LAYER_NAMESPACE:
     g_free(priv->layer_namespace);
     priv->layer_namespace = g_value_dup_string(value);
@@ -109,6 +117,7 @@ static void base_overlay_constructed(GObject *object) {
 static void base_overlay_finalize(GObject *object) {
   BaseOverlayPrivate *priv =
       base_overlay_get_instance_private(BASE_OVERLAY(object));
+  g_clear_object(&priv->model);
   g_free(priv->layer_namespace);
   G_OBJECT_CLASS(base_overlay_parent_class)->finalize(object);
 }
@@ -122,6 +131,9 @@ static void base_overlay_class_init(BaseOverlayClass *klass) {
   object_class->get_property = base_overlay_get_property;
   object_class->set_property = base_overlay_set_property;
 
+  properties[PROP_MODEL] =
+      g_param_spec_object("model", NULL, NULL, io_model_get_type(),
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
   properties[PROP_LAYER_NAMESPACE] = g_param_spec_string(
       "layer-namespace", NULL, NULL, NULL, G_PARAM_READWRITE);
   properties[PROP_KEYBOARD_EXCLUSIVE] = g_param_spec_boolean(
@@ -143,4 +155,9 @@ void base_overlay_vte(BaseOverlay *self, char **command) {
                            getenv("HOME"), command, NULL, G_SPAWN_DEFAULT, NULL,
                            NULL, NULL, -1, NULL, NULL, NULL);
   gtk_window_set_child(GTK_WINDOW(self), terminal);
+}
+
+IOModel *base_overlay_get_model(BaseOverlay *self) {
+  BaseOverlayPrivate *priv = base_overlay_get_instance_private(self);
+  return priv->model;
 }

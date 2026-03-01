@@ -5,17 +5,9 @@ LOGGER("CapsLockOverlay", 0)
 
 struct _CapsLockOverlay {
   GtkWidget parent_instance;
-
-  IOModel *model;
 };
 
 G_DEFINE_TYPE(CapsLockOverlay, caps_lock_overlay, BASE_OVERLAY_TYPE)
-
-enum {
-  PROP_MODEL = 1,
-  N_PROPERTIES,
-};
-static GParamSpec *properties[N_PROPERTIES] = {0};
 
 static char *format_caps_icon(GObject *, bool enabled) {
   return g_strdup(enabled ? "" : "");
@@ -27,56 +19,11 @@ static char *format_caps_label(GObject *, bool enabled) {
 
 static void caps_lock_overlay_init(CapsLockOverlay *self) {
   LOG("init");
-  self->model = NULL;
   gtk_widget_init_template(GTK_WIDGET(self));
-}
-
-static void caps_lock_overlay_get_property(GObject *object, guint property_id,
-                                           GValue *value, GParamSpec *pspec) {
-  CapsLockOverlay *self = CAPS_LOCK_OVERLAY(object);
-  switch (property_id) {
-  case PROP_MODEL:
-    g_value_set_object(value, self->model);
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
-    break;
-  }
-}
-
-static void caps_lock_overlay_set_property(GObject *object, guint property_id,
-                                           const GValue *value,
-                                           GParamSpec *pspec) {
-  CapsLockOverlay *self = CAPS_LOCK_OVERLAY(object);
-  switch (property_id) {
-  case PROP_MODEL:
-    g_set_object(&self->model, g_value_get_object(value));
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
-    break;
-  }
-}
-
-static void caps_lock_overlay_dispose(GObject *object) {
-  LOG("dispose");
-  CapsLockOverlay *self = CAPS_LOCK_OVERLAY(object);
-  g_clear_object(&self->model);
-  G_OBJECT_CLASS(caps_lock_overlay_parent_class)->dispose(object);
 }
 
 static void caps_lock_overlay_class_init(CapsLockOverlayClass *klass) {
   LOG("class init");
-
-  GObjectClass *object_class = G_OBJECT_CLASS(klass);
-  object_class->get_property = caps_lock_overlay_get_property;
-  object_class->set_property = caps_lock_overlay_set_property;
-  object_class->dispose = caps_lock_overlay_dispose;
-
-  properties[PROP_MODEL] =
-      g_param_spec_object("model", NULL, NULL, io_model_get_type(),
-                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-  g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
   gtk_widget_class_set_template_from_resource(
