@@ -11,8 +11,8 @@ G_DECLARE_FINAL_TYPE(IOModel, io_model, IO, MODEL, GObject)
 IOModel *io_model_new(void);
 
 void io_model_set_clock_unix_seconds(IOModel *self, int64_t unix_seconds);
-void io_model_set_download_speed(IOModel *self, const char *text);
-void io_model_set_upload_speed(IOModel *self, const char *text);
+void io_model_set_download_bytes_per_sec(IOModel *self, uint64_t bytes_per_sec);
+void io_model_set_upload_bytes_per_sec(IOModel *self, uint64_t bytes_per_sec);
 
 void io_model_set_workspaces(IOModel *self,
                              struct IO_FFIArray_HyprlandWorkspace data);

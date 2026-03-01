@@ -48,3 +48,8 @@ test-install:
     meson compile -C builddir
     meson install -C builddir
     tree -C test-install
+
+format:
+    clang-format -i ui/*.c
+    clang-format -i ui/*.h
+    cargo fmt

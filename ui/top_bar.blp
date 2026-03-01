@@ -127,7 +127,9 @@ template $TopBar: Window {
           }
 
           Label {
-            label: bind template.model as <$IOModel>.download-speed;
+            label: bind $format_network_speed(
+                template.model as <$IOModel>.download-bytes-per-sec
+            ) as <string>;
             styles ["network-speed-label"]
           }
 
@@ -137,7 +139,9 @@ template $TopBar: Window {
           }
 
           Label {
-            label: bind template.model as <$IOModel>.upload-speed;
+            label: bind $format_network_speed(
+                template.model as <$IOModel>.upload-bytes-per-sec
+            ) as <string>;
             styles ["network-speed-label"]
           }
 

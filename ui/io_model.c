@@ -14,8 +14,8 @@ struct _IOModel {
   double memory_total;
   char *weather_text;
   char *network_name;
-  char *download_speed;
-  char *upload_speed;
+  uint64_t download_bytes_per_sec;
+  uint64_t upload_bytes_per_sec;
   CpuModel *cpu;
   WorkspacesModel *workspaces;
   TrayModel *tray;
@@ -33,8 +33,8 @@ enum {
   PROP_MEMORY_TOTAL,
   PROP_WEATHER_TEXT,
   PROP_NETWORK_NAME,
-  PROP_DOWNLOAD_SPEED,
-  PROP_UPLOAD_SPEED,
+  PROP_DOWNLOAD_BYTES_PER_SEC,
+  PROP_UPLOAD_BYTES_PER_SEC,
   PROP_WORKSPACES,
   PROP_CPU_CORES,
   PROP_TRAY_APPS,
@@ -65,11 +65,11 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_NETWORK_NAME:
     g_value_set_string(value, self->network_name);
     break;
-  case PROP_DOWNLOAD_SPEED:
-    g_value_set_string(value, self->download_speed);
+  case PROP_DOWNLOAD_BYTES_PER_SEC:
+    g_value_set_uint64(value, self->download_bytes_per_sec);
     break;
-  case PROP_UPLOAD_SPEED:
-    g_value_set_string(value, self->upload_speed);
+  case PROP_UPLOAD_BYTES_PER_SEC:
+    g_value_set_uint64(value, self->upload_bytes_per_sec);
     break;
   case PROP_WORKSPACES: {
     GListModel *visible = NULL;
@@ -100,8 +100,6 @@ static void io_model_finalize(GObject *object) {
   g_free(self->language_text);
   g_free(self->weather_text);
   g_free(self->network_name);
-  g_free(self->download_speed);
-  g_free(self->upload_speed);
   g_free(self->network_ssid);
   g_clear_object(&self->cpu);
   g_clear_object(&self->workspaces);
@@ -116,8 +114,8 @@ static void io_model_init(IOModel *self) {
   self->memory_total = 0.0;
   self->weather_text = g_strdup("--");
   self->network_name = g_strdup("--");
-  self->download_speed = g_strdup("??");
-  self->upload_speed = g_strdup("??");
+  self->download_bytes_per_sec = G_MAXUINT64;
+  self->upload_bytes_per_sec = G_MAXUINT64;
   self->network_ssid = NULL;
   self->network_strength = 0;
 
@@ -143,10 +141,12 @@ static void io_model_class_init(IOModelClass *klass) {
       g_param_spec_string("weather-text", NULL, NULL, "--", G_PARAM_READABLE);
   properties[PROP_NETWORK_NAME] =
       g_param_spec_string("network-name", NULL, NULL, "--", G_PARAM_READABLE);
-  properties[PROP_DOWNLOAD_SPEED] =
-      g_param_spec_string("download-speed", NULL, NULL, "??", G_PARAM_READABLE);
-  properties[PROP_UPLOAD_SPEED] =
-      g_param_spec_string("upload-speed", NULL, NULL, "??", G_PARAM_READABLE);
+  properties[PROP_DOWNLOAD_BYTES_PER_SEC] =
+      g_param_spec_uint64("download-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64,
+                          G_MAXUINT64, G_PARAM_READABLE);
+  properties[PROP_UPLOAD_BYTES_PER_SEC] =
+      g_param_spec_uint64("upload-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64,
+                          G_MAXUINT64, G_PARAM_READABLE);
   properties[PROP_WORKSPACES] = g_param_spec_object(
       "workspaces", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
   properties[PROP_CPU_CORES] = g_param_spec_object(
@@ -163,16 +163,17 @@ void io_model_set_clock_unix_seconds(IOModel *self, int64_t unix_seconds) {
   g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_CLOCK_UNIX_SECONDS]);
 }
 
-void io_model_set_download_speed(IOModel *self, const char *text) {
-  g_free(self->download_speed);
-  self->download_speed = g_strdup(text);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_DOWNLOAD_SPEED]);
+void io_model_set_download_bytes_per_sec(IOModel *self,
+                                         uint64_t bytes_per_sec) {
+  self->download_bytes_per_sec = bytes_per_sec;
+  g_object_notify_by_pspec(G_OBJECT(self),
+                           properties[PROP_DOWNLOAD_BYTES_PER_SEC]);
 }
 
-void io_model_set_upload_speed(IOModel *self, const char *text) {
-  g_free(self->upload_speed);
-  self->upload_speed = g_strdup(text);
-  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_UPLOAD_SPEED]);
+void io_model_set_upload_bytes_per_sec(IOModel *self, uint64_t bytes_per_sec) {
+  self->upload_bytes_per_sec = bytes_per_sec;
+  g_object_notify_by_pspec(G_OBJECT(self),
+                           properties[PROP_UPLOAD_BYTES_PER_SEC]);
 }
 
 void io_model_set_workspaces(IOModel *self,

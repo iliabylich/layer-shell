@@ -82,10 +82,11 @@ static void on_event(const IO_Event *event) {
     io_model_set_network_strength(model, event->network_strength.strength);
     break;
   case IO_Event_DownloadSpeed:
-    io_model_set_download_speed(model, event->download_speed.speed);
+    io_model_set_download_bytes_per_sec(model,
+                                        event->download_speed.bytes_per_sec);
     break;
   case IO_Event_UploadSpeed:
-    io_model_set_upload_speed(model, event->upload_speed.speed);
+    io_model_set_upload_bytes_per_sec(model, event->upload_speed.bytes_per_sec);
     break;
   case IO_Event_Clock:
     io_model_set_clock_unix_seconds(model, event->clock.unix_seconds);

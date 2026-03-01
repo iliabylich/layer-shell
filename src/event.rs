@@ -36,10 +36,10 @@ pub enum Event {
         strength: u8,
     },
     UploadSpeed {
-        speed: FFIString,
+        bytes_per_sec: u64,
     },
     DownloadSpeed {
-        speed: FFIString,
+        bytes_per_sec: u64,
     },
     TrayAppAdded {
         service: FFIString,

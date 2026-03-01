@@ -55,6 +55,34 @@ static char *format_clock_label(GObject *, int64_t unix_seconds) {
   return formatted ? formatted : g_strdup("--");
 }
 
+static char *format_network_speed(GObject *, uint64_t bytes_per_sec) {
+  if (bytes_per_sec == G_MAXUINT64)
+    return g_strdup("??");
+
+  enum Unit {
+    UNIT_B,
+    UNIT_KB,
+    UNIT_MB,
+  };
+
+  uint64_t value = bytes_per_sec;
+  enum Unit unit = UNIT_B;
+
+  if (value / 1024 > 0) {
+    value /= 1024;
+    unit = UNIT_KB;
+    if (value / 1024 > 0) {
+      value /= 1024;
+      unit = UNIT_MB;
+    }
+  }
+
+  return g_strdup_printf("%" G_GUINT64_FORMAT "%s", value,
+                         unit == UNIT_B    ? "B/s"
+                         : unit == UNIT_KB ? "KB/s"
+                                           : "MB/s");
+}
+
 struct _TopBar {
   GtkWidget parent_instance;
 
@@ -266,6 +294,7 @@ static void top_bar_class_init(TopBarClass *klass) {
   gtk_widget_class_bind_template_callback(widget_class, format_cpu_load);
   gtk_widget_class_bind_template_callback(widget_class, format_memory_label);
   gtk_widget_class_bind_template_callback(widget_class, format_clock_label);
+  gtk_widget_class_bind_template_callback(widget_class, format_network_speed);
   gtk_widget_class_bind_template_child(widget_class, TopBar, change_theme);
   gtk_widget_class_bind_template_child(widget_class, TopBar, weather);
   gtk_widget_class_bind_template_child(widget_class, TopBar, terminal);
