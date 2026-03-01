@@ -6,6 +6,7 @@ struct _SoundModel {
   guint volume;
   gboolean muted;
   gboolean has_initial_state;
+  guint overlay_timer;
 };
 
 G_DEFINE_TYPE(SoundModel, sound_model, G_TYPE_OBJECT)
@@ -19,16 +20,26 @@ enum {
 static GParamSpec *properties[N_PROPERTIES] = {0};
 
 enum {
-  SIGNAL_OVERLAY_SHOW_REQUESTED = 0,
+  SIGNAL_OVERLAY_VISIBILITY_CHANGED = 0,
   N_SIGNALS,
 };
 static guint signals[N_SIGNALS] = {0};
+
+static void hide_overlay(gpointer data) {
+  SoundModel *self = SOUND_MODEL(data);
+  self->overlay_timer = 0;
+  g_signal_emit(self, signals[SIGNAL_OVERLAY_VISIBILITY_CHANGED], 0, false);
+}
 
 static void request_overlay_show_if_initialized(SoundModel *self) {
   if (!self->has_initial_state) {
     return;
   }
-  g_signal_emit(self, signals[SIGNAL_OVERLAY_SHOW_REQUESTED], 0);
+  g_signal_emit(self, signals[SIGNAL_OVERLAY_VISIBILITY_CHANGED], 0, true);
+  if (self->overlay_timer != 0) {
+    g_assert(g_source_remove(self->overlay_timer));
+  }
+  self->overlay_timer = g_timeout_add_once(1000, hide_overlay, self);
 }
 
 static void sound_model_get_property(GObject *object, guint property_id,
@@ -82,12 +93,23 @@ static void sound_model_init(SoundModel *self) {
   self->volume = 0;
   self->muted = false;
   self->has_initial_state = false;
+  self->overlay_timer = 0;
+}
+
+static void sound_model_finalize(GObject *object) {
+  SoundModel *self = SOUND_MODEL(object);
+  if (self->overlay_timer != 0) {
+    g_assert(g_source_remove(self->overlay_timer));
+    self->overlay_timer = 0;
+  }
+  G_OBJECT_CLASS(sound_model_parent_class)->finalize(object);
 }
 
 static void sound_model_class_init(SoundModelClass *klass) {
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->get_property = sound_model_get_property;
   object_class->set_property = sound_model_set_property;
+  object_class->finalize = sound_model_finalize;
 
   properties[PROP_VOLUME] =
       g_param_spec_uint("volume", NULL, NULL, 0, G_MAXUINT, 0,
@@ -98,9 +120,9 @@ static void sound_model_class_init(SoundModelClass *klass) {
       g_param_spec_pointer("initial", NULL, NULL, G_PARAM_WRITABLE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
-  signals[SIGNAL_OVERLAY_SHOW_REQUESTED] = g_signal_new(
-      "overlay-show-requested", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
-      NULL, NULL, NULL, G_TYPE_NONE, 0);
+  signals[SIGNAL_OVERLAY_VISIBILITY_CHANGED] = g_signal_new(
+      "overlay-visibility-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST,
+      0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 }
 
 SoundModel *sound_model_new(void) {

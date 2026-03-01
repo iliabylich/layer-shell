@@ -21,7 +21,6 @@ struct _IOModel {
   NetworkModel *network;
   OverlaysModel *overlays;
   SoundModel *sound;
-  guint sound_overlay_timer;
   CapsLockModel *caps_lock;
   CpuModel *cpu;
   WorkspacesModel *workspaces;
@@ -46,19 +45,17 @@ enum {
 };
 static GParamSpec *properties[N_PROPERTIES] = {0};
 
-static void hide_sound_overlay(gpointer data) {
+static void sound_overlay_visibility_changed(SoundModel *, gboolean visible,
+                                             gpointer data) {
   IOModel *self = IO_MODEL(data);
-  self->sound_overlay_timer = 0;
-  g_object_set(self->overlays, "sound", false, NULL);
+  g_object_set(self->overlays, "sound", visible, NULL);
 }
 
-static void sound_overlay_show_requested(SoundModel *, gpointer data) {
+static void caps_lock_overlay_visibility_changed(CapsLockModel *,
+                                                 gboolean visible,
+                                                 gpointer data) {
   IOModel *self = IO_MODEL(data);
-  g_object_set(self->overlays, "sound", true, NULL);
-  if (self->sound_overlay_timer != 0) {
-    g_assert(g_source_remove(self->sound_overlay_timer));
-  }
-  self->sound_overlay_timer = g_timeout_add_once(1000, hide_sound_overlay, self);
+  g_object_set(self->overlays, "caps-lock", visible, NULL);
 }
 
 static void io_model_get_property(GObject *object, guint property_id,
@@ -113,10 +110,6 @@ static void io_model_set_property(GObject *object, guint property_id,
 
 static void io_model_finalize(GObject *object) {
   IOModel *self = IO_MODEL(object);
-  if (self->sound_overlay_timer != 0) {
-    g_assert(g_source_remove(self->sound_overlay_timer));
-    self->sound_overlay_timer = 0;
-  }
   g_clear_object(&self->clock);
   g_clear_object(&self->language);
   g_clear_object(&self->memory);
@@ -139,15 +132,17 @@ static void io_model_init(IOModel *self) {
   self->network = network_model_new();
   self->overlays = overlays_model_new();
   self->sound = sound_model_new();
-  self->sound_overlay_timer = 0;
   self->caps_lock = caps_lock_model_new();
 
   self->cpu = cpu_model_new();
   self->workspaces = workspaces_model_new();
   self->tray = tray_model_new();
 
-  g_signal_connect_object(self->sound, "overlay-show-requested",
-                          G_CALLBACK(sound_overlay_show_requested), self, 0);
+  g_signal_connect_object(self->sound, "overlay-visibility-changed",
+                          G_CALLBACK(sound_overlay_visibility_changed), self, 0);
+  g_signal_connect_object(self->caps_lock, "overlay-visibility-changed",
+                          G_CALLBACK(caps_lock_overlay_visibility_changed), self,
+                          0);
 }
 
 static void io_model_class_init(IOModelClass *klass) {
