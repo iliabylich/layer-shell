@@ -15,22 +15,22 @@ template $SessionWindow: $BaseWindow {
 
     Button lock {
       label: "Lock";
-      clicked => $on_lock() swapped;
+      clicked => $lock_clicked() swapped;
     }
 
     Button reboot {
       label: "Reboot";
-      clicked => $on_reboot() swapped;
+      clicked => $reboot_clicked() swapped;
     }
 
     Button shutdown {
       label: "Shutdown";
-      clicked => $on_shutdown() swapped;
+      clicked => $shutdown_clicked() swapped;
     }
 
     Button logout {
       label: "Logout";
-      clicked => $on_logout() swapped;
+      clicked => $logout_clicked() swapped;
     }
   }
 }

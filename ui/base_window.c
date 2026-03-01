@@ -67,8 +67,8 @@ static void base_window_set_property(GObject *object, guint property_id,
   }
 }
 
-static bool on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
-                           GdkModifierType, BaseWindow *window) {
+static bool key_pressed(GtkEventControllerKey *, guint keyval, guint,
+                        GdkModifierType, BaseWindow *window) {
   if (strcmp(gdk_keyval_name(keyval), "Escape") == 0) {
     gtk_widget_set_visible(GTK_WIDGET(window),
                            !gtk_widget_get_visible(GTK_WIDGET(window)));
@@ -101,7 +101,7 @@ static void base_window_constructed(GObject *object) {
 
   if (priv->toggle_on_escape) {
     GtkEventController *ctrl = gtk_event_controller_key_new();
-    g_signal_connect(ctrl, "key_pressed", G_CALLBACK(on_key_pressed), self);
+    g_signal_connect(ctrl, "key_pressed", G_CALLBACK(key_pressed), self);
     gtk_event_controller_set_propagation_phase(ctrl, GTK_PHASE_CAPTURE);
     gtk_widget_add_controller(GTK_WIDGET(self), ctrl);
   }

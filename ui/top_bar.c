@@ -119,7 +119,7 @@ enum {
 };
 static guint signals[N_SIGNALS] = {0};
 
-static void on_tray_items_changed(GListModel *, guint, guint, guint, gpointer);
+static void tray_items_changed(GListModel *, guint, guint, guint, gpointer);
 
 static void top_bar_get_property(GObject *object, guint property_id,
                                  GValue *value, GParamSpec *pspec) {
@@ -142,8 +142,8 @@ static void top_bar_set_property(GObject *object, guint property_id,
     g_set_object(&self->model, g_value_get_object(value));
     GListModel *tray_apps = NULL;
     g_object_get(self->model, "tray-apps", &tray_apps, NULL);
-    g_signal_connect(tray_apps, "items-changed",
-                     G_CALLBACK(on_tray_items_changed), self);
+    g_signal_connect(tray_apps, "items-changed", G_CALLBACK(tray_items_changed),
+                     self);
     g_object_unref(tray_apps);
     break;
   }
@@ -153,7 +153,7 @@ static void top_bar_set_property(GObject *object, guint property_id,
   }
 }
 
-static void on_ws_switch(GSimpleAction *, GVariant *parameter, gpointer data) {
+static void ws_switch(GSimpleAction *, GVariant *parameter, gpointer data) {
   TopBar *self = TOP_BAR(data);
   guint num = g_variant_get_uint32(parameter);
   g_signal_emit(self, signals[SIGNAL_WORKSPACE_SWITCHED], 0, num);
@@ -164,32 +164,32 @@ static void on_ws_switch(GSimpleAction *, GVariant *parameter, gpointer data) {
     g_signal_emit(data, signals[sig], 0);                                      \
   }
 
-FORWARD_CLICKED(on_change_theme_clicked, SIGNAL_CHANGE_THEME_CLICKED)
-FORWARD_CLICKED(on_weather_clicked, SIGNAL_WEATHER_CLICKED)
-FORWARD_CLICKED(on_terminal_clicked, SIGNAL_TERMINAL_CLICKED)
-FORWARD_CLICKED(on_memory_clicked, SIGNAL_MEMORY_CLICKED)
-FORWARD_CLICKED(on_bluetooth_clicked, SIGNAL_BLUETOOTH_CLICKED)
-FORWARD_CLICKED(on_power_clicked, SIGNAL_POWER_CLICKED)
+FORWARD_CLICKED(change_theme_clicked, SIGNAL_CHANGE_THEME_CLICKED)
+FORWARD_CLICKED(weather_clicked, SIGNAL_WEATHER_CLICKED)
+FORWARD_CLICKED(terminal_clicked, SIGNAL_TERMINAL_CLICKED)
+FORWARD_CLICKED(memory_clicked, SIGNAL_MEMORY_CLICKED)
+FORWARD_CLICKED(bluetooth_clicked, SIGNAL_BLUETOOTH_CLICKED)
+FORWARD_CLICKED(power_clicked, SIGNAL_POWER_CLICKED)
 #undef FORWARD_CLICKED
 
-static void on_tray_triggered(TrayAppItem *, const char *uuid, gpointer data) {
+static void tray_triggered(TrayAppItem *, const char *uuid, gpointer data) {
   g_signal_emit(data, signals[SIGNAL_TRAY_TRIGGERED], 0, uuid);
 }
 
-static void on_tray_items_changed(GListModel *list, guint position, guint,
-                                  guint added, gpointer data) {
+static void tray_items_changed(GListModel *list, guint position, guint,
+                               guint added, gpointer data) {
   for (guint i = position; i < position + added; i++) {
     TrayAppItem *item = g_list_model_get_item(list, i);
-    g_signal_connect(item, "triggered", G_CALLBACK(on_tray_triggered), data);
+    g_signal_connect(item, "triggered", G_CALLBACK(tray_triggered), data);
     g_object_unref(item);
   }
 }
 
-static void on_network_settings(GSimpleAction *, GVariant *, gpointer data) {
+static void network_settings(GSimpleAction *, GVariant *, gpointer data) {
   g_signal_emit(data, signals[SIGNAL_NETWORK_SETTINGS_CLICKED], 0);
 }
 
-static void on_network_ping(GSimpleAction *, GVariant *, gpointer data) {
+static void network_ping(GSimpleAction *, GVariant *, gpointer data) {
   g_signal_emit(data, signals[SIGNAL_NETWORK_PING_CLICKED], 0);
 }
 
@@ -209,7 +209,7 @@ static void top_bar_init(TopBar *self) {
 
   GSimpleAction *ws_action =
       g_simple_action_new("switch", G_VARIANT_TYPE_UINT32);
-  g_signal_connect(ws_action, "activate", G_CALLBACK(on_ws_switch), self);
+  g_signal_connect(ws_action, "activate", G_CALLBACK(ws_switch), self);
   GSimpleActionGroup *ws_group = g_simple_action_group_new();
   g_action_map_add_action(G_ACTION_MAP(ws_group), G_ACTION(ws_action));
   gtk_widget_insert_action_group(GTK_WIDGET(self), "ws",
@@ -218,22 +218,22 @@ static void top_bar_init(TopBar *self) {
 #define CONNECT(widget, signal, callback)                                      \
   g_signal_connect(widget, signal, G_CALLBACK(callback), self)
 
-  CONNECT(self->change_theme, "clicked", on_change_theme_clicked);
-  CONNECT(self->weather, "clicked", on_weather_clicked);
-  CONNECT(self->terminal, "clicked", on_terminal_clicked);
-  CONNECT(self->memory, "clicked", on_memory_clicked);
-  CONNECT(self->bluetooth, "clicked", on_bluetooth_clicked);
-  CONNECT(self->power, "clicked", on_power_clicked);
+  CONNECT(self->change_theme, "clicked", change_theme_clicked);
+  CONNECT(self->weather, "clicked", weather_clicked);
+  CONNECT(self->terminal, "clicked", terminal_clicked);
+  CONNECT(self->memory, "clicked", memory_clicked);
+  CONNECT(self->bluetooth, "clicked", bluetooth_clicked);
+  CONNECT(self->power, "clicked", power_clicked);
 
 #undef CONNECT
 
   GSimpleActionGroup *net_group = g_simple_action_group_new();
   GSimpleAction *net_settings = g_simple_action_new("settings", NULL);
-  g_signal_connect(net_settings, "activate", G_CALLBACK(on_network_settings),
+  g_signal_connect(net_settings, "activate", G_CALLBACK(network_settings),
                    self);
   g_action_map_add_action(G_ACTION_MAP(net_group), G_ACTION(net_settings));
   GSimpleAction *net_ping = g_simple_action_new("ping", NULL);
-  g_signal_connect(net_ping, "activate", G_CALLBACK(on_network_ping), self);
+  g_signal_connect(net_ping, "activate", G_CALLBACK(network_ping), self);
   g_action_map_add_action(G_ACTION_MAP(net_group), G_ACTION(net_ping));
   gtk_widget_insert_action_group(GTK_WIDGET(self), "network",
                                  G_ACTION_GROUP(net_group));

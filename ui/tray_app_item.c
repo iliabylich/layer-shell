@@ -69,7 +69,7 @@ static void icon_from_unset(TrayAppItem *self) {
   icon_from_name(self, EMPTY_ICON_NAME);
 }
 
-static void on_activate(GSimpleAction *action, GVariant *, TrayAppItem *self) {
+static void activate(GSimpleAction *action, GVariant *, TrayAppItem *self) {
   const char *uuid = g_object_get_data(G_OBJECT(action), UUID_KEY);
   g_signal_emit(self, signals[SIGNAL_TRIGGERED], 0, uuid);
 }
@@ -81,7 +81,7 @@ static void add_action(TrayAppItem *self, uint32_t id, const char *uuid,
   GSimpleAction *action =
       g_simple_action_new_stateful(name, parameter_type, state);
   g_object_set_data_full(G_OBJECT(action), UUID_KEY, strdup(uuid), free);
-  g_signal_connect(action, "activate", G_CALLBACK(on_activate), self);
+  g_signal_connect(action, "activate", G_CALLBACK(activate), self);
   g_action_map_add_action(G_ACTION_MAP(self->action_group), G_ACTION(action));
 }
 

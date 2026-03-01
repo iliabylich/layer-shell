@@ -38,7 +38,7 @@ static void window_toggle(GtkWidget *, gpointer data) {
   gtk_widget_set_visible(window, !gtk_widget_get_visible(window));
 }
 
-static void on_event(const IO_Event *event) {
+static void event_received(const IO_Event *event) {
   switch (event->tag) {
   case IO_Event_Workspaces:
     io_model_set_workspaces(model, event->workspaces.workspaces);
@@ -127,16 +127,20 @@ static void on_event(const IO_Event *event) {
   }
 }
 
-static gboolean on_new_events(gint, GIOCondition, gpointer);
+static gboolean read_io_events(gint, GIOCondition, gpointer) {
+  io_handle_readable();
 
-static void on_workspace_switched(TopBar *, guint num) {
+  return exiting ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
+}
+
+static void workspace_switched(TopBar *, guint num) {
   io_hyprland_go_to_workspace(num);
 }
-static void on_tray_triggered(TopBar *, const char *uuid) {
+static void tray_triggered(TopBar *, const char *uuid) {
   io_trigger_tray(uuid);
 }
 
-static void on_app_activate() {
+static void create_widgets() {
   model = io_model_new();
   top_bar = top_bar_new(app, model);
   top_bar_set_terminal_label(TOP_BAR(top_bar), config->terminal.label);
@@ -144,9 +148,9 @@ static void on_app_activate() {
 #define CONNECT(obj, signal, callback, data)                                   \
   g_signal_connect(obj, signal, G_CALLBACK(callback), data)
 
-  CONNECT(top_bar, "workspace-switched", on_workspace_switched, NULL);
+  CONNECT(top_bar, "workspace-switched", workspace_switched, NULL);
   CONNECT(top_bar, "change-theme-clicked", io_change_theme, NULL);
-  CONNECT(top_bar, "tray-triggered", on_tray_triggered, NULL);
+  CONNECT(top_bar, "tray-triggered", tray_triggered, NULL);
   CONNECT(top_bar, "memory-clicked", io_spawn_system_monitor, NULL);
   CONNECT(top_bar, "network-settings-clicked", io_spawn_wifi_editor, NULL);
   CONNECT(top_bar, "bluetooth-clicked", io_spawn_bluetooh_editor, NULL);
@@ -171,14 +175,8 @@ static void on_app_activate() {
   sound_window = sound_window_new(app);
   caps_lock_window = caps_lock_window_new(app);
 
-  g_unix_fd_add(io_as_raw_fd(), G_IO_IN, on_new_events, NULL);
+  g_unix_fd_add(io_as_raw_fd(), G_IO_IN, read_io_events, NULL);
   gtk_window_present(GTK_WINDOW(top_bar));
-}
-
-static gboolean on_new_events(gint, GIOCondition, gpointer) {
-  io_handle_readable();
-
-  return exiting ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
 }
 
 int main(int argc, char **argv) {
@@ -186,11 +184,11 @@ int main(int argc, char **argv) {
   g_signal_connect(obj, signal, G_CALLBACK(callback), data)
 
   setenv("GSK_RENDERER", "cairo", true);
-  io_init(on_event, true);
+  io_init(event_received, true);
   config = io_get_config();
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
-  CONNECT(app, "activate", on_app_activate, NULL);
+  CONNECT(app, "activate", create_widgets, NULL);
   CONNECT(app, "startup", css_load, NULL);
   g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);

@@ -4,8 +4,8 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 
-static void on_css_parse_error(GtkCssProvider *, GtkCssSection *section,
-                               GError *error, gpointer) {
+static void css_parse_error(GtkCssProvider *, GtkCssSection *section,
+                            GError *error, gpointer) {
   fprintf(stderr, "Failed to parse CSS: %s %s\n",
           gtk_css_section_to_string(section), error->message);
 }
@@ -50,7 +50,7 @@ void css_load(void) {
   merge_css();
 
   provider = gtk_css_provider_new();
-  g_signal_connect(provider, "parsing-error", G_CALLBACK(on_css_parse_error),
+  g_signal_connect(provider, "parsing-error", G_CALLBACK(css_parse_error),
                    NULL);
 
   gtk_css_provider_load_from_string(provider, full_css);

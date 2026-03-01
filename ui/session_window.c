@@ -23,22 +23,22 @@ static void toggle_visible(SessionWindow *self) {
                          !gtk_widget_get_visible(GTK_WIDGET(self)));
 }
 
-static void on_lock(SessionWindow *self) {
+static void lock_clicked(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_LOCK], 0);
   toggle_visible(self);
 }
 
-static void on_reboot(SessionWindow *self) {
+static void reboot_clicked(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_REBOOT], 0);
   toggle_visible(self);
 }
 
-static void on_shutdown(SessionWindow *self) {
+static void shutdown_clicked(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_SHUTDOWN], 0);
   toggle_visible(self);
 }
 
-static void on_logout(SessionWindow *self) {
+static void logout_clicked(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_LOGOUT], 0);
   toggle_visible(self);
 }
@@ -75,10 +75,10 @@ static void session_window_class_init(SessionWindowClass *klass) {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
   gtk_widget_class_set_template_from_resource(widget_class,
                                               "/layer-shell/session_window.ui");
-  gtk_widget_class_bind_template_callback(widget_class, on_lock);
-  gtk_widget_class_bind_template_callback(widget_class, on_reboot);
-  gtk_widget_class_bind_template_callback(widget_class, on_shutdown);
-  gtk_widget_class_bind_template_callback(widget_class, on_logout);
+  gtk_widget_class_bind_template_callback(widget_class, lock_clicked);
+  gtk_widget_class_bind_template_callback(widget_class, reboot_clicked);
+  gtk_widget_class_bind_template_callback(widget_class, shutdown_clicked);
+  gtk_widget_class_bind_template_callback(widget_class, logout_clicked);
 }
 
 GtkWidget *session_window_new(GtkApplication *app) {
