@@ -105,8 +105,9 @@ static void weather_window_class_init(WeatherWindowClass *klass) {
   object_class->dispose = weather_window_dispose;
   object_class->finalize = weather_window_finalize;
 
-  properties[PROP_MODEL] = g_param_spec_object(
-      "model", NULL, NULL, io_model_get_type(), G_PARAM_READWRITE);
+  properties[PROP_MODEL] =
+      g_param_spec_object("model", NULL, NULL, io_model_get_type(),
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
   g_type_ensure(weather_hour_item_get_type());
@@ -120,10 +121,7 @@ static void weather_window_class_init(WeatherWindowClass *klass) {
   gtk_widget_class_bind_template_callback(widget_class, format_day_label);
 }
 
-GtkWidget *weather_window_new(GtkApplication *app) {
-  return g_object_new(weather_window_get_type(), "application", app, NULL);
-}
-
-void weather_window_set_model(WeatherWindow *self, IOModel *model) {
-  g_object_set(self, "model", model, NULL);
+GtkWidget *weather_window_new(GtkApplication *app, IOModel *model) {
+  return g_object_new(weather_window_get_type(), "application", app, "model",
+                      model, NULL);
 }

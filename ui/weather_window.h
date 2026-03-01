@@ -11,5 +11,4 @@ G_DECLARE_FINAL_TYPE(WeatherWindow, weather_window, WEATHER_WINDOW, WINDOW,
 #define WEATHER_WINDOW(obj)                                                    \
   G_TYPE_CHECK_INSTANCE_CAST(obj, weather_window_get_type(), WeatherWindow)
 
-GtkWidget *weather_window_new(GtkApplication *app);
-void weather_window_set_model(WeatherWindow *weather_window, IOModel *model);
+GtkWidget *weather_window_new(GtkApplication *app, IOModel *model);

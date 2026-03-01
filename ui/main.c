@@ -137,8 +137,7 @@ static void on_tray_triggered(TopBar *, const char *uuid) {
 
 static void on_app_activate() {
   model = io_model_new();
-  top_bar = top_bar_new(app);
-  top_bar_set_model(TOP_BAR(top_bar), model);
+  top_bar = top_bar_new(app, model);
   top_bar_set_terminal_label(TOP_BAR(top_bar), config->terminal.label);
 
 #define CONNECT(obj, signal, callback)                                         \
@@ -154,8 +153,7 @@ static void on_app_activate() {
   CONNECT(top_bar, "network-settings-clicked", io_spawn_wifi_editor);
   CONNECT(top_bar, "bluetooth-clicked", io_spawn_bluetooh_editor);
 
-  weather_window = weather_window_new(app);
-  weather_window_set_model(WEATHER_WINDOW(weather_window), model);
+  weather_window = weather_window_new(app, model);
   terminal_window = terminal_window_new(app);
   ping_window = ping_window_new(app);
 

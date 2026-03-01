@@ -253,8 +253,9 @@ static void top_bar_class_init(TopBarClass *klass) {
   object_class->get_property = top_bar_get_property;
   object_class->set_property = top_bar_set_property;
 
-  properties[PROP_MODEL] = g_param_spec_object(
-      "model", NULL, NULL, io_model_get_type(), G_PARAM_READWRITE);
+  properties[PROP_MODEL] =
+      g_param_spec_object("model", NULL, NULL, io_model_get_type(),
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
   signals[SIGNAL_WORKSPACE_SWITCHED] = g_signal_new(
@@ -303,12 +304,9 @@ static void top_bar_class_init(TopBarClass *klass) {
   gtk_widget_class_bind_template_child(widget_class, TopBar, power);
 }
 
-GtkWidget *top_bar_new(GtkApplication *app) {
-  return g_object_new(top_bar_get_type(), "application", app, NULL);
-}
-
-void top_bar_set_model(TopBar *self, IOModel *model) {
-  g_object_set(self, "model", model, NULL);
+GtkWidget *top_bar_new(GtkApplication *app, IOModel *model) {
+  return g_object_new(top_bar_get_type(), "application", app, "model", model,
+                      NULL);
 }
 
 void top_bar_set_terminal_label(TopBar *self, const char *label) {
