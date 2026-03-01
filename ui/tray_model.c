@@ -57,7 +57,6 @@ static TrayAppItem *find_app(TrayModel *self, const char *service) {
   for (guint i = 0; i < n; i++) {
     TrayAppItem *item = g_list_model_get_item(G_LIST_MODEL(self->apps), i);
     if (strcmp(tray_app_item_get_service(item), service) == 0) {
-      g_object_unref(item);
       return item;
     }
     g_object_unref(item);
@@ -93,13 +92,17 @@ void tray_model_remove_app(TrayModel *self, const char *service) {
 void tray_model_update_icon(TrayModel *self, const char *service,
                             IO_TrayIcon icon) {
   TrayAppItem *item = find_app(self, service);
-  if (item)
+  if (item) {
     tray_app_item_update_icon(item, icon);
+    g_object_unref(item);
+  }
 }
 
 void tray_model_update_menu(TrayModel *self, const char *service,
                             IO_FFIArray_TrayItem items) {
   TrayAppItem *item = find_app(self, service);
-  if (item)
+  if (item) {
     tray_app_item_update_menu(item, items);
+    g_object_unref(item);
+  }
 }
