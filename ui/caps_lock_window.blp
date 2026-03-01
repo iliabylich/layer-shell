@@ -10,12 +10,16 @@ template $CapsLockWindow: $BaseWindow {
     styles ["wrapper"]
 
     Label icon {
-      label: "?";
+      label: bind $format_caps_icon(
+          template.model as <$IOModel>.caps-lock-enabled
+      ) as <string>;
       styles ["icon"]
     }
 
     Label label {
-      label: "?";
+      label: bind $format_caps_label(
+          template.model as <$IOModel>.caps-lock-enabled
+      ) as <string>;
       styles ["status"]
     }
   }

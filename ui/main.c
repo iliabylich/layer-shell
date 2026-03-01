@@ -95,21 +95,17 @@ static void event_received(const IO_Event *event) {
                            !gtk_widget_get_visible(session_window));
     break;
   case IO_Event_InitialSound:
-    sound_window_set_initial_sound(SOUND_WINDOW(sound_window),
-                                   event->initial_sound.volume,
-                                   event->initial_sound.muted);
+    io_model_set_sound_initial(model, event->initial_sound.volume,
+                               event->initial_sound.muted);
     break;
   case IO_Event_VolumeChanged:
-    sound_window_refresh_volume(SOUND_WINDOW(sound_window),
-                                event->volume_changed.volume);
+    io_model_set_sound_volume(model, event->volume_changed.volume);
     break;
   case IO_Event_MuteChanged:
-    sound_window_refresh_mute(SOUND_WINDOW(sound_window),
-                              event->mute_changed.muted);
+    io_model_set_sound_muted(model, event->mute_changed.muted);
     break;
   case IO_Event_CapsLockToggled:
-    caps_lock_window_refresh(CAPS_LOCK_WINDOW(caps_lock_window),
-                             event->caps_lock_toggled.enabled);
+    io_model_set_caps_lock_enabled(model, event->caps_lock_toggled.enabled);
     break;
   case IO_Event_Exit:
     LOG("Received exit...");
@@ -172,8 +168,8 @@ static void create_widgets() {
 
 #undef CONNECT
 
-  sound_window = sound_window_new(app);
-  caps_lock_window = caps_lock_window_new(app);
+  sound_window = sound_window_new(app, model);
+  caps_lock_window = caps_lock_window_new(app, model);
 
   g_unix_fd_add(io_as_raw_fd(), G_IO_IN, read_io_events, NULL);
   gtk_window_present(GTK_WINDOW(top_bar));

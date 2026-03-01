@@ -10,12 +10,16 @@ template $SoundWindow: $BaseWindow {
     styles ["wrapper"]
 
     Label icon {
-      label: "?";
+      label: bind $format_sound_icon(
+          template.model as <$IOModel>.sound-volume,
+          template.model as <$IOModel>.sound-muted
+      ) as <string>;
     }
 
     Scale scale {
       orientation: horizontal;
-      adjustment: Adjustment {
+      adjustment: Adjustment sound_adjustment {
+        value: 0;
         lower: 0;
         upper: 100;
         step-increment: 1;

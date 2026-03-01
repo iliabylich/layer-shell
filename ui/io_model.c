@@ -18,6 +18,10 @@ struct _IOModel {
   char *network_name;
   uint64_t download_bytes_per_sec;
   uint64_t upload_bytes_per_sec;
+  uint32_t sound_volume;
+  gboolean sound_muted;
+  gboolean sound_ready;
+  gboolean caps_lock_enabled;
   CpuModel *cpu;
   GListStore *weather_hourly_forecast;
   GListStore *weather_daily_forecast;
@@ -39,6 +43,10 @@ enum {
   PROP_NETWORK_NAME,
   PROP_DOWNLOAD_BYTES_PER_SEC,
   PROP_UPLOAD_BYTES_PER_SEC,
+  PROP_SOUND_VOLUME,
+  PROP_SOUND_MUTED,
+  PROP_SOUND_READY,
+  PROP_CAPS_LOCK_ENABLED,
   PROP_WEATHER_HOURLY_FORECAST,
   PROP_WEATHER_DAILY_FORECAST,
   PROP_WORKSPACES,
@@ -76,6 +84,18 @@ static void io_model_get_property(GObject *object, guint property_id,
     break;
   case PROP_UPLOAD_BYTES_PER_SEC:
     g_value_set_uint64(value, self->upload_bytes_per_sec);
+    break;
+  case PROP_SOUND_VOLUME:
+    g_value_set_uint(value, self->sound_volume);
+    break;
+  case PROP_SOUND_MUTED:
+    g_value_set_boolean(value, self->sound_muted);
+    break;
+  case PROP_SOUND_READY:
+    g_value_set_boolean(value, self->sound_ready);
+    break;
+  case PROP_CAPS_LOCK_ENABLED:
+    g_value_set_boolean(value, self->caps_lock_enabled);
     break;
   case PROP_WEATHER_HOURLY_FORECAST:
     g_value_set_object(value, self->weather_hourly_forecast);
@@ -130,6 +150,10 @@ static void io_model_init(IOModel *self) {
   self->network_name = g_strdup("--");
   self->download_bytes_per_sec = G_MAXUINT64;
   self->upload_bytes_per_sec = G_MAXUINT64;
+  self->sound_volume = 0;
+  self->sound_muted = false;
+  self->sound_ready = false;
+  self->caps_lock_enabled = false;
   self->weather_hourly_forecast =
       g_list_store_new(weather_hour_item_get_type());
   self->weather_daily_forecast = g_list_store_new(weather_day_item_get_type());
@@ -164,6 +188,14 @@ static void io_model_class_init(IOModelClass *klass) {
   properties[PROP_UPLOAD_BYTES_PER_SEC] =
       g_param_spec_uint64("upload-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64,
                           G_MAXUINT64, G_PARAM_READABLE);
+  properties[PROP_SOUND_VOLUME] = g_param_spec_uint(
+      "sound-volume", NULL, NULL, 0, G_MAXUINT, 0, G_PARAM_READABLE);
+  properties[PROP_SOUND_MUTED] =
+      g_param_spec_boolean("sound-muted", NULL, NULL, false, G_PARAM_READABLE);
+  properties[PROP_SOUND_READY] =
+      g_param_spec_boolean("sound-ready", NULL, NULL, false, G_PARAM_READABLE);
+  properties[PROP_CAPS_LOCK_ENABLED] = g_param_spec_boolean(
+      "caps-lock-enabled", NULL, NULL, false, G_PARAM_READABLE);
   properties[PROP_WEATHER_HOURLY_FORECAST] =
       g_param_spec_object("weather-hourly-forecast", NULL, NULL,
                           G_TYPE_LIST_MODEL, G_PARAM_READABLE);
@@ -274,6 +306,30 @@ void io_model_set_network_ssid(IOModel *self, const char *ssid) {
 void io_model_set_network_strength(IOModel *self, uint8_t strength) {
   self->network_strength = strength;
   refresh_network_name(self);
+}
+
+void io_model_set_sound_initial(IOModel *self, uint32_t volume, bool muted) {
+  self->sound_volume = volume;
+  self->sound_muted = muted;
+  self->sound_ready = true;
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_VOLUME]);
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_MUTED]);
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_READY]);
+}
+
+void io_model_set_sound_volume(IOModel *self, uint32_t volume) {
+  self->sound_volume = volume;
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_VOLUME]);
+}
+
+void io_model_set_sound_muted(IOModel *self, bool muted) {
+  self->sound_muted = muted;
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_SOUND_MUTED]);
+}
+
+void io_model_set_caps_lock_enabled(IOModel *self, bool enabled) {
+  self->caps_lock_enabled = enabled;
+  g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_CAPS_LOCK_ENABLED]);
 }
 
 void io_model_tray_add_app(IOModel *self, const char *service, IO_TrayIcon icon,

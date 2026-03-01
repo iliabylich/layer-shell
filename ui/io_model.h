@@ -23,6 +23,10 @@ void io_model_set_cpu(IOModel *self, IO_FFIArray_u8 data);
 void io_model_set_memory(IOModel *self, float used, float total);
 void io_model_set_network_ssid(IOModel *self, const char *ssid);
 void io_model_set_network_strength(IOModel *self, uint8_t strength);
+void io_model_set_sound_initial(IOModel *self, uint32_t volume, bool muted);
+void io_model_set_sound_volume(IOModel *self, uint32_t volume);
+void io_model_set_sound_muted(IOModel *self, bool muted);
+void io_model_set_caps_lock_enabled(IOModel *self, bool enabled);
 
 void io_model_tray_add_app(IOModel *self, const char *service, IO_TrayIcon icon,
                            IO_FFIArray_TrayItem items);
