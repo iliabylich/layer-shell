@@ -2,7 +2,15 @@ using Gtk 4.0;
 using Gdk 4.0;
 using GLib 2.0;
 
-template $TopBar: Window {
+template $TopBar: $BaseOverlay {
+  layer-namespace: "LayerShell/TopBar";
+  layer: "top";
+  auto-exclusive-zone: true;
+  anchor-top: true;
+  anchor-left: true;
+  anchor-right: true;
+  margin-top: 0;
+  escape-toggle: false;
   styles ["top-bar-overlay"]
   CenterBox {
     styles ["wrapper"]

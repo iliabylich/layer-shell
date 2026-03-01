@@ -93,17 +93,9 @@ struct _TopBar {
   GtkWidget *memory;
   GtkWidget *bluetooth;
   GtkWidget *power;
-
-  IOModel *model;
 };
 
-G_DEFINE_TYPE(TopBar, top_bar, GTK_TYPE_WINDOW)
-
-enum {
-  PROP_MODEL = 1,
-  N_PROPERTIES,
-};
-static GParamSpec *properties[N_PROPERTIES] = {0};
+G_DEFINE_TYPE(TopBar, top_bar, BASE_OVERLAY_TYPE)
 
 enum {
   SIGNAL_WORKSPACE_SWITCHED = 0,
@@ -122,39 +114,19 @@ static guint signals[N_SIGNALS] = {0};
 
 static void tray_items_changed(GListModel *, guint, guint, guint, gpointer);
 
-static void top_bar_get_property(GObject *object, guint property_id,
-                                 GValue *value, GParamSpec *pspec) {
-  TopBar *self = TOP_BAR(object);
-  switch (property_id) {
-  case PROP_MODEL:
-    g_value_set_object(value, self->model);
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
-    break;
-  }
-}
+static void top_bar_constructed(GObject *object) {
+  G_OBJECT_CLASS(top_bar_parent_class)->constructed(object);
 
-static void top_bar_set_property(GObject *object, guint property_id,
-                                 const GValue *value, GParamSpec *pspec) {
   TopBar *self = TOP_BAR(object);
-  switch (property_id) {
-  case PROP_MODEL: {
-    g_set_object(&self->model, g_value_get_object(value));
-    TrayModel *tray = NULL;
-    GListModel *tray_apps = NULL;
-    g_object_get(self->model, "tray", &tray, NULL);
-    g_object_get(tray, "apps", &tray_apps, NULL);
-    g_signal_connect(tray_apps, "items-changed", G_CALLBACK(tray_items_changed),
-                     self);
-    g_object_unref(tray);
-    g_object_unref(tray_apps);
-    break;
-  }
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
-    break;
-  }
+  IOModel *model = base_overlay_get_model(BASE_OVERLAY(self));
+  TrayModel *tray = NULL;
+  GListModel *tray_apps = NULL;
+  g_object_get(model, "tray", &tray, NULL);
+  g_object_get(tray, "apps", &tray_apps, NULL);
+  g_signal_connect(tray_apps, "items-changed", G_CALLBACK(tray_items_changed),
+                   self);
+  g_object_unref(tray);
+  g_object_unref(tray_apps);
 }
 
 static void ws_switch(GSimpleAction *, GVariant *parameter, gpointer data) {
@@ -200,15 +172,6 @@ static void network_ping(GSimpleAction *, GVariant *, gpointer data) {
 static void top_bar_init(TopBar *self) {
   LOG("init");
 
-  gtk_layer_init_for_window(GTK_WINDOW(self));
-  gtk_layer_set_layer(GTK_WINDOW(self), GTK_LAYER_SHELL_LAYER_TOP);
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_margin(GTK_WINDOW(self), GTK_LAYER_SHELL_EDGE_TOP, 0);
-  gtk_layer_set_namespace(GTK_WINDOW(self), "LayerShell/TopBar");
-  gtk_layer_auto_exclusive_zone_enable(GTK_WINDOW(self));
-
   gtk_widget_init_template(GTK_WIDGET(self));
 
   GSimpleAction *ws_action =
@@ -243,24 +206,10 @@ static void top_bar_init(TopBar *self) {
                                  G_ACTION_GROUP(net_group));
 }
 
-static void top_bar_dispose(GObject *object) {
-  LOG("dispose");
-  TopBar *self = TOP_BAR(object);
-  g_clear_object(&self->model);
-  G_OBJECT_CLASS(top_bar_parent_class)->dispose(object);
-}
-
 static void top_bar_class_init(TopBarClass *klass) {
   LOG("class init");
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
-  object_class->dispose = top_bar_dispose;
-  object_class->get_property = top_bar_get_property;
-  object_class->set_property = top_bar_set_property;
-
-  properties[PROP_MODEL] =
-      g_param_spec_object("model", NULL, NULL, io_model_get_type(),
-                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-  g_object_class_install_properties(object_class, N_PROPERTIES, properties);
+  object_class->constructed = top_bar_constructed;
 
   signals[SIGNAL_WORKSPACE_SWITCHED] = g_signal_new(
       "workspace-switched", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
