@@ -22,9 +22,6 @@ struct _IOModel {
   char *network_name;
   uint64_t download_bytes_per_sec;
   uint64_t upload_bytes_per_sec;
-  uint32_t sound_volume;
-  gboolean sound_muted;
-  gboolean sound_ready;
   SoundWindowModel *sound_window_model;
   SessionWindowModel *session_window_model;
   gboolean caps_lock_enabled;
@@ -129,15 +126,24 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_UPLOAD_BYTES_PER_SEC:
     g_value_set_uint64(value, self->upload_bytes_per_sec);
     break;
-  case PROP_SOUND_VOLUME:
-    g_value_set_uint(value, self->sound_volume);
+  case PROP_SOUND_VOLUME: {
+    guint volume = 0;
+    g_object_get(self->sound_window_model, "volume", &volume, NULL);
+    g_value_set_uint(value, volume);
     break;
-  case PROP_SOUND_MUTED:
-    g_value_set_boolean(value, self->sound_muted);
+  }
+  case PROP_SOUND_MUTED: {
+    gboolean muted = false;
+    g_object_get(self->sound_window_model, "muted", &muted, NULL);
+    g_value_set_boolean(value, muted);
     break;
-  case PROP_SOUND_READY:
-    g_value_set_boolean(value, self->sound_ready);
+  }
+  case PROP_SOUND_READY: {
+    gboolean ready = false;
+    g_object_get(self->sound_window_model, "ready", &ready, NULL);
+    g_value_set_boolean(value, ready);
     break;
+  }
   case PROP_SOUND_WINDOW_MODEL:
     g_value_set_object(value, self->sound_window_model);
     break;
@@ -223,20 +229,21 @@ static void io_model_set_property(GObject *object, guint property_id,
     self->upload_bytes_per_sec = g_value_get_uint64(value);
     g_object_notify_by_pspec(object, properties[PROP_UPLOAD_BYTES_PER_SEC]);
     break;
-  case PROP_SOUND_VOLUME:
-    self->sound_volume = g_value_get_uint(value);
-    if (self->sound_ready) {
-      g_object_notify_by_pspec(object, properties[PROP_SOUND_VOLUME]);
-    }
+  case PROP_SOUND_VOLUME: {
+    g_object_set(self->sound_window_model, "volume", g_value_get_uint(value),
+                 NULL);
+    g_object_notify_by_pspec(object, properties[PROP_SOUND_VOLUME]);
     break;
-  case PROP_SOUND_MUTED:
-    self->sound_muted = g_value_get_boolean(value);
-    if (self->sound_ready) {
-      g_object_notify_by_pspec(object, properties[PROP_SOUND_MUTED]);
-    }
+  }
+  case PROP_SOUND_MUTED: {
+    g_object_set(self->sound_window_model, "muted", g_value_get_boolean(value),
+                 NULL);
+    g_object_notify_by_pspec(object, properties[PROP_SOUND_MUTED]);
     break;
+  }
   case PROP_SOUND_READY:
-    self->sound_ready = g_value_get_boolean(value);
+    g_object_set(self->sound_window_model, "ready", g_value_get_boolean(value),
+                 NULL);
     g_object_notify_by_pspec(object, properties[PROP_SOUND_READY]);
     break;
   case PROP_CAPS_LOCK_ENABLED:
@@ -280,9 +287,6 @@ static void io_model_init(IOModel *self) {
   self->network_name = g_strdup("--");
   self->download_bytes_per_sec = G_MAXUINT64;
   self->upload_bytes_per_sec = G_MAXUINT64;
-  self->sound_volume = 0;
-  self->sound_muted = false;
-  self->sound_ready = false;
   self->sound_window_model = sound_window_model_new();
   self->session_window_model = session_window_model_new();
   self->caps_lock_enabled = false;

@@ -12,8 +12,8 @@ template $SoundWindow: $BaseWindow {
 
     Label icon {
       label: bind $format_sound_icon(
-          template.model as <$IOModel>.sound-volume,
-          template.model as <$IOModel>.sound-muted
+          template.window-model as <$SoundWindowModel>.volume,
+          template.window-model as <$SoundWindowModel>.muted
       ) as <string>;
     }
 

@@ -191,7 +191,7 @@ static void create_widgets() {
 
 #undef CONNECT
 
-  sound_window = sound_window_new(app, model, sound_window_model);
+  sound_window = sound_window_new(app, sound_window_model);
   caps_lock_window = caps_lock_window_new(app, model);
   g_clear_object(&sound_window_model);
   g_clear_object(&weather_window_model);
