@@ -126,7 +126,7 @@ fn parse(attributes: &[Value]) -> Result<(Option<u32>, Option<bool>)> {
 
         if key == "Volume" {
             value_is!(&**value, Value::UInt32(value));
-            volume = Some(*value);
+            volume = Some(normalize_volume(*value));
         }
 
         if key == "Muted" {
@@ -136,4 +136,8 @@ fn parse(attributes: &[Value]) -> Result<(Option<u32>, Option<bool>)> {
     }
 
     Ok((volume, muted))
+}
+
+fn normalize_volume(volume: u32) -> u32 {
+    if volume == 99 { 100 } else { volume }
 }

@@ -20,7 +20,7 @@ template $SoundOverlay: $BaseOverlay {
     Scale scale {
       orientation: horizontal;
       adjustment: Adjustment sound_adjustment {
-        value: 0;
+        value: bind template.model as <$IOModel>.sound as <$SoundModel>.volume;
         lower: 0;
         upper: 100;
         step-increment: 1;

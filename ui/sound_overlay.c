@@ -7,7 +7,6 @@ struct _SoundOverlay {
   GtkWidget parent_instance;
 
   IOModel *model;
-  GtkAdjustment *sound_adjustment;
 };
 
 G_DEFINE_TYPE(SoundOverlay, sound_overlay, BASE_OVERLAY_TYPE)
@@ -34,18 +33,6 @@ static char *format_sound_icon(GObject *, guint volume, bool muted) {
   return g_strdup(volume_to_icon(volume, muted));
 }
 
-static double normalized_volume(guint volume) {
-  if (volume == 99)
-    return 100.0;
-  return volume;
-}
-
-static gboolean transform_sound_volume(GBinding *, const GValue *from_value,
-                                       GValue *to_value, gpointer) {
-  g_value_set_double(to_value, normalized_volume(g_value_get_uint(from_value)));
-  return true;
-}
-
 static void sound_overlay_get_property(GObject *object, guint property_id,
                                        GValue *value, GParamSpec *pspec) {
   SoundOverlay *self = SOUND_OVERLAY(object);
@@ -63,16 +50,9 @@ static void sound_overlay_set_property(GObject *object, guint property_id,
                                        const GValue *value, GParamSpec *pspec) {
   SoundOverlay *self = SOUND_OVERLAY(object);
   switch (property_id) {
-  case PROP_MODEL: {
-    GObject *sound = NULL;
+  case PROP_MODEL:
     g_set_object(&self->model, g_value_get_object(value));
-    g_object_get(self->model, "sound", &sound, NULL);
-    g_object_bind_property_full(sound, "volume", self->sound_adjustment,
-                                "value", G_BINDING_SYNC_CREATE,
-                                transform_sound_volume, NULL, NULL, NULL);
-    g_object_unref(sound);
     break;
-  }
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;
@@ -108,8 +88,6 @@ static void sound_overlay_class_init(SoundOverlayClass *klass) {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
   gtk_widget_class_set_template_from_resource(widget_class,
                                               "/layer-shell/sound_overlay.ui");
-  gtk_widget_class_bind_template_child(widget_class, SoundOverlay,
-                                       sound_adjustment);
   gtk_widget_class_bind_template_callback(widget_class, format_sound_icon);
 }
 
