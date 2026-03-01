@@ -64,10 +64,6 @@ GtkWidget *weather_window_new(GtkApplication *app) {
   return g_object_new(weather_window_get_type(), "application", app, NULL);
 }
 
-void weather_window_toggle(WeatherWindow *self) {
-  base_window_toggle(BASE_WINDOW(self));
-}
-
 static GtkWidget *temperature_label_new() { return gtk_label_new("??"); }
 static void temperature_label_refresh(GtkWidget *label, float temperature) {
   char buffer[100];

@@ -37,7 +37,3 @@ static void ping_window_class_init(PingWindowClass *klass) {
 GtkWidget *ping_window_new(GtkApplication *app) {
   return g_object_new(ping_window_get_type(), "application", app, NULL);
 }
-
-void ping_window_toggle(PingWindow *self) {
-  base_window_toggle(BASE_WINDOW(self));
-}

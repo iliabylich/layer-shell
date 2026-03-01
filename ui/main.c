@@ -1,4 +1,5 @@
 #include "bindings.h"
+#include "ui/base_window.h"
 #include "ui/caps_lock_window.h"
 #include "ui/css.h"
 #include "ui/io_model.h"
@@ -31,6 +32,10 @@ bool exiting = false;
 static void remove_window(GtkWidget **win) {
   gtk_application_remove_window(app, GTK_WINDOW(*win));
   g_clear_pointer(win, g_object_unref);
+}
+
+static void window_toggle(GtkWidget *window) {
+  base_window_toggle(BASE_WINDOW(window));
 }
 
 static void on_event(const IO_Event *event) {
@@ -91,7 +96,7 @@ static void on_event(const IO_Event *event) {
     io_model_set_clock_unix_seconds(model, event->clock.unix_seconds);
     break;
   case IO_Event_ToggleSessionScreen:
-    session_window_toggle(SESSION_WINDOW(session_window));
+    window_toggle(session_window);
     break;
   case IO_Event_InitialSound:
     sound_window_set_initial_sound(SOUND_WINDOW(sound_window),
@@ -131,29 +136,9 @@ static gboolean on_new_events(gint, GIOCondition, gpointer);
 static void on_workspace_switched(TopBar *, guint num) {
   io_hyprland_go_to_workspace(num);
 }
-static void on_change_theme_clicked() { io_change_theme(); }
 static void on_tray_triggered(TopBar *, const char *uuid) {
   io_trigger_tray(uuid);
 }
-static void on_weather_clicked() {
-  weather_window_toggle(WEATHER_WINDOW(weather_window));
-}
-static void on_terminal_clicked() {
-  terminal_window_toggle(TERMINAL_WINDOW(terminal_window));
-}
-static void on_memory_clicked() { io_spawn_system_monitor(); }
-static void on_network_settings_clicked() { io_spawn_wifi_editor(); }
-static void on_network_ping_clicked() {
-  ping_window_toggle(PING_WINDOW(ping_window));
-}
-static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(); }
-static void on_power_clicked() {
-  session_window_toggle(SESSION_WINDOW(session_window));
-}
-static void on_lock_clicked() { io_lock(); }
-static void on_reboot_clicked() { io_reboot(); }
-static void on_shutdown_clicked() { io_shutdown(); }
-static void on_logout_clicked() { io_logout(); }
 
 static void on_app_activate() {
   model = io_model_new();
@@ -161,35 +146,36 @@ static void on_app_activate() {
   top_bar_set_model(TOP_BAR(top_bar), model);
   top_bar_set_terminal_label(TOP_BAR(top_bar), config->terminal.label);
 
-#define CONNECT(signal, callback)                                              \
-  g_signal_connect(top_bar, signal, G_CALLBACK(callback), NULL)
+#define CONNECT(obj, signal, callback)                                         \
+  g_signal_connect(obj, signal, G_CALLBACK(callback), NULL)
 
-  CONNECT("workspace-switched", on_workspace_switched);
-  CONNECT("change-theme-clicked", on_change_theme_clicked);
-  CONNECT("tray-triggered", on_tray_triggered);
-  CONNECT("weather-clicked", on_weather_clicked);
-  CONNECT("terminal-clicked", on_terminal_clicked);
-  CONNECT("memory-clicked", on_memory_clicked);
-  CONNECT("network-settings-clicked", on_network_settings_clicked);
-  CONNECT("network-ping-clicked", on_network_ping_clicked);
-  CONNECT("bluetooth-clicked", on_bluetooth_clicked);
-  CONNECT("power-clicked", on_power_clicked);
+#define CONNECT_SWAPPED(obj, signal, callback, data)                           \
+  g_signal_connect_swapped(obj, signal, G_CALLBACK(callback), data)
 
-#undef CONNECT
+  CONNECT(top_bar, "workspace-switched", on_workspace_switched);
+  CONNECT(top_bar, "change-theme-clicked", io_change_theme);
+  CONNECT(top_bar, "tray-triggered", on_tray_triggered);
+  CONNECT(top_bar, "memory-clicked", io_spawn_system_monitor);
+  CONNECT(top_bar, "network-settings-clicked", io_spawn_wifi_editor);
+  CONNECT(top_bar, "bluetooth-clicked", io_spawn_bluetooh_editor);
 
   weather_window = weather_window_new(app);
   terminal_window = terminal_window_new(app);
   ping_window = ping_window_new(app);
 
   session_window = session_window_new(app);
-  g_signal_connect(session_window, "clicked-lock", G_CALLBACK(on_lock_clicked),
-                   NULL);
-  g_signal_connect(session_window, "clicked-shutdown",
-                   G_CALLBACK(on_shutdown_clicked), NULL);
-  g_signal_connect(session_window, "clicked-reboot",
-                   G_CALLBACK(on_reboot_clicked), NULL);
-  g_signal_connect(session_window, "clicked-logout",
-                   G_CALLBACK(on_logout_clicked), NULL);
+  CONNECT(session_window, "clicked-lock", io_lock);
+  CONNECT(session_window, "clicked-shutdown", io_shutdown);
+  CONNECT(session_window, "clicked-reboot", io_reboot);
+  CONNECT(session_window, "clicked-logout", io_logout);
+
+  CONNECT_SWAPPED(top_bar, "weather-clicked", window_toggle, weather_window);
+  CONNECT_SWAPPED(top_bar, "terminal-clicked", window_toggle, terminal_window);
+  CONNECT_SWAPPED(top_bar, "network-ping-clicked", window_toggle, ping_window);
+  CONNECT_SWAPPED(top_bar, "power-clicked", window_toggle, session_window);
+
+#undef CONNECT_SWAPPED
+#undef CONNECT
 
   sound_window = sound_window_new(app);
   caps_lock_window = caps_lock_window_new(app);
@@ -205,15 +191,20 @@ static gboolean on_new_events(gint, GIOCondition, gpointer) {
 }
 
 int main(int argc, char **argv) {
+#define CONNECT(obj, signal, callback)                                         \
+  g_signal_connect(obj, signal, G_CALLBACK(callback), NULL)
+
   setenv("GSK_RENDERER", "cairo", true);
   io_init(on_event, true);
   config = io_get_config();
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
-  g_signal_connect(app, "activate", on_app_activate, NULL);
-  g_signal_connect(app, "startup", css_load, NULL);
+  CONNECT(app, "activate", on_app_activate);
+  CONNECT(app, "startup", css_load);
   g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);
+
+#undef CONNECT
 
   return 0;
 }

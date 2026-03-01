@@ -10,4 +10,3 @@ G_DECLARE_FINAL_TYPE(SessionWindow, session_window, SESSION_WINDOW, WINDOW,
   G_TYPE_CHECK_INSTANCE_CAST(obj, session_window_get_type(), SessionWindow)
 
 GtkWidget *session_window_new(GtkApplication *app);
-void session_window_toggle(SessionWindow *session_window);

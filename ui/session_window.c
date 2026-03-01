@@ -20,22 +20,22 @@ G_DEFINE_TYPE(SessionWindow, session_window, BASE_WINDOW_TYPE)
 
 static void on_lock(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_LOCK], 0);
-  session_window_toggle(self);
+  base_window_toggle(BASE_WINDOW(self));
 }
 
 static void on_reboot(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_REBOOT], 0);
-  session_window_toggle(self);
+  base_window_toggle(BASE_WINDOW(self));
 }
 
 static void on_shutdown(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_SHUTDOWN], 0);
-  session_window_toggle(self);
+  base_window_toggle(BASE_WINDOW(self));
 }
 
 static void on_logout(SessionWindow *self) {
   g_signal_emit(self, signals[SIGNAL_CLICKED_LOGOUT], 0);
-  session_window_toggle(self);
+  base_window_toggle(BASE_WINDOW(self));
 }
 
 static void session_window_init(SessionWindow *self) {
@@ -78,8 +78,4 @@ static void session_window_class_init(SessionWindowClass *klass) {
 
 GtkWidget *session_window_new(GtkApplication *app) {
   return g_object_new(session_window_get_type(), "application", app, NULL);
-}
-
-void session_window_toggle(SessionWindow *self) {
-  base_window_toggle(BASE_WINDOW(self));
 }

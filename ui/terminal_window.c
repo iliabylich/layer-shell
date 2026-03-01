@@ -37,7 +37,3 @@ static void terminal_window_class_init(TerminalWindowClass *klass) {
 GtkWidget *terminal_window_new(GtkApplication *app) {
   return g_object_new(terminal_window_get_type(), "application", app, NULL);
 }
-
-void terminal_window_toggle(TerminalWindow *self) {
-  base_window_toggle(BASE_WINDOW(self));
-}
