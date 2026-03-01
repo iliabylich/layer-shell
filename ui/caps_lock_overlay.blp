@@ -1,0 +1,27 @@
+using Gtk 4.0;
+
+template $CapsLockOverlay: $BaseOverlay {
+  layer-namespace: "LayerShell/CapsLock";
+  anchor-bottom-margin: 100;
+  visible: bind template.model as <$IOModel>.overlays_caps_lock_visible;
+  styles ["caps-lock-overlay", "notification-overlay"]
+  Box {
+    orientation: horizontal;
+    spacing: 20;
+    styles ["wrapper"]
+
+    Label icon {
+      label: bind $format_caps_icon(
+          template.model as <$IOModel>.caps_lock_enabled
+      ) as <string>;
+      styles ["icon"]
+    }
+
+    Label label {
+      label: bind $format_caps_label(
+          template.model as <$IOModel>.caps_lock_enabled
+      ) as <string>;
+      styles ["status"]
+    }
+  }
+}

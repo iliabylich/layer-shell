@@ -70,7 +70,7 @@ popover {
     }
 }
 
-.top-bar-window {
+.top-bar-overlay {
     .wrapper {
         padding: 10px 10px 0px 10px;
         min-height: 36px;
@@ -209,7 +209,7 @@ tooltip {
     border: 1px solid var(--inverse_primary);
 }
 
-.session-window {
+.session-overlay {
     .wrapper {
         button {
             border: 2px solid var(--inverse_primary);
@@ -231,12 +231,12 @@ tooltip {
     }
 }
 
-.terminal-window {
+.terminal-overlay {
     border: 5px solid var(--inverse_primary);
     border-radius: 10px;
 }
 
-.weather-window {
+.weather-overlay {
     border: 3px solid var(--inverse_primary);
     border-radius: 10px;
     background-color: var(--surface_container-alpha);
@@ -267,14 +267,14 @@ tooltip {
     }
 }
 
-.notification-window {
+.notification-overlay {
     border: 3px solid var(--inverse_primary);
     border-radius: 10px;
     background-color: var(--surface_container-alpha);
     padding: 15px;
 }
 
-.sound-window {
+.sound-overlay {
     label {
         min-width: 30px;
         font-size: 30px;
@@ -293,7 +293,7 @@ tooltip {
     }
 }
 
-.caps-lock-window {
+.caps-lock-overlay {
     .icon {
         font-size: 30px;
         min-width: 30px;
@@ -305,7 +305,7 @@ tooltip {
     }
 }
 
-.tracker-window {
+.tracker-overlay {
     border: 3px solid var(--inverse_primary);
     border-radius: 10px;
     background-color: var(--surface_container-alpha);

@@ -1,0 +1,31 @@
+using Gtk 4.0;
+
+template $SoundOverlay: $BaseOverlay {
+  layer-namespace: "LayerShell/Sound";
+  anchor-bottom-margin: 100;
+  visible: bind template.model as <$IOModel>.overlays_sound_visible;
+  styles ["sound-overlay", "notification-overlay"]
+  Box {
+    orientation: horizontal;
+    spacing: 20;
+    styles ["wrapper"]
+
+    Label icon {
+      label: bind $format_sound_icon(
+          template.model as <$IOModel>.sound_volume,
+          template.model as <$IOModel>.sound_muted
+      ) as <string>;
+    }
+
+    Scale scale {
+      orientation: horizontal;
+      adjustment: Adjustment sound_adjustment {
+        value: 0;
+        lower: 0;
+        upper: 100;
+        step-increment: 1;
+      };
+      width-request: 300;
+    }
+  }
+}

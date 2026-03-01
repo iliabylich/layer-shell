@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/io_model.h"
+#include "ui/view_models/io_model.h"
 #include <gtk/gtk.h>
 
 G_DECLARE_FINAL_TYPE(TopBar, top_bar, TOP_BAR, WINDOW, GtkWindow)

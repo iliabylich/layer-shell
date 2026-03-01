@@ -1,14 +1,14 @@
 #include "bindings.h"
-#include "ui/caps_lock_window.h"
+#include "ui/caps_lock_overlay.h"
 #include "ui/css.h"
-#include "ui/io_model.h"
 #include "ui/logger.h"
-#include "ui/ping_window.h"
-#include "ui/session_window.h"
-#include "ui/sound_window.h"
-#include "ui/terminal_window.h"
+#include "ui/ping_overlay.h"
+#include "ui/session_overlay.h"
+#include "ui/sound_overlay.h"
+#include "ui/terminal_overlay.h"
 #include "ui/top_bar.h"
-#include "ui/weather_window.h"
+#include "ui/view_models/io_model.h"
+#include "ui/weather_overlay.h"
 #include <glib-unix.h>
 #include <gtk/gtk.h>
 
@@ -17,12 +17,12 @@ LOGGER("main.c", 0)
 GtkApplication *app;
 
 GtkWidget *top_bar;
-GtkWidget *weather_window;
-GtkWidget *terminal_window;
-GtkWidget *ping_window;
-GtkWidget *session_window;
-GtkWidget *sound_window;
-GtkWidget *caps_lock_window;
+GtkWidget *weather_overlay;
+GtkWidget *terminal_overlay;
+GtkWidget *ping_overlay;
+GtkWidget *session_overlay;
+GtkWidget *sound_overlay;
+GtkWidget *caps_lock_overlay;
 
 const IO_IOConfig *config;
 IOModel *model;
@@ -33,22 +33,11 @@ static void remove_window(GtkWidget **win) {
   g_clear_pointer(win, g_object_unref);
 }
 
-static void window_toggle(GtkWidget *, gpointer data) {
-  GtkWidget *window = data;
-  gtk_widget_set_visible(window, !gtk_widget_get_visible(window));
-}
-
 static void state_toggle(GtkWidget *, gpointer data) {
-  WindowModel *state = NULL;
-  const char *model_prop = data;
-  g_object_get(model, model_prop, &state, NULL);
-  if (state == NULL) {
-    return;
-  }
   gboolean visible = false;
-  g_object_get(state, "visible", &visible, NULL);
-  g_object_set(state, "visible", !visible, NULL);
-  g_clear_object(&state);
+  const char *model_prop = data;
+  g_object_get(model, model_prop, &visible, NULL);
+  g_object_set(model, model_prop, !visible, NULL);
 }
 
 static void event_received(const IO_Event *event) {
@@ -81,56 +70,55 @@ static void event_received(const IO_Event *event) {
     io_model_set_weather(model, event->weather);
     break;
   case IO_Event_Language:
-    SET("language-text", event->language.lang);
+    SET("language_text", event->language.lang);
     break;
   case IO_Event_CpuUsage:
     io_model_set_cpu(model, event->cpu_usage.usage_per_core);
     break;
   case IO_Event_Memory:
-    SET("memory-used", event->memory.used);
-    SET("memory-total", event->memory.total);
+    SET("memory_used", event->memory.used);
+    SET("memory_total", event->memory.total);
     break;
   case IO_Event_NetworkSsid:
-    SET("network-ssid", event->network_ssid.ssid);
+    SET("network_ssid", event->network_ssid.ssid);
     break;
   case IO_Event_NetworkStrength:
-    SET("network-strength", event->network_strength.strength);
+    SET("network_strength", event->network_strength.strength);
     break;
   case IO_Event_DownloadSpeed:
-    SET("download-bytes-per-sec", event->download_speed.bytes_per_sec);
+    SET("network_download_bytes_per_sec", event->download_speed.bytes_per_sec);
     break;
   case IO_Event_UploadSpeed:
-    SET("upload-bytes-per-sec", event->upload_speed.bytes_per_sec);
+    SET("network_upload_bytes_per_sec", event->upload_speed.bytes_per_sec);
     break;
   case IO_Event_Clock:
-    SET("clock-unix-seconds", event->clock.unix_seconds);
+    SET("clock_unix_seconds", event->clock.unix_seconds);
     break;
   case IO_Event_ToggleSessionScreen:
-    state_toggle(NULL, "session-window-model");
+    state_toggle(NULL, "overlays_session_visible");
     break;
   case IO_Event_InitialSound:
-    SET("sound-volume", event->initial_sound.volume);
-    SET("sound-muted", event->initial_sound.muted);
-    SET("sound-ready", true);
+    io_model_set_initial_sound(model, event->initial_sound.volume,
+                               event->initial_sound.muted);
     break;
   case IO_Event_VolumeChanged:
-    SET("sound-volume", event->volume_changed.volume);
+    SET("sound_volume", event->volume_changed.volume);
     break;
   case IO_Event_MuteChanged:
-    SET("sound-muted", event->mute_changed.muted);
+    SET("sound_muted", event->mute_changed.muted);
     break;
   case IO_Event_CapsLockToggled:
-    SET("caps-lock-enabled", event->caps_lock_toggled.enabled);
+    SET("caps_lock_enabled", event->caps_lock_toggled.enabled);
     break;
   case IO_Event_Exit:
     LOG("Received exit...");
     io_deinit();
     LOG("Removing windows...");
     remove_window(&top_bar);
-    remove_window(&weather_window);
-    remove_window(&terminal_window);
-    remove_window(&ping_window);
-    remove_window(&session_window);
+    remove_window(&weather_overlay);
+    remove_window(&terminal_overlay);
+    remove_window(&ping_overlay);
+    remove_window(&session_overlay);
     g_application_quit(G_APPLICATION(app));
     LOG("Quit done.");
     exiting = true;
@@ -154,13 +142,7 @@ static void tray_triggered(TopBar *, const char *uuid) {
 }
 
 static void create_widgets() {
-  SoundWindowModel *sound_window_model = NULL;
-  WeatherWindowModel *weather_window_model = NULL;
-  SessionWindowModel *session_window_model = NULL;
   model = io_model_new();
-  g_object_get(model, "sound-window-model", &sound_window_model, NULL);
-  g_object_get(model, "weather-window-model", &weather_window_model,
-               "session-window-model", &session_window_model, NULL);
   top_bar = top_bar_new(app, model);
   top_bar_set_terminal_label(TOP_BAR(top_bar), config->terminal.label);
 
@@ -174,28 +156,27 @@ static void create_widgets() {
   CONNECT(top_bar, "network-settings-clicked", io_spawn_wifi_editor, NULL);
   CONNECT(top_bar, "bluetooth-clicked", io_spawn_bluetooh_editor, NULL);
 
-  weather_window = weather_window_new(app, model, weather_window_model);
-  terminal_window = terminal_window_new(app);
-  ping_window = ping_window_new(app);
+  weather_overlay = weather_overlay_new(app, model);
+  terminal_overlay = terminal_overlay_new(app, model);
+  ping_overlay = ping_overlay_new(app, model);
 
-  session_window = session_window_new(app, session_window_model);
-  CONNECT(session_window, "clicked-lock", io_lock, NULL);
-  CONNECT(session_window, "clicked-shutdown", io_shutdown, NULL);
-  CONNECT(session_window, "clicked-reboot", io_reboot, NULL);
-  CONNECT(session_window, "clicked-logout", io_logout, NULL);
+  session_overlay = session_overlay_new(app, model);
+  CONNECT(session_overlay, "clicked-lock", io_lock, NULL);
+  CONNECT(session_overlay, "clicked-shutdown", io_shutdown, NULL);
+  CONNECT(session_overlay, "clicked-reboot", io_reboot, NULL);
+  CONNECT(session_overlay, "clicked-logout", io_logout, NULL);
 
-  CONNECT(top_bar, "weather-clicked", state_toggle, "weather-window-model");
-  CONNECT(top_bar, "terminal-clicked", window_toggle, terminal_window);
-  CONNECT(top_bar, "network-ping-clicked", window_toggle, ping_window);
-  CONNECT(top_bar, "power-clicked", state_toggle, "session-window-model");
+  CONNECT(top_bar, "weather-clicked", state_toggle, "overlays_weather_visible");
+  CONNECT(top_bar, "terminal-clicked", state_toggle,
+          "overlays_terminal_visible");
+  CONNECT(top_bar, "network-ping-clicked", state_toggle,
+          "overlays_ping_visible");
+  CONNECT(top_bar, "power-clicked", state_toggle, "overlays_session_visible");
 
 #undef CONNECT
 
-  sound_window = sound_window_new(app, sound_window_model);
-  caps_lock_window = caps_lock_window_new(app, model);
-  g_clear_object(&sound_window_model);
-  g_clear_object(&weather_window_model);
-  g_clear_object(&session_window_model);
+  sound_overlay = sound_overlay_new(app, model);
+  caps_lock_overlay = caps_lock_overlay_new(app, model);
 
   g_unix_fd_add(io_as_raw_fd(), G_IO_IN, read_io_events, NULL);
   gtk_window_present(GTK_WINDOW(top_bar));

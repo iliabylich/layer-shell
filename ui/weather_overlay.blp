@@ -1,0 +1,155 @@
+using Gtk 4.0;
+
+template $WeatherOverlay: $BaseOverlay {
+  layer-namespace: "LayerShell/Weather";
+  keyboard-exclusive: true;
+  visible: bind template.model as <$IOModel>.overlays_weather_visible;
+  styles ["weather-overlay"]
+  Box {
+    orientation: horizontal;
+    spacing: 50;
+
+    Box {
+      orientation: vertical;
+      spacing: 6;
+
+      Label {
+        label: "Hourly";
+      }
+
+      ColumnView {
+        styles ["weather-hourly"]
+        show-row-separators: false;
+        show-column-separators: false;
+
+        model: NoSelection {
+          model: bind template.model as <$IOModel>.weather_hourly_forecast;
+        };
+
+        ColumnViewColumn {
+          title: "";
+
+          factory: BuilderListItemFactory {
+            template ListItem {
+              child: Label {
+                xalign: 0;
+                label: bind $format_hour_label(
+                    template.item as <$WeatherHourItem>.unix_seconds
+                ) as <string>;
+              };
+            }
+          };
+        }
+
+        ColumnViewColumn {
+          title: "";
+
+          factory: BuilderListItemFactory {
+            template ListItem {
+              child: Label {
+                xalign: 1;
+                label: bind $format_temperature(
+                    template.item as <$WeatherHourItem>.temperature
+                ) as <string>;
+              };
+            }
+          };
+        }
+
+        ColumnViewColumn {
+          title: "";
+
+          factory: BuilderListItemFactory {
+            template ListItem {
+              child: Label {
+                styles ["icon"]
+                tooltip-text: bind template.item as <$WeatherHourItem>.description;
+                label: bind template.item as <$WeatherHourItem>.icon;
+              };
+            }
+          };
+        }
+
+      }
+    }
+
+    Box {
+      orientation: vertical;
+      spacing: 6;
+
+      Label {
+        label: "Daily";
+      }
+
+      ColumnView {
+        styles ["weather-daily"]
+        show-row-separators: false;
+        show-column-separators: false;
+
+        model: NoSelection {
+          model: bind template.model as <$IOModel>.weather_daily_forecast;
+        };
+
+        ColumnViewColumn {
+          title: "";
+
+          factory: BuilderListItemFactory {
+            template ListItem {
+              child: Label {
+                xalign: 0;
+                label: bind $format_day_label(
+                    template.item as <$WeatherDayItem>.unix_seconds
+                ) as <string>;
+              };
+            }
+          };
+        }
+
+        ColumnViewColumn {
+          title: "";
+
+          factory: BuilderListItemFactory {
+            template ListItem {
+              child: Label {
+                xalign: 1;
+                label: bind $format_temperature(
+                    template.item as <$WeatherDayItem>.temperature_min
+                ) as <string>;
+              };
+            }
+          };
+        }
+
+        ColumnViewColumn {
+          title: "";
+
+          factory: BuilderListItemFactory {
+            template ListItem {
+              child: Label {
+                xalign: 1;
+                label: bind $format_temperature(
+                    template.item as <$WeatherDayItem>.temperature_max
+                ) as <string>;
+              };
+            }
+          };
+        }
+
+        ColumnViewColumn {
+          title: "";
+
+          factory: BuilderListItemFactory {
+            template ListItem {
+              child: Label {
+                styles ["icon"]
+                tooltip-text: bind template.item as <$WeatherDayItem>.description;
+                label: bind template.item as <$WeatherDayItem>.icon;
+              };
+            }
+          };
+        }
+
+      }
+    }
+  }
+}

@@ -1,9 +1,9 @@
 #include "ui/top_bar.h"
-#include "ui/cpu_item.h"
-#include "ui/io_model.h"
 #include "ui/logger.h"
-#include "ui/tray_app_item.h"
-#include "ui/workspace_item.h"
+#include "ui/view_models/cpu_item.h"
+#include "ui/view_models/io_model.h"
+#include "ui/view_models/tray_app_item.h"
+#include "ui/view_models/workspace_item.h"
 #include <gtk4-layer-shell.h>
 
 LOGGER("TopBar", 0)
@@ -141,7 +141,7 @@ static void top_bar_set_property(GObject *object, guint property_id,
   case PROP_MODEL: {
     g_set_object(&self->model, g_value_get_object(value));
     GListModel *tray_apps = NULL;
-    g_object_get(self->model, "tray-apps", &tray_apps, NULL);
+    g_object_get(self->model, "tray_apps", &tray_apps, NULL);
     g_signal_connect(tray_apps, "items-changed", G_CALLBACK(tray_items_changed),
                      self);
     g_object_unref(tray_apps);

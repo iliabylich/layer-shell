@@ -1,0 +1,9 @@
+using Gtk 4.0;
+
+template $TerminalOverlay: $BaseOverlay {
+  layer-namespace: "LayerShell/Terminal";
+  keyboard-exclusive: true;
+  visible: bind template.model as <$IOModel>.overlays_terminal_visible;
+  width-request: 1000;
+  height-request: 700;
+}

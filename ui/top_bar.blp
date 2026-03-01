@@ -3,7 +3,7 @@ using Gdk 4.0;
 using GLib 2.0;
 
 template $TopBar: Window {
-  styles ["top-bar-window"]
+  styles ["top-bar-overlay"]
   CenterBox {
     styles ["wrapper"]
     halign: fill;
@@ -30,7 +30,7 @@ template $TopBar: Window {
         };
 
         model: NoSelection {
-          model: bind template.model as <$IOModel>.workspaces;
+          model: bind template.model as <$IOModel>.workspaces_visible;
         };
       }
       Button change_theme {
@@ -63,12 +63,12 @@ template $TopBar: Window {
         };
 
         model: NoSelection {
-          model: bind template.model as <$IOModel>.tray-apps;
+          model: bind template.model as <$IOModel>.tray_apps;
         };
       }
       Button weather {
         cursor: Gdk.Cursor { name: "pointer"; };
-        label: bind template.model as <$IOModel>.weather-text;
+        label: bind template.model as <$IOModel>.weather_text;
         styles ["widget", "weather", "padded", "clickable"]
       }
       Button terminal {
@@ -77,7 +77,7 @@ template $TopBar: Window {
         styles ["widget", "terminal", "padded", "clickable"]
       }
       Label {
-        label: bind template.model as <$IOModel>.language-text;
+        label: bind template.model as <$IOModel>.language_text;
         styles ["widget", "language", "padded"]
       }
       ListView {
@@ -94,14 +94,14 @@ template $TopBar: Window {
         };
 
         model: NoSelection {
-          model: bind template.model as <$IOModel>.cpu-cores;
+          model: bind template.model as <$IOModel>.cpu_cores;
         };
       }
       Button memory {
         cursor: Gdk.Cursor { name: "pointer"; };
         label: bind $format_memory_label(
-            template.model as <$IOModel>.memory-used,
-            template.model as <$IOModel>.memory-total
+            template.model as <$IOModel>.memory_used,
+            template.model as <$IOModel>.memory_total
         ) as <string>;
         styles ["widget", "memory", "padded", "clickable"]
       }
@@ -113,7 +113,7 @@ template $TopBar: Window {
           orientation: horizontal;
 
           Label {
-            label: bind template.model as <$IOModel>.network-name;
+            label: bind template.model as <$IOModel>.network_name;
           }
 
           Label {
@@ -128,7 +128,7 @@ template $TopBar: Window {
 
           Label {
             label: bind $format_network_speed(
-                template.model as <$IOModel>.download-bytes-per-sec
+                template.model as <$IOModel>.network_download_bytes_per_sec
             ) as <string>;
             styles ["network-speed-label"]
           }
@@ -140,7 +140,7 @@ template $TopBar: Window {
 
           Label {
             label: bind $format_network_speed(
-                template.model as <$IOModel>.upload-bytes-per-sec
+                template.model as <$IOModel>.network_upload_bytes_per_sec
             ) as <string>;
             styles ["network-speed-label"]
           }
@@ -163,7 +163,7 @@ template $TopBar: Window {
       }
       Label {
         label: bind $format_clock_label(
-            template.model as <$IOModel>.clock-unix-seconds
+            template.model as <$IOModel>.clock_unix_seconds
         ) as <string>;
         styles ["widget", "clock", "padded"]
       }

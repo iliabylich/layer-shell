@@ -1,0 +1,36 @@
+using Gtk 4.0;
+
+template $SessionOverlay: $BaseOverlay {
+  layer-namespace: "LayerShell/SessionScreen";
+  keyboard-exclusive: true;
+  visible: bind template.model as <$IOModel>.overlays_session_visible;
+  width-request: 400;
+  height-request: 300;
+  styles ["session-overlay"]
+  Box {
+    orientation: vertical;
+    spacing: 20;
+    homogeneous: true;
+    styles ["wrapper"]
+
+    Button lock {
+      label: "Lock";
+      clicked => $lock_clicked() swapped;
+    }
+
+    Button reboot {
+      label: "Reboot";
+      clicked => $reboot_clicked() swapped;
+    }
+
+    Button shutdown {
+      label: "Shutdown";
+      clicked => $shutdown_clicked() swapped;
+    }
+
+    Button logout {
+      label: "Logout";
+      clicked => $logout_clicked() swapped;
+    }
+  }
+}
