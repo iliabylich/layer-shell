@@ -2,6 +2,7 @@
 
 #include "bindings.h"
 #include "ui/base_window.h"
+#include "ui/io_model.h"
 #include <gtk/gtk.h>
 
 G_DECLARE_FINAL_TYPE(WeatherWindow, weather_window, WEATHER_WINDOW, WINDOW,
@@ -11,7 +12,4 @@ G_DECLARE_FINAL_TYPE(WeatherWindow, weather_window, WEATHER_WINDOW, WINDOW,
   G_TYPE_CHECK_INSTANCE_CAST(obj, weather_window_get_type(), WeatherWindow)
 
 GtkWidget *weather_window_new(GtkApplication *app);
-void weather_window_refresh_hourly_forecast(
-    WeatherWindow *weather_window, struct IO_FFIArray_WeatherOnHour data);
-void weather_window_refresh_daily_forecast(
-    WeatherWindow *weather_window, struct IO_FFIArray_WeatherOnDay data);
+void weather_window_set_model(WeatherWindow *weather_window, IOModel *model);

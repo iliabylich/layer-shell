@@ -23,7 +23,7 @@ template $WeatherWindow: $BaseWindow {
         show-column-separators: false;
 
         model: NoSelection {
-          model: bind template as <$WeatherWindow>.hourly-forecast;
+          model: bind template.model as <$IOModel>.weather-hourly-forecast;
         };
 
         ColumnViewColumn {
@@ -87,7 +87,7 @@ template $WeatherWindow: $BaseWindow {
         show-column-separators: false;
 
         model: NoSelection {
-          model: bind template as <$WeatherWindow>.daily-forecast;
+          model: bind template.model as <$IOModel>.weather-daily-forecast;
         };
 
         ColumnViewColumn {

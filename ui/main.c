@@ -63,12 +63,7 @@ static void on_event(const IO_Event *event) {
                            event->tray_app_menu_updated.items);
     break;
   case IO_Event_Weather:
-    io_model_set_weather(model, event->weather.temperature,
-                         event->weather.code);
-    weather_window_refresh_hourly_forecast(WEATHER_WINDOW(weather_window),
-                                           event->weather.hourly_forecast);
-    weather_window_refresh_daily_forecast(WEATHER_WINDOW(weather_window),
-                                          event->weather.daily_forecast);
+    io_model_set_weather(model, event->weather);
     break;
   case IO_Event_Language:
     io_model_set_language(model, event->language.lang);
@@ -160,6 +155,7 @@ static void on_app_activate() {
   CONNECT(top_bar, "bluetooth-clicked", io_spawn_bluetooh_editor);
 
   weather_window = weather_window_new(app);
+  weather_window_set_model(WEATHER_WINDOW(weather_window), model);
   terminal_window = terminal_window_new(app);
   ping_window = ping_window_new(app);
 

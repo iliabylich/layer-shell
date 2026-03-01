@@ -8,18 +8,13 @@ LOGGER("WeatherWindow", 0)
 struct _WeatherWindow {
   GtkWidget parent_instance;
 
-  GListStore *hourly_forecast;
-  GListStore *daily_forecast;
+  IOModel *model;
 };
 
 G_DEFINE_TYPE(WeatherWindow, weather_window, BASE_WINDOW_TYPE)
 
-#define HOURLY_ROWS_COUNT 10
-#define DAILY_ROWS_COUNT 6
-
 enum {
-  PROP_HOURLY_FORECAST = 1,
-  PROP_DAILY_FORECAST,
+  PROP_MODEL = 1,
   N_PROPERTIES,
 };
 static GParamSpec *properties[N_PROPERTIES] = {0};
@@ -59,11 +54,23 @@ static void weather_window_get_property(GObject *object, guint property_id,
   WeatherWindow *self = WEATHER_WINDOW(object);
 
   switch (property_id) {
-  case PROP_HOURLY_FORECAST:
-    g_value_set_object(value, self->hourly_forecast);
+  case PROP_MODEL:
+    g_value_set_object(value, self->model);
     break;
-  case PROP_DAILY_FORECAST:
-    g_value_set_object(value, self->daily_forecast);
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+    break;
+  }
+}
+
+static void weather_window_set_property(GObject *object, guint property_id,
+                                        const GValue *value,
+                                        GParamSpec *pspec) {
+  WeatherWindow *self = WEATHER_WINDOW(object);
+
+  switch (property_id) {
+  case PROP_MODEL:
+    g_set_object(&self->model, g_value_get_object(value));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -73,8 +80,7 @@ static void weather_window_get_property(GObject *object, guint property_id,
 
 static void weather_window_init(WeatherWindow *self) {
   LOG("init");
-  self->hourly_forecast = g_list_store_new(weather_hour_item_get_type());
-  self->daily_forecast = g_list_store_new(weather_day_item_get_type());
+  self->model = NULL;
   gtk_widget_init_template(GTK_WIDGET(self));
 }
 
@@ -86,8 +92,7 @@ static void weather_window_dispose(GObject *object) {
 
 static void weather_window_finalize(GObject *object) {
   WeatherWindow *self = WEATHER_WINDOW(object);
-  g_clear_object(&self->hourly_forecast);
-  g_clear_object(&self->daily_forecast);
+  g_clear_object(&self->model);
   G_OBJECT_CLASS(weather_window_parent_class)->finalize(object);
 }
 
@@ -96,13 +101,12 @@ static void weather_window_class_init(WeatherWindowClass *klass) {
 
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->get_property = weather_window_get_property;
+  object_class->set_property = weather_window_set_property;
   object_class->dispose = weather_window_dispose;
   object_class->finalize = weather_window_finalize;
 
-  properties[PROP_HOURLY_FORECAST] = g_param_spec_object(
-      "hourly-forecast", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
-  properties[PROP_DAILY_FORECAST] = g_param_spec_object(
-      "daily-forecast", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
+  properties[PROP_MODEL] = g_param_spec_object(
+      "model", NULL, NULL, io_model_get_type(), G_PARAM_READWRITE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
   g_type_ensure(weather_hour_item_get_type());
@@ -120,22 +124,6 @@ GtkWidget *weather_window_new(GtkApplication *app) {
   return g_object_new(weather_window_get_type(), "application", app, NULL);
 }
 
-void weather_window_refresh_hourly_forecast(
-    WeatherWindow *self, struct IO_FFIArray_WeatherOnHour data) {
-  g_list_store_remove_all(self->hourly_forecast);
-  for (size_t row = 0; row < data.len && row < HOURLY_ROWS_COUNT; row++) {
-    WeatherHourItem *item = weather_hour_item_new(data.ptr[row]);
-    g_list_store_append(self->hourly_forecast, item);
-    g_object_unref(item);
-  }
-}
-
-void weather_window_refresh_daily_forecast(
-    WeatherWindow *self, struct IO_FFIArray_WeatherOnDay data) {
-  g_list_store_remove_all(self->daily_forecast);
-  for (size_t row = 0; row < data.len && row < DAILY_ROWS_COUNT; row++) {
-    WeatherDayItem *item = weather_day_item_new(data.ptr[row]);
-    g_list_store_append(self->daily_forecast, item);
-    g_object_unref(item);
-  }
+void weather_window_set_model(WeatherWindow *self, IOModel *model) {
+  g_object_set(self, "model", model, NULL);
 }

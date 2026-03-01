@@ -16,8 +16,8 @@ void io_model_set_upload_bytes_per_sec(IOModel *self, uint64_t bytes_per_sec);
 
 void io_model_set_workspaces(IOModel *self,
                              struct IO_FFIArray_HyprlandWorkspace data);
-void io_model_set_weather(IOModel *self, float temperature,
-                          IO_WeatherCode code);
+void io_model_set_weather(IOModel *self,
+                          struct IO_Event_IO_Weather_Body weather);
 void io_model_set_language(IOModel *self, const char *lang);
 void io_model_set_cpu(IOModel *self, IO_FFIArray_u8 data);
 void io_model_set_memory(IOModel *self, float used, float total);

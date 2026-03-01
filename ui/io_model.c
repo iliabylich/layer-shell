@@ -1,7 +1,9 @@
 #include "ui/io_model.h"
 #include "ui/cpu_model.h"
 #include "ui/tray_model.h"
+#include "ui/weather_day_item.h"
 #include "ui/weather_helper.h"
+#include "ui/weather_hour_item.h"
 #include "ui/workspaces_model.h"
 #include <string.h>
 
@@ -17,6 +19,8 @@ struct _IOModel {
   uint64_t download_bytes_per_sec;
   uint64_t upload_bytes_per_sec;
   CpuModel *cpu;
+  GListStore *weather_hourly_forecast;
+  GListStore *weather_daily_forecast;
   WorkspacesModel *workspaces;
   TrayModel *tray;
 
@@ -35,6 +39,8 @@ enum {
   PROP_NETWORK_NAME,
   PROP_DOWNLOAD_BYTES_PER_SEC,
   PROP_UPLOAD_BYTES_PER_SEC,
+  PROP_WEATHER_HOURLY_FORECAST,
+  PROP_WEATHER_DAILY_FORECAST,
   PROP_WORKSPACES,
   PROP_CPU_CORES,
   PROP_TRAY_APPS,
@@ -71,6 +77,12 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_UPLOAD_BYTES_PER_SEC:
     g_value_set_uint64(value, self->upload_bytes_per_sec);
     break;
+  case PROP_WEATHER_HOURLY_FORECAST:
+    g_value_set_object(value, self->weather_hourly_forecast);
+    break;
+  case PROP_WEATHER_DAILY_FORECAST:
+    g_value_set_object(value, self->weather_daily_forecast);
+    break;
   case PROP_WORKSPACES: {
     GListModel *visible = NULL;
     g_object_get(self->workspaces, "visible", &visible, NULL);
@@ -102,6 +114,8 @@ static void io_model_finalize(GObject *object) {
   g_free(self->network_name);
   g_free(self->network_ssid);
   g_clear_object(&self->cpu);
+  g_clear_object(&self->weather_hourly_forecast);
+  g_clear_object(&self->weather_daily_forecast);
   g_clear_object(&self->workspaces);
   g_clear_object(&self->tray);
   G_OBJECT_CLASS(io_model_parent_class)->finalize(object);
@@ -116,6 +130,9 @@ static void io_model_init(IOModel *self) {
   self->network_name = g_strdup("--");
   self->download_bytes_per_sec = G_MAXUINT64;
   self->upload_bytes_per_sec = G_MAXUINT64;
+  self->weather_hourly_forecast =
+      g_list_store_new(weather_hour_item_get_type());
+  self->weather_daily_forecast = g_list_store_new(weather_day_item_get_type());
   self->network_ssid = NULL;
   self->network_strength = 0;
 
@@ -147,6 +164,12 @@ static void io_model_class_init(IOModelClass *klass) {
   properties[PROP_UPLOAD_BYTES_PER_SEC] =
       g_param_spec_uint64("upload-bytes-per-sec", NULL, NULL, 0, G_MAXUINT64,
                           G_MAXUINT64, G_PARAM_READABLE);
+  properties[PROP_WEATHER_HOURLY_FORECAST] =
+      g_param_spec_object("weather-hourly-forecast", NULL, NULL,
+                          G_TYPE_LIST_MODEL, G_PARAM_READABLE);
+  properties[PROP_WEATHER_DAILY_FORECAST] =
+      g_param_spec_object("weather-daily-forecast", NULL, NULL,
+                          G_TYPE_LIST_MODEL, G_PARAM_READABLE);
   properties[PROP_WORKSPACES] = g_param_spec_object(
       "workspaces", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
   properties[PROP_CPU_CORES] = g_param_spec_object(
@@ -181,14 +204,29 @@ void io_model_set_workspaces(IOModel *self,
   workspaces_model_update(self->workspaces, data);
 }
 
-void io_model_set_weather(IOModel *self, float temperature,
-                          IO_WeatherCode code) {
+void io_model_set_weather(IOModel *self,
+                          struct IO_Event_IO_Weather_Body weather) {
   char buffer[100];
-  snprintf(buffer, sizeof(buffer), "%.1f\xe2\x84\x83 %s", temperature,
-           weather_code_to_description(code));
+  snprintf(buffer, sizeof(buffer), "%.1f\xe2\x84\x83 %s", weather.temperature,
+           weather_code_to_description(weather.code));
   g_free(self->weather_text);
   self->weather_text = g_strdup(buffer);
   g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_WEATHER_TEXT]);
+
+  g_list_store_remove_all(self->weather_hourly_forecast);
+  for (size_t i = 0; i < weather.hourly_forecast.len; i++) {
+    WeatherHourItem *item =
+        weather_hour_item_new(weather.hourly_forecast.ptr[i]);
+    g_list_store_append(self->weather_hourly_forecast, item);
+    g_object_unref(item);
+  }
+
+  g_list_store_remove_all(self->weather_daily_forecast);
+  for (size_t i = 0; i < weather.daily_forecast.len; i++) {
+    WeatherDayItem *item = weather_day_item_new(weather.daily_forecast.ptr[i]);
+    g_list_store_append(self->weather_daily_forecast, item);
+    g_object_unref(item);
+  }
 }
 
 void io_model_set_language(IOModel *self, const char *lang) {
