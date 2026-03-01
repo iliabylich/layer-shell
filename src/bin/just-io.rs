@@ -6,14 +6,14 @@ extern "C" fn on_event(event: *const Event) {
 }
 
 fn main() {
-    let io = io_init(on_event, false);
+    io_init(on_event, false);
 
     loop {
         // log::info!("Waiting...");
-        io_wait_readable(io);
+        io_wait_readable();
         // log::info!("Wait finished...");
 
         // log::info!("Processing...");
-        io_handle_readable(io);
+        io_handle_readable();
     }
 }

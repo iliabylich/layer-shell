@@ -17,7 +17,6 @@ use command::Command;
 use config::{Config, IOConfig};
 pub use event::Event;
 pub use ffi::{FFIArray, FFIString};
-use std::ffi::c_void;
 
 use crate::{
     dbus::{DBus, messages::org_freedesktop_dbus::Hello},
@@ -54,6 +53,8 @@ struct IO {
     running: bool,
     logging_enabled: bool,
 }
+
+static mut GLOBAL_IO: *mut IO = std::ptr::null_mut();
 
 impl IO {
     fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Self {
@@ -107,11 +108,6 @@ impl IO {
         self.system_dbus.init();
 
         IoUring::submit_if_dirty();
-    }
-
-    fn from_raw(ptr: *mut c_void) -> &'static mut Self {
-        unsafe { ptr.cast::<Self>().as_mut() }
-            .unwrap_or_else(|| report_and_exit!("NULL IO pointer given to IO::from_raw()"))
     }
 
     fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
@@ -288,33 +284,49 @@ impl IO {
     }
 }
 
+fn io_mut() -> &'static mut IO {
+    unsafe { GLOBAL_IO.as_mut() }
+        .unwrap_or_else(|| report_and_exit!("IO is not initialized. Call io_init() first."))
+}
+
 #[unsafe(no_mangle)]
-pub extern "C" fn io_init(
-    on_event: extern "C" fn(event: *const Event),
-    logging_enabled: bool,
-) -> *mut c_void {
+pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) {
+    if unsafe { !GLOBAL_IO.is_null() } {
+        report_and_exit!("io_init() called while IO is already initialized");
+    }
+
     Logger::init();
 
     rustls_openssl::default_provider()
         .install_default()
         .unwrap_or_else(|_| report_and_exit!("failed to install OpenSSL CryptoProvider"));
     IoUring::init(10, 0);
-    (Box::leak(Box::new(IO::new(on_event, logging_enabled))) as *mut IO).cast()
+    unsafe {
+        GLOBAL_IO = Box::into_raw(Box::new(IO::new(on_event, logging_enabled)));
+    }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_deinit(io: *mut c_void) {
-    IO::from_raw(io).deinit();
+pub extern "C" fn io_deinit() {
+    if unsafe { GLOBAL_IO.is_null() } {
+        report_and_exit!("io_deinit() called while IO is not initialized");
+    }
+
+    unsafe {
+        (*GLOBAL_IO).deinit();
+        drop(Box::from_raw(GLOBAL_IO));
+        GLOBAL_IO = std::ptr::null_mut();
+    }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_handle_readable(io: *mut c_void) {
-    IO::from_raw(io).handle_readable();
+pub extern "C" fn io_handle_readable() {
+    io_mut().handle_readable();
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_wait_readable(io: *mut c_void) {
-    IO::from_raw(io).wait_readable();
+pub extern "C" fn io_wait_readable() {
+    io_mut().wait_readable();
 }
 
 #[unsafe(no_mangle)]
@@ -323,56 +335,53 @@ pub extern "C" fn io_as_raw_fd() -> i32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_get_config(io: *mut c_void) -> *const IOConfig {
-    IO::from_raw(io).io_config
+pub extern "C" fn io_get_config() -> *const IOConfig {
+    io_mut().io_config
 }
 
-fn process_command(io: *mut c_void, cmd: Command) {
-    IO::from_raw(io).process_command(cmd);
+fn process_command(cmd: Command) {
+    io_mut().process_command(cmd);
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_hyprland_go_to_workspace(io: *mut c_void, workspace: usize) {
-    process_command(io, Command::GoToWorkspace { workspace });
+pub extern "C" fn io_hyprland_go_to_workspace(workspace: usize) {
+    process_command(Command::GoToWorkspace { workspace });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_lock(io: *mut c_void) {
-    process_command(io, Command::Lock);
+pub extern "C" fn io_lock() {
+    process_command(Command::Lock);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_reboot(io: *mut c_void) {
-    process_command(io, Command::Reboot);
+pub extern "C" fn io_reboot() {
+    process_command(Command::Reboot);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_shutdown(io: *mut c_void) {
-    process_command(io, Command::Shutdown);
+pub extern "C" fn io_shutdown() {
+    process_command(Command::Shutdown);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_logout(io: *mut c_void) {
-    process_command(io, Command::Logout);
+pub extern "C" fn io_logout() {
+    process_command(Command::Logout);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_trigger_tray(io: *mut c_void, uuid: *const std::ffi::c_char) {
-    process_command(
-        io,
-        Command::TriggerTray {
-            uuid: FFIString::from(uuid).into(),
-        },
-    );
+pub extern "C" fn io_trigger_tray(uuid: *const std::ffi::c_char) {
+    process_command(Command::TriggerTray {
+        uuid: FFIString::from(uuid).into(),
+    });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_wifi_editor(io: *mut c_void) {
-    process_command(io, Command::SpawnWiFiEditor);
+pub extern "C" fn io_spawn_wifi_editor() {
+    process_command(Command::SpawnWiFiEditor);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_bluetooh_editor(io: *mut c_void) {
-    process_command(io, Command::SpawnBluetoothEditor);
+pub extern "C" fn io_spawn_bluetooh_editor() {
+    process_command(Command::SpawnBluetoothEditor);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_system_monitor(io: *mut c_void) {
-    process_command(io, Command::SpawnSystemMonitor);
+pub extern "C" fn io_spawn_system_monitor() {
+    process_command(Command::SpawnSystemMonitor);
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_change_theme(io: *mut c_void) {
-    process_command(io, Command::ChangeTheme);
+pub extern "C" fn io_change_theme() {
+    process_command(Command::ChangeTheme);
 }

@@ -24,7 +24,6 @@ GtkWidget *session_window;
 GtkWidget *sound_window;
 GtkWidget *caps_lock_window;
 
-void *io;
 const IO_IOConfig *config;
 IOModel *model;
 bool exiting = false;
@@ -113,7 +112,7 @@ static void on_event(const IO_Event *event) {
     break;
   case IO_Event_Exit:
     LOG("Received exit...");
-    io_deinit(io);
+    io_deinit();
     LOG("Removing windows...");
     remove_window(&top_bar);
     remove_window(&weather_window);
@@ -130,11 +129,11 @@ static void on_event(const IO_Event *event) {
 static gboolean on_new_events(gint, GIOCondition, gpointer);
 
 static void on_workspace_switched(TopBar *, guint num) {
-  io_hyprland_go_to_workspace(io, num);
+  io_hyprland_go_to_workspace(num);
 }
-static void on_change_theme_clicked() { io_change_theme(io); }
+static void on_change_theme_clicked() { io_change_theme(); }
 static void on_tray_triggered(TopBar *, const char *uuid) {
-  io_trigger_tray(io, uuid);
+  io_trigger_tray(uuid);
 }
 static void on_weather_clicked() {
   weather_window_toggle(WEATHER_WINDOW(weather_window));
@@ -142,19 +141,19 @@ static void on_weather_clicked() {
 static void on_terminal_clicked() {
   terminal_window_toggle(TERMINAL_WINDOW(terminal_window));
 }
-static void on_memory_clicked() { io_spawn_system_monitor(io); }
-static void on_network_settings_clicked() { io_spawn_wifi_editor(io); }
+static void on_memory_clicked() { io_spawn_system_monitor(); }
+static void on_network_settings_clicked() { io_spawn_wifi_editor(); }
 static void on_network_ping_clicked() {
   ping_window_toggle(PING_WINDOW(ping_window));
 }
-static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(io); }
+static void on_bluetooth_clicked() { io_spawn_bluetooh_editor(); }
 static void on_power_clicked() {
   session_window_toggle(SESSION_WINDOW(session_window));
 }
-static void on_lock_clicked() { io_lock(io); }
-static void on_reboot_clicked() { io_reboot(io); }
-static void on_shutdown_clicked() { io_shutdown(io); }
-static void on_logout_clicked() { io_logout(io); }
+static void on_lock_clicked() { io_lock(); }
+static void on_reboot_clicked() { io_reboot(); }
+static void on_shutdown_clicked() { io_shutdown(); }
+static void on_logout_clicked() { io_logout(); }
 
 static void on_app_activate() {
   model = io_model_new();
@@ -200,15 +199,15 @@ static void on_app_activate() {
 }
 
 static gboolean on_new_events(gint, GIOCondition, gpointer) {
-  io_handle_readable(io);
+  io_handle_readable();
 
   return exiting ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
 }
 
 int main(int argc, char **argv) {
   setenv("GSK_RENDERER", "cairo", true);
-  io = io_init(on_event, true);
-  config = io_get_config(io);
+  io_init(on_event, true);
+  config = io_get_config();
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", on_app_activate, NULL);
