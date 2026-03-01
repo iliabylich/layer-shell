@@ -4,7 +4,7 @@
 struct _WeatherDayItem {
   GObject parent_instance;
 
-  char *day;
+  int64_t unix_seconds;
   double temperature_min;
   double temperature_max;
   char *icon;
@@ -14,7 +14,7 @@ struct _WeatherDayItem {
 G_DEFINE_TYPE(WeatherDayItem, weather_day_item, G_TYPE_OBJECT)
 
 enum {
-  PROP_DAY = 1,
+  PROP_UNIX_SECONDS = 1,
   PROP_TEMPERATURE_MIN,
   PROP_TEMPERATURE_MAX,
   PROP_ICON,
@@ -27,8 +27,8 @@ static void weather_day_item_get_property(GObject *object, guint property_id,
                                           GValue *value, GParamSpec *pspec) {
   WeatherDayItem *self = WEATHER_DAY_ITEM(object);
   switch (property_id) {
-  case PROP_DAY:
-    g_value_set_string(value, self->day);
+  case PROP_UNIX_SECONDS:
+    g_value_set_int64(value, self->unix_seconds);
     break;
   case PROP_TEMPERATURE_MIN:
     g_value_set_double(value, self->temperature_min);
@@ -50,14 +50,13 @@ static void weather_day_item_get_property(GObject *object, guint property_id,
 
 static void weather_day_item_finalize(GObject *object) {
   WeatherDayItem *self = WEATHER_DAY_ITEM(object);
-  g_free(self->day);
   g_free(self->icon);
   g_free(self->description);
   G_OBJECT_CLASS(weather_day_item_parent_class)->finalize(object);
 }
 
 static void weather_day_item_init(WeatherDayItem *self) {
-  self->day = g_strdup("??");
+  self->unix_seconds = 0;
   self->temperature_min = 0.0;
   self->temperature_max = 0.0;
   self->icon = g_strdup("");
@@ -69,8 +68,8 @@ static void weather_day_item_class_init(WeatherDayItemClass *klass) {
   object_class->get_property = weather_day_item_get_property;
   object_class->finalize = weather_day_item_finalize;
 
-  properties[PROP_DAY] =
-      g_param_spec_string("day", NULL, NULL, "??", G_PARAM_READABLE);
+  properties[PROP_UNIX_SECONDS] = g_param_spec_int64(
+      "unix-seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
   properties[PROP_TEMPERATURE_MIN] =
       g_param_spec_double("temperature-min", NULL, NULL, -G_MAXDOUBLE,
                           G_MAXDOUBLE, 0.0, G_PARAM_READABLE);
@@ -86,8 +85,7 @@ static void weather_day_item_class_init(WeatherDayItemClass *klass) {
 
 WeatherDayItem *weather_day_item_new(IO_WeatherOnDay weather_on_day) {
   WeatherDayItem *item = g_object_new(weather_day_item_get_type(), NULL);
-  g_free(item->day);
-  item->day = g_strdup(weather_on_day.day);
+  item->unix_seconds = weather_on_day.unix_seconds;
   item->temperature_min = weather_on_day.temperature_min;
   item->temperature_max = weather_on_day.temperature_max;
 

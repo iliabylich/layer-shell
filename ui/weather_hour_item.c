@@ -4,7 +4,7 @@
 struct _WeatherHourItem {
   GObject parent_instance;
 
-  char *hour;
+  int64_t unix_seconds;
   double temperature;
   char *icon;
   char *description;
@@ -13,7 +13,7 @@ struct _WeatherHourItem {
 G_DEFINE_TYPE(WeatherHourItem, weather_hour_item, G_TYPE_OBJECT)
 
 enum {
-  PROP_HOUR = 1,
+  PROP_UNIX_SECONDS = 1,
   PROP_TEMPERATURE,
   PROP_ICON,
   PROP_DESCRIPTION,
@@ -25,8 +25,8 @@ static void weather_hour_item_get_property(GObject *object, guint property_id,
                                            GValue *value, GParamSpec *pspec) {
   WeatherHourItem *self = WEATHER_HOUR_ITEM(object);
   switch (property_id) {
-  case PROP_HOUR:
-    g_value_set_string(value, self->hour);
+  case PROP_UNIX_SECONDS:
+    g_value_set_int64(value, self->unix_seconds);
     break;
   case PROP_TEMPERATURE:
     g_value_set_double(value, self->temperature);
@@ -45,14 +45,13 @@ static void weather_hour_item_get_property(GObject *object, guint property_id,
 
 static void weather_hour_item_finalize(GObject *object) {
   WeatherHourItem *self = WEATHER_HOUR_ITEM(object);
-  g_free(self->hour);
   g_free(self->icon);
   g_free(self->description);
   G_OBJECT_CLASS(weather_hour_item_parent_class)->finalize(object);
 }
 
 static void weather_hour_item_init(WeatherHourItem *self) {
-  self->hour = g_strdup("??");
+  self->unix_seconds = 0;
   self->temperature = 0.0;
   self->icon = g_strdup("");
   self->description = g_strdup("Unknown");
@@ -63,8 +62,8 @@ static void weather_hour_item_class_init(WeatherHourItemClass *klass) {
   object_class->get_property = weather_hour_item_get_property;
   object_class->finalize = weather_hour_item_finalize;
 
-  properties[PROP_HOUR] =
-      g_param_spec_string("hour", NULL, NULL, "??", G_PARAM_READABLE);
+  properties[PROP_UNIX_SECONDS] = g_param_spec_int64(
+      "unix-seconds", NULL, NULL, 0, G_MAXINT64, 0, G_PARAM_READABLE);
   properties[PROP_TEMPERATURE] =
       g_param_spec_double("temperature", NULL, NULL, -G_MAXDOUBLE, G_MAXDOUBLE,
                           0.0, G_PARAM_READABLE);
@@ -77,8 +76,7 @@ static void weather_hour_item_class_init(WeatherHourItemClass *klass) {
 
 WeatherHourItem *weather_hour_item_new(IO_WeatherOnHour weather_on_hour) {
   WeatherHourItem *item = g_object_new(weather_hour_item_get_type(), NULL);
-  g_free(item->hour);
-  item->hour = g_strdup(weather_on_hour.hour);
+  item->unix_seconds = weather_on_hour.unix_seconds;
   item->temperature = weather_on_hour.temperature;
 
   g_free(item->icon);

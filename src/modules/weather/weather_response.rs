@@ -1,7 +1,7 @@
 use super::WeatherCode;
-use crate::{Event, FFIArray, FFIString, https::Response};
+use crate::{Event, FFIArray, https::Response};
 use anyhow::{Context as _, Result, ensure};
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::TimeZone;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -19,14 +19,14 @@ pub(crate) struct CurrentWeatherResponse {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct HourlyWeatherResponse {
-    pub(crate) time: Vec<String>,
+    pub(crate) time: Vec<i64>,
     pub(crate) temperature_2m: Vec<f32>,
     pub(crate) weather_code: Vec<u32>,
 }
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct DailyWeatherResponse {
-    pub(crate) time: Vec<String>,
+    pub(crate) time: Vec<i64>,
     pub(crate) temperature_2m_min: Vec<f32>,
     pub(crate) temperature_2m_max: Vec<f32>,
     pub(crate) weather_code: Vec<u32>,
@@ -64,17 +64,15 @@ fn map_hourly_forecase(response: HourlyWeatherResponse) -> Result<FFIArray<Weath
         temperature_2m,
         weather_code,
     } = response;
-    let now = chrono::Local::now().naive_local();
+    let now = chrono::Local::now().timestamp();
 
     let mut forecast = vec![];
     for ((temp, code), time) in temperature_2m.into_iter().zip(weather_code).zip(time) {
         let code = WeatherCode::from(code);
-        let time = NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M")
-            .context("invalid date format")?;
 
         if time > now {
             forecast.push(WeatherOnHour {
-                hour: time.format("%H:%M").to_string().into(),
+                unix_seconds: time,
                 temperature: temp,
                 code,
             });
@@ -106,10 +104,14 @@ fn map_daily_forecase(response: DailyWeatherResponse) -> Result<FFIArray<Weather
         .zip(time)
     {
         let code = WeatherCode::from(code);
-        let date = NaiveDate::parse_from_str(&time, "%Y-%m-%d").context("invalid date format")?;
+        let date = chrono::Local
+            .timestamp_opt(time, 0)
+            .single()
+            .context("invalid unix timestamp")?
+            .date_naive();
         if date > today {
             forecast.push(WeatherOnDay {
-                day: date.format("%b-%d").to_string().into(),
+                unix_seconds: time,
                 temperature_min: min,
                 temperature_max: max,
                 code,
@@ -126,7 +128,7 @@ fn map_daily_forecase(response: DailyWeatherResponse) -> Result<FFIArray<Weather
 
 #[repr(C)]
 pub struct WeatherOnHour {
-    pub hour: FFIString,
+    pub unix_seconds: i64,
     pub temperature: f32,
     pub code: WeatherCode,
 }
@@ -135,15 +137,15 @@ impl std::fmt::Debug for WeatherOnHour {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:?} - {} - {:?}",
-            self.hour, self.temperature, self.code
+            "{} - {} - {:?}",
+            self.unix_seconds, self.temperature, self.code
         )
     }
 }
 
 #[repr(C)]
 pub struct WeatherOnDay {
-    pub day: FFIString,
+    pub unix_seconds: i64,
     pub temperature_min: f32,
     pub temperature_max: f32,
     pub code: WeatherCode,
@@ -153,8 +155,8 @@ impl std::fmt::Debug for WeatherOnDay {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:?} - {}..{} - {:?}",
-            self.day, self.temperature_min, self.temperature_max, self.code
+            "{} - {}..{} - {:?}",
+            self.unix_seconds, self.temperature_min, self.temperature_max, self.code
         )
     }
 }

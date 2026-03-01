@@ -33,7 +33,9 @@ template $WeatherWindow: $BaseWindow {
             template ListItem {
               child: Label {
                 xalign: 0;
-                label: bind template.item as <$WeatherHourItem>.hour;
+                label: bind $format_hour_label(
+                    template.item as <$WeatherHourItem>.unix-seconds
+                ) as <string>;
               };
             }
           };
@@ -95,7 +97,9 @@ template $WeatherWindow: $BaseWindow {
             template ListItem {
               child: Label {
                 xalign: 0;
-                label: bind template.item as <$WeatherDayItem>.day;
+                label: bind $format_day_label(
+                    template.item as <$WeatherDayItem>.unix-seconds
+                ) as <string>;
               };
             }
           };

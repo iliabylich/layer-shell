@@ -42,7 +42,7 @@ impl Weather {
         };
 
         let query = format!(
-            "{}={}&{}={}&{}={}&{}={}&{}={}&{}={}",
+            "{}={}&{}={}&{}={}&{}={}&{}={}&{}={}&{}={}",
             "latitude",
             self.lat,
             "longitude",
@@ -54,7 +54,9 @@ impl Weather {
             "daily",
             "temperature_2m_min,temperature_2m_max,weather_code",
             "timezone",
-            "Europe/Warsaw"
+            "Europe/Warsaw",
+            "timeformat",
+            "unixtime"
         );
 
         let mut https = HttpsConnection::new(

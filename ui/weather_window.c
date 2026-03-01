@@ -28,6 +28,32 @@ static char *format_temperature(GObject *, double temperature) {
   return g_strdup_printf("%5.1f℃", temperature);
 }
 
+static char *format_hour_label(GObject *, int64_t unix_seconds) {
+  if (unix_seconds <= 0)
+    return g_strdup("--");
+
+  GDateTime *dt = g_date_time_new_from_unix_local(unix_seconds);
+  if (!dt)
+    return g_strdup("--");
+
+  char *formatted = g_date_time_format(dt, "%H:%M");
+  g_date_time_unref(dt);
+  return formatted ? formatted : g_strdup("--");
+}
+
+static char *format_day_label(GObject *, int64_t unix_seconds) {
+  if (unix_seconds <= 0)
+    return g_strdup("--");
+
+  GDateTime *dt = g_date_time_new_from_unix_local(unix_seconds);
+  if (!dt)
+    return g_strdup("--");
+
+  char *formatted = g_date_time_format(dt, "%b-%d");
+  g_date_time_unref(dt);
+  return formatted ? formatted : g_strdup("--");
+}
+
 static void weather_window_get_property(GObject *object, guint property_id,
                                         GValue *value, GParamSpec *pspec) {
   WeatherWindow *self = WEATHER_WINDOW(object);
@@ -86,6 +112,8 @@ static void weather_window_class_init(WeatherWindowClass *klass) {
   gtk_widget_class_set_template_from_resource(widget_class,
                                               "/layer-shell/weather_window.ui");
   gtk_widget_class_bind_template_callback(widget_class, format_temperature);
+  gtk_widget_class_bind_template_callback(widget_class, format_hour_label);
+  gtk_widget_class_bind_template_callback(widget_class, format_day_label);
 }
 
 GtkWidget *weather_window_new(GtkApplication *app) {
