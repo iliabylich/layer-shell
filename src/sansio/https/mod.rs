@@ -1,0 +1,64 @@
+mod request;
+mod response;
+
+use crate::sansio::{Dns, Satisfy, TlsOverTcp, Wants};
+use anyhow::Result;
+pub(crate) use request::HttpsRequest;
+pub(crate) use response::HttpsResponse;
+use rustls::pki_types::ServerName;
+
+pub(crate) struct Https {
+    domain: &'static str,
+    request: Vec<u8>,
+    state: State,
+}
+
+enum State {
+    Dns(Box<Dns>),
+    TlsOverTcp(Box<TlsOverTcp>),
+    Done,
+}
+
+impl Https {
+    pub(crate) fn new(request: HttpsRequest) -> Self {
+        let domain = request.host();
+        let request = request.into_bytes();
+        Self {
+            domain,
+            request,
+            state: State::Dns(Box::new(Dns::new(domain.as_bytes()))),
+        }
+    }
+
+    pub(crate) fn wants(&mut self) -> Result<Wants<'_>> {
+        match &mut self.state {
+            State::Dns(dns) => Ok(dns.wants()),
+            State::TlsOverTcp(tls_over_tcp) => tls_over_tcp.wants(),
+            State::Done => Ok(Wants::Nothing),
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<HttpsResponse>> {
+        match &mut self.state {
+            State::Dns(dns) => {
+                if let Some(mut addr) = dns.satisfy(satisfy, res)? {
+                    addr.sin_port = 443_u16.to_be();
+                    let request = std::mem::take(&mut self.request);
+                    let server_name = ServerName::try_from(self.domain)?;
+                    self.state =
+                        State::TlsOverTcp(Box::new(TlsOverTcp::new(addr, server_name, request)?));
+                }
+            }
+            State::TlsOverTcp(tls_over_tcp) => {
+                if let Some(response) = tls_over_tcp.satisfy(satisfy, res)? {
+                    self.state = State::Done;
+                    let response = HttpsResponse::parse(response)?;
+                    return Ok(Some(response));
+                }
+            }
+            State::Done => {}
+        }
+
+        Ok(None)
+    }
+}

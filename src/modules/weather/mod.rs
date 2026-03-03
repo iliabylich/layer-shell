@@ -1,8 +1,11 @@
 use crate::{
-    Event, dns::DnsResolver, https::HttpsConnection,
-    modules::weather::weather_response::WeatherResponse, timerfd::Tick, user_data::ModuleId,
+    Event,
+    liburing::IoUring,
+    modules::weather::weather_response::WeatherResponse,
+    sansio::{Https, HttpsRequest, Satisfy, Wants},
+    timerfd::Tick,
+    user_data::{ModuleId, UserData},
 };
-use libc::sockaddr_in;
 pub use weather_code::WeatherCode;
 pub use weather_response::{WeatherOnDay, WeatherOnHour};
 
@@ -14,83 +17,102 @@ const HOST: &str = "api.open-meteo.com";
 pub(crate) struct Weather {
     lat: f64,
     lng: f64,
-    dns: Box<DnsResolver>,
-    address: Option<sockaddr_in>,
-    https: Option<HttpsConnection>,
+    https: Https,
+}
+
+fn path(lat: f64, lng: f64) -> String {
+    let query = format!(
+        "{}={}&{}={}&{}={}&{}={}&{}={}&{}={}&{}={}",
+        "latitude",
+        lat,
+        "longitude",
+        lng,
+        "current",
+        "temperature_2m,weather_code",
+        "hourly",
+        "temperature_2m,weather_code",
+        "daily",
+        "temperature_2m_min,temperature_2m_max,weather_code",
+        "timezone",
+        "Europe/Warsaw",
+        "timeformat",
+        "unixtime"
+    );
+
+    format!("/v1/forecast?{query}")
 }
 
 impl Weather {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self {
-            lat: 0.,
-            lng: 0.,
-            https: None,
-            address: None,
-            dns: DnsResolver::new(ModuleId::WeatherDNS, HOST.as_bytes()),
-        })
+    pub(crate) const MODULE_ID: ModuleId = ModuleId::Weather;
+
+    pub(crate) fn new(lat: f64, lng: f64) -> Box<Self> {
+        let mut weather = Box::new(Self {
+            lat,
+            lng,
+            https: Https::new(HttpsRequest::get(HOST, path(lat, lng))),
+        });
+        weather.schedule_wanted_operation();
+        weather
     }
 
-    pub(crate) fn init(&mut self, lat: f64, lng: f64) {
-        self.lat = lat;
-        self.lng = lng;
-        self.dns.init();
-    }
+    fn schedule_wanted_operation(&mut self) {
+        let mut sqe = IoUring::get_sqe();
 
-    fn request_weather(&mut self) {
-        let Some(address) = self.address else {
-            return;
-        };
-
-        let query = format!(
-            "{}={}&{}={}&{}={}&{}={}&{}={}&{}={}&{}={}",
-            "latitude",
-            self.lat,
-            "longitude",
-            self.lng,
-            "current",
-            "temperature_2m,weather_code",
-            "hourly",
-            "temperature_2m,weather_code",
-            "daily",
-            "temperature_2m_min,temperature_2m_max,weather_code",
-            "timezone",
-            "Europe/Warsaw",
-            "timeformat",
-            "unixtime"
-        );
-
-        let mut https = HttpsConnection::new(
-            HOST,
-            &format!("/v1/forecast?{query}"),
-            ModuleId::WeatherHTTPS,
-        );
-        https.init(address, 443);
-        self.https = Some(https);
-    }
-
-    pub(crate) fn process_dns(&mut self, op: u8, res: i32) {
-        if let Some(address) = self.dns.process(op, res) {
-            self.address = Some(address);
-            self.request_weather();
+        match self.https.wants().unwrap() {
+            Wants::Socket { domain, r#type } => {
+                sqe.prep_socket(domain, r#type, 0, 0);
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Socket));
+            }
+            Wants::Connect { fd, addr, addrlen } => {
+                sqe.prep_connect(fd, addr, addrlen);
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Connect));
+            }
+            Wants::Read { fd, buf } => {
+                sqe.prep_read(fd, buf.as_mut_ptr(), buf.len());
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
+            }
+            Wants::Write { fd, buf } => {
+                sqe.prep_write(fd, buf.as_ptr(), buf.len());
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Write));
+            }
+            Wants::Close { fd } => {
+                sqe.prep_close(fd);
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Close));
+            }
+            Wants::Nothing => unreachable!(),
         }
     }
 
-    pub(crate) fn process_https(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
-        let Some(https) = self.https.as_mut() else {
-            return;
+    fn reset(&mut self) {
+        self.https = Https::new(HttpsRequest::get(HOST, path(self.lat, self.lng)));
+        self.schedule_wanted_operation();
+    }
+
+    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
+        let satisfy = Satisfy::from(op);
+
+        let response = match self.https.satisfy(satisfy, res) {
+            Ok(Some(response)) => response,
+            Ok(None) => {
+                self.schedule_wanted_operation();
+                return;
+            }
+            Err(err) => {
+                log::error!(target: "Location", "{err:?}");
+                return;
+            }
         };
-        let Some(response) = https.process(op, res) else {
-            return;
-        };
+
         let response = match WeatherResponse::parse(response) {
-            Ok(ok) => ok,
+            Ok(response) => response,
             Err(err) => {
                 log::error!("{err:?}");
                 return;
             }
         };
+
         let event = match Event::try_from(response) {
-            Ok(ok) => ok,
+            Ok(event) => event,
             Err(err) => {
                 log::error!("{err:?}");
                 return;
@@ -101,7 +123,7 @@ impl Weather {
 
     pub(crate) fn tick(&mut self, tick: Tick) {
         if tick.is_multiple_of(120) {
-            self.request_weather();
+            self.reset();
         }
     }
 }

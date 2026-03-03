@@ -1,14 +1,13 @@
 mod command;
 mod config;
 mod dbus;
-mod dns;
 mod event;
 mod ffi;
-mod https;
 mod liburing;
 mod logger;
 mod macros;
 mod modules;
+mod sansio;
 mod timerfd;
 mod unix_socket;
 mod user_data;
@@ -40,7 +39,7 @@ struct IO {
     system_dbus: Box<DBus>,
 
     location: Box<Location>,
-    weather: Box<Weather>,
+    weather: Option<Box<Weather>>,
     hyprland: Box<Hyprland>,
     cpu: Box<CPU>,
     memory: Box<Memory>,
@@ -70,7 +69,7 @@ impl IO {
             system_dbus: DBus::new_system(),
 
             location: Location::new(),
-            weather: Weather::new(),
+            weather: None,
             hyprland: Hyprland::new(),
             cpu: CPU::new(),
             memory: Memory::new(),
@@ -136,20 +135,16 @@ impl IO {
             let UserData { module_id, op, .. } = UserData::from(user_data);
 
             match module_id {
-                ModuleId::GeoLocationDNS => {
-                    self.location.process_dns(op, res);
-                }
-                ModuleId::GeoLocationHTTPS => {
-                    if let Some((lat, lng)) = self.location.process_https(op, res) {
-                        self.weather.init(lat, lng);
+                ModuleId::GeoLocation => {
+                    if let Some((lat, lng)) = self.location.satisfy(op, res) {
+                        self.weather = Some(Weather::new(lat, lng));
                     }
                 }
 
-                ModuleId::WeatherDNS => {
-                    self.weather.process_dns(op, res);
-                }
-                ModuleId::WeatherHTTPS => {
-                    self.weather.process_https(op, res, &mut events);
+                ModuleId::Weather => {
+                    if let Some(weather) = self.weather.as_deref_mut() {
+                        weather.process(op, res, &mut events);
+                    }
                 }
 
                 ModuleId::HyprlandReader => {
@@ -207,7 +202,9 @@ impl IO {
                 ModuleId::TimerFD => {
                     let tick = self.timer.process(op);
                     Clock::tick(&mut events);
-                    self.weather.tick(tick);
+                    if let Some(weather) = self.weather.as_deref_mut() {
+                        weather.tick(tick);
+                    }
                     self.cpu.tick();
                     self.memory.tick();
                     self.sound.tick(tick, &mut self.session_dbus);

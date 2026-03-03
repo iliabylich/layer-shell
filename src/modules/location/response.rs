@@ -1,11 +1,11 @@
-use crate::https::Response;
+use crate::sansio::HttpsResponse;
 use anyhow::{Context as _, Result, ensure};
 use serde::Deserialize;
 
 pub(crate) struct LocationResponse;
 
 impl LocationResponse {
-    pub(crate) fn parse(response: Response) -> Result<(f64, f64)> {
+    pub(crate) fn parse(response: HttpsResponse) -> Result<(f64, f64)> {
         ensure!(response.status == 200);
 
         #[derive(Debug, Deserialize)]

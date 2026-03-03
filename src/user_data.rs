@@ -4,11 +4,9 @@ use std::cell::Cell;
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum ModuleId {
-    WeatherDNS,
-    WeatherHTTPS,
+    Weather,
 
-    GeoLocationDNS,
-    GeoLocationHTTPS,
+    GeoLocation,
 
     HyprlandReader,
     HyprlandWriter,

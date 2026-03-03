@@ -1,12 +1,12 @@
 use anyhow::{Context as _, Result, bail};
 
 #[derive(Debug)]
-pub(crate) struct Response {
+pub(crate) struct HttpsResponse {
     pub(crate) status: u16,
     pub(crate) body: String,
 }
 
-impl Response {
+impl HttpsResponse {
     pub(crate) fn parse(data: Vec<u8>) -> Result<Self> {
         let data = String::from_utf8(data)?;
         let (pre, body) = data

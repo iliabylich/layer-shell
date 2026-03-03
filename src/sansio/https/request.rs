@@ -1,9 +1,9 @@
 #[derive(Debug)]
-pub(crate) enum Request {
+pub(crate) enum HttpsRequest {
     Get { host: &'static str, path: String },
 }
 
-impl Request {
+impl HttpsRequest {
     pub(crate) fn get(host: &'static str, path: impl Into<String>) -> Self {
         Self::Get {
             host,
@@ -11,9 +11,15 @@ impl Request {
         }
     }
 
+    pub(crate) fn host(&self) -> &'static str {
+        match self {
+            HttpsRequest::Get { host, .. } => host,
+        }
+    }
+
     pub(crate) fn into_bytes(self) -> Vec<u8> {
         match self {
-            Request::Get { path, host } => {
+            HttpsRequest::Get { path, host } => {
                 format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n")
                     .into_bytes()
             }
