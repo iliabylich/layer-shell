@@ -1,0 +1,33 @@
+use crate::modules::hyprland::resources::{WriterReply, WriterResource};
+use anyhow::{Context as _, Result};
+use serde::Deserialize;
+use std::borrow::Cow;
+
+pub(crate) struct CapsLockResource;
+impl WriterResource for CapsLockResource {
+    fn command(&self) -> Cow<'static, str> {
+        Cow::Borrowed("[[BATCH]]j/devices")
+    }
+
+    fn parse(&self, json: &str) -> Result<WriterReply> {
+        #[derive(Deserialize)]
+        struct Devices {
+            keyboards: Vec<Keyboard>,
+        }
+        #[derive(Deserialize)]
+        struct Keyboard {
+            main: bool,
+            #[serde(rename = "capsLock")]
+            caps_lock: bool,
+        }
+
+        let devices: Devices = serde_json::from_str(json).context("malformed devices response")?;
+        let main_keyboard = devices
+            .keyboards
+            .into_iter()
+            .find(|keyboard| keyboard.main)
+            .context("expected at least one hyprland device")?;
+
+        Ok(WriterReply::CapsLock(main_keyboard.caps_lock))
+    }
+}

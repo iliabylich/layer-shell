@@ -40,7 +40,7 @@ struct IO {
 
     location: Box<Location>,
     weather: Option<Box<Weather>>,
-    hyprland: Box<Hyprland>,
+    hyprland: Option<Box<Hyprland>>,
     cpu: Box<CPU>,
     memory: Box<Memory>,
     sound: Box<Sound>,
@@ -92,7 +92,9 @@ impl IO {
         self.timer.init();
 
         self.location.init();
-        self.hyprland.init();
+        if let Some(hyprland) = &mut self.hyprland {
+            hyprland.init();
+        }
         self.cpu.init();
         self.memory.init();
 
@@ -112,7 +114,9 @@ impl IO {
     fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
         match req {
             ControlRequest::CapsLockToggled => {
-                self.hyprland.enqueue_get_caps_lock();
+                if let Some(hyprland) = &mut self.hyprland {
+                    hyprland.enqueue_get_caps_lock();
+                }
                 IoUring::submit_if_dirty();
             }
             ControlRequest::Exit => events.push(Event::Exit),
@@ -148,10 +152,14 @@ impl IO {
                 }
 
                 ModuleId::HyprlandReader => {
-                    self.hyprland.process_reader(op, res, &mut events);
+                    if let Some(hyprland) = &mut self.hyprland {
+                        hyprland.process_reader(op, res, &mut events);
+                    }
                 }
                 ModuleId::HyprlandWriter => {
-                    self.hyprland.process_writer(op, res, &mut events);
+                    if let Some(hyprland) = &mut self.hyprland {
+                        hyprland.process_writer(op, res, &mut events);
+                    }
                 }
 
                 ModuleId::SessionDBusConnector => {
@@ -235,7 +243,9 @@ impl IO {
 
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
-                self.hyprland.dispatch(format!($($arg)*), );
+                if let Some(hyprland) = &mut self.hyprland {
+                    hyprland.dispatch(format!($($arg)*), );
+                }
                 IoUring::submit_if_dirty();
             }};
         }

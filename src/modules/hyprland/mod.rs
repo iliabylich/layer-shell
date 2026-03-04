@@ -1,51 +1,64 @@
-use crate::{Event, modules::hyprland::writer::CapsLock};
+use crate::Event;
+use anyhow::Result;
+use queue_writer::QueueWriter;
 use reader::HyprlandReader;
+use resources::{
+    ActiveWorkspaceResource, CapsLockResource, DevicesResource, DispatchResource,
+    WorkspacesResource, WriterReply,
+};
 use state::HyprlandState;
 pub use state::HyprlandWorkspace;
-use std::collections::VecDeque;
-use writer::{
-    ActiveWorkspaceResource, DevicesResource, Dispatch, HyprlandWriter, WorkspaceListResource,
-    WriterReply, WriterResource,
-};
 
-mod array_writer;
 mod event;
+mod oneshot_writer;
+mod queue_writer;
 mod reader;
+mod resources;
 mod state;
-mod writer;
 
 pub(crate) struct Hyprland {
     reader: Box<HyprlandReader>,
-    writer: Option<Box<HyprlandWriter>>,
+    writer: QueueWriter,
     state: HyprlandState,
-    queue: VecDeque<Box<dyn WriterResource>>,
 }
 
 fn new_reader() -> Box<HyprlandReader> {
     HyprlandReader::new()
 }
-fn new_writer(resource: Box<dyn WriterResource>) -> Box<HyprlandWriter> {
-    HyprlandWriter::new(resource)
-}
 
 impl Hyprland {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self {
+    pub(crate) fn new() -> Option<Box<Self>> {
+        let xdg_runtime_dir = match std::env::var("XDG_RUNTIME_DIR") {
+            Ok(var) => var,
+            Err(err) => {
+                log::error!("{err:?}");
+                return None;
+            }
+        };
+
+        let hyprland_instance_signature = match std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
+            Ok(var) => var,
+            Err(err) => {
+                log::error!("{err:?}");
+                return None;
+            }
+        };
+
+        let writer = QueueWriter::new(xdg_runtime_dir, hyprland_instance_signature);
+
+        Some(Box::new(Self {
             reader: new_reader(),
-            writer: Some(new_writer(Box::new(WorkspaceListResource))),
+            writer,
             state: HyprlandState::default(),
-            queue: VecDeque::from([
-                Box::new(ActiveWorkspaceResource) as Box<dyn WriterResource>,
-                Box::new(DevicesResource),
-            ]),
-        })
+        }))
     }
 
     pub(crate) fn init(&mut self) {
         self.reader.init();
-        if let Some(writer) = self.writer.as_mut() {
-            writer.init();
-        }
+
+        self.writer.enqueue(Box::new(WorkspacesResource));
+        self.writer.enqueue(Box::new(ActiveWorkspaceResource));
+        self.writer.enqueue(Box::new(DevicesResource));
     }
 
     pub(crate) fn process_reader(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
@@ -57,61 +70,46 @@ impl Hyprland {
         }
     }
 
-    pub(crate) fn process_writer(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
-        if let Some(writer) = self.writer.as_mut()
-            && let Some(reply) = writer.process(op, res)
-        {
-            match reply {
-                WriterReply::WorkspaceList(workspace_ids) => {
-                    self.state.init_workspace_ids(workspace_ids);
-                }
-                WriterReply::ActiveWorkspace(id) => {
-                    self.state.init_active_workspace(id);
-                }
-                WriterReply::ActiveKeymap(active_keymap) => {
-                    self.state.init_language(active_keymap);
+    fn try_process_writer(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
+        let Some(reply) = self.writer.process(op, res)? else {
+            return Ok(());
+        };
 
-                    for event in self.state.initial_events() {
-                        events.push(event);
-                    }
-                }
-                WriterReply::CapsLock(enabled) => {
-                    events.push(Event::CapsLockToggled { enabled });
-                }
-                WriterReply::None => {}
+        match reply {
+            WriterReply::WorkspaceList(workspace_ids) => {
+                self.state.init_workspace_ids(workspace_ids);
             }
-            self.writer = None;
+            WriterReply::ActiveWorkspace(id) => {
+                self.state.init_active_workspace(id);
+            }
+            WriterReply::ActiveKeymap(active_keymap) => {
+                self.state.init_language(active_keymap);
+
+                for event in self.state.initial_events() {
+                    events.push(event);
+                }
+            }
+            WriterReply::CapsLock(enabled) => {
+                events.push(Event::CapsLockToggled { enabled });
+            }
+            WriterReply::None => {}
         }
 
-        if self.writer.is_none()
-            && let Some(next) = self.queue.pop_front()
-        {
-            let mut writer = new_writer(next);
-            writer.init();
-            self.writer = Some(writer);
+        Ok(())
+    }
+
+    pub(crate) fn process_writer(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
+        if let Err(err) = self.try_process_writer(op, res, events) {
+            log::error!("{err:?}")
         }
     }
 
     pub(crate) fn enqueue_get_caps_lock(&mut self) {
-        let resource = Box::new(CapsLock);
-        if self.writer.is_none() {
-            let mut writer = new_writer(resource);
-            writer.init();
-            self.writer = Some(writer)
-        } else {
-            self.queue.push_back(resource);
-        }
+        self.writer.enqueue(Box::new(CapsLockResource));
     }
 
     pub(crate) fn dispatch(&mut self, cmd: String) {
-        let resource = Box::new(Dispatch::new(cmd));
-        if self.writer.is_none() {
-            let mut writer = new_writer(resource);
-            writer.init();
-            self.writer = Some(writer)
-        } else {
-            self.queue.push_back(resource);
-        }
+        self.writer.enqueue(Box::new(DispatchResource::new(cmd)));
     }
 }
 

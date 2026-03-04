@@ -2,11 +2,13 @@ mod dns;
 mod https;
 mod timerfd;
 mod tls_over_tcp;
+mod unix_sockets;
 
 pub(crate) use dns::Dns;
 pub(crate) use https::{Https, HttpsRequest, HttpsResponse};
 pub(crate) use timerfd::TimerFd;
 pub(crate) use tls_over_tcp::TlsOverTcp;
+pub(crate) use unix_sockets::UnixSocketOneshotWriter;
 
 use crate::macros::assert_or_exit;
 
