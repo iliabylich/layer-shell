@@ -8,7 +8,6 @@ use crate::{
         },
         types::{CompleteType, Value},
     },
-    timerfd::Tick,
 };
 use anyhow::{Context as _, Result};
 
@@ -64,7 +63,7 @@ impl Sound {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick, dbus: &mut DBus) {
+    pub(crate) fn tick(&mut self, tick: u64, dbus: &mut DBus) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
             self.oneshot = Oneshot::new(Resource);

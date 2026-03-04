@@ -3,7 +3,6 @@ use crate::{
     liburing::IoUring,
     modules::weather::weather_response::WeatherResponse,
     sansio::{Https, HttpsRequest, Satisfy, Wants},
-    timerfd::Tick,
     user_data::{ModuleId, UserData},
 };
 pub use weather_code::WeatherCode;
@@ -121,7 +120,7 @@ impl Weather {
         events.push(event);
     }
 
-    pub(crate) fn tick(&mut self, tick: Tick) {
+    pub(crate) fn tick(&mut self, tick: u64) {
         if tick.is_multiple_of(120) {
             self.reset();
         }

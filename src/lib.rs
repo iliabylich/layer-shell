@@ -8,7 +8,7 @@ mod logger;
 mod macros;
 mod modules;
 mod sansio;
-mod timerfd;
+mod timer;
 mod unix_socket;
 mod user_data;
 
@@ -26,7 +26,7 @@ use crate::{
         CPU, Clock, Control, ControlRequest, Hyprland, Location, Memory, Network, Sound, Tray,
         Weather,
     },
-    timerfd::Timerfd,
+    timer::Timer,
     user_data::{ModuleId, UserData},
 };
 
@@ -34,7 +34,7 @@ struct IO {
     config: Config,
     io_config: *const IOConfig,
 
-    timer: Box<Timerfd>,
+    timer: Box<Timer>,
     session_dbus: Box<DBus>,
     system_dbus: Box<DBus>,
 
@@ -64,7 +64,7 @@ impl IO {
             config,
             io_config,
 
-            timer: Timerfd::new(),
+            timer: Timer::new(),
             session_dbus: DBus::new_session(),
             system_dbus: DBus::new_system(),
 
@@ -200,7 +200,7 @@ impl IO {
                     self.memory.process(op, res, &mut events);
                 }
                 ModuleId::TimerFD => {
-                    let tick = self.timer.process(op);
+                    let tick = self.timer.process(op, res);
                     Clock::tick(&mut events);
                     if let Some(weather) = self.weather.as_deref_mut() {
                         weather.tick(tick);
