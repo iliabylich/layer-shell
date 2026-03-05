@@ -213,27 +213,27 @@ impl TlsOverTcp {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Wants<'_>> {
+    pub(crate) fn wants(&mut self) -> Wants<'_> {
         match &mut self.state {
-            State::CanSocket => Ok(Wants::Socket {
+            State::CanSocket => Wants::Socket {
                 domain: libc::AF_INET,
                 r#type: libc::SOCK_STREAM,
-            }),
-            State::CanConnect => Ok(Wants::Connect {
+            },
+            State::CanConnect => Wants::Connect {
                 fd: self.fd,
                 addr: (&self.addr as *const libc::sockaddr_in).cast(),
                 addrlen: std::mem::size_of::<libc::sockaddr_in>() as u32,
-            }),
+            },
             State::CanRead => {
                 let buf = &mut self.incoming_tls[self.incoming_end..];
-                Ok(Wants::Read { fd: self.fd, buf })
+                Wants::Read { fd: self.fd, buf }
             }
             State::CanWrite => {
                 let buf = &self.outgoing_tls[self.outgoing_start..self.outgoing_end];
-                Ok(Wants::Write { fd: self.fd, buf })
+                Wants::Write { fd: self.fd, buf }
             }
-            State::CanClose => Ok(Wants::Close { fd: self.fd }),
-            State::Done => Ok(Wants::Nothing),
+            State::CanClose => Wants::Close { fd: self.fd },
+            State::Done => Wants::Nothing,
         }
     }
 

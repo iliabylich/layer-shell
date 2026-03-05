@@ -30,11 +30,11 @@ impl Https {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Wants<'_>> {
+    pub(crate) fn wants(&mut self) -> Wants<'_> {
         match &mut self.state {
-            State::Dns(dns) => Ok(dns.wants()),
+            State::Dns(dns) => dns.wants(),
             State::TlsOverTcp(tls_over_tcp) => tls_over_tcp.wants(),
-            State::Done => Ok(Wants::Nothing),
+            State::Done => Wants::Nothing,
         }
     }
 

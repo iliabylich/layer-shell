@@ -25,7 +25,7 @@ impl Location {
     fn schedule_wanted_operation(&mut self) {
         let mut sqe = IoUring::get_sqe();
 
-        match self.https.wants().unwrap() {
+        match self.https.wants() {
             Wants::Socket { domain, r#type } => {
                 sqe.prep_socket(domain, r#type, 0, 0);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Socket));

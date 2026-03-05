@@ -41,11 +41,11 @@ impl QueueWriter {
     pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<WriterReply>> {
         let mut out = None;
 
-        if let Some(current) = self.current.as_mut() {
-            if let Some(reply) = current.process(op, res)? {
-                out = Some(reply);
-                self.current = None;
-            }
+        if let Some(current) = self.current.as_mut()
+            && let Some(reply) = current.process(op, res)?
+        {
+            out = Some(reply);
+            self.current = None;
         }
 
         if self.current.is_none()
