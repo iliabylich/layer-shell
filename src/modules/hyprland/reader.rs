@@ -1,113 +1,76 @@
 use crate::{
     UserData,
     liburing::IoUring,
-    macros::define_op,
-    modules::hyprland::{event::HyprlandEvent, hyprland_instance_signature, xdg_runtime_dir},
-    unix_socket::{new_unix_socket, zero_unix_socket},
+    modules::hyprland::event::HyprlandEvent,
+    sansio::{Satisfy, UnixSocketReader, Wants},
+    unix_socket::new_unix_socket,
     user_data::ModuleId,
 };
-use anyhow::{Context as _, Result, ensure};
-use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
+use anyhow::{Context as _, Result};
 
 pub(crate) struct HyprlandReader {
-    fd: i32,
-    buf: [u8; 1_024],
-    healthy: bool,
-    addr: sockaddr_un,
+    socket_reader: UnixSocketReader,
 }
 
-define_op!("Hyprland Reader", Socket, Connect, Read);
-
 impl HyprlandReader {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self {
-            fd: -1,
-            buf: [0; 1_024],
-            healthy: true,
-            addr: zero_unix_socket(),
-        })
-    }
+    pub(crate) const MODULE_ID: ModuleId = ModuleId::HyprlandReader;
 
-    fn schedule_socket(&self) {
-        let mut sqe = IoUring::get_sqe();
-        sqe.prep_socket(AF_UNIX, SOCK_STREAM, 0, 0);
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Socket));
-    }
-
-    fn schedule_connect(&mut self) {
-        let Some(xdg_runtime_dir) = xdg_runtime_dir() else {
-            self.healthy = false;
-            return;
-        };
-        let Some(hyprland_instance_signature) = hyprland_instance_signature() else {
-            self.healthy = false;
-            return;
-        };
-
-        self.addr = new_unix_socket(
+    pub(crate) fn new(xdg_runtime_dir: &str, hyprland_instance_signature: &str) -> Box<Self> {
+        let addr = new_unix_socket(
             format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket2.sock")
                 .as_bytes(),
         );
 
-        let mut sqe = IoUring::get_sqe();
-        sqe.prep_connect(
-            self.fd,
-            (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-            std::mem::size_of::<sockaddr_un>() as u32,
-        );
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Connect));
+        Box::new(Self {
+            socket_reader: UnixSocketReader::new(addr),
+        })
     }
 
-    fn schedule_read(&mut self) {
+    fn schedule_wanted_operation(&mut self) {
         let mut sqe = IoUring::get_sqe();
-        sqe.prep_read(self.fd, self.buf.as_mut_ptr(), self.buf.len());
-        sqe.set_user_data(UserData::new(ModuleId::HyprlandReader, Op::Read));
+
+        match self.socket_reader.wants() {
+            Wants::Socket { domain, r#type } => {
+                sqe.prep_socket(domain, r#type, 0, 0);
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Socket));
+            }
+            Wants::Connect { fd, addr, addrlen } => {
+                sqe.prep_connect(fd, addr, addrlen);
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Connect));
+            }
+            Wants::Read { fd, buf } => {
+                sqe.prep_read(fd, buf.as_mut_ptr(), buf.len());
+                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
+            }
+            other => unreachable!("HyprlandReader never wants {other:?}"),
+        }
     }
 
     pub(crate) fn init(&mut self) {
-        self.schedule_socket()
+        self.schedule_wanted_operation();
     }
 
-    fn try_process(&mut self, op: Op, res: i32, events: &mut Vec<HyprlandEvent>) -> Result<()> {
-        match op {
-            Op::Socket => {
-                ensure!(res > 0);
-                self.fd = res;
-                self.schedule_connect();
-                Ok(())
-            }
-            Op::Connect => {
-                ensure!(res >= 0);
-                self.schedule_read();
-                Ok(())
-            }
-            Op::Read => {
-                ensure!(res > 0);
-                let len = res as usize;
+    pub(crate) fn process(
+        &mut self,
+        op: u8,
+        res: i32,
+        events: &mut Vec<HyprlandEvent>,
+    ) -> Result<()> {
+        let satisfy = Satisfy::from(op);
 
-                let s = std::str::from_utf8(&self.buf[..len]).context("decoding error")?;
+        match self.socket_reader.satisfy(satisfy, res)? {
+            Some((buf, len)) => {
+                let s = std::str::from_utf8(&buf[..len]).context("decoding error")?;
                 for line in s.lines() {
                     if let Some(event) = HyprlandEvent::try_parse(line).context("parse error")? {
                         events.push(event)
                     };
                 }
-
-                self.schedule_read();
-                Ok(())
             }
-        }
-    }
-
-    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<HyprlandEvent>) {
-        if !self.healthy {
-            return;
+            None => {}
         }
 
-        let op = Op::from(op);
-
-        if let Err(err) = self.try_process(op, res, events) {
-            log::error!("Hyprland::Reader::{op:?}({res} {err:?}");
-            self.healthy = false;
-        }
+        self.schedule_wanted_operation();
+        Ok(())
     }
 }

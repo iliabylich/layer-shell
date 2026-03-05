@@ -22,10 +22,6 @@ pub(crate) struct Hyprland {
     state: HyprlandState,
 }
 
-fn new_reader() -> Box<HyprlandReader> {
-    HyprlandReader::new()
-}
-
 impl Hyprland {
     pub(crate) fn new() -> Option<Box<Self>> {
         let xdg_runtime_dir = match std::env::var("XDG_RUNTIME_DIR") {
@@ -44,10 +40,11 @@ impl Hyprland {
             }
         };
 
-        let writer = QueueWriter::new(xdg_runtime_dir, hyprland_instance_signature);
+        let writer = QueueWriter::new(&xdg_runtime_dir, &hyprland_instance_signature);
+        let reader = HyprlandReader::new(&xdg_runtime_dir, &hyprland_instance_signature);
 
         Some(Box::new(Self {
-            reader: new_reader(),
+            reader,
             writer,
             state: HyprlandState::default(),
         }))
@@ -63,7 +60,9 @@ impl Hyprland {
 
     pub(crate) fn process_reader(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
         let mut hevents = vec![];
-        self.reader.process(op, res, &mut hevents);
+        if let Err(err) = self.reader.process(op, res, &mut hevents) {
+            log::error!("Hyprland reader: {err:?}");
+        };
         for hevent in hevents {
             let event = self.state.apply(hevent);
             events.push(event);
@@ -110,25 +109,5 @@ impl Hyprland {
 
     pub(crate) fn dispatch(&mut self, cmd: String) {
         self.writer.enqueue(Box::new(DispatchResource::new(cmd)));
-    }
-}
-
-fn xdg_runtime_dir() -> Option<String> {
-    match std::env::var("XDG_RUNTIME_DIR") {
-        Ok(ok) => Some(ok),
-        Err(_) => {
-            log::error!("no XDG_RUNTIME_DIR variable");
-            None
-        }
-    }
-}
-
-fn hyprland_instance_signature() -> Option<String> {
-    match std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
-        Ok(ok) => Some(ok),
-        Err(_) => {
-            log::error!("no HYPRLAND_INSTANCE_SIGNATURE, are you in Hyprland?");
-            None
-        }
     }
 }

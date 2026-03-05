@@ -16,7 +16,7 @@ pub(crate) struct QueueWriter {
 }
 
 impl QueueWriter {
-    pub(crate) fn new(xdg_runtime_dir: String, hyprland_instance_signature: String) -> Self {
+    pub(crate) fn new(xdg_runtime_dir: &str, hyprland_instance_signature: &str) -> Self {
         let addr = new_unix_socket(
             format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket.sock").as_bytes(),
         );
