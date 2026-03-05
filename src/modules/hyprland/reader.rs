@@ -1,29 +1,36 @@
 use crate::{
-    UserData,
+    Event, UserData,
     liburing::IoUring,
-    modules::hyprland::state::HyprlandDiff,
+    modules::hyprland::state::{HyprlandDiff, HyprlandState},
     sansio::{Satisfy, UnixSocketReader, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
 };
 use anyhow::{Context as _, Result};
+use std::{cell::RefCell, rc::Rc};
 
 pub(crate) struct HyprlandReader {
     socket_reader: UnixSocketReader,
+    state: Rc<RefCell<HyprlandState>>,
 }
 
 impl HyprlandReader {
     pub(crate) const MODULE_ID: ModuleId = ModuleId::HyprlandReader;
 
-    pub(crate) fn new(xdg_runtime_dir: &str, hyprland_instance_signature: &str) -> Box<Self> {
+    pub(crate) fn new(
+        xdg_runtime_dir: &str,
+        hyprland_instance_signature: &str,
+        state: Rc<RefCell<HyprlandState>>,
+    ) -> Self {
         let addr = new_unix_socket(
             format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket2.sock")
                 .as_bytes(),
         );
 
-        Box::new(Self {
+        Self {
             socket_reader: UnixSocketReader::new(addr),
-        })
+            state,
+        }
     }
 
     fn schedule_wanted_operation(&mut self) {
@@ -50,26 +57,34 @@ impl HyprlandReader {
         self.schedule_wanted_operation();
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Vec<HyprlandDiff>> {
+    fn try_process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
         let satisfy = Satisfy::from(op);
-        let mut out = vec![];
 
         match self.socket_reader.satisfy(satisfy, res)? {
             Some((buf, len)) => {
                 let s = std::str::from_utf8(&buf[..len]).context("decoding error")?;
+                let mut state = self.state.borrow_mut();
+
                 for line in s.lines() {
-                    // HyprlandDiff
                     let Some(diff) = try_parse(line).context("parse error")? else {
                         continue;
                     };
-                    out.push(diff);
+                    if let Some(event) = state.apply(diff) {
+                        events.push(event);
+                    }
                 }
             }
             None => {}
         }
 
         self.schedule_wanted_operation();
-        Ok(out)
+        Ok(())
+    }
+
+    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
+        if let Err(err) = self.try_process(op, res, events) {
+            log::error!("HyprlandReader: {err:?}")
+        }
     }
 }
 

@@ -23,8 +23,8 @@ use crate::{
     logger::Logger,
     macros::report_and_exit,
     modules::{
-        CPU, Clock, Control, ControlRequest, Hyprland, Location, Memory, Network, Sound, Tray,
-        Weather,
+        CPU, Clock, Control, ControlRequest, Hyprland, HyprlandReader, HyprlandWriter, Location,
+        Memory, Network, Sound, Tray, Weather,
     },
     timer::Timer,
     user_data::{ModuleId, UserData},
@@ -38,9 +38,11 @@ struct IO {
     session_dbus: Box<DBus>,
     system_dbus: Box<DBus>,
 
+    hyprland_reader: Option<HyprlandReader>,
+    hyprland_writer: Option<HyprlandWriter>,
+
     location: Box<Location>,
     weather: Option<Box<Weather>>,
-    hyprland: Option<Box<Hyprland>>,
     cpu: Box<CPU>,
     memory: Box<Memory>,
     sound: Box<Sound>,
@@ -60,6 +62,8 @@ impl IO {
         let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
+        let (hyprland_reader, hyprland_writer) = Hyprland::new();
+
         let mut this = Self {
             config,
             io_config,
@@ -70,7 +74,8 @@ impl IO {
 
             location: Location::new(),
             weather: None,
-            hyprland: Hyprland::new(),
+            hyprland_reader,
+            hyprland_writer,
             cpu: CPU::new(),
             memory: Memory::new(),
             sound: Sound::new(),
@@ -92,8 +97,11 @@ impl IO {
         self.timer.init();
 
         self.location.init();
-        if let Some(hyprland) = &mut self.hyprland {
-            hyprland.init();
+        if let Some(hyprland_reader) = &mut self.hyprland_reader {
+            hyprland_reader.init();
+        }
+        if let Some(hyprland_writer) = &mut self.hyprland_writer {
+            hyprland_writer.init();
         }
         self.cpu.init();
         self.memory.init();
@@ -114,8 +122,8 @@ impl IO {
     fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
         match req {
             ControlRequest::CapsLockToggled => {
-                if let Some(hyprland) = &mut self.hyprland {
-                    hyprland.enqueue_get_caps_lock();
+                if let Some(hyprland_writer) = &mut self.hyprland_writer {
+                    hyprland_writer.enqueue_get_caps_lock();
                 }
                 IoUring::submit_if_dirty();
             }
@@ -152,13 +160,13 @@ impl IO {
                 }
 
                 ModuleId::HyprlandReader => {
-                    if let Some(hyprland) = &mut self.hyprland {
-                        hyprland.process_reader(op, res, &mut events);
+                    if let Some(hyprland_reader) = &mut self.hyprland_reader {
+                        hyprland_reader.process(op, res, &mut events);
                     }
                 }
                 ModuleId::HyprlandWriter => {
-                    if let Some(hyprland) = &mut self.hyprland {
-                        hyprland.process_writer(op, res, &mut events);
+                    if let Some(hyprland_writer) = &mut self.hyprland_writer {
+                        hyprland_writer.process(op, res, &mut events);
                     }
                 }
 
@@ -243,8 +251,8 @@ impl IO {
 
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
-                if let Some(hyprland) = &mut self.hyprland {
-                    hyprland.enqueue_dispatch(format!($($arg)*), );
+                if let Some(hyprland_writer) = &mut self.hyprland_writer {
+                    hyprland_writer.enqueue_dispatch(format!($($arg)*), );
                 }
                 IoUring::submit_if_dirty();
             }};

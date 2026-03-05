@@ -16,11 +16,11 @@ pub(crate) struct OneshotWriter {
 impl OneshotWriter {
     pub(crate) const MODULE_ID: ModuleId = ModuleId::HyprlandWriter;
 
-    pub(crate) fn new(addr: sockaddr_un, resource: Box<dyn WriterResource>) -> Box<Self> {
-        Box::new(Self {
+    pub(crate) fn new(addr: sockaddr_un, resource: Box<dyn WriterResource>) -> Self {
+        Self {
             socket_writer: UnixSocketOneshotWriter::new(addr, resource.command().as_ref()),
             resource,
-        })
+        }
     }
 
     fn schedule_wanted_operation(&mut self) {
