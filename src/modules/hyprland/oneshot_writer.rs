@@ -1,7 +1,7 @@
 use crate::{
     UserData,
     liburing::IoUring,
-    modules::hyprland::resources::{WriterReply, WriterResource},
+    modules::hyprland::{resources::WriterResource, state::HyprlandDiff},
     sansio::{Satisfy, UnixSocketOneshotWriter, Wants},
     user_data::ModuleId,
 };
@@ -55,7 +55,7 @@ impl OneshotWriter {
         self.schedule_wanted_operation();
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<WriterReply>> {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<HyprlandDiff>> {
         let satisfy = Satisfy::from(op);
 
         let Some(buf) = self
@@ -68,7 +68,6 @@ impl OneshotWriter {
         };
 
         let json = std::str::from_utf8(buf).context("decoding error")?;
-        let reply = self.resource.parse(json).context("parse error")?;
-        Ok(Some(reply))
+        self.resource.parse(json).context("parse error")
     }
 }

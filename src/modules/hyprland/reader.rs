@@ -1,7 +1,7 @@
 use crate::{
     UserData,
     liburing::IoUring,
-    modules::hyprland::event::HyprlandEvent,
+    modules::hyprland::state::HyprlandDiff,
     sansio::{Satisfy, UnixSocketReader, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
@@ -50,27 +50,53 @@ impl HyprlandReader {
         self.schedule_wanted_operation();
     }
 
-    pub(crate) fn process(
-        &mut self,
-        op: u8,
-        res: i32,
-        events: &mut Vec<HyprlandEvent>,
-    ) -> Result<()> {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Vec<HyprlandDiff>> {
         let satisfy = Satisfy::from(op);
+        let mut out = vec![];
 
         match self.socket_reader.satisfy(satisfy, res)? {
             Some((buf, len)) => {
                 let s = std::str::from_utf8(&buf[..len]).context("decoding error")?;
                 for line in s.lines() {
-                    if let Some(event) = HyprlandEvent::try_parse(line).context("parse error")? {
-                        events.push(event)
+                    // HyprlandDiff
+                    let Some(diff) = try_parse(line).context("parse error")? else {
+                        continue;
                     };
+                    out.push(diff);
                 }
             }
             None => {}
         }
 
         self.schedule_wanted_operation();
-        Ok(())
+        Ok(out)
     }
+}
+
+fn try_parse(line: &str) -> Result<Option<HyprlandDiff>> {
+    let (event, payload) = line.split_once(">>").with_context(|| {
+        format!("malformed line from Hyprland reader socket: {line:?} (expected >> separator)")
+    })?;
+
+    let num_payload = || {
+        payload
+            .parse::<u64>()
+            .with_context(|| format!("non-numeric payload of {event} event: {payload:?}"))
+    };
+
+    let last_substring = || {
+        payload.split(",").last().with_context(|| {
+            format!("expected comma separator in the payload of {event}, got {payload:?}")
+        })
+    };
+
+    let event = match event {
+        "createworkspace" => HyprlandDiff::AddWorkspaceId(num_payload()?),
+        "destroyworkspace" => HyprlandDiff::RemoveWorkspaceId(num_payload()?),
+        "workspace" => HyprlandDiff::SetActiveWorkspaceId(num_payload()?),
+        "activelayout" => HyprlandDiff::SetLanguage(last_substring()?.to_string()),
+        _ => return Ok(None),
+    };
+
+    Ok(Some(event))
 }

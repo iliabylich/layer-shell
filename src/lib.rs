@@ -244,7 +244,7 @@ impl IO {
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
                 if let Some(hyprland) = &mut self.hyprland {
-                    hyprland.dispatch(format!($($arg)*), );
+                    hyprland.enqueue_dispatch(format!($($arg)*), );
                 }
                 IoUring::submit_if_dirty();
             }};

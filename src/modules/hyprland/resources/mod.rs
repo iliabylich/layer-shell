@@ -1,5 +1,6 @@
+use crate::modules::hyprland::state::HyprlandDiff;
 use anyhow::Result;
-use std::{borrow::Cow, collections::HashSet};
+use std::borrow::Cow;
 
 mod active_workspace;
 mod caps_lock;
@@ -15,14 +16,5 @@ pub(crate) use workspaces::WorkspacesResource;
 
 pub(crate) trait WriterResource {
     fn command(&self) -> Cow<'static, str>;
-    fn parse(&self, json: &str) -> Result<WriterReply>;
-}
-
-#[derive(Debug)]
-pub(crate) enum WriterReply {
-    WorkspaceList(HashSet<u64>),
-    ActiveWorkspace(u64),
-    ActiveKeymap(String),
-    CapsLock(bool),
-    None,
+    fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>>;
 }

@@ -1,4 +1,4 @@
-use crate::modules::hyprland::resources::{WriterReply, WriterResource};
+use crate::modules::hyprland::{resources::WriterResource, state::HyprlandDiff};
 use anyhow::Result;
 use std::borrow::Cow;
 
@@ -15,10 +15,10 @@ impl WriterResource for DispatchResource {
         Cow::Owned(format!("dispatch {}", self.cmd))
     }
 
-    fn parse(&self, reply: &str) -> Result<WriterReply> {
+    fn parse(&self, reply: &str) -> Result<Option<HyprlandDiff>> {
         if reply != "ok" {
             log::error!("invalid response from hyprctl dispatch: expected 'ok', got {reply:?}");
         }
-        Ok(WriterReply::None)
+        Ok(None)
     }
 }

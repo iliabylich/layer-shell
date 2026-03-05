@@ -4,12 +4,11 @@ use queue_writer::QueueWriter;
 use reader::HyprlandReader;
 use resources::{
     ActiveWorkspaceResource, CapsLockResource, DevicesResource, DispatchResource,
-    WorkspacesResource, WriterReply,
+    WorkspacesResource,
 };
 use state::HyprlandState;
 pub use state::HyprlandWorkspace;
 
-mod event;
 mod oneshot_writer;
 mod queue_writer;
 mod reader;
@@ -46,7 +45,7 @@ impl Hyprland {
         Some(Box::new(Self {
             reader,
             writer,
-            state: HyprlandState::default(),
+            state: HyprlandState::empty(),
         }))
     }
 
@@ -59,39 +58,27 @@ impl Hyprland {
     }
 
     pub(crate) fn process_reader(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
-        let mut hevents = vec![];
-        if let Err(err) = self.reader.process(op, res, &mut hevents) {
-            log::error!("Hyprland reader: {err:?}");
-        };
-        for hevent in hevents {
-            let event = self.state.apply(hevent);
-            events.push(event);
+        match self.reader.process(op, res) {
+            Ok(diffs) => {
+                for diff in diffs {
+                    if let Some(event) = self.state.apply(diff) {
+                        events.push(event);
+                    }
+                }
+            }
+            Err(err) => {
+                log::error!("Hyprland reader: {err:?}");
+            }
         }
     }
 
     fn try_process_writer(&mut self, op: u8, res: i32, events: &mut Vec<Event>) -> Result<()> {
-        let Some(reply) = self.writer.process(op, res)? else {
+        let Some(diff) = self.writer.process(op, res)? else {
             return Ok(());
         };
 
-        match reply {
-            WriterReply::WorkspaceList(workspace_ids) => {
-                self.state.init_workspace_ids(workspace_ids);
-            }
-            WriterReply::ActiveWorkspace(id) => {
-                self.state.init_active_workspace(id);
-            }
-            WriterReply::ActiveKeymap(active_keymap) => {
-                self.state.init_language(active_keymap);
-
-                for event in self.state.initial_events() {
-                    events.push(event);
-                }
-            }
-            WriterReply::CapsLock(enabled) => {
-                events.push(Event::CapsLockToggled { enabled });
-            }
-            WriterReply::None => {}
+        if let Some(event) = self.state.apply(diff) {
+            events.push(event);
         }
 
         Ok(())
@@ -107,7 +94,7 @@ impl Hyprland {
         self.writer.enqueue(Box::new(CapsLockResource));
     }
 
-    pub(crate) fn dispatch(&mut self, cmd: String) {
+    pub(crate) fn enqueue_dispatch(&mut self, cmd: String) {
         self.writer.enqueue(Box::new(DispatchResource::new(cmd)));
     }
 }

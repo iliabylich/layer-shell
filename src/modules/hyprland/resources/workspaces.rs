@@ -1,4 +1,4 @@
-use crate::modules::hyprland::resources::{WriterReply, WriterResource};
+use crate::modules::hyprland::{resources::WriterResource, state::HyprlandDiff};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -10,7 +10,7 @@ impl WriterResource for WorkspacesResource {
         Cow::Borrowed("[[BATCH]]j/workspaces")
     }
 
-    fn parse(&self, json: &str) -> Result<WriterReply> {
+    fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {
         #[derive(Debug, Deserialize)]
         struct Workspace {
             id: u64,
@@ -20,6 +20,6 @@ impl WriterResource for WorkspacesResource {
 
         let workspace_ids = workspaces.into_iter().map(|w| w.id).collect();
 
-        Ok(WriterReply::WorkspaceList(workspace_ids))
+        Ok(Some(HyprlandDiff::SetWorkspaceIds(workspace_ids)))
     }
 }

@@ -1,69 +1,88 @@
-use crate::{event::Event, modules::hyprland::event::HyprlandEvent};
+use crate::event::Event;
 use std::collections::HashSet;
 
-#[derive(Default)]
 pub(crate) struct HyprlandState {
-    workspace_ids: HashSet<u64>,
-    active_workspace_id: u64,
-    lang: String,
+    workspace_ids: Option<HashSet<u64>>,
+    active_workspace_id: Option<u64>,
+    lang: Option<String>,
+}
+
+pub(crate) enum HyprlandDiff {
+    SetWorkspaceIds(HashSet<u64>),
+    AddWorkspaceId(u64),
+    RemoveWorkspaceId(u64),
+
+    SetActiveWorkspaceId(u64),
+    SetLanguage(String),
+
+    SetCapsLockEnabled(bool),
 }
 
 impl HyprlandState {
-    pub(crate) fn init_workspace_ids(&mut self, workspace_ids: HashSet<u64>) {
-        self.workspace_ids = workspace_ids;
-    }
-    pub(crate) fn init_active_workspace(&mut self, active_workspace_id: u64) {
-        self.active_workspace_id = active_workspace_id
-    }
-    pub(crate) fn init_language(&mut self, lang: String) {
-        self.lang = lang
-    }
-
-    pub(crate) fn initial_events(&self) -> [Event; 2] {
-        [self.workspaces_event(), self.language_event()]
-    }
-
-    fn workspaces_event(&self) -> Event {
-        let workspaces = (1..=10)
-            .map(|id| HyprlandWorkspace {
-                visible: id <= 5 || self.workspace_ids.contains(&id),
-                active: self.active_workspace_id == id,
-            })
-            .collect::<Vec<_>>()
-            .into();
-
-        Event::Workspaces { workspaces }
-    }
-    fn language_event(&self) -> Event {
-        Event::Language {
-            lang: self.lang.clone().into(),
+    pub(crate) fn empty() -> Self {
+        Self {
+            workspace_ids: None,
+            active_workspace_id: None,
+            lang: None,
         }
     }
 
-    pub(crate) fn apply(&mut self, event: HyprlandEvent) -> Event {
-        match event {
-            HyprlandEvent::CreateWorkspace(id) => self.add_workspace(id),
-            HyprlandEvent::DestroyWorkspace(id) => self.remove_workspace(id),
-            HyprlandEvent::Workspace(id) => self.set_active_workspace(id),
-            HyprlandEvent::LanguageChanged(lang) => self.set_language(lang),
+    pub(crate) fn apply(&mut self, diff: HyprlandDiff) -> Option<Event> {
+        enum Changed {
+            Workspaces,
+            Language,
         }
-    }
+        let changed;
 
-    fn add_workspace(&mut self, id: u64) -> Event {
-        self.workspace_ids.insert(id);
-        self.workspaces_event()
-    }
-    fn remove_workspace(&mut self, id: u64) -> Event {
-        self.workspace_ids.remove(&id);
-        self.workspaces_event()
-    }
-    fn set_active_workspace(&mut self, id: u64) -> Event {
-        self.active_workspace_id = id;
-        self.workspaces_event()
-    }
-    fn set_language(&mut self, lang: String) -> Event {
-        self.lang = lang;
-        self.language_event()
+        match diff {
+            HyprlandDiff::SetWorkspaceIds(workspace_ids) => {
+                self.workspace_ids = Some(workspace_ids);
+                changed = Changed::Workspaces;
+            }
+            HyprlandDiff::AddWorkspaceId(workspace_id) => {
+                if let Some(workspace_ids) = &mut self.workspace_ids {
+                    workspace_ids.insert(workspace_id);
+                }
+                changed = Changed::Workspaces;
+            }
+            HyprlandDiff::RemoveWorkspaceId(workspace_id) => {
+                if let Some(workspace_ids) = &mut self.workspace_ids {
+                    workspace_ids.remove(&workspace_id);
+                }
+                changed = Changed::Workspaces;
+            }
+            HyprlandDiff::SetActiveWorkspaceId(active_workspace_id) => {
+                self.active_workspace_id = Some(active_workspace_id);
+                changed = Changed::Workspaces;
+            }
+            HyprlandDiff::SetLanguage(lang) => {
+                self.lang = Some(lang);
+                changed = Changed::Language;
+            }
+            HyprlandDiff::SetCapsLockEnabled(enabled) => {
+                return Some(Event::CapsLockToggled { enabled });
+            }
+        }
+
+        match changed {
+            Changed::Workspaces => {
+                let (active_workspace_id, workspace_ids) =
+                    self.active_workspace_id.zip(self.workspace_ids.as_ref())?;
+                let workspaces = (1..=10)
+                    .map(|id| HyprlandWorkspace {
+                        visible: id <= 5 || workspace_ids.contains(&id),
+                        active: active_workspace_id == id,
+                    })
+                    .collect::<Vec<_>>()
+                    .into();
+                Some(Event::Workspaces { workspaces })
+            }
+
+            Changed::Language => {
+                let lang = self.lang.clone()?;
+                Some(Event::Language { lang: lang.into() })
+            }
+        }
     }
 }
 

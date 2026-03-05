@@ -1,4 +1,4 @@
-use crate::modules::hyprland::resources::{WriterReply, WriterResource};
+use crate::modules::hyprland::{resources::WriterResource, state::HyprlandDiff};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -9,7 +9,7 @@ impl WriterResource for CapsLockResource {
         Cow::Borrowed("[[BATCH]]j/devices")
     }
 
-    fn parse(&self, json: &str) -> Result<WriterReply> {
+    fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {
         #[derive(Deserialize)]
         struct Devices {
             keyboards: Vec<Keyboard>,
@@ -28,6 +28,8 @@ impl WriterResource for CapsLockResource {
             .find(|keyboard| keyboard.main)
             .context("expected at least one hyprland device")?;
 
-        Ok(WriterReply::CapsLock(main_keyboard.caps_lock))
+        Ok(Some(HyprlandDiff::SetCapsLockEnabled(
+            main_keyboard.caps_lock,
+        )))
     }
 }

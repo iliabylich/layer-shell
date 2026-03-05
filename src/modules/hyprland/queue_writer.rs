@@ -1,7 +1,6 @@
 use crate::{
     modules::hyprland::{
-        oneshot_writer::OneshotWriter,
-        resources::{WriterReply, WriterResource},
+        oneshot_writer::OneshotWriter, resources::WriterResource, state::HyprlandDiff,
     },
     unix_socket::new_unix_socket,
 };
@@ -38,7 +37,7 @@ impl QueueWriter {
         }
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<WriterReply>> {
+    pub(crate) fn process(&mut self, op: u8, res: i32) -> Result<Option<HyprlandDiff>> {
         let mut out = None;
 
         if let Some(current) = self.current.as_mut()

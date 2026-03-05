@@ -1,4 +1,4 @@
-use crate::modules::hyprland::resources::{WriterReply, WriterResource};
+use crate::modules::hyprland::{resources::WriterResource, state::HyprlandDiff};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -9,7 +9,7 @@ impl WriterResource for DevicesResource {
         Cow::Borrowed("[[BATCH]]j/devices")
     }
 
-    fn parse(&self, json: &str) -> Result<WriterReply> {
+    fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {
         #[derive(Deserialize)]
         struct Devices {
             keyboards: Vec<Keyboard>,
@@ -29,6 +29,6 @@ impl WriterResource for DevicesResource {
             .context("expected at least one hyprland device")?
             .active_keymap;
 
-        Ok(WriterReply::ActiveKeymap(active_keymap))
+        Ok(Some(HyprlandDiff::SetLanguage(active_keymap)))
     }
 }
