@@ -35,19 +35,19 @@ impl OneshotWriter {
                 sqe.prep_connect(fd, addr, addrlen);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Connect));
             }
-            Wants::Read { fd, buf } => {
-                sqe.prep_read(fd, buf.as_mut_ptr(), buf.len());
+            Wants::Read { fd, buf, len } => {
+                sqe.prep_read(fd, buf, len);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
             }
-            Wants::Write { fd, buf } => {
-                sqe.prep_write(fd, buf.as_ptr(), buf.len());
+            Wants::Write { fd, buf, len } => {
+                sqe.prep_write(fd, buf, len);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Write));
             }
             Wants::Close { fd } => {
                 sqe.prep_close(fd);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Close));
             }
-            Wants::Nothing => unreachable!(),
+            Wants::Nothing | Wants::ReadWrite { .. } => unreachable!(),
         }
     }
 

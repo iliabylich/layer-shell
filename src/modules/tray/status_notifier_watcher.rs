@@ -1,14 +1,18 @@
 use crate::{
     dbus::{
-        DBus, Message,
+        Message,
         messages::{
             body_is, destination_is, interface_is, message_is, org_freedesktop_dbus::RequestName,
             path_is, value_is,
         },
         types::Value,
     },
-    modules::tray::{
-        service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
+    modules::{
+        DBusQueued,
+        tray::{
+            service::Service,
+            status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
+        },
     },
 };
 use anyhow::Result;
@@ -26,22 +30,26 @@ impl StatusNotifierWatcher {
         }
     }
 
-    pub(crate) fn request(&mut self, dbus: &mut DBus) {
+    pub(crate) fn request(&mut self, dbus: &mut impl DBusQueued) {
         let mut message: Message = RequestName::new("org.kde.StatusNotifierWatcher").into();
         dbus.enqueue(&mut message);
         self.reply_serial = Some(message.serial());
     }
 
-    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str) {
+    fn reply_ok(dbus: &mut impl DBusQueued, serial: u32, destination: &str) {
         let mut reply = Message::new_method_return_no_body(serial, destination);
         dbus.enqueue(&mut reply);
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.request(dbus)
     }
 
-    pub(crate) fn on_message(&mut self, dbus: &mut DBus, message: &Message) -> Option<Service> {
+    pub(crate) fn on_message(
+        &mut self,
+        dbus: &mut impl DBusQueued,
+        message: &Message,
+    ) -> Option<Service> {
         if self.introspection.process_message(dbus, message) {
             return None;
         }

@@ -18,13 +18,13 @@ pub use event::Event;
 pub use ffi::{FFIArray, FFIString};
 
 use crate::{
-    dbus::{DBus, messages::org_freedesktop_dbus::Hello},
+    dbus::messages::org_freedesktop_dbus::Hello,
     liburing::IoUring,
     logger::Logger,
     macros::report_and_exit,
     modules::{
-        CPU, Clock, Control, ControlRequest, Hyprland, HyprlandReader, HyprlandWriter, Location,
-        Memory, Network, Sound, Tray, Weather,
+        CPU, Clock, Control, ControlRequest, DBusQueued as _, Hyprland, HyprlandReader,
+        HyprlandWriter, Location, Memory, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
     },
     timer::Timer,
     user_data::{ModuleId, UserData},
@@ -35,8 +35,8 @@ struct IO {
     io_config: *const IOConfig,
 
     timer: Box<Timer>,
-    session_dbus: Box<DBus>,
-    system_dbus: Box<DBus>,
+    session_dbus: SessionDBus,
+    system_dbus: SystemDBus,
 
     hyprland_reader: Option<HyprlandReader>,
     hyprland_writer: Option<HyprlandWriter>,
@@ -69,8 +69,8 @@ impl IO {
             io_config,
 
             timer: Timer::new(),
-            session_dbus: DBus::new_session(),
-            system_dbus: DBus::new_system(),
+            session_dbus: SessionDBus::new(),
+            system_dbus: SystemDBus::new(),
 
             location: Location::new(),
             weather: None,
@@ -170,14 +170,8 @@ impl IO {
                     }
                 }
 
-                ModuleId::SessionDBusConnector => {
-                    self.session_dbus.process_connector(op, res);
-                }
-                ModuleId::SessionDBusAuth => {
-                    self.session_dbus.process_auth(op, res);
-                }
-                ModuleId::SessionDBusReader => {
-                    if let Some(message) = self.session_dbus.process_read(op, res) {
+                ModuleId::SessionDBus => {
+                    if let Some(message) = self.session_dbus.process(op, res) {
                         self.sound
                             .on_message(&mut self.session_dbus, &message, &mut events);
                         self.tray
@@ -189,24 +183,12 @@ impl IO {
                         }
                     }
                 }
-                ModuleId::SessionDBusWriter => {
-                    self.session_dbus.process_write(op, res);
-                }
 
-                ModuleId::SystemDBusConnector => {
-                    self.system_dbus.process_connector(op, res);
-                }
-                ModuleId::SystemDBusAuth => {
-                    self.system_dbus.process_auth(op, res);
-                }
-                ModuleId::SystemDBusReader => {
-                    if let Some(message) = self.system_dbus.process_read(op, res) {
+                ModuleId::SystemDBus => {
+                    if let Some(message) = self.system_dbus.process(op, res) {
                         self.network
                             .on_message(&mut self.system_dbus, &message, &mut events);
                     }
-                }
-                ModuleId::SystemDBusWriter => {
-                    self.system_dbus.process_write(op, res);
                 }
 
                 ModuleId::CPU => {

@@ -1,4 +1,7 @@
-use crate::dbus::{DBus, Message, types::Value};
+use crate::{
+    dbus::{Message, types::Value},
+    modules::DBusQueued,
+};
 use anyhow::{Result, bail};
 
 pub(crate) trait OneshotResource {
@@ -35,7 +38,7 @@ where
         }
     }
 
-    pub(crate) fn start(&mut self, dbus: &mut DBus, input: T::Input) {
+    pub(crate) fn start(&mut self, dbus: &mut impl DBusQueued, input: T::Input) {
         if !matches!(self.state, OneshotState::None) {
             return;
         };

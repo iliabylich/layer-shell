@@ -1,7 +1,10 @@
-use crate::dbus::{
-    DBus, Message, Oneshot, OneshotResource,
-    messages::{body_is, interface_is, member_is, message_is, path_is, value_is},
-    types::Value,
+use crate::{
+    dbus::{
+        Message, Oneshot, OneshotResource,
+        messages::{body_is, interface_is, member_is, message_is, path_is, value_is},
+        types::Value,
+    },
+    modules::DBusQueued,
 };
 use anyhow::{Result, bail};
 use std::borrow::Cow;
@@ -17,7 +20,7 @@ impl NameLostOrNameOwnerChanged {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.name_changed.start(dbus, ())
     }
 

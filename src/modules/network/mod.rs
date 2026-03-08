@@ -1,7 +1,4 @@
-use crate::{
-    Event,
-    dbus::{DBus, Message},
-};
+use crate::{Event, dbus::Message, modules::DBusQueued};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -39,11 +36,15 @@ impl Network {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.wireless_connection.init(dbus)
     }
 
-    fn on_wireless_connection_event(&mut self, dbus: &mut DBus, e: WirelessConnectionEvent) {
+    fn on_wireless_connection_event(
+        &mut self,
+        dbus: &mut impl DBusQueued,
+        e: WirelessConnectionEvent,
+    ) {
         match e {
             WirelessConnectionEvent::Connected(path) => {
                 self.primary_device.init(path, dbus);
@@ -54,7 +55,7 @@ impl Network {
         }
     }
 
-    fn on_primary_device_event(&mut self, dbus: &mut DBus, e: PrimaryDeviceEvent) {
+    fn on_primary_device_event(&mut self, dbus: &mut impl DBusQueued, e: PrimaryDeviceEvent) {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
                 self.active_access_point.init(dbus, &path);
@@ -69,7 +70,11 @@ impl Network {
         }
     }
 
-    fn on_active_access_point_event(&mut self, dbus: &mut DBus, e: ActiveAccessPointEvent) {
+    fn on_active_access_point_event(
+        &mut self,
+        dbus: &mut impl DBusQueued,
+        e: ActiveAccessPointEvent,
+    ) {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
                 self.ssid_and_strength.init(dbus, &path);
@@ -106,7 +111,7 @@ impl Network {
 
     pub(crate) fn on_message(
         &mut self,
-        dbus: &mut DBus,
+        dbus: &mut impl DBusQueued,
         message: &Message,
         events: &mut Vec<Event>,
     ) {

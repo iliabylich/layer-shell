@@ -1,13 +1,14 @@
 use crate::{
     Event,
     dbus::{
-        DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
         messages::{
             body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is,
             value_is,
         },
         types::{CompleteType, Value},
     },
+    modules::DBusQueued,
 };
 use anyhow::{Context as _, Result};
 
@@ -26,13 +27,13 @@ impl Sound {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.oneshot.start(dbus, ())
     }
 
     pub(crate) fn on_message(
         &mut self,
-        dbus: &mut DBus,
+        dbus: &mut impl DBusQueued,
         message: &Message,
         events: &mut Vec<Event>,
     ) {
@@ -63,7 +64,7 @@ impl Sound {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: u64, dbus: &mut DBus) {
+    pub(crate) fn tick(&mut self, tick: u64, dbus: &mut impl DBusQueued) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
             self.oneshot = Oneshot::new(Resource);

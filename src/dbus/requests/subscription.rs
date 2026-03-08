@@ -1,11 +1,14 @@
-use crate::dbus::{
-    DBus, Message,
-    messages::{
-        body_is, interface_is, message_is,
-        org_freedesktop_dbus::{AddMatch, RemoveMatch},
-        type_is,
+use crate::{
+    dbus::{
+        Message,
+        messages::{
+            body_is, interface_is, message_is,
+            org_freedesktop_dbus::{AddMatch, RemoveMatch},
+            type_is,
+        },
+        types::{CompleteType, Value},
     },
-    types::{CompleteType, Value},
+    modules::DBusQueued,
 };
 use anyhow::Result;
 
@@ -35,7 +38,7 @@ where
         }
     }
 
-    fn unsubscribe(&mut self, dbus: &mut DBus) {
+    fn unsubscribe(&mut self, dbus: &mut impl DBusQueued) {
         let Some(old_path) = self.path.take() else {
             return;
         };
@@ -44,7 +47,12 @@ where
         dbus.enqueue(&mut message);
     }
 
-    fn subscribe(&mut self, dbus: &mut DBus, sender: impl AsRef<str>, path: impl AsRef<str>) {
+    fn subscribe(
+        &mut self,
+        dbus: &mut impl DBusQueued,
+        sender: impl AsRef<str>,
+        path: impl AsRef<str>,
+    ) {
         let sender = sender.as_ref();
         let path = path.as_ref();
         let mut message: Message = AddMatch::new(sender, path).into();
@@ -55,7 +63,7 @@ where
 
     pub(crate) fn start(
         &mut self,
-        dbus: &mut DBus,
+        dbus: &mut impl DBusQueued,
         sender: impl AsRef<str>,
         path: impl AsRef<str>,
     ) {
@@ -63,7 +71,7 @@ where
         self.subscribe(dbus, sender, path);
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
         self.unsubscribe(dbus)
     }
 

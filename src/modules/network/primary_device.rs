@@ -1,7 +1,10 @@
-use crate::dbus::{
-    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-    messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-    types::{CompleteType, Value},
+use crate::{
+    dbus::{
+        Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
+        types::{CompleteType, Value},
+    },
+    modules::DBusQueued,
 };
 use anyhow::{Context, Result, bail};
 
@@ -33,12 +36,12 @@ impl PrimaryDevice {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
         self.subscription.reset(dbus);
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: String, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, path: String, dbus: &mut impl DBusQueued) {
         self.subscription
             .start(dbus, "org.freedesktop.NetworkManager", &path);
         self.oneshot.start(dbus, path);

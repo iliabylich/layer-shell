@@ -1,12 +1,15 @@
-use crate::dbus::{
-    DBus, Message,
-    messages::{
-        body_is, destination_is, interface_is,
-        introspect::{IntrospectRequest, IntrospectResponse},
-        message_is,
-        org_freedesktop_dbus::RequestName,
-        path_is,
+use crate::{
+    dbus::{
+        Message,
+        messages::{
+            body_is, destination_is, interface_is,
+            introspect::{IntrospectRequest, IntrospectResponse},
+            message_is,
+            org_freedesktop_dbus::RequestName,
+            path_is,
+        },
     },
+    modules::DBusQueued,
 };
 use anyhow::{Result, bail};
 
@@ -17,7 +20,7 @@ impl Control {
         Box::new(Self)
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         let mut message: Message = RequestName::new("org.me.LayerShellControl").into();
         dbus.enqueue(&mut message)
     }
@@ -25,7 +28,7 @@ impl Control {
     pub(crate) fn on_message(
         &mut self,
         message: &Message,
-        dbus: &mut DBus,
+        dbus: &mut impl DBusQueued,
     ) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
             let mut reply: Message =

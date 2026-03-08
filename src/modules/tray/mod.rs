@@ -1,7 +1,7 @@
 use crate::{
     Event,
-    dbus::{DBus, Message},
-    modules::tray::app::TrayEvent,
+    dbus::Message,
+    modules::{DBusQueued, tray::app::TrayEvent},
 };
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
@@ -36,14 +36,14 @@ impl Tray {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.status_notifier_watcher.init(dbus);
         self.name_lost_or_changed.init(dbus);
     }
 
     pub(crate) fn on_message(
         &mut self,
-        dbus: &mut DBus,
+        dbus: &mut impl DBusQueued,
         message: &Message,
         events: &mut Vec<Event>,
     ) {
@@ -97,7 +97,7 @@ impl Tray {
         }
     }
 
-    pub(crate) fn trigger(&self, uuid: &str, dbus: &mut DBus) {
+    pub(crate) fn trigger(&self, uuid: &str, dbus: &mut impl DBusQueued) {
         let Ok((service, id)) = UUID::decode(uuid) else {
             log::error!("malformed UUID: {uuid:?}");
             return;

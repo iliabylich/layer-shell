@@ -1,9 +1,13 @@
-use crate::dbus::{
-    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-    messages::{
-        body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is, value_is,
+use crate::{
+    dbus::{
+        Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        messages::{
+            body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is,
+            value_is,
+        },
+        types::{CompleteType, Value},
     },
-    types::{CompleteType, Value},
+    modules::DBusQueued,
 };
 use anyhow::{Context as _, Result};
 
@@ -26,12 +30,12 @@ impl SsidAndStrength {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
         self.subscription.reset(dbus);
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued, path: &str) {
         self.subscription
             .start(dbus, "org.freedesktop.NetworkManager", path);
         self.oneshot.start(dbus, path.to_string());

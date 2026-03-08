@@ -1,7 +1,10 @@
-use crate::dbus::{
-    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-    messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-    types::Value,
+use crate::{
+    dbus::{
+        Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
+        types::Value,
+    },
+    modules::DBusQueued,
 };
 use anyhow::{Result, bail};
 
@@ -34,7 +37,7 @@ impl PrimaryConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.oneshot.start(dbus, ());
         self.subscription.start(
             dbus,

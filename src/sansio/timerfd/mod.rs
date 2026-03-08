@@ -20,10 +20,11 @@ impl TimerFd {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants<'_> {
+    pub(crate) fn wants(&mut self) -> Wants {
         Wants::Read {
             fd: self.fd,
-            buf: &mut self.buf,
+            buf: self.buf.as_mut_ptr(),
+            len: self.buf.len(),
         }
     }
 

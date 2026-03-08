@@ -1,7 +1,10 @@
-use crate::dbus::{
-    DBus, Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-    messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
-    types::Value,
+use crate::{
+    dbus::{
+        Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
+        types::Value,
+    },
+    modules::DBusQueued,
 };
 use anyhow::{Context, Result};
 
@@ -24,12 +27,12 @@ impl TxRx {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
         self.oneshot.reset();
         self.subscription.reset(dbus);
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus, path: &str) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued, path: &str) {
         self.oneshot.start(dbus, path.to_string());
         self.subscription
             .start(dbus, "org.freedesktop.NetworkManager", path);

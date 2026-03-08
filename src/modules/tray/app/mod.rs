@@ -1,9 +1,7 @@
-use std::borrow::Cow;
-
 use crate::{
-    dbus::{DBus, Message, Oneshot, Subscription, types::Value},
+    dbus::{Message, Oneshot, Subscription, types::Value},
     macros::report_and_exit,
-    modules::{TrayIcon, TrayItem, tray::service::Service},
+    modules::{DBusQueued, TrayIcon, TrayItem, tray::service::Service},
 };
 use dbusmenu::{
     GetLayout, ItemsPropertiesUpdatedSubscription, LayoutUpdatedSubscription,
@@ -13,6 +11,7 @@ use ksni::{
     AllProps, AllPropsSubscription, AllPropsUpdate, GetAllPropsOneshot, NewIconSubscription,
     parse_new_icon_signal,
 };
+use std::borrow::Cow;
 
 mod dbusmenu;
 mod ksni;
@@ -63,14 +62,14 @@ impl App {
         }
     }
 
-    fn schedule_request_props(&mut self, dbus: &mut DBus) {
+    fn schedule_request_props(&mut self, dbus: &mut impl DBusQueued) {
         self.all_props_request.reset();
         self.all_props_request = Oneshot::new(GetAllPropsOneshot);
         self.all_props_request
             .start(dbus, self.service.name().to_string());
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.new_icon_subscription = Oneshot::new(NewIconSubscription);
         self.new_icon_subscription
             .start(dbus, self.service.name().to_string());
@@ -80,20 +79,20 @@ impl App {
             .start(dbus, "org.freedesktop.DBus", "/StatusNotifierItem");
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut DBus) {
+    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
         self.new_icon_subscription.reset();
         self.all_props_request.reset();
         self.all_props_subscription.reset(dbus);
         self.get_layout.reset();
     }
 
-    fn schedule_get_layout(&mut self, dbus: &mut DBus) {
+    fn schedule_get_layout(&mut self, dbus: &mut impl DBusQueued) {
         let mut get_layout = Oneshot::new(GetLayout::new(self.service.name()));
         get_layout.start(dbus, (self.service.name().to_string(), self.menu.clone()));
         self.get_layout = get_layout;
     }
 
-    fn on_menu_received(&mut self, menu: String, dbus: &mut DBus) {
+    fn on_menu_received(&mut self, menu: String, dbus: &mut impl DBusQueued) {
         if !self.menu.is_empty() {
             return;
         }
@@ -144,7 +143,11 @@ impl App {
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message, dbus: &mut DBus) -> Option<TrayEvent> {
+    pub(crate) fn on_message(
+        &mut self,
+        message: &Message,
+        dbus: &mut impl DBusQueued,
+    ) -> Option<TrayEvent> {
         if let Some(AllProps { menu, icon }) =
             self.all_props_request.process(message).ok().flatten()
         {
@@ -215,7 +218,7 @@ impl App {
         None
     }
 
-    pub(crate) fn trigger(&self, id: i32, dbus: &mut DBus) {
+    pub(crate) fn trigger(&self, id: i32, dbus: &mut impl DBusQueued) {
         let timestamp = u32::try_from(chrono::Utc::now().timestamp()).unwrap_or_else(|err| {
             report_and_exit!(target: "Tray", "can't construct u32 from chrono timestamp: {err:?}")
         });

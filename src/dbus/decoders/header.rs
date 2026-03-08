@@ -7,8 +7,6 @@ use anyhow::Result;
 pub(crate) struct HeaderDecoder;
 
 impl HeaderDecoder {
-    pub(crate) const LENGTH: usize = 12;
-
     pub(crate) fn decode(buffer: &mut DecodingBuffer<'_>) -> Result<Header> {
         let _endian = buffer.next_u8()?;
         let message_type = MessageType::from(buffer.next_u8()?);

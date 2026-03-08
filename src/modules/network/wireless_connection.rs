@@ -1,8 +1,11 @@
 use crate::{
-    dbus::{DBus, Message},
-    modules::network::{
-        active_connection_type::ActiveConnectionType,
-        primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
+    dbus::Message,
+    modules::{
+        DBusQueued,
+        network::{
+            active_connection_type::ActiveConnectionType,
+            primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
+        },
     },
 };
 
@@ -34,13 +37,13 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut DBus) {
+    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
         self.primary_connection.init(dbus)
     }
 
     fn on_primary_connection_event(
         &mut self,
-        dbus: &mut DBus,
+        dbus: &mut impl DBusQueued,
         e: PrimaryConnectionEvent,
     ) -> Option<WirelessConnectionEvent> {
         match e {
@@ -73,7 +76,7 @@ impl WirelessConnection {
 
     pub(crate) fn on_message(
         &mut self,
-        dbus: &mut DBus,
+        dbus: &mut impl DBusQueued,
         message: &Message,
     ) -> Option<WirelessConnectionEvent> {
         if let Some(e) = self.primary_connection.on_message(message) {

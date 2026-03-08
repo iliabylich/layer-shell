@@ -26,7 +26,7 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants<'_> {
+    pub(crate) fn wants(&mut self) -> Wants {
         match self.state {
             State::CanSocket => Wants::Socket {
                 domain: AF_UNIX,
@@ -39,7 +39,8 @@ impl UnixSocketReader {
             },
             State::CanRead => Wants::Read {
                 fd: self.fd,
-                buf: &mut self.buf,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
             },
         }
     }

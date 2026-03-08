@@ -52,7 +52,7 @@ impl Dns {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants<'_> {
+    pub(crate) fn wants(&mut self) -> Wants {
         match &mut self.state {
             State::CanSocket => Wants::Socket {
                 domain: libc::AF_INET,
@@ -63,14 +63,22 @@ impl Dns {
                 addr: (addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
                 addrlen: std::mem::size_of::<libc::sockaddr_in>() as u32,
             },
-            State::CanWrite { fd, buf, len, pos } => Wants::Write {
-                fd: *fd,
-                buf: &buf[*pos..*len],
-            },
-            State::CanRead { fd, buf, len } => Wants::Read {
-                fd: *fd,
-                buf: &mut buf[*len..],
-            },
+            State::CanWrite { fd, buf, len, pos } => {
+                let buf = &buf[*pos..*len];
+                Wants::Write {
+                    fd: *fd,
+                    buf: buf.as_ptr(),
+                    len: buf.len(),
+                }
+            }
+            State::CanRead { fd, buf, len } => {
+                let buf = &mut buf[*len..];
+                Wants::Read {
+                    fd: *fd,
+                    buf: buf.as_mut_ptr(),
+                    len: buf.len(),
+                }
+            }
             State::CanClose { fd, .. } => Wants::Close { fd: *fd },
             State::Done => Wants::Nothing,
         }

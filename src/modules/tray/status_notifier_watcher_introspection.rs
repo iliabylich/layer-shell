@@ -1,6 +1,9 @@
-use crate::dbus::{
-    DBus, IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
-    types::{CompleteType, Value},
+use crate::{
+    dbus::{
+        IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
+        types::{CompleteType, Value},
+    },
+    modules::DBusQueued,
 };
 use std::borrow::Cow;
 
@@ -15,7 +18,7 @@ impl StatusNotifierWatcherIntrospection {
         }
     }
 
-    fn reply_ok(dbus: &mut DBus, serial: u32, destination: &str, body: Vec<Value>) {
+    fn reply_ok(dbus: &mut impl DBusQueued, serial: u32, destination: &str, body: Vec<Value>) {
         let mut message = Message::MethodReturn {
             serial: 0,
             reply_serial: serial,
@@ -27,12 +30,16 @@ impl StatusNotifierWatcherIntrospection {
         dbus.enqueue(&mut message)
     }
 
-    fn reply_err(dbus: &mut DBus, serial: u32, destination: &str) {
+    fn reply_err(dbus: &mut impl DBusQueued, serial: u32, destination: &str) {
         let mut reply = Message::new_err_no_method(serial, destination);
         dbus.enqueue(&mut reply)
     }
 
-    pub(crate) fn process_message(&mut self, dbus: &mut DBus, message: &Message) -> bool {
+    pub(crate) fn process_message(
+        &mut self,
+        dbus: &mut impl DBusQueued,
+        message: &Message,
+    ) -> bool {
         let Ok((serial, sender, req)) = self.introspection.handle(message) else {
             return false;
         };

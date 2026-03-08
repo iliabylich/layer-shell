@@ -11,15 +11,8 @@ pub(crate) enum ModuleId {
     HyprlandReader,
     HyprlandWriter,
 
-    SessionDBusConnector,
-    SessionDBusAuth,
-    SessionDBusReader,
-    SessionDBusWriter,
-
-    SystemDBusConnector,
-    SystemDBusAuth,
-    SystemDBusReader,
-    SystemDBusWriter,
+    SessionDBus,
+    SystemDBus,
 
     #[expect(clippy::upper_case_acronyms)]
     CPU,

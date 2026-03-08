@@ -45,8 +45,8 @@ impl HyprlandReader {
                 sqe.prep_connect(fd, addr, addrlen);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Connect));
             }
-            Wants::Read { fd, buf } => {
-                sqe.prep_read(fd, buf.as_mut_ptr(), buf.len());
+            Wants::Read { fd, buf, len } => {
+                sqe.prep_read(fd, buf, len);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
             }
             other => unreachable!("HyprlandReader never wants {other:?}"),

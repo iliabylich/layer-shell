@@ -22,15 +22,6 @@ impl<'a> DecodingBuffer<'a> {
         self.buf.get(self.pos).copied()
     }
 
-    pub(crate) fn peek_u32(&self) -> Option<u32> {
-        Some(u32::from_le_bytes([
-            self.buf.get(self.pos).copied()?,
-            self.buf.get(self.pos + 1).copied()?,
-            self.buf.get(self.pos + 2).copied()?,
-            self.buf.get(self.pos + 3).copied()?,
-        ]))
-    }
-
     pub(crate) fn next_u8(&mut self) -> Result<u8> {
         let byte = self.buf.get(self.pos).context("EOF (next_u8)")?;
         self.pos += 1;

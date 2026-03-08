@@ -18,9 +18,9 @@ impl Timer {
 
     fn schedule_read(&mut self) {
         match self.timerfd.wants() {
-            Wants::Read { fd, buf } => {
+            Wants::Read { fd, buf, len } => {
                 let mut sqe = IoUring::get_sqe();
-                sqe.prep_read(fd, buf.as_mut_ptr(), buf.len());
+                sqe.prep_read(fd, buf, len);
                 sqe.set_user_data(UserData::new(ModuleId::TimerFD, Satisfy::Read));
             }
 

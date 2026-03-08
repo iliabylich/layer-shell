@@ -43,7 +43,7 @@ impl UnixSocketOneshotWriter {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants<'_> {
+    pub(crate) fn wants(&mut self) -> Wants {
         match self.state {
             State::CanSocket => Wants::Socket {
                 domain: AF_UNIX,
@@ -54,13 +54,18 @@ impl UnixSocketOneshotWriter {
                 addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
                 addrlen: std::mem::size_of::<sockaddr_un>() as u32,
             },
-            State::CanWrite => Wants::Write {
-                fd: self.fd,
-                buf: &self.buf[..self.write_buflen],
-            },
+            State::CanWrite => {
+                let buf = &self.buf[..self.write_buflen];
+                Wants::Write {
+                    fd: self.fd,
+                    buf: buf.as_ptr(),
+                    len: buf.len(),
+                }
+            }
             State::CanRead => Wants::Read {
                 fd: self.fd,
-                buf: &mut self.buf,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
             },
             State::CanClose => Wants::Close { fd: self.fd },
             State::Done => Wants::Nothing,

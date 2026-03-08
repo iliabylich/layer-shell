@@ -1,9 +1,11 @@
+mod dbus;
 mod dns;
 mod https;
 mod timerfd;
 mod tls_over_tcp;
 mod unix_sockets;
 
+pub(crate) use dbus::DBusConnection;
 pub(crate) use dns::Dns;
 pub(crate) use https::{Https, HttpsRequest, HttpsResponse};
 pub(crate) use timerfd::TimerFd;
@@ -13,7 +15,7 @@ pub(crate) use unix_sockets::{UnixSocketOneshotWriter, UnixSocketReader};
 use crate::macros::assert_or_exit;
 
 #[derive(Debug)]
-pub(crate) enum Wants<'a> {
+pub(crate) enum Wants {
     Socket {
         domain: i32,
         r#type: i32,
@@ -25,11 +27,20 @@ pub(crate) enum Wants<'a> {
     },
     Read {
         fd: i32,
-        buf: &'a mut [u8],
+        buf: *mut u8,
+        len: usize,
     },
     Write {
         fd: i32,
-        buf: &'a [u8],
+        buf: *const u8,
+        len: usize,
+    },
+    ReadWrite {
+        fd: i32,
+        readbuf: *mut u8,
+        readlen: usize,
+        writebuf: *const u8,
+        writelen: usize,
     },
     Close {
         fd: i32,
@@ -38,7 +49,7 @@ pub(crate) enum Wants<'a> {
     Nothing,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 
 pub(crate) enum Satisfy {
     Socket,
