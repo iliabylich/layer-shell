@@ -1,4 +1,7 @@
-use crate::sansio::{Satisfy, Wants};
+use crate::{
+    dbus::{Message, MessageEncoder},
+    sansio::{Satisfy, Wants},
+};
 use anyhow::{Result, bail};
 use connector::DBusConnector;
 use libc::sockaddr_un;
@@ -14,6 +17,7 @@ pub(crate) struct DBusConnection {
     state: State,
     queue: VecDeque<Vec<u8>>,
     buf: *mut u8,
+    serial: u32,
 }
 
 const BUF_SIZE: usize = 500_000;
@@ -32,10 +36,15 @@ impl DBusConnection {
             state: State::Connecting(DBusConnector::new(addr)),
             queue: VecDeque::new(),
             buf: Box::leak(Box::new([0; BUF_SIZE])).as_mut_ptr(),
+            serial: 1,
         }
     }
 
-    pub(crate) fn enqueue(&mut self, message: Vec<u8>) {
+    pub(crate) fn enqueue(&mut self, message: &mut Message) {
+        *message.serial_mut() = self.serial;
+        self.serial += 1;
+        let message = MessageEncoder::encode(&message);
+
         match &mut self.state {
             State::Connecting(_) => self.queue.push_back(message),
             State::Ready { writer, .. } => writer.enqueue(message),
@@ -46,14 +55,8 @@ impl DBusConnection {
         match &mut self.state {
             State::Connecting(connector) => connector.wants(),
             State::Ready { reader, writer } => {
-                // let wants = writer.wants();
-                // if matches!(wants, Wants::Write { .. }) {
-                //     return wants;
-                // }
-
                 let buf: &'static mut [u8] =
                     unsafe { std::slice::from_raw_parts_mut(self.buf, BUF_SIZE) };
-                // reader.wants(buf)
 
                 match (reader.wants(buf), writer.wants()) {
                     (

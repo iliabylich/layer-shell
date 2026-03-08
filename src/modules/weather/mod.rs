@@ -1,9 +1,8 @@
 use crate::{
     Event,
-    liburing::IoUring,
-    modules::weather::weather_response::WeatherResponse,
+    modules::{Module, weather::weather_response::WeatherResponse},
     sansio::{Https, HttpsRequest, Satisfy, Wants},
-    user_data::{ModuleId, UserData},
+    user_data::ModuleId,
 };
 pub use weather_code::WeatherCode;
 pub use weather_response::{WeatherOnDay, WeatherOnHour};
@@ -41,88 +40,43 @@ fn path(lat: f64, lng: f64) -> String {
     format!("/v1/forecast?{query}")
 }
 
-impl Weather {
-    pub(crate) const MODULE_ID: ModuleId = ModuleId::Weather;
+impl Module for Weather {
+    type Input = (f64, f64);
+    type Output = ();
+    type Error = anyhow::Error;
 
-    pub(crate) fn new(lat: f64, lng: f64) -> Box<Self> {
-        let mut weather = Box::new(Self {
+    const MODULE_ID: ModuleId = ModuleId::Weather;
+
+    fn new((lat, lng): (f64, f64)) -> Self {
+        Self {
             lat,
             lng,
             https: Https::new(HttpsRequest::get(HOST, path(lat, lng))),
-        });
-        weather.schedule_wanted_operation();
-        weather
-    }
-
-    fn schedule_wanted_operation(&mut self) {
-        let mut sqe = IoUring::get_sqe();
-
-        match self.https.wants() {
-            Wants::Socket { domain, r#type } => {
-                sqe.prep_socket(domain, r#type, 0, 0);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Socket));
-            }
-            Wants::Connect { fd, addr, addrlen } => {
-                sqe.prep_connect(fd, addr, addrlen);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Connect));
-            }
-            Wants::Read { fd, buf, len } => {
-                sqe.prep_read(fd, buf, len);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
-            }
-            Wants::Write { fd, buf, len } => {
-                sqe.prep_write(fd, buf, len);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Write));
-            }
-            Wants::Close { fd } => {
-                sqe.prep_close(fd);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Close));
-            }
-            Wants::Nothing | Wants::ReadWrite { .. } | Wants::OpenAt { .. } => unreachable!(),
         }
     }
 
-    fn reset(&mut self) {
-        self.https = Https::new(HttpsRequest::get(HOST, path(self.lat, self.lng)));
-        self.schedule_wanted_operation();
+    fn wants(&mut self) -> Wants {
+        self.https.wants()
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
-        let satisfy = Satisfy::from(op);
-
-        let response = match self.https.satisfy(satisfy, res) {
-            Ok(Some(response)) => response,
-            Ok(None) => {
-                self.schedule_wanted_operation();
-                return;
-            }
-            Err(err) => {
-                log::error!(target: "Location", "{err:?}");
-                return;
-            }
+    fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+        events: &mut Vec<Event>,
+    ) -> Result<Option<Self::Output>, Self::Error> {
+        let Some(response) = self.https.satisfy(satisfy, res)? else {
+            return Ok(None);
         };
-
-        let response = match WeatherResponse::parse(response) {
-            Ok(response) => response,
-            Err(err) => {
-                log::error!("{err:?}");
-                return;
-            }
-        };
-
-        let event = match Event::try_from(response) {
-            Ok(event) => event,
-            Err(err) => {
-                log::error!("{err:?}");
-                return;
-            }
-        };
+        let response = WeatherResponse::parse(response)?;
+        let event = Event::try_from(response)?;
         events.push(event);
+        Ok(Some(()))
     }
 
-    pub(crate) fn tick(&mut self, tick: u64) {
+    fn tick(&mut self, tick: u64) {
         if tick.is_multiple_of(120) {
-            self.reset();
+            self.https = Https::new(HttpsRequest::get(HOST, path(self.lat, self.lng)))
         }
     }
 }

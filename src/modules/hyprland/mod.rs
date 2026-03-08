@@ -1,10 +1,12 @@
 pub(crate) use reader::HyprlandReader;
-use state::HyprlandState;
-pub use state::HyprlandWorkspace;
-use std::{cell::RefCell, rc::Rc};
 pub(crate) use writer::HyprlandWriter;
 
-mod oneshot_writer;
+pub use state::HyprlandWorkspace;
+
+use crate::{modules::Module, unix_socket::new_unix_socket};
+use state::HyprlandState;
+use std::{cell::RefCell, rc::Rc};
+
 mod reader;
 mod resources;
 mod state;
@@ -13,7 +15,7 @@ mod writer;
 pub(crate) struct Hyprland;
 
 impl Hyprland {
-    pub(crate) fn new() -> (Option<HyprlandReader>, Option<HyprlandWriter>) {
+    pub(crate) fn connect() -> (Option<HyprlandReader>, Option<HyprlandWriter>) {
         let xdg_runtime_dir = match std::env::var("XDG_RUNTIME_DIR") {
             Ok(var) => var,
             Err(err) => {
@@ -30,19 +32,20 @@ impl Hyprland {
             }
         };
 
+        let reader_addr = new_unix_socket(
+            format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket2.sock")
+                .as_bytes(),
+        );
+
+        let writer_addr = new_unix_socket(
+            format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket.sock").as_bytes(),
+        );
+
         let state = Rc::new(RefCell::new(HyprlandState::empty()));
 
-        let writer = HyprlandWriter::new(
-            &xdg_runtime_dir,
-            &hyprland_instance_signature,
-            Rc::clone(&state),
-        );
-        let reader = HyprlandReader::new(
-            &xdg_runtime_dir,
-            &hyprland_instance_signature,
-            Rc::clone(&state),
-        );
-
-        (Some(reader), Some(writer))
+        (
+            Some(HyprlandReader::new((reader_addr, Rc::clone(&state)))),
+            Some(HyprlandWriter::new((writer_addr, Rc::clone(&state)))),
+        )
     }
 }

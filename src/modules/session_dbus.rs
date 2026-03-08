@@ -1,5 +1,5 @@
 use crate::{
-    dbus::{Message, MessageDecoder, MessageEncoder},
+    dbus::{Message, MessageDecoder},
     liburing::IoUring,
     macros::report_and_exit,
     modules::DBusQueued,
@@ -11,43 +11,47 @@ use anyhow::{Context, Result};
 
 pub(crate) struct SessionDBus {
     conn: DBusConnection,
-    serial: u32,
 }
 
 impl SessionDBus {
-    pub(crate) const MODULE_ID: ModuleId = ModuleId::SessionDBus;
-
     pub(crate) fn new() -> Self {
         let socket_path = socket_path().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let addr = new_unix_socket(socket_path.as_bytes());
 
         Self {
             conn: DBusConnection::new(addr),
-            serial: 1,
         }
     }
 
+    pub(crate) fn module_id(&self) -> ModuleId {
+        ModuleId::SessionDBus
+    }
+
+    pub(crate) fn wants(&mut self) -> Wants {
+        self.conn.wants()
+    }
+
     fn schedule_next_wanted(&mut self) {
-        match self.conn.wants() {
+        match self.wants() {
             Wants::Socket { domain, r#type } => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_socket(domain, r#type, 0, 0);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Socket));
+                sqe.set_user_data(UserData::new(self.module_id(), Satisfy::Socket));
             }
             Wants::Connect { fd, addr, addrlen } => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_connect(fd, addr, addrlen);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Connect));
+                sqe.set_user_data(UserData::new(self.module_id(), Satisfy::Connect));
             }
             Wants::Read { fd, buf, len } => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_read(fd, buf, len);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
+                sqe.set_user_data(UserData::new(self.module_id(), Satisfy::Read));
             }
             Wants::Write { fd, buf, len } => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_write(fd, buf, len);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Write));
+                sqe.set_user_data(UserData::new(self.module_id(), Satisfy::Write));
             }
             Wants::ReadWrite {
                 fd,
@@ -58,16 +62,16 @@ impl SessionDBus {
             } => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_read(fd, readbuf, readlen);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
+                sqe.set_user_data(UserData::new(self.module_id(), Satisfy::Read));
 
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_write(fd, writebuf, writelen);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Write));
+                sqe.set_user_data(UserData::new(self.module_id(), Satisfy::Write));
             }
             Wants::Close { fd } => {
                 let mut sqe = IoUring::get_sqe();
                 sqe.prep_close(fd);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Close));
+                sqe.set_user_data(UserData::new(self.module_id(), Satisfy::Close));
             }
             Wants::Nothing => {}
             Wants::OpenAt { .. } => unreachable!(),
@@ -110,9 +114,6 @@ fn socket_path() -> Result<String> {
 
 impl DBusQueued for SessionDBus {
     fn enqueue(&mut self, message: &mut Message) {
-        *message.serial_mut() = self.serial;
-        self.serial += 1;
-        let message = MessageEncoder::encode(&message);
         self.conn.enqueue(message);
         self.schedule_next_wanted();
     }

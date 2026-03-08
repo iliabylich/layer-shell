@@ -24,8 +24,10 @@ use crate::{
     macros::report_and_exit,
     modules::{
         CPU, Clock, Control, ControlRequest, DBusQueued as _, Hyprland, HyprlandReader,
-        HyprlandWriter, Location, Memory, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
+        HyprlandWriter, Location, Memory, Module, Network, SessionDBus, Sound, SystemDBus, Tray,
+        Weather,
     },
+    sansio::{Satisfy, Wants},
     timer::Timer,
     user_data::{ModuleId, UserData},
 };
@@ -41,8 +43,8 @@ struct IO {
     hyprland_reader: Option<HyprlandReader>,
     hyprland_writer: Option<HyprlandWriter>,
 
-    location: Box<Location>,
-    weather: Option<Box<Weather>>,
+    location: Option<Location>,
+    weather: Option<Weather>,
     cpu: CPU,
     memory: Memory,
     sound: Box<Sound>,
@@ -62,7 +64,7 @@ impl IO {
         let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
-        let (hyprland_reader, hyprland_writer) = Hyprland::new();
+        let (hyprland_reader, hyprland_writer) = Hyprland::connect();
 
         let mut this = Self {
             config,
@@ -72,7 +74,7 @@ impl IO {
             session_dbus: SessionDBus::new(),
             system_dbus: SystemDBus::new(),
 
-            location: Location::new(),
+            location: Some(Location::new(())),
             weather: None,
             hyprland_reader,
             hyprland_writer,
@@ -96,13 +98,9 @@ impl IO {
     fn init(&mut self) {
         self.timer.init();
 
-        self.location.init();
-        if let Some(hyprland_reader) = &mut self.hyprland_reader {
-            hyprland_reader.init();
-        }
-        if let Some(hyprland_writer) = &mut self.hyprland_writer {
-            hyprland_writer.init();
-        }
+        schedule_wanted(&mut self.location);
+        schedule_wanted(&mut self.hyprland_reader);
+        schedule_wanted(&mut self.hyprland_writer);
         self.cpu.init();
         self.memory.init();
 
@@ -124,6 +122,7 @@ impl IO {
             ControlRequest::CapsLockToggled => {
                 if let Some(hyprland_writer) = &mut self.hyprland_writer {
                     hyprland_writer.enqueue_get_caps_lock();
+                    schedule_wanted(hyprland_writer);
                 }
                 IoUring::submit_if_dirty();
             }
@@ -145,29 +144,30 @@ impl IO {
             let user_data = cqe.user_data();
 
             let UserData { module_id, op, .. } = UserData::from(user_data);
+            let satisfy = Satisfy::from(op);
 
             match module_id {
                 ModuleId::GeoLocation => {
-                    if let Some((lat, lng)) = self.location.satisfy(op, res) {
-                        self.weather = Some(Weather::new(lat, lng));
+                    let Ok(latlng) = self.location.satisfy(satisfy, res, &mut events);
+                    schedule_wanted(&mut self.location);
+                    if let Some((lat, lng)) = latlng {
+                        self.weather = Some(Weather::new((lat, lng)));
+                        schedule_wanted(&mut self.weather);
                     }
                 }
 
                 ModuleId::Weather => {
-                    if let Some(weather) = self.weather.as_deref_mut() {
-                        weather.process(op, res, &mut events);
-                    }
+                    let Ok(_) = self.weather.satisfy(satisfy, res, &mut events);
+                    schedule_wanted(&mut self.weather);
                 }
 
                 ModuleId::HyprlandReader => {
-                    if let Some(hyprland_reader) = &mut self.hyprland_reader {
-                        hyprland_reader.process(op, res, &mut events);
-                    }
+                    let Ok(_) = self.hyprland_reader.satisfy(satisfy, res, &mut events);
+                    schedule_wanted(&mut self.hyprland_reader);
                 }
                 ModuleId::HyprlandWriter => {
-                    if let Some(hyprland_writer) = &mut self.hyprland_writer {
-                        hyprland_writer.process(op, res, &mut events);
-                    }
+                    let Ok(_) = self.hyprland_writer.satisfy(satisfy, res, &mut events);
+                    schedule_wanted(&mut self.hyprland_writer);
                 }
 
                 ModuleId::SessionDBus => {
@@ -200,9 +200,7 @@ impl IO {
                 ModuleId::TimerFD => {
                     let tick = self.timer.process(op, res);
                     Clock::tick(&mut events);
-                    if let Some(weather) = self.weather.as_deref_mut() {
-                        weather.tick(tick);
-                    }
+                    self.weather.tick(tick);
                     self.cpu.tick();
                     self.memory.tick();
                     self.sound.tick(tick, &mut self.session_dbus);
@@ -235,6 +233,7 @@ impl IO {
             ($($arg:tt)*) => {{
                 if let Some(hyprland_writer) = &mut self.hyprland_writer {
                     hyprland_writer.enqueue_dispatch(format!($($arg)*), );
+                    schedule_wanted(hyprland_writer);
                 }
                 IoUring::submit_if_dirty();
             }};
@@ -381,4 +380,63 @@ pub extern "C" fn io_spawn_system_monitor() {
 #[unsafe(no_mangle)]
 pub extern "C" fn io_change_theme() {
     process_command(Command::ChangeTheme);
+}
+
+fn schedule_wanted<T>(module: &mut T)
+where
+    T: Module,
+{
+    match module.wants() {
+        Wants::Socket { domain, r#type } => {
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_socket(domain, r#type, 0, 0);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Socket));
+        }
+        Wants::Connect { fd, addr, addrlen } => {
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_connect(fd, addr, addrlen);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Connect));
+        }
+        Wants::Read { fd, buf, len } => {
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_read(fd, buf, len);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Read));
+        }
+        Wants::Write { fd, buf, len } => {
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_write(fd, buf, len);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Write));
+        }
+        Wants::ReadWrite {
+            fd,
+            readbuf,
+            readlen,
+            writebuf,
+            writelen,
+        } => {
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_read(fd, readbuf, readlen);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Read));
+
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_write(fd, writebuf, writelen);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Write));
+        }
+        Wants::OpenAt {
+            dfd,
+            path,
+            flags,
+            mode,
+        } => {
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_openat(dfd, path, flags, mode);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::OpenAt));
+        }
+        Wants::Close { fd } => {
+            let mut sqe = IoUring::get_sqe();
+            sqe.prep_close(fd);
+            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Close));
+        }
+        Wants::Nothing => {}
+    }
 }
