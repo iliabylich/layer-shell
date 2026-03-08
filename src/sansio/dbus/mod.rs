@@ -1,23 +1,21 @@
-use crate::{
-    dbus::{Message, MessageEncoder},
-    sansio::{Satisfy, Wants},
-};
+use crate::sansio::{Satisfy, Wants};
 use anyhow::{Result, bail};
 use connector::DBusConnector;
 use libc::sockaddr_un;
 use reader::DBusReader;
-use std::collections::VecDeque;
 use writer::DBusWriter;
 
+pub(crate) use queue::DBusQueue;
+
 mod connector;
+mod queue;
 mod reader;
 mod writer;
 
 pub(crate) struct DBusConnection {
     state: State,
-    queue: VecDeque<Vec<u8>>,
+    queue: DBusQueue,
     buf: *mut u8,
-    serial: u32,
 }
 
 const BUF_SIZE: usize = 500_000;
@@ -31,23 +29,11 @@ enum State {
 }
 
 impl DBusConnection {
-    pub(crate) fn new(addr: sockaddr_un) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, queue: DBusQueue) -> Self {
         Self {
             state: State::Connecting(DBusConnector::new(addr)),
-            queue: VecDeque::new(),
+            queue,
             buf: Box::leak(Box::new([0; BUF_SIZE])).as_mut_ptr(),
-            serial: 1,
-        }
-    }
-
-    pub(crate) fn enqueue(&mut self, message: &mut Message) {
-        *message.serial_mut() = self.serial;
-        self.serial += 1;
-        let message = MessageEncoder::encode(&message);
-
-        match &mut self.state {
-            State::Connecting(_) => self.queue.push_back(message),
-            State::Ready { writer, .. } => writer.enqueue(message),
         }
     }
 
@@ -94,7 +80,7 @@ impl DBusConnection {
                 if let Some(fd) = connector.satisfy(satisfy, res)? {
                     self.state = State::Ready {
                         reader: DBusReader::new(fd),
-                        writer: DBusWriter::new(fd, std::mem::take(&mut self.queue)),
+                        writer: DBusWriter::new(fd, self.queue.clone()),
                     };
                 }
                 Ok(None)

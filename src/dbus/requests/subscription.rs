@@ -8,7 +8,7 @@ use crate::{
         },
         types::{CompleteType, Value},
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::Result;
 
@@ -38,41 +38,36 @@ where
         }
     }
 
-    fn unsubscribe(&mut self, dbus: &mut impl DBusQueued) {
+    fn unsubscribe(&mut self, queue: &DBusQueue) {
         let Some(old_path) = self.path.take() else {
             return;
         };
 
         let mut message: Message = RemoveMatch::new(&old_path).into();
-        dbus.enqueue(&mut message);
+        queue.push_back(&mut message);
     }
 
-    fn subscribe(
-        &mut self,
-        dbus: &mut impl DBusQueued,
-        sender: impl AsRef<str>,
-        path: impl AsRef<str>,
-    ) {
+    fn subscribe(&mut self, queue: &DBusQueue, sender: impl AsRef<str>, path: impl AsRef<str>) {
         let sender = sender.as_ref();
         let path = path.as_ref();
         let mut message: Message = AddMatch::new(sender, path).into();
-        dbus.enqueue(&mut message);
+        queue.push_back(&mut message);
         self.path = Some(path.to_string());
         self.resource.set_path(path.to_string());
     }
 
     pub(crate) fn start(
         &mut self,
-        dbus: &mut impl DBusQueued,
+        queue: &DBusQueue,
         sender: impl AsRef<str>,
         path: impl AsRef<str>,
     ) {
-        self.unsubscribe(dbus);
-        self.subscribe(dbus, sender, path);
+        self.unsubscribe(queue);
+        self.subscribe(queue, sender, path);
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
-        self.unsubscribe(dbus)
+    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
+        self.unsubscribe(queue)
     }
 
     fn try_process(&self, message: &Message) -> Result<S::Output> {

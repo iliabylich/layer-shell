@@ -30,16 +30,11 @@ pub use weather::{WeatherCode, WeatherOnDay, WeatherOnHour};
 
 use crate::{
     Event,
-    dbus::Message,
     sansio::{Satisfy, Wants},
     user_data::ModuleId,
 };
 use anyhow::Result;
 use std::convert::Infallible;
-
-pub(crate) trait DBusQueued {
-    fn enqueue(&mut self, message: &mut Message);
-}
 
 pub(crate) trait Module {
     type Input;
@@ -60,30 +55,6 @@ pub(crate) trait Module {
     ) -> Result<Option<Self::Output>, Self::Error>;
     fn tick(&mut self, tick: u64);
 }
-
-// pub(crate) struct Falliable<T>
-// where
-//     T: Module,
-// {
-//     pub(crate) inner: Option<T>,
-// }
-
-// impl<T> Falliable<T>
-// where
-//     T: Module,
-// {
-//     pub(crate) fn none() -> Self {
-//         Self { inner: None }
-//     }
-
-//     pub(crate) fn some(inner: T) -> Self {
-//         Self { inner: Some(inner) }
-//     }
-
-//     pub(crate) fn start_with(&mut self, input: T::Input) {
-//         self.inner = Some(T::new(input))
-//     }
-// }
 
 impl<T> Module for Option<T>
 where

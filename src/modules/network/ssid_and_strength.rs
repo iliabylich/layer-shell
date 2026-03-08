@@ -7,7 +7,7 @@ use crate::{
         },
         types::{CompleteType, Value},
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::{Context as _, Result};
 
@@ -30,15 +30,15 @@ impl SsidAndStrength {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
-        self.subscription.reset(dbus);
+    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
+        self.subscription.reset(queue);
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued, path: &str) {
+    pub(crate) fn init(&mut self, queue: &DBusQueue, path: &str) {
         self.subscription
-            .start(dbus, "org.freedesktop.NetworkManager", path);
-        self.oneshot.start(dbus, path.to_string());
+            .start(queue, "org.freedesktop.NetworkManager", path);
+        self.oneshot.start(queue, path.to_string());
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<SsidAndStrengthEvent> {

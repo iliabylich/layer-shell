@@ -7,13 +7,10 @@ use crate::{
         },
         types::Value,
     },
-    modules::{
-        DBusQueued,
-        tray::{
-            service::Service,
-            status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
-        },
+    modules::tray::{
+        service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
     },
+    sansio::DBusQueue,
 };
 use anyhow::Result;
 
@@ -30,38 +27,34 @@ impl StatusNotifierWatcher {
         }
     }
 
-    pub(crate) fn request(&mut self, dbus: &mut impl DBusQueued) {
+    pub(crate) fn request(&mut self, queue: &DBusQueue) {
         let mut message: Message = RequestName::new("org.kde.StatusNotifierWatcher").into();
-        dbus.enqueue(&mut message);
+        queue.push_back(&mut message);
         self.reply_serial = Some(message.serial());
     }
 
-    fn reply_ok(dbus: &mut impl DBusQueued, serial: u32, destination: &str) {
+    fn reply_ok(queue: &DBusQueue, serial: u32, destination: &str) {
         let mut reply = Message::new_method_return_no_body(serial, destination);
-        dbus.enqueue(&mut reply);
+        queue.push_back(&mut reply);
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
-        self.request(dbus)
+    pub(crate) fn init(&mut self, queue: &DBusQueue) {
+        self.request(queue)
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        dbus: &mut impl DBusQueued,
-        message: &Message,
-    ) -> Option<Service> {
-        if self.introspection.process_message(dbus, message) {
+    pub(crate) fn on_message(&mut self, queue: &DBusQueue, message: &Message) -> Option<Service> {
+        if self.introspection.process_message(queue, message) {
             return None;
         }
 
         if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    Self::reply_ok(dbus, serial, &sender);
+                    Self::reply_ok(queue, serial, &sender);
                     return Some(Service::new(sender, address));
                 }
                 KSNIRequest::Other => {
-                    Self::reply_ok(dbus, serial, &sender);
+                    Self::reply_ok(queue, serial, &sender);
                     return None;
                 }
             }

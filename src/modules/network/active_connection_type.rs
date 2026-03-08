@@ -4,7 +4,7 @@ use crate::{
         messages::{body_is, org_freedesktop_dbus::GetProperty, value_is},
         types::Value,
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::Result;
 
@@ -21,8 +21,8 @@ impl ActiveConnectionType {
         }
     }
 
-    pub(crate) fn request(&mut self, dbus: &mut impl DBusQueued, path: &str) {
-        self.oneshot.start(dbus, path.to_string());
+    pub(crate) fn request(&mut self, queue: &DBusQueue, path: &str) {
+        self.oneshot.start(queue, path.to_string());
         self.path = Some(path.to_string());
     }
 

@@ -1,8 +1,4 @@
-use crate::{
-    Event,
-    dbus::Message,
-    modules::{DBusQueued, tray::app::TrayEvent},
-};
+use crate::{Event, dbus::Message, modules::tray::app::TrayEvent, sansio::DBusQueue};
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
 pub use item::TrayItem;
@@ -36,21 +32,21 @@ impl Tray {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
-        self.status_notifier_watcher.init(dbus);
-        self.name_lost_or_changed.init(dbus);
+    pub(crate) fn init(&mut self, queue: &DBusQueue) {
+        self.status_notifier_watcher.init(queue);
+        self.name_lost_or_changed.init(queue);
     }
 
     pub(crate) fn on_message(
         &mut self,
-        dbus: &mut impl DBusQueued,
+        queue: &DBusQueue,
         message: &Message,
         events: &mut Vec<Event>,
     ) {
-        if let Some(service) = self.status_notifier_watcher.on_message(dbus, message) {
+        if let Some(service) = self.status_notifier_watcher.on_message(queue, message) {
             log::info!(target: "Tray", "Added {service:?}");
             let mut tray_app = App::new(service.clone());
-            tray_app.init(dbus);
+            tray_app.init(queue);
             self.registry.insert(service, tray_app);
             return;
         }
@@ -70,14 +66,14 @@ impl Tray {
             };
 
             log::info!(target: "Tray", "Removed {address}");
-            tray_app.reset(dbus);
+            tray_app.reset(queue);
             events.push(Event::TrayAppRemoved {
                 service: address.into(),
             })
         }
 
         for (service, app) in &mut self.registry {
-            if let Some(event) = app.on_message(message, dbus) {
+            if let Some(event) = app.on_message(message, queue) {
                 let service = service.name().to_string().into();
 
                 let event = match event {
@@ -97,7 +93,7 @@ impl Tray {
         }
     }
 
-    pub(crate) fn trigger(&self, uuid: &str, dbus: &mut impl DBusQueued) {
+    pub(crate) fn trigger(&self, uuid: &str, queue: &DBusQueue) {
         let Ok((service, id)) = UUID::decode(uuid) else {
             log::error!("malformed UUID: {uuid:?}");
             return;
@@ -118,6 +114,6 @@ impl Tray {
             return;
         };
 
-        tray_app.trigger(id, dbus);
+        tray_app.trigger(id, queue);
     }
 }

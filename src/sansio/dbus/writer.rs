@@ -1,10 +1,10 @@
-use crate::sansio::{Satisfy, Wants};
-use anyhow::{Context, Result, ensure};
-use std::collections::VecDeque;
+use crate::sansio::{Satisfy, Wants, dbus::DBusQueue};
+use anyhow::{Result, bail, ensure};
 
 pub(crate) struct DBusWriter {
     fd: i32,
-    queue: VecDeque<Vec<u8>>,
+    current: Option<Vec<u8>>,
+    queue: DBusQueue,
     state: State,
 }
 
@@ -15,30 +15,33 @@ enum State {
 }
 
 impl DBusWriter {
-    pub(crate) fn new(fd: i32, queue: VecDeque<Vec<u8>>) -> Self {
+    pub(crate) fn new(fd: i32, queue: DBusQueue) -> Self {
+        let current = queue.pop_front();
+
         Self {
             fd,
+            current,
             queue,
             state: State::CanWrite,
         }
     }
 
-    pub(crate) fn enqueue(&mut self, message: Vec<u8>) {
-        self.queue.push_back(message);
-    }
-
     pub(crate) fn wants(&mut self) -> Wants {
         match self.state {
             State::CanWrite => {
-                if let Some(buf) = self.queue.front() {
-                    self.state = State::Waiting;
-                    Wants::Write {
-                        fd: self.fd,
-                        buf: buf.as_ptr(),
-                        len: buf.len(),
-                    }
-                } else {
-                    Wants::Nothing
+                if self.current.is_none() {
+                    self.current = self.queue.pop_front();
+                }
+
+                let Some(buf) = self.current.as_mut() else {
+                    return Wants::Nothing;
+                };
+
+                self.state = State::Waiting;
+                Wants::Write {
+                    fd: self.fd,
+                    buf: buf.as_ptr(),
+                    len: buf.len(),
                 }
             }
             State::Waiting => Wants::Nothing,
@@ -47,10 +50,10 @@ impl DBusWriter {
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         ensure!(satisfy == Satisfy::Write);
-        let message = self.queue.front().context(
-            "malformed DBusWriter state: received Write, but there's no current message",
-        )?;
         ensure!(res >= 0);
+        let Some(message) = self.current.take() else {
+            bail!("malformed DBusWriter state: received Write, but there's no current message");
+        };
         let bytes_written = res as usize;
         ensure!(
             bytes_written == message.len(),
@@ -58,10 +61,9 @@ impl DBusWriter {
             message.len()
         );
 
-        let _ = self
-            .queue
-            .pop_front()
-            .context("malformed DBusWriter state")?;
+        if let Some(next) = self.queue.pop_front() {
+            self.current = Some(next);
+        }
         self.state = State::CanWrite;
         Ok(())
     }

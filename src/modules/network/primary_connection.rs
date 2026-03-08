@@ -4,7 +4,7 @@ use crate::{
         messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
         types::Value,
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::{Result, bail};
 
@@ -37,10 +37,10 @@ impl PrimaryConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
-        self.oneshot.start(dbus, ());
+    pub(crate) fn init(&mut self, queue: &DBusQueue) {
+        self.oneshot.start(queue, ());
         self.subscription.start(
-            dbus,
+            queue,
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
         );

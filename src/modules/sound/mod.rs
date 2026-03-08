@@ -8,7 +8,7 @@ use crate::{
         },
         types::{CompleteType, Value},
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::{Context as _, Result};
 
@@ -27,13 +27,13 @@ impl Sound {
         })
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
-        self.oneshot.start(dbus, ())
+    pub(crate) fn init(&mut self, queue: &DBusQueue) {
+        self.oneshot.start(queue, ())
     }
 
     pub(crate) fn on_message(
         &mut self,
-        dbus: &mut impl DBusQueued,
+        queue: &DBusQueue,
         message: &Message,
         events: &mut Vec<Event>,
     ) {
@@ -41,7 +41,7 @@ impl Sound {
             Ok(Some((volume, muted))) => {
                 events.push(Event::InitialSound { volume, muted });
                 self.subscription
-                    .start(dbus, "org.local.PipewireDBus", "/org/local/PipewireDBus");
+                    .start(queue, "org.local.PipewireDBus", "/org/local/PipewireDBus");
 
                 return;
             }
@@ -64,11 +64,11 @@ impl Sound {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: u64, dbus: &mut impl DBusQueued) {
+    pub(crate) fn tick(&mut self, tick: u64, queue: &DBusQueue) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
             self.oneshot = Oneshot::new(Resource);
-            self.oneshot.start(dbus, ());
+            self.oneshot.start(queue, ());
         }
     }
 }

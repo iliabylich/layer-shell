@@ -1,6 +1,6 @@
 use crate::{
     dbus::{Message, types::Value},
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::{Result, bail};
 
@@ -38,13 +38,13 @@ where
         }
     }
 
-    pub(crate) fn start(&mut self, dbus: &mut impl DBusQueued, input: T::Input) {
+    pub(crate) fn start(&mut self, queue: &DBusQueue, input: T::Input) {
         if !matches!(self.state, OneshotState::None) {
             return;
         };
 
         let mut message = self.resource.make_request(input);
-        dbus.enqueue(&mut message);
+        queue.push_back(&mut message);
         let reply_serial = message.serial();
         self.state = OneshotState::WaitingForReply(reply_serial);
     }

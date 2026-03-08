@@ -1,12 +1,10 @@
 use crate::{
     dbus::Message,
-    modules::{
-        DBusQueued,
-        network::{
-            active_connection_type::ActiveConnectionType,
-            primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
-        },
+    modules::network::{
+        active_connection_type::ActiveConnectionType,
+        primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
     },
+    sansio::DBusQueue,
 };
 
 #[derive(Default)]
@@ -37,18 +35,18 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
-        self.primary_connection.init(dbus)
+    pub(crate) fn init(&mut self, queue: &DBusQueue) {
+        self.primary_connection.init(queue)
     }
 
     fn on_primary_connection_event(
         &mut self,
-        dbus: &mut impl DBusQueued,
+        queue: &DBusQueue,
         e: PrimaryConnectionEvent,
     ) -> Option<WirelessConnectionEvent> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
-                self.active_connection_type.request(dbus, &path);
+                self.active_connection_type.request(queue, &path);
                 self.state = State::ConnectedAndHavePath;
                 None
             }
@@ -76,11 +74,11 @@ impl WirelessConnection {
 
     pub(crate) fn on_message(
         &mut self,
-        dbus: &mut impl DBusQueued,
+        queue: &DBusQueue,
         message: &Message,
     ) -> Option<WirelessConnectionEvent> {
         if let Some(e) = self.primary_connection.on_message(message) {
-            return self.on_primary_connection_event(dbus, e);
+            return self.on_primary_connection_event(queue, e);
         }
 
         if let Some((is_wireless, path)) = self.active_connection_type.on_message(message) {

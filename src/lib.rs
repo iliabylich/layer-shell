@@ -23,11 +23,10 @@ use crate::{
     logger::Logger,
     macros::report_and_exit,
     modules::{
-        CPU, Clock, Control, ControlRequest, DBusQueued as _, Hyprland, HyprlandReader,
-        HyprlandWriter, Location, Memory, Module, Network, SessionDBus, Sound, SystemDBus, Tray,
-        Weather,
+        CPU, Clock, Control, ControlRequest, Hyprland, HyprlandReader, HyprlandWriter, Location,
+        Memory, Module, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
     },
-    sansio::{Satisfy, Wants},
+    sansio::{DBusQueue, Satisfy, Wants},
     timer::Timer,
     user_data::{ModuleId, UserData},
 };
@@ -37,8 +36,12 @@ struct IO {
     io_config: *const IOConfig,
 
     timer: Box<Timer>,
-    session_dbus: SessionDBus,
-    system_dbus: SystemDBus,
+
+    session_dbus: Option<SessionDBus>,
+    session_dbus_queue: DBusQueue,
+
+    system_dbus: Option<SystemDBus>,
+    system_dbus_queue: DBusQueue,
 
     hyprland_reader: Option<HyprlandReader>,
     hyprland_writer: Option<HyprlandWriter>,
@@ -66,13 +69,20 @@ impl IO {
 
         let (hyprland_reader, hyprland_writer) = Hyprland::connect();
 
+        let session_dbus_queue = DBusQueue::new();
+        let system_dbus_queue = DBusQueue::new();
+
         let mut this = Self {
             config,
             io_config,
 
             timer: Timer::new(),
-            session_dbus: SessionDBus::new(),
-            system_dbus: SystemDBus::new(),
+
+            session_dbus: Some(SessionDBus::new(session_dbus_queue.clone())),
+            session_dbus_queue,
+
+            system_dbus: Some(SystemDBus::new(system_dbus_queue.clone())),
+            system_dbus_queue,
 
             location: Some(Location::new(())),
             weather: None,
@@ -104,15 +114,15 @@ impl IO {
         self.cpu.init();
         self.memory.init();
 
-        self.session_dbus.enqueue(&mut Hello.into());
-        self.sound.init(&mut self.session_dbus);
-        self.control.init(&mut self.session_dbus);
-        self.tray.init(&mut self.session_dbus);
-        self.session_dbus.init();
+        self.session_dbus_queue.push_back(&mut Hello.into());
+        self.sound.init(&self.session_dbus_queue);
+        self.control.init(&self.session_dbus_queue);
+        self.tray.init(&self.session_dbus_queue);
+        schedule_wanted(&mut self.session_dbus);
 
-        self.system_dbus.enqueue(&mut Hello.into());
-        self.network.init(&mut self.system_dbus);
-        self.system_dbus.init();
+        self.system_dbus_queue.push_back(&mut Hello.into());
+        self.network.init(&self.system_dbus_queue);
+        schedule_wanted(&mut self.system_dbus);
 
         IoUring::submit_if_dirty();
     }
@@ -171,24 +181,33 @@ impl IO {
                 }
 
                 ModuleId::SessionDBus => {
-                    if let Some(message) = self.session_dbus.process(op, res) {
-                        self.sound
-                            .on_message(&mut self.session_dbus, &message, &mut events);
-                        self.tray
-                            .on_message(&mut self.session_dbus, &message, &mut events);
+                    let Ok(message) = self.session_dbus.satisfy(satisfy, res, &mut events);
 
-                        if let Some(req) = self.control.on_message(&message, &mut self.session_dbus)
+                    if let Some(message) = message {
+                        self.sound
+                            .on_message(&self.session_dbus_queue, &message, &mut events);
+                        self.tray
+                            .on_message(&self.session_dbus_queue, &message, &mut events);
+
+                        if let Some(req) =
+                            self.control.on_message(&message, &self.session_dbus_queue)
                         {
                             self.on_control_req(req, &mut events);
                         }
                     }
+
+                    schedule_wanted(&mut self.session_dbus);
                 }
 
                 ModuleId::SystemDBus => {
-                    if let Some(message) = self.system_dbus.process(op, res) {
+                    let Ok(message) = self.system_dbus.satisfy(satisfy, res, &mut events);
+
+                    if let Some(message) = message {
                         self.network
-                            .on_message(&mut self.system_dbus, &message, &mut events);
+                            .on_message(&self.system_dbus_queue, &message, &mut events);
                     }
+
+                    schedule_wanted(&mut self.system_dbus);
                 }
 
                 ModuleId::CPU => {
@@ -203,7 +222,7 @@ impl IO {
                     self.weather.tick(tick);
                     self.cpu.tick();
                     self.memory.tick();
-                    self.sound.tick(tick, &mut self.session_dbus);
+                    self.sound.tick(tick, &self.session_dbus_queue);
                 }
             }
 
@@ -268,7 +287,7 @@ impl IO {
             }
 
             Command::TriggerTray { uuid } => {
-                self.tray.trigger(&uuid, &mut self.session_dbus);
+                self.tray.trigger(&uuid, &self.session_dbus_queue);
                 IoUring::submit_if_dirty();
             }
         }

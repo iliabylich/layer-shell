@@ -4,7 +4,7 @@ use crate::{
         messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
         types::{CompleteType, Value},
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::{Context, Result, bail};
 
@@ -36,15 +36,15 @@ impl PrimaryDevice {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
-        self.subscription.reset(dbus);
+    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
+        self.subscription.reset(queue);
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: String, dbus: &mut impl DBusQueued) {
+    pub(crate) fn init(&mut self, path: String, queue: &DBusQueue) {
         self.subscription
-            .start(dbus, "org.freedesktop.NetworkManager", &path);
-        self.oneshot.start(dbus, path);
+            .start(queue, "org.freedesktop.NetworkManager", &path);
+        self.oneshot.start(queue, path);
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryDeviceEvent> {

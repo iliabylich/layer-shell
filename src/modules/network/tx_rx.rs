@@ -4,7 +4,7 @@ use crate::{
         messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
         types::Value,
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::{Context, Result};
 
@@ -27,15 +27,15 @@ impl TxRx {
         }
     }
 
-    pub(crate) fn reset(&mut self, dbus: &mut impl DBusQueued) {
+    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
         self.oneshot.reset();
-        self.subscription.reset(dbus);
+        self.subscription.reset(queue);
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued, path: &str) {
-        self.oneshot.start(dbus, path.to_string());
+    pub(crate) fn init(&mut self, queue: &DBusQueue, path: &str) {
+        self.oneshot.start(queue, path.to_string());
         self.subscription
-            .start(dbus, "org.freedesktop.NetworkManager", path);
+            .start(queue, "org.freedesktop.NetworkManager", path);
     }
 
     pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {

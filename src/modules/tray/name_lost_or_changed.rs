@@ -4,7 +4,7 @@ use crate::{
         messages::{body_is, interface_is, member_is, message_is, path_is, value_is},
         types::Value,
     },
-    modules::DBusQueued,
+    sansio::DBusQueue,
 };
 use anyhow::{Result, bail};
 use std::borrow::Cow;
@@ -20,8 +20,8 @@ impl NameLostOrNameOwnerChanged {
         }
     }
 
-    pub(crate) fn init(&mut self, dbus: &mut impl DBusQueued) {
-        self.name_changed.start(dbus, ())
+    pub(crate) fn init(&mut self, queue: &DBusQueue) {
+        self.name_changed.start(queue, ())
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<String> {
