@@ -43,8 +43,8 @@ struct IO {
 
     location: Box<Location>,
     weather: Option<Box<Weather>>,
-    cpu: Box<CPU>,
-    memory: Box<Memory>,
+    cpu: CPU,
+    memory: Memory,
     sound: Box<Sound>,
     control: Box<Control>,
     network: Box<Network>,

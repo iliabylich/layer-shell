@@ -1,5 +1,6 @@
 mod dbus;
 mod dns;
+mod file_reader;
 mod https;
 mod timerfd;
 mod tls_over_tcp;
@@ -7,6 +8,7 @@ mod unix_sockets;
 
 pub(crate) use dbus::DBusConnection;
 pub(crate) use dns::Dns;
+pub(crate) use file_reader::FileReader;
 pub(crate) use https::{Https, HttpsRequest, HttpsResponse};
 pub(crate) use timerfd::TimerFd;
 pub(crate) use tls_over_tcp::TlsOverTcp;
@@ -42,6 +44,12 @@ pub(crate) enum Wants {
         writebuf: *const u8,
         writelen: usize,
     },
+    OpenAt {
+        dfd: i32,
+        path: *const ::std::os::raw::c_char,
+        flags: i32,
+        mode: u32,
+    },
     Close {
         fd: i32,
     },
@@ -57,8 +65,9 @@ pub(crate) enum Satisfy {
     Write,
     Read,
     Close,
+    OpenAt,
 }
-const MAX: Satisfy = Satisfy::Close;
+const MAX: Satisfy = Satisfy::OpenAt;
 
 impl From<Satisfy> for u8 {
     fn from(value: Satisfy) -> Self {

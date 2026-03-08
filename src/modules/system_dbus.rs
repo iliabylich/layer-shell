@@ -70,6 +70,7 @@ impl SystemDBus {
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Close));
             }
             Wants::Nothing => {}
+            Wants::OpenAt { .. } => unreachable!(),
         }
     }
 

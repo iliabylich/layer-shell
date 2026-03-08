@@ -47,7 +47,7 @@ impl OneshotWriter {
                 sqe.prep_close(fd);
                 sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Close));
             }
-            Wants::Nothing | Wants::ReadWrite { .. } => unreachable!(),
+            Wants::Nothing | Wants::ReadWrite { .. } | Wants::OpenAt { .. } => unreachable!(),
         }
     }
 
