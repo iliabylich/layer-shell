@@ -19,12 +19,12 @@ pub(crate) struct Sound {
 }
 
 impl Sound {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self {
+    pub(crate) fn new() -> Self {
+        Self {
             oneshot: Oneshot::new(Resource),
             subscription: Subscription::new(Resource),
             healthy: true,
-        })
+        }
     }
 
     pub(crate) fn init(&mut self, queue: &DBusQueue) {

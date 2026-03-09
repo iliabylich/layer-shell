@@ -25,15 +25,15 @@ pub(crate) struct Network {
 }
 
 impl Network {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self {
+    pub(crate) fn new() -> Self {
+        Self {
             wireless_connection: WirelessConnection::new(),
             primary_device: PrimaryDevice::new(),
             active_access_point: ActiveAccessPoint::new(),
             tx_rx: TxRx::new(),
             speed: Speed::new(),
             ssid_and_strength: SsidAndStrength::new(),
-        })
+        }
     }
 
     pub(crate) fn init(&mut self, queue: &DBusQueue) {

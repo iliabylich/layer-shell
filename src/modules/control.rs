@@ -16,8 +16,8 @@ use anyhow::{Result, bail};
 pub(crate) struct Control;
 
 impl Control {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self)
+    pub(crate) fn new() -> Self {
+        Self
     }
 
     pub(crate) fn init(&mut self, queue: &DBusQueue) {

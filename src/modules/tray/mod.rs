@@ -24,12 +24,12 @@ pub(crate) struct Tray {
 }
 
 impl Tray {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self {
+    pub(crate) fn new() -> Self {
+        Self {
             status_notifier_watcher: StatusNotifierWatcher::new(),
             name_lost_or_changed: NameLostOrNameOwnerChanged::new(),
             registry: HashMap::new(),
-        })
+        }
     }
 
     pub(crate) fn init(&mut self, queue: &DBusQueue) {
