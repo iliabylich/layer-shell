@@ -1,7 +1,6 @@
 use crate::{
-    Event, UserData,
-    liburing::IoUring,
-    macros::report_and_exit,
+    Event,
+    modules::Module,
     sansio::{FileReader, Satisfy, Wants},
     user_data::ModuleId,
 };
@@ -14,64 +13,40 @@ pub(crate) struct Memory {
     reader: FileReader,
 }
 
-impl Memory {
-    pub(crate) const MODULE_ID: ModuleId = ModuleId::Memory;
+impl Module for Memory {
+    type Input = ();
+    type Output = ();
+    type Error = anyhow::Error;
 
-    pub(crate) fn new() -> Self {
+    const MODULE_ID: ModuleId = ModuleId::Memory;
+
+    fn new((): Self::Input) -> Self {
         Self {
             reader: FileReader::new(c"/proc/meminfo"),
         }
     }
 
-    fn schedule_next(&mut self) {
-        match self.reader.wants() {
-            Wants::OpenAt {
-                dfd,
-                path,
-                flags,
-                mode,
-            } => {
-                let mut sqe = IoUring::get_sqe();
-                sqe.prep_openat(dfd, path, flags, mode);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::OpenAt));
-            }
-            Wants::Read { fd, buf, len } => {
-                let mut sqe = IoUring::get_sqe();
-                sqe.prep_read(fd, buf, len);
-                sqe.set_user_data(UserData::new(Self::MODULE_ID, Satisfy::Read));
-            }
-            Wants::Nothing => {}
-
-            _ => unreachable!(),
-        }
+    fn wants(&mut self) -> Wants {
+        self.reader.wants()
     }
 
-    pub(crate) fn init(&mut self) {
-        self.schedule_next();
-    }
-
-    fn try_process(&mut self, satisfy: Satisfy, res: i32, events: &mut Vec<Event>) -> Result<()> {
+    fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+        events: &mut Vec<Event>,
+    ) -> Result<Option<Self::Output>, Self::Error> {
         let Some(buf) = self.reader.satisfy(satisfy, res)? else {
-            return Ok(());
+            return Ok(None);
         };
         let s = std::str::from_utf8(buf).context("decoding error")?;
         let (used, total) = Parser::parse(s).context("parse error")?;
 
         events.push(Event::Memory { used, total });
-        Ok(())
+        Ok(None)
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32, events: &mut Vec<Event>) {
-        let satisfy = Satisfy::from(op);
-
-        self.try_process(satisfy, res, events)
-            .unwrap_or_else(|err| report_and_exit!("{err:?}"));
-
-        self.schedule_next();
-    }
-
-    pub(crate) fn tick(&mut self) {
+    fn tick(&mut self, _tick: u64) {
         self.reader.tick();
-        self.schedule_next();
     }
 }
