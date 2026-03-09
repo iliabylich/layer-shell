@@ -14,14 +14,14 @@ pub(crate) struct NameLostOrNameOwnerChanged {
 }
 
 impl NameLostOrNameOwnerChanged {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            name_changed: Oneshot::new(NameOwnerChangedResource),
+            name_changed: Oneshot::new(NameOwnerChangedResource, queue),
         }
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
-        self.name_changed.start(queue, ())
+    pub(crate) fn init(&mut self) {
+        self.name_changed.start(())
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<String> {

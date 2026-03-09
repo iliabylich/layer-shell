@@ -24,28 +24,30 @@ pub(crate) struct Tray {
     name_lost_or_changed: NameLostOrNameOwnerChanged,
     registry: HashMap<Service, App>,
     events: EventQueue,
+    queue: DBusQueue,
 }
 
 impl Tray {
-    pub(crate) fn new(events: EventQueue) -> Self {
+    pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
         Self {
-            status_notifier_watcher: StatusNotifierWatcher::new(),
-            name_lost_or_changed: NameLostOrNameOwnerChanged::new(),
+            status_notifier_watcher: StatusNotifierWatcher::new(queue.clone()),
+            name_lost_or_changed: NameLostOrNameOwnerChanged::new(queue.clone()),
             registry: HashMap::new(),
             events,
+            queue,
         }
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
-        self.status_notifier_watcher.init(queue);
-        self.name_lost_or_changed.init(queue);
+    pub(crate) fn init(&mut self) {
+        self.status_notifier_watcher.init();
+        self.name_lost_or_changed.init();
     }
 
-    pub(crate) fn on_message(&mut self, queue: &DBusQueue, message: &Message) {
-        if let Some(service) = self.status_notifier_watcher.on_message(queue, message) {
+    pub(crate) fn on_message(&mut self, message: &Message) {
+        if let Some(service) = self.status_notifier_watcher.on_message(message) {
             log::info!(target: "Tray", "Added {service:?}");
-            let mut tray_app = App::new(service.clone());
-            tray_app.init(queue);
+            let mut tray_app = App::new(service.clone(), self.queue.clone());
+            tray_app.init();
             self.registry.insert(service, tray_app);
             return;
         }
@@ -65,14 +67,14 @@ impl Tray {
             };
 
             log::info!(target: "Tray", "Removed {address}");
-            tray_app.reset(queue);
+            tray_app.reset();
             self.events.push_back(Event::TrayAppRemoved {
                 service: address.into(),
             })
         }
 
         for (service, app) in &mut self.registry {
-            if let Some(event) = app.on_message(message, queue) {
+            if let Some(event) = app.on_message(message) {
                 let service = service.name().to_string().into();
 
                 let event = match event {
@@ -92,7 +94,7 @@ impl Tray {
         }
     }
 
-    pub(crate) fn trigger(&self, uuid: &str, queue: &DBusQueue) {
+    pub(crate) fn trigger(&self, uuid: &str) {
         let Ok((service, id)) = UUID::decode(uuid) else {
             log::error!("malformed UUID: {uuid:?}");
             return;
@@ -113,6 +115,6 @@ impl Tray {
             return;
         };
 
-        tray_app.trigger(id, queue);
+        tray_app.trigger(id);
     }
 }

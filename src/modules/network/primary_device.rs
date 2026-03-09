@@ -29,22 +29,22 @@ impl From<String> for PrimaryDeviceEvent {
 }
 
 impl PrimaryDevice {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource),
-            subscription: Subscription::new(Resource),
+            oneshot: Oneshot::new(Resource, queue.clone()),
+            subscription: Subscription::new(Resource, queue.clone()),
         }
     }
 
-    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
-        self.subscription.reset(queue);
+    pub(crate) fn reset(&mut self) {
+        self.subscription.reset();
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: String, queue: &DBusQueue) {
+    pub(crate) fn init(&mut self, path: String) {
         self.subscription
-            .start(queue, "org.freedesktop.NetworkManager", &path);
-        self.oneshot.start(queue, path);
+            .start("org.freedesktop.NetworkManager", &path);
+        self.oneshot.start(path);
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryDeviceEvent> {

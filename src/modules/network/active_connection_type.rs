@@ -14,15 +14,15 @@ pub(crate) struct ActiveConnectionType {
 }
 
 impl ActiveConnectionType {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
             path: None,
-            oneshot: Oneshot::new(Resource),
+            oneshot: Oneshot::new(Resource, queue),
         }
     }
 
-    pub(crate) fn request(&mut self, queue: &DBusQueue, path: &str) {
-        self.oneshot.start(queue, path.to_string());
+    pub(crate) fn request(&mut self, path: &str) {
+        self.oneshot.start(path.to_string());
         self.path = Some(path.to_string());
     }
 

@@ -17,44 +17,46 @@ use anyhow::Result;
 pub(crate) struct StatusNotifierWatcher {
     reply_serial: Option<u32>,
     introspection: StatusNotifierWatcherIntrospection,
+    queue: DBusQueue,
 }
 
 impl StatusNotifierWatcher {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
             reply_serial: None,
-            introspection: StatusNotifierWatcherIntrospection::new(),
+            introspection: StatusNotifierWatcherIntrospection::new(queue.clone()),
+            queue,
         }
     }
 
-    pub(crate) fn request(&mut self, queue: &DBusQueue) {
+    pub(crate) fn request(&mut self) {
         let mut message: Message = RequestName::new("org.kde.StatusNotifierWatcher").into();
-        queue.push_back(&mut message);
+        self.queue.push_back(&mut message);
         self.reply_serial = Some(message.serial());
     }
 
-    fn reply_ok(queue: &DBusQueue, serial: u32, destination: &str) {
+    fn reply_ok(&self, serial: u32, destination: &str) {
         let mut reply = Message::new_method_return_no_body(serial, destination);
-        queue.push_back(&mut reply);
+        self.queue.push_back(&mut reply);
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
-        self.request(queue)
+    pub(crate) fn init(&mut self) {
+        self.request()
     }
 
-    pub(crate) fn on_message(&mut self, queue: &DBusQueue, message: &Message) -> Option<Service> {
-        if self.introspection.process_message(queue, message) {
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<Service> {
+        if self.introspection.process_message(message) {
             return None;
         }
 
         if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    Self::reply_ok(queue, serial, &sender);
+                    self.reply_ok(serial, &sender);
                     return Some(Service::new(sender, address));
                 }
                 KSNIRequest::Other => {
-                    Self::reply_ok(queue, serial, &sender);
+                    self.reply_ok(serial, &sender);
                     return None;
                 }
             }

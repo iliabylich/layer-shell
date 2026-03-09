@@ -9,16 +9,18 @@ use std::borrow::Cow;
 
 pub(crate) struct StatusNotifierWatcherIntrospection {
     introspection: IntrospectibleObjectAt,
+    queue: DBusQueue,
 }
 
 impl StatusNotifierWatcherIntrospection {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
             introspection: IntrospectibleObjectAt::new("org.kde.StatusNotifierWatcher"),
+            queue,
         }
     }
 
-    fn reply_ok(queue: &DBusQueue, serial: u32, destination: &str, body: Vec<Value>) {
+    fn reply_ok(&self, serial: u32, destination: &str, body: Vec<Value>) {
         let mut message = Message::MethodReturn {
             serial: 0,
             reply_serial: serial,
@@ -27,34 +29,32 @@ impl StatusNotifierWatcherIntrospection {
             unix_fds: None,
             body,
         };
-        queue.push_back(&mut message)
+        self.queue.push_back(&mut message)
     }
 
-    fn reply_err(queue: &DBusQueue, serial: u32, destination: &str) {
+    fn reply_err(&self, serial: u32, destination: &str) {
         let mut reply = Message::new_err_no_method(serial, destination);
-        queue.push_back(&mut reply)
+        self.queue.push_back(&mut reply)
     }
 
-    pub(crate) fn process_message(&mut self, queue: &DBusQueue, message: &Message) -> bool {
+    pub(crate) fn process_message(&mut self, message: &Message) -> bool {
         let Ok((serial, sender, req)) = self.introspection.handle(message) else {
             return false;
         };
 
         match req {
             IntrospectibleObjectAtRequest::Introspect { path } => match path.as_str() {
-                "/" => Self::reply_ok(
-                    queue,
+                "/" => self.reply_ok(
                     serial,
                     &sender,
                     vec![Value::String(Cow::Owned(root_introspection_xml()))],
                 ),
-                "/StatusNotifierWatcher" => Self::reply_ok(
-                    queue,
+                "/StatusNotifierWatcher" => self.reply_ok(
                     serial,
                     &sender,
                     vec![Value::String(Cow::Owned(ksni_introspection_xml()))],
                 ),
-                _ => Self::reply_err(queue, serial, &sender),
+                _ => self.reply_err(serial, &sender),
             },
 
             IntrospectibleObjectAtRequest::GetAllProperties { path, interface } => {
@@ -87,10 +87,10 @@ impl StatusNotifierWatcherIntrospection {
                                 ),
                             ],
                         )];
-                        Self::reply_ok(queue, serial, &sender, body);
+                        self.reply_ok(serial, &sender, body);
                     }
 
-                    _ => Self::reply_err(queue, serial, &sender),
+                    _ => self.reply_err(serial, &sender),
                 }
             }
 
@@ -119,16 +119,16 @@ impl StatusNotifierWatcherIntrospection {
                     ) => Value::Variant(Box::new(Value::Array(CompleteType::String, vec![]))),
 
                     _ => {
-                        Self::reply_err(queue, serial, &sender);
+                        self.reply_err(serial, &sender);
                         return true;
                     }
                 };
 
-                Self::reply_ok(queue, serial, &sender, vec![value]);
+                self.reply_ok(serial, &sender, vec![value]);
             }
 
             _ => {
-                Self::reply_err(queue, serial, &sender);
+                self.reply_err(serial, &sender);
             }
         }
 

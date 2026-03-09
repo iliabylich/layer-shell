@@ -20,22 +20,22 @@ pub(crate) struct TxRxEvent {
 }
 
 impl TxRx {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource::default()),
-            subscription: Subscription::new(Resource::default()),
+            oneshot: Oneshot::new(Resource::default(), queue.clone()),
+            subscription: Subscription::new(Resource::default(), queue.clone()),
         }
     }
 
-    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
+    pub(crate) fn reset(&mut self) {
         self.oneshot.reset();
-        self.subscription.reset(queue);
+        self.subscription.reset();
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue, path: &str) {
-        self.oneshot.start(queue, path.to_string());
+    pub(crate) fn init(&mut self, path: &str) {
+        self.oneshot.start(path.to_string());
         self.subscription
-            .start(queue, "org.freedesktop.NetworkManager", path);
+            .start("org.freedesktop.NetworkManager", path);
     }
 
     pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {

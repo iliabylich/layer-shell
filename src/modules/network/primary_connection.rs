@@ -8,7 +8,6 @@ use crate::{
 };
 use anyhow::{Result, bail};
 
-#[derive(Debug)]
 pub(crate) struct PrimaryConnection {
     oneshot: Oneshot<Resource>,
     subscription: Subscription<Resource>,
@@ -30,17 +29,16 @@ impl From<String> for PrimaryConnectionEvent {
 }
 
 impl PrimaryConnection {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource),
-            subscription: Subscription::new(Resource),
+            oneshot: Oneshot::new(Resource, queue.clone()),
+            subscription: Subscription::new(Resource, queue.clone()),
         }
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
-        self.oneshot.start(queue, ());
+    pub(crate) fn init(&mut self) {
+        self.oneshot.start(());
         self.subscription.start(
-            queue,
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
         );

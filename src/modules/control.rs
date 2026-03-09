@@ -13,38 +13,36 @@ use crate::{
 };
 use anyhow::{Result, bail};
 
-pub(crate) struct Control;
+pub(crate) struct Control {
+    queue: DBusQueue,
+}
 
 impl Control {
-    pub(crate) fn new() -> Self {
-        Self
+    pub(crate) fn new(queue: DBusQueue) -> Self {
+        Self { queue }
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
+    pub(crate) fn init(&mut self) {
         let mut message: Message = RequestName::new("org.me.LayerShellControl").into();
-        queue.push_back(&mut message)
+        self.queue.push_back(&mut message)
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        message: &Message,
-        queue: &DBusQueue,
-    ) -> Option<ControlRequest> {
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
             let mut reply: Message =
                 IntrospectResponse::new(serial, sender, INTROSPECTION.to_string()).into();
-            queue.push_back(&mut reply);
+            self.queue.push_back(&mut reply);
             return None;
         }
 
         if let Ok((member, sender, serial)) = try_parse_control_req(message) {
             if let Ok(control_req) = ControlRequest::try_parse(member) {
                 let mut reply = Message::new_method_return_no_body(serial, sender);
-                queue.push_back(&mut reply);
+                self.queue.push_back(&mut reply);
                 return Some(control_req);
             } else {
                 let mut reply = Message::new_err_no_method(serial, sender);
-                queue.push_back(&mut reply);
+                self.queue.push_back(&mut reply);
                 return None;
             }
         }

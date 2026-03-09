@@ -27,26 +27,25 @@ pub(crate) enum WirelessConnectionEvent {
 }
 
 impl WirelessConnection {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            primary_connection: PrimaryConnection::new(),
-            active_connection_type: ActiveConnectionType::new(),
+            primary_connection: PrimaryConnection::new(queue.clone()),
+            active_connection_type: ActiveConnectionType::new(queue.clone()),
             state: State::default(),
         }
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
-        self.primary_connection.init(queue)
+    pub(crate) fn init(&mut self) {
+        self.primary_connection.init()
     }
 
     fn on_primary_connection_event(
         &mut self,
-        queue: &DBusQueue,
         e: PrimaryConnectionEvent,
     ) -> Option<WirelessConnectionEvent> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
-                self.active_connection_type.request(queue, &path);
+                self.active_connection_type.request(&path);
                 self.state = State::ConnectedAndHavePath;
                 None
             }
@@ -72,13 +71,9 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        queue: &DBusQueue,
-        message: &Message,
-    ) -> Option<WirelessConnectionEvent> {
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<WirelessConnectionEvent> {
         if let Some(e) = self.primary_connection.on_message(message) {
-            return self.on_primary_connection_event(queue, e);
+            return self.on_primary_connection_event(e);
         }
 
         if let Some((is_wireless, path)) = self.active_connection_type.on_message(message) {

@@ -30,6 +30,7 @@ pub(crate) struct App {
     get_layout: Oneshot<GetLayout>,
 
     state: State,
+    queue: DBusQueue,
 }
 
 enum State {
@@ -47,63 +48,67 @@ pub(crate) enum TrayEvent {
 }
 
 impl App {
-    pub(crate) fn new(service: Service) -> Self {
+    pub(crate) fn new(service: Service, queue: DBusQueue) -> Self {
         Self {
             service: service.clone(),
-            all_props_request: Oneshot::new(GetAllPropsOneshot),
-            new_icon_subscription: Oneshot::new(NewIconSubscription),
-            all_props_subscription: Subscription::new(AllPropsSubscription),
-            layout_updated_subscription: Oneshot::new(LayoutUpdatedSubscription),
-            items_properties_updated_subscription: Oneshot::new(ItemsPropertiesUpdatedSubscription),
+            all_props_request: Oneshot::new(GetAllPropsOneshot, queue.clone()),
+            new_icon_subscription: Oneshot::new(NewIconSubscription, queue.clone()),
+            all_props_subscription: Subscription::new(AllPropsSubscription, queue.clone()),
+            layout_updated_subscription: Oneshot::new(LayoutUpdatedSubscription, queue.clone()),
+            items_properties_updated_subscription: Oneshot::new(
+                ItemsPropertiesUpdatedSubscription,
+                queue.clone(),
+            ),
 
             menu: String::new(),
-            get_layout: Oneshot::new(GetLayout::new(service.name())),
+            get_layout: Oneshot::new(GetLayout::new(service.name()), queue.clone()),
 
             state: State::Nothing,
+            queue,
         }
     }
 
-    fn schedule_request_props(&mut self, queue: &DBusQueue) {
+    fn schedule_request_props(&mut self) {
         self.all_props_request.reset();
-        self.all_props_request = Oneshot::new(GetAllPropsOneshot);
+        self.all_props_request = Oneshot::new(GetAllPropsOneshot, self.queue.clone());
         self.all_props_request
-            .start(queue, self.service.name().to_string());
+            .start(self.service.name().to_string());
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
-        self.new_icon_subscription = Oneshot::new(NewIconSubscription);
+    pub(crate) fn init(&mut self) {
+        self.new_icon_subscription = Oneshot::new(NewIconSubscription, self.queue.clone());
         self.new_icon_subscription
-            .start(queue, self.service.name().to_string());
+            .start(self.service.name().to_string());
         self.all_props_request
-            .start(queue, self.service.name().to_string());
+            .start(self.service.name().to_string());
         self.all_props_subscription
-            .start(queue, "org.freedesktop.DBus", "/StatusNotifierItem");
+            .start("org.freedesktop.DBus", "/StatusNotifierItem");
     }
 
-    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
+    pub(crate) fn reset(&mut self) {
         self.new_icon_subscription.reset();
         self.all_props_request.reset();
-        self.all_props_subscription.reset(queue);
+        self.all_props_subscription.reset();
         self.get_layout.reset();
     }
 
-    fn schedule_get_layout(&mut self, queue: &DBusQueue) {
-        let mut get_layout = Oneshot::new(GetLayout::new(self.service.name()));
-        get_layout.start(queue, (self.service.name().to_string(), self.menu.clone()));
+    fn schedule_get_layout(&mut self) {
+        let mut get_layout = Oneshot::new(GetLayout::new(self.service.name()), self.queue.clone());
+        get_layout.start((self.service.name().to_string(), self.menu.clone()));
         self.get_layout = get_layout;
     }
 
-    fn on_menu_received(&mut self, menu: String, dbus: &DBusQueue) {
+    fn on_menu_received(&mut self, menu: String) {
         if !self.menu.is_empty() {
             return;
         }
 
         self.menu = menu;
-        self.schedule_get_layout(dbus);
+        self.schedule_get_layout();
         self.layout_updated_subscription
-            .start(dbus, (self.service.name().to_string(), self.menu.clone()));
+            .start((self.service.name().to_string(), self.menu.clone()));
         self.items_properties_updated_subscription
-            .start(dbus, (self.service.name().to_string(), self.menu.clone()));
+            .start((self.service.name().to_string(), self.menu.clone()));
     }
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
@@ -144,13 +149,13 @@ impl App {
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message, queue: &DBusQueue) -> Option<TrayEvent> {
+    pub(crate) fn on_message(&mut self, message: &Message) -> Option<TrayEvent> {
         if let Some(AllProps { menu, icon }) =
             self.all_props_request.process(message).ok().flatten()
         {
             log::info!(target: "Tray", "Received requested props for {:?}", self.service);
 
-            self.on_menu_received(menu, queue);
+            self.on_menu_received(menu);
             return self.on_icon_received(icon);
         }
 
@@ -195,27 +200,27 @@ impl App {
 
         if parse_new_icon_signal(message, self.service.raw_address()).is_ok() {
             log::info!(target: "Tray", "Received NewIcon signal");
-            self.schedule_request_props(queue);
+            self.schedule_request_props();
             return None;
         }
 
         if parse_layout_updated_signal(message, self.service.raw_address(), &self.menu).is_ok() {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
-            self.schedule_get_layout(queue);
+            self.schedule_get_layout();
             return None;
         }
         if parse_items_properties_updated_signal(message, self.service.raw_address(), &self.menu)
             .is_ok()
         {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
-            self.schedule_get_layout(queue);
+            self.schedule_get_layout();
             return None;
         }
 
         None
     }
 
-    pub(crate) fn trigger(&self, id: i32, queue: &DBusQueue) {
+    pub(crate) fn trigger(&self, id: i32) {
         let timestamp = u32::try_from(chrono::Utc::now().timestamp()).unwrap_or_else(|err| {
             report_and_exit!(target: "Tray", "can't construct u32 from chrono timestamp: {err:?}")
         });
@@ -236,6 +241,6 @@ impl App {
             ],
         };
 
-        queue.push_back(&mut message);
+        self.queue.push_back(&mut message);
     }
 }

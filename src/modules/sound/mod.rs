@@ -18,28 +18,30 @@ pub(crate) struct Sound {
     subscription: Subscription<Resource>,
     healthy: bool,
     events: EventQueue,
+    queue: DBusQueue,
 }
 
 impl Sound {
-    pub(crate) fn new(events: EventQueue) -> Self {
+    pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource),
-            subscription: Subscription::new(Resource),
+            oneshot: Oneshot::new(Resource, queue.clone()),
+            subscription: Subscription::new(Resource, queue.clone()),
             healthy: true,
             events,
+            queue,
         }
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue) {
-        self.oneshot.start(queue, ())
+    pub(crate) fn init(&mut self) {
+        self.oneshot.start(())
     }
 
-    pub(crate) fn on_message(&mut self, queue: &DBusQueue, message: &Message) {
+    pub(crate) fn on_message(&mut self, message: &Message) {
         match self.oneshot.process(message) {
             Ok(Some((volume, muted))) => {
                 self.events.push_back(Event::InitialSound { volume, muted });
                 self.subscription
-                    .start(queue, "org.local.PipewireDBus", "/org/local/PipewireDBus");
+                    .start("org.local.PipewireDBus", "/org/local/PipewireDBus");
 
                 return;
             }
@@ -62,11 +64,11 @@ impl Sound {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: u64, queue: &DBusQueue) {
+    pub(crate) fn tick(&mut self, tick: u64) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
-            self.oneshot = Oneshot::new(Resource);
-            self.oneshot.start(queue, ());
+            self.oneshot = Oneshot::new(Resource, self.queue.clone());
+            self.oneshot.start(());
         }
     }
 }

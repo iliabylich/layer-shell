@@ -84,10 +84,14 @@ impl IO {
             timer: Timer::new(),
 
             session_dbus: Some(SessionDBus::new(session_dbus_queue.clone())),
-            session_dbus_queue,
+            session_dbus_queue: session_dbus_queue.clone(),
+            sound: Sound::new(events.clone(), session_dbus_queue.clone()),
+            control: Control::new(session_dbus_queue.clone()),
+            tray: Tray::new(events.clone(), session_dbus_queue.clone()),
 
             system_dbus: Some(SystemDBus::new(system_dbus_queue.clone())),
-            system_dbus_queue,
+            system_dbus_queue: system_dbus_queue.clone(),
+            network: Network::new(events.clone(), system_dbus_queue.clone()),
 
             location: Some(Location::new()),
             weather: None,
@@ -95,10 +99,6 @@ impl IO {
             hyprland_writer,
             cpu: Some(CPU::new(events.clone())),
             memory: Some(Memory::new(events.clone())),
-            sound: Sound::new(events.clone()),
-            control: Control::new(),
-            network: Network::new(events.clone()),
-            tray: Tray::new(events.clone()),
 
             on_event,
             running: true,
@@ -120,13 +120,13 @@ impl IO {
         schedule_wanted(&mut self.memory);
 
         self.session_dbus_queue.push_back(&mut Hello.into());
-        self.sound.init(&self.session_dbus_queue);
-        self.control.init(&self.session_dbus_queue);
-        self.tray.init(&self.session_dbus_queue);
+        self.sound.init();
+        self.control.init();
+        self.tray.init();
         schedule_wanted(&mut self.session_dbus);
 
         self.system_dbus_queue.push_back(&mut Hello.into());
-        self.network.init(&self.system_dbus_queue);
+        self.network.init();
         schedule_wanted(&mut self.system_dbus);
 
         IoUring::submit_if_dirty();
@@ -191,12 +191,10 @@ impl IO {
                     let Ok(message) = self.session_dbus.satisfy(satisfy, res);
 
                     if let Some(message) = message.flatten() {
-                        self.sound.on_message(&self.session_dbus_queue, &message);
-                        self.tray.on_message(&self.session_dbus_queue, &message);
+                        self.sound.on_message(&message);
+                        self.tray.on_message(&message);
 
-                        if let Some(req) =
-                            self.control.on_message(&message, &self.session_dbus_queue)
-                        {
+                        if let Some(req) = self.control.on_message(&message) {
                             self.on_control_req(req);
                         }
                     }
@@ -208,7 +206,7 @@ impl IO {
                     let Ok(message) = self.system_dbus.satisfy(satisfy, res);
 
                     if let Some(message) = message.flatten() {
-                        self.network.on_message(&self.system_dbus_queue, &message);
+                        self.network.on_message(&message);
                     }
 
                     schedule_wanted(&mut self.system_dbus);
@@ -232,7 +230,8 @@ impl IO {
                     schedule_wanted(&mut self.cpu);
                     self.memory.tick(tick);
                     schedule_wanted(&mut self.memory);
-                    self.sound.tick(tick, &self.session_dbus_queue);
+                    self.sound.tick(tick);
+                    schedule_wanted(&mut self.session_dbus);
                 }
             }
 
@@ -304,7 +303,7 @@ impl IO {
             }
 
             Command::TriggerTray { uuid } => {
-                self.tray.trigger(&uuid, &self.session_dbus_queue);
+                self.tray.trigger(&uuid);
                 schedule_wanted(&mut self.session_dbus);
                 IoUring::submit_if_dirty();
             }

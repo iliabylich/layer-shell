@@ -25,26 +25,28 @@ where
 {
     resource: T,
     state: OneshotState,
+    queue: DBusQueue,
 }
 
 impl<T> Oneshot<T>
 where
     T: OneshotResource,
 {
-    pub(crate) fn new(resource: T) -> Self {
+    pub(crate) fn new(resource: T, queue: DBusQueue) -> Self {
         Self {
             state: OneshotState::None,
             resource,
+            queue,
         }
     }
 
-    pub(crate) fn start(&mut self, queue: &DBusQueue, input: T::Input) {
+    pub(crate) fn start(&mut self, input: T::Input) {
         if !matches!(self.state, OneshotState::None) {
             return;
         };
 
         let mut message = self.resource.make_request(input);
-        queue.push_back(&mut message);
+        self.queue.push_back(&mut message);
         let reply_serial = message.serial();
         self.state = OneshotState::WaitingForReply(reply_serial);
     }

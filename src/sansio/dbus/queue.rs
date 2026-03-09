@@ -1,41 +1,57 @@
 use crate::dbus::{Message, MessageEncoder};
-use std::{
-    cell::{Cell, RefCell},
-    collections::VecDeque,
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct DBusQueue {
-    serial: Cell<u32>,
-    queue: Rc<RefCell<VecDeque<Vec<u8>>>>,
+    inner: Rc<RefCell<Inner>>,
 }
 
 impl DBusQueue {
     pub(crate) fn new() -> Self {
         Self {
-            serial: Cell::new(1),
-            queue: Rc::new(RefCell::new(VecDeque::new())),
+            inner: Rc::new(RefCell::new(Inner::new())),
         }
     }
 
-    pub(crate) fn encode_in_place(&self, message: &mut Message) -> Vec<u8> {
-        let serial = self.serial.get();
+    pub(crate) fn push_back(&self, message: &mut Message) {
+        let mut inner = self.inner.borrow_mut();
+        inner.push_back(message)
+    }
+
+    pub(crate) fn pop_front(&self) -> Option<Vec<u8>> {
+        let mut inner = self.inner.borrow_mut();
+        inner.pop_front()
+    }
+}
+
+struct Inner {
+    serial: u32,
+    q: VecDeque<Vec<u8>>,
+}
+
+impl Inner {
+    fn new() -> Self {
+        Self {
+            serial: 1,
+            q: VecDeque::new(),
+        }
+    }
+
+    fn encode_in_place(&mut self, message: &mut Message) -> Vec<u8> {
+        let serial = self.serial;
+        self.serial += 1;
+
         *message.serial_mut() = serial;
-        self.serial.set(serial + 1);
         let message = MessageEncoder::encode(&message);
         message
     }
 
-    pub(crate) fn push_back(&self, message: &mut Message) {
+    fn push_back(&mut self, message: &mut Message) {
         let message = self.encode_in_place(message);
-
-        let mut q = self.queue.borrow_mut();
-        q.push_back(message);
+        self.q.push_back(message);
     }
 
-    pub(crate) fn pop_front(&self) -> Option<Vec<u8>> {
-        let mut q = self.queue.borrow_mut();
-        q.pop_front()
+    fn pop_front(&mut self) -> Option<Vec<u8>> {
+        self.q.pop_front()
     }
 }

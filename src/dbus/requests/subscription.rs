@@ -25,49 +25,46 @@ where
 {
     path: Option<String>,
     resource: S,
+    queue: DBusQueue,
 }
 
 impl<S> Subscription<S>
 where
     S: SubscriptionResource,
 {
-    pub(crate) fn new(resource: S) -> Self {
+    pub(crate) fn new(resource: S, queue: DBusQueue) -> Self {
         Self {
             path: None,
             resource,
+            queue,
         }
     }
 
-    fn unsubscribe(&mut self, queue: &DBusQueue) {
+    fn unsubscribe(&mut self) {
         let Some(old_path) = self.path.take() else {
             return;
         };
 
         let mut message: Message = RemoveMatch::new(&old_path).into();
-        queue.push_back(&mut message);
+        self.queue.push_back(&mut message);
     }
 
-    fn subscribe(&mut self, queue: &DBusQueue, sender: impl AsRef<str>, path: impl AsRef<str>) {
+    fn subscribe(&mut self, sender: impl AsRef<str>, path: impl AsRef<str>) {
         let sender = sender.as_ref();
         let path = path.as_ref();
         let mut message: Message = AddMatch::new(sender, path).into();
-        queue.push_back(&mut message);
+        self.queue.push_back(&mut message);
         self.path = Some(path.to_string());
         self.resource.set_path(path.to_string());
     }
 
-    pub(crate) fn start(
-        &mut self,
-        queue: &DBusQueue,
-        sender: impl AsRef<str>,
-        path: impl AsRef<str>,
-    ) {
-        self.unsubscribe(queue);
-        self.subscribe(queue, sender, path);
+    pub(crate) fn start(&mut self, sender: impl AsRef<str>, path: impl AsRef<str>) {
+        self.unsubscribe();
+        self.subscribe(sender, path);
     }
 
-    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
-        self.unsubscribe(queue)
+    pub(crate) fn reset(&mut self) {
+        self.unsubscribe()
     }
 
     fn try_process(&self, message: &Message) -> Result<S::Output> {

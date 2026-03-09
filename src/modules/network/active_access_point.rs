@@ -29,22 +29,22 @@ impl From<String> for ActiveAccessPointEvent {
 }
 
 impl ActiveAccessPoint {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource),
-            subscription: Subscription::new(Resource),
+            oneshot: Oneshot::new(Resource, queue.clone()),
+            subscription: Subscription::new(Resource, queue.clone()),
         }
     }
 
-    pub(crate) fn reset(&mut self, queue: &DBusQueue) {
-        self.subscription.reset(queue);
+    pub(crate) fn reset(&mut self) {
+        self.subscription.reset();
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, queue: &DBusQueue, path: &str) {
+    pub(crate) fn init(&mut self, path: &str) {
         self.subscription
-            .start(queue, "org.freedesktop.NetworkManager", path);
-        self.oneshot.start(queue, path.to_string());
+            .start("org.freedesktop.NetworkManager", path);
+        self.oneshot.start(path.to_string());
     }
 
     pub(crate) fn on_message(&mut self, message: &Message) -> Option<ActiveAccessPointEvent> {
