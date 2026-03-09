@@ -17,7 +17,7 @@ pub(crate) struct Location {
 
 impl Module for Location {
     type Input = ();
-    type Output = (f64, f64);
+    type Output = Option<(f64, f64)>;
     type Error = anyhow::Error;
     const MODULE_ID: ModuleId = ModuleId::GeoLocation;
 
@@ -36,7 +36,7 @@ impl Module for Location {
         satisfy: Satisfy,
         res: i32,
         _events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Self::Output, Self::Error> {
         let Some(response) = self.https.satisfy(satisfy, res)? else {
             return Ok(None);
         };

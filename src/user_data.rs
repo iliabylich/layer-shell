@@ -17,10 +17,10 @@ pub(crate) enum ModuleId {
     #[expect(clippy::upper_case_acronyms)]
     CPU,
     Memory,
-    TimerFD,
+    Timer,
 }
 
-const MAX: ModuleId = ModuleId::TimerFD;
+const MAX: ModuleId = ModuleId::Timer;
 
 impl From<ModuleId> for u8 {
     fn from(value: ModuleId) -> Self {

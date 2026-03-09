@@ -1,46 +1,47 @@
 use crate::{
-    liburing::IoUring,
     macros::report_and_exit,
+    modules::Module,
     sansio::{Satisfy, TimerFd, Wants},
-    user_data::{ModuleId, UserData},
+    user_data::ModuleId,
 };
+use anyhow::Result;
+use std::convert::Infallible;
 
 pub(crate) struct Timer {
     timerfd: TimerFd,
 }
 
-impl Timer {
-    pub(crate) fn new() -> Box<Self> {
-        Box::new(Self {
+impl Module for Timer {
+    type Input = ();
+    type Output = u64;
+    type Error = Infallible;
+
+    const MODULE_ID: ModuleId = ModuleId::Timer;
+
+    fn new((): Self::Input) -> Self {
+        Self {
             timerfd: TimerFd::new(),
-        })
-    }
-
-    fn schedule_read(&mut self) {
-        match self.timerfd.wants() {
-            Wants::Read { fd, buf, len } => {
-                let mut sqe = IoUring::get_sqe();
-                sqe.prep_read(fd, buf, len);
-                sqe.set_user_data(UserData::new(ModuleId::TimerFD, Satisfy::Read));
-            }
-
-            _ => unreachable!(),
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.schedule_read();
+    fn wants(&mut self) -> Wants {
+        self.timerfd.wants()
     }
 
-    pub(crate) fn process(&mut self, op: u8, res: i32) -> u64 {
-        let satisfy = Satisfy::from(op);
-
+    fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+        _events: &mut Vec<crate::Event>,
+    ) -> Result<Self::Output, Self::Error> {
         let tick = self
             .timerfd
             .satisfy(satisfy, res)
             .unwrap_or_else(|err| report_and_exit!("{err:?}"));
+        Ok(tick)
+    }
 
-        self.schedule_read();
-        tick
+    fn tick(&mut self, _tick: u64) {
+        unreachable!("timer procudes ticks, but doesn't consume")
     }
 }

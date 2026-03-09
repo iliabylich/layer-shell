@@ -52,7 +52,7 @@ pub(crate) trait Module {
         satisfy: Satisfy,
         res: i32,
         events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error>;
+    ) -> Result<Self::Output, Self::Error>;
     fn tick(&mut self, tick: u64);
 }
 
@@ -61,7 +61,7 @@ where
     T: Module,
 {
     type Input = T::Input;
-    type Output = T::Output;
+    type Output = Option<T::Output>;
     type Error = Infallible;
 
     const MODULE_ID: ModuleId = T::MODULE_ID;
@@ -83,13 +83,13 @@ where
         satisfy: Satisfy,
         res: i32,
         events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Option<T::Output>, Self::Error> {
         let Some(inner) = self else {
             return Ok(None);
         };
 
         match inner.satisfy(satisfy, res, events) {
-            Ok(out) => Ok(out),
+            Ok(out) => Ok(Some(out)),
             Err(err) => {
                 log::error!("Module {:?} has crashed: {err:?}", Self::MODULE_ID);
                 *self = None;

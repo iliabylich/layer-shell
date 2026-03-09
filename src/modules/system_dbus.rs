@@ -14,7 +14,7 @@ pub(crate) struct SystemDBus {
 
 impl Module for SystemDBus {
     type Input = DBusQueue;
-    type Output = Message<'static>;
+    type Output = Option<Message<'static>>;
     type Error = anyhow::Error;
 
     const MODULE_ID: ModuleId = ModuleId::SystemDBus;
@@ -36,7 +36,7 @@ impl Module for SystemDBus {
         satisfy: Satisfy,
         res: i32,
         _events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Self::Output, Self::Error> {
         let Some(buf) = self.conn.satisfy(satisfy, res)? else {
             return Ok(None);
         };

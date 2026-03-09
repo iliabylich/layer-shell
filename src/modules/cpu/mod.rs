@@ -40,9 +40,9 @@ impl Module for CPU {
         satisfy: Satisfy,
         res: i32,
         events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Self::Output, Self::Error> {
         let Some(buf) = self.reader.satisfy(satisfy, res)? else {
-            return Ok(None);
+            return Ok(());
         };
         let s = std::str::from_utf8(buf).context("decoding error")?;
         let data = Parser::parse_all(s).context("parse error")?;
@@ -52,7 +52,7 @@ impl Module for CPU {
             usage_per_core: usage_per_core.into(),
         };
         events.push(event);
-        Ok(None)
+        Ok(())
     }
 
     fn tick(&mut self, _tick: u64) {

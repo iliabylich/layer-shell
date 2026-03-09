@@ -39,9 +39,9 @@ impl Module for HyprlandReader {
         satisfy: Satisfy,
         res: i32,
         events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Self::Output, Self::Error> {
         let Some((buf, len)) = self.socket_reader.satisfy(satisfy, res)? else {
-            return Ok(None);
+            return Ok(());
         };
 
         let s = std::str::from_utf8(&buf[..len]).context("decoding error")?;
@@ -55,7 +55,7 @@ impl Module for HyprlandReader {
                 events.push(event);
             }
         }
-        Ok(None)
+        Ok(())
     }
 
     fn tick(&mut self, _tick: u64) {}

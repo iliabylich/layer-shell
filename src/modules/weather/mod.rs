@@ -64,14 +64,14 @@ impl Module for Weather {
         satisfy: Satisfy,
         res: i32,
         events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Self::Output, Self::Error> {
         let Some(response) = self.https.satisfy(satisfy, res)? else {
-            return Ok(None);
+            return Ok(());
         };
         let response = WeatherResponse::parse(response)?;
         let event = Event::try_from(response)?;
         events.push(event);
-        Ok(Some(()))
+        Ok(())
     }
 
     fn tick(&mut self, tick: u64) {

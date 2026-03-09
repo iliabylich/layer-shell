@@ -35,15 +35,15 @@ impl Module for Memory {
         satisfy: Satisfy,
         res: i32,
         events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Self::Output, Self::Error> {
         let Some(buf) = self.reader.satisfy(satisfy, res)? else {
-            return Ok(None);
+            return Ok(());
         };
         let s = std::str::from_utf8(buf).context("decoding error")?;
         let (used, total) = Parser::parse(s).context("parse error")?;
 
         events.push(Event::Memory { used, total });
-        Ok(None)
+        Ok(())
     }
 
     fn tick(&mut self, _tick: u64) {

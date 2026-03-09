@@ -84,13 +84,13 @@ impl Module for HyprlandWriter {
         satisfy: Satisfy,
         res: i32,
         events: &mut Vec<Event>,
-    ) -> Result<Option<Self::Output>, Self::Error> {
+    ) -> Result<Self::Output, Self::Error> {
         let Some((socket_writer, resource)) = &mut self.current else {
-            return Ok(None);
+            return Ok(());
         };
 
         let Some(buf) = socket_writer.satisfy(satisfy, res)? else {
-            return Ok(None);
+            return Ok(());
         };
 
         let json = std::str::from_utf8(buf).context("decoding error")?;
@@ -105,7 +105,7 @@ impl Module for HyprlandWriter {
         }
 
         let Some(diff) = diff else {
-            return Ok(None);
+            return Ok(());
         };
 
         let mut state = self.state.borrow_mut();
@@ -113,7 +113,7 @@ impl Module for HyprlandWriter {
             events.push(event);
         }
 
-        Ok(None)
+        Ok(())
     }
 
     fn tick(&mut self, _tick: u64) {}

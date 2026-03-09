@@ -35,7 +35,7 @@ struct IO {
     config: Config,
     io_config: *const IOConfig,
 
-    timer: Box<Timer>,
+    timer: Timer,
 
     session_dbus: Option<SessionDBus>,
     session_dbus_queue: DBusQueue,
@@ -76,7 +76,7 @@ impl IO {
             config,
             io_config,
 
-            timer: Timer::new(),
+            timer: Timer::new(()),
 
             session_dbus: Some(SessionDBus::new(session_dbus_queue.clone())),
             session_dbus_queue,
@@ -106,7 +106,7 @@ impl IO {
     }
 
     fn init(&mut self) {
-        self.timer.init();
+        schedule_wanted(&mut self.timer);
 
         schedule_wanted(&mut self.location);
         schedule_wanted(&mut self.hyprland_reader);
@@ -160,7 +160,7 @@ impl IO {
                 ModuleId::GeoLocation => {
                     let Ok(latlng) = self.location.satisfy(satisfy, res, &mut events);
                     schedule_wanted(&mut self.location);
-                    if let Some((lat, lng)) = latlng {
+                    if let Some((lat, lng)) = latlng.flatten() {
                         self.weather = Some(Weather::new((lat, lng)));
                         schedule_wanted(&mut self.weather);
                     }
@@ -183,7 +183,7 @@ impl IO {
                 ModuleId::SessionDBus => {
                     let Ok(message) = self.session_dbus.satisfy(satisfy, res, &mut events);
 
-                    if let Some(message) = message {
+                    if let Some(message) = message.flatten() {
                         self.sound
                             .on_message(&self.session_dbus_queue, &message, &mut events);
                         self.tray
@@ -202,7 +202,7 @@ impl IO {
                 ModuleId::SystemDBus => {
                     let Ok(message) = self.system_dbus.satisfy(satisfy, res, &mut events);
 
-                    if let Some(message) = message {
+                    if let Some(message) = message.flatten() {
                         self.network
                             .on_message(&self.system_dbus_queue, &message, &mut events);
                     }
@@ -218,8 +218,10 @@ impl IO {
                     let Ok(_) = self.memory.satisfy(satisfy, res, &mut events);
                     schedule_wanted(&mut self.memory);
                 }
-                ModuleId::TimerFD => {
-                    let tick = self.timer.process(op, res);
+                ModuleId::Timer => {
+                    let Ok(tick) = self.timer.satisfy(satisfy, res, &mut events);
+                    schedule_wanted(&mut self.timer);
+
                     Clock::tick(&mut events);
                     self.weather.tick(tick);
                     self.cpu.tick(tick);
