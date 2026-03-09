@@ -2,6 +2,7 @@ mod command;
 mod config;
 mod dbus;
 mod event;
+mod event_queue;
 mod ffi;
 mod liburing;
 mod logger;
@@ -19,6 +20,7 @@ pub use ffi::{FFIArray, FFIString};
 
 use crate::{
     dbus::messages::org_freedesktop_dbus::Hello,
+    event_queue::EventQueue,
     liburing::IoUring,
     logger::Logger,
     macros::report_and_exit,
@@ -34,6 +36,7 @@ use crate::{
 struct IO {
     config: Config,
     io_config: *const IOConfig,
+    events: EventQueue,
 
     timer: Timer,
 
@@ -66,8 +69,9 @@ impl IO {
     fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Self {
         let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
+        let events = EventQueue::new();
 
-        let (hyprland_reader, hyprland_writer) = Hyprland::connect();
+        let (hyprland_reader, hyprland_writer) = Hyprland::connect(events.clone());
 
         let session_dbus_queue = DBusQueue::new();
         let system_dbus_queue = DBusQueue::new();
@@ -75,8 +79,9 @@ impl IO {
         let mut this = Self {
             config,
             io_config,
+            events: events.clone(),
 
-            timer: Timer::new(()),
+            timer: Timer::new(),
 
             session_dbus: Some(SessionDBus::new(session_dbus_queue.clone())),
             session_dbus_queue,
@@ -84,16 +89,16 @@ impl IO {
             system_dbus: Some(SystemDBus::new(system_dbus_queue.clone())),
             system_dbus_queue,
 
-            location: Some(Location::new(())),
+            location: Some(Location::new()),
             weather: None,
             hyprland_reader,
             hyprland_writer,
-            cpu: Some(CPU::new(())),
-            memory: Some(Memory::new(())),
-            sound: Sound::new(),
+            cpu: Some(CPU::new(events.clone())),
+            memory: Some(Memory::new(events.clone())),
+            sound: Sound::new(events.clone()),
             control: Control::new(),
-            network: Network::new(),
-            tray: Tray::new(),
+            network: Network::new(events.clone()),
+            tray: Tray::new(events.clone()),
 
             on_event,
             running: true,
@@ -127,7 +132,7 @@ impl IO {
         IoUring::submit_if_dirty();
     }
 
-    fn on_control_req(&mut self, req: ControlRequest, events: &mut Vec<Event>) {
+    fn on_control_req(&mut self, req: ControlRequest) {
         match req {
             ControlRequest::CapsLockToggled => {
                 if let Some(hyprland_writer) = &mut self.hyprland_writer {
@@ -136,9 +141,11 @@ impl IO {
                 }
                 IoUring::submit_if_dirty();
             }
-            ControlRequest::Exit => events.push(Event::Exit),
-            ControlRequest::ReloadStyles => events.push(Event::ReloadStyles),
-            ControlRequest::ToggleSessionScreen => events.push(Event::ToggleSessionScreen),
+            ControlRequest::Exit => self.events.push_back(Event::Exit),
+            ControlRequest::ReloadStyles => self.events.push_back(Event::ReloadStyles),
+            ControlRequest::ToggleSessionScreen => {
+                self.events.push_back(Event::ToggleSessionScreen)
+            }
         }
     }
 
@@ -158,41 +165,39 @@ impl IO {
 
             match module_id {
                 ModuleId::GeoLocation => {
-                    let Ok(latlng) = self.location.satisfy(satisfy, res, &mut events);
+                    let Ok(latlng) = self.location.satisfy(satisfy, res);
                     schedule_wanted(&mut self.location);
                     if let Some((lat, lng)) = latlng.flatten() {
-                        self.weather = Some(Weather::new((lat, lng)));
+                        self.weather = Some(Weather::new(lat, lng, self.events.clone()));
                         schedule_wanted(&mut self.weather);
                     }
                 }
 
                 ModuleId::Weather => {
-                    let Ok(_) = self.weather.satisfy(satisfy, res, &mut events);
+                    let Ok(_) = self.weather.satisfy(satisfy, res);
                     schedule_wanted(&mut self.weather);
                 }
 
                 ModuleId::HyprlandReader => {
-                    let Ok(_) = self.hyprland_reader.satisfy(satisfy, res, &mut events);
+                    let Ok(_) = self.hyprland_reader.satisfy(satisfy, res);
                     schedule_wanted(&mut self.hyprland_reader);
                 }
                 ModuleId::HyprlandWriter => {
-                    let Ok(_) = self.hyprland_writer.satisfy(satisfy, res, &mut events);
+                    let Ok(_) = self.hyprland_writer.satisfy(satisfy, res);
                     schedule_wanted(&mut self.hyprland_writer);
                 }
 
                 ModuleId::SessionDBus => {
-                    let Ok(message) = self.session_dbus.satisfy(satisfy, res, &mut events);
+                    let Ok(message) = self.session_dbus.satisfy(satisfy, res);
 
                     if let Some(message) = message.flatten() {
-                        self.sound
-                            .on_message(&self.session_dbus_queue, &message, &mut events);
-                        self.tray
-                            .on_message(&self.session_dbus_queue, &message, &mut events);
+                        self.sound.on_message(&self.session_dbus_queue, &message);
+                        self.tray.on_message(&self.session_dbus_queue, &message);
 
                         if let Some(req) =
                             self.control.on_message(&message, &self.session_dbus_queue)
                         {
-                            self.on_control_req(req, &mut events);
+                            self.on_control_req(req);
                         }
                     }
 
@@ -200,26 +205,25 @@ impl IO {
                 }
 
                 ModuleId::SystemDBus => {
-                    let Ok(message) = self.system_dbus.satisfy(satisfy, res, &mut events);
+                    let Ok(message) = self.system_dbus.satisfy(satisfy, res);
 
                     if let Some(message) = message.flatten() {
-                        self.network
-                            .on_message(&self.system_dbus_queue, &message, &mut events);
+                        self.network.on_message(&self.system_dbus_queue, &message);
                     }
 
                     schedule_wanted(&mut self.system_dbus);
                 }
 
                 ModuleId::CPU => {
-                    let Ok(_) = self.cpu.satisfy(satisfy, res, &mut events);
+                    let Ok(_) = self.cpu.satisfy(satisfy, res);
                     schedule_wanted(&mut self.cpu);
                 }
                 ModuleId::Memory => {
-                    let Ok(_) = self.memory.satisfy(satisfy, res, &mut events);
+                    let Ok(_) = self.memory.satisfy(satisfy, res);
                     schedule_wanted(&mut self.memory);
                 }
                 ModuleId::Timer => {
-                    let Ok(tick) = self.timer.satisfy(satisfy, res, &mut events);
+                    let Ok(tick) = self.timer.satisfy(satisfy, res);
                     schedule_wanted(&mut self.timer);
 
                     Clock::tick(&mut events);
@@ -238,6 +242,13 @@ impl IO {
         IoUring::submit_if_dirty();
 
         for event in events {
+            if self.logging_enabled {
+                log::info!(target: "IO", "{event:?}");
+            }
+            (self.on_event)(&event);
+        }
+
+        while let Some(event) = self.events.pop_front() {
             if self.logging_enabled {
                 log::info!(target: "IO", "{event:?}");
             }
@@ -294,6 +305,7 @@ impl IO {
 
             Command::TriggerTray { uuid } => {
                 self.tray.trigger(&uuid, &self.session_dbus_queue);
+                schedule_wanted(&mut self.session_dbus);
                 IoUring::submit_if_dirty();
             }
         }

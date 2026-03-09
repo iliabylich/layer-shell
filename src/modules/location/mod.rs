@@ -1,5 +1,4 @@
 use crate::{
-    Event,
     modules::Module,
     sansio::{Https, HttpsRequest, Satisfy, Wants},
     user_data::ModuleId,
@@ -15,28 +14,24 @@ pub(crate) struct Location {
     https: Https,
 }
 
-impl Module for Location {
-    type Input = ();
-    type Output = Option<(f64, f64)>;
-    type Error = anyhow::Error;
-    const MODULE_ID: ModuleId = ModuleId::GeoLocation;
-
-    fn new(_: ()) -> Self {
+impl Location {
+    pub(crate) fn new() -> Self {
         Self {
             https: Https::new(HttpsRequest::get(HOST, "/")),
         }
     }
+}
+
+impl Module for Location {
+    type Output = Option<(f64, f64)>;
+    type Error = anyhow::Error;
+    const MODULE_ID: ModuleId = ModuleId::GeoLocation;
 
     fn wants(&mut self) -> Wants {
         self.https.wants()
     }
 
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        _events: &mut Vec<Event>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
         let Some(response) = self.https.satisfy(satisfy, res)? else {
             return Ok(None);
         };

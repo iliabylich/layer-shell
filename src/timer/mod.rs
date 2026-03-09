@@ -11,29 +11,25 @@ pub(crate) struct Timer {
     timerfd: TimerFd,
 }
 
+impl Timer {
+    pub(crate) fn new() -> Self {
+        Self {
+            timerfd: TimerFd::new(),
+        }
+    }
+}
+
 impl Module for Timer {
-    type Input = ();
     type Output = u64;
     type Error = Infallible;
 
     const MODULE_ID: ModuleId = ModuleId::Timer;
 
-    fn new((): Self::Input) -> Self {
-        Self {
-            timerfd: TimerFd::new(),
-        }
-    }
-
     fn wants(&mut self) -> Wants {
         self.timerfd.wants()
     }
 
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        _events: &mut Vec<crate::Event>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
         let tick = self
             .timerfd
             .satisfy(satisfy, res)

@@ -8,6 +8,7 @@ use crate::{
         },
         types::{CompleteType, Value},
     },
+    event_queue::EventQueue,
     sansio::DBusQueue,
 };
 use anyhow::{Context as _, Result};
@@ -16,14 +17,16 @@ pub(crate) struct Sound {
     oneshot: Oneshot<Resource>,
     subscription: Subscription<Resource>,
     healthy: bool,
+    events: EventQueue,
 }
 
 impl Sound {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(events: EventQueue) -> Self {
         Self {
             oneshot: Oneshot::new(Resource),
             subscription: Subscription::new(Resource),
             healthy: true,
+            events,
         }
     }
 
@@ -31,15 +34,10 @@ impl Sound {
         self.oneshot.start(queue, ())
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        queue: &DBusQueue,
-        message: &Message,
-        events: &mut Vec<Event>,
-    ) {
+    pub(crate) fn on_message(&mut self, queue: &DBusQueue, message: &Message) {
         match self.oneshot.process(message) {
             Ok(Some((volume, muted))) => {
-                events.push(Event::InitialSound { volume, muted });
+                self.events.push_back(Event::InitialSound { volume, muted });
                 self.subscription
                     .start(queue, "org.local.PipewireDBus", "/org/local/PipewireDBus");
 
@@ -55,11 +53,11 @@ impl Sound {
 
         if let Some((volume, muted)) = self.subscription.process(message) {
             if let Some(volume) = volume {
-                events.push(Event::VolumeChanged { volume });
+                self.events.push_back(Event::VolumeChanged { volume });
             }
 
             if let Some(muted) = muted {
-                events.push(Event::MuteChanged { muted });
+                self.events.push_back(Event::MuteChanged { muted });
             }
         }
     }

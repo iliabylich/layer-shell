@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    event_queue::EventQueue,
     modules::{
         Module,
         hyprland::state::{HyprlandDiff, HyprlandState},
@@ -14,32 +14,34 @@ use std::{cell::RefCell, rc::Rc};
 pub(crate) struct HyprlandReader {
     socket_reader: UnixSocketReader,
     state: Rc<RefCell<HyprlandState>>,
+    events: EventQueue,
+}
+
+impl HyprlandReader {
+    pub(crate) fn new(
+        addr: sockaddr_un,
+        state: Rc<RefCell<HyprlandState>>,
+        events: EventQueue,
+    ) -> Self {
+        Self {
+            socket_reader: UnixSocketReader::new(addr),
+            state,
+            events,
+        }
+    }
 }
 
 impl Module for HyprlandReader {
-    type Input = (sockaddr_un, Rc<RefCell<HyprlandState>>);
     type Output = ();
     type Error = anyhow::Error;
 
     const MODULE_ID: ModuleId = ModuleId::HyprlandReader;
 
-    fn new((addr, state): Self::Input) -> Self {
-        Self {
-            socket_reader: UnixSocketReader::new(addr),
-            state,
-        }
-    }
-
     fn wants(&mut self) -> Wants {
         self.socket_reader.wants()
     }
 
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
         let Some((buf, len)) = self.socket_reader.satisfy(satisfy, res)? else {
             return Ok(());
         };
@@ -52,7 +54,7 @@ impl Module for HyprlandReader {
                 continue;
             };
             if let Some(event) = state.apply(diff) {
-                events.push(event);
+                self.events.push_back(event);
             }
         }
         Ok(())

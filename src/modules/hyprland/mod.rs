@@ -3,7 +3,7 @@ pub(crate) use writer::HyprlandWriter;
 
 pub use state::HyprlandWorkspace;
 
-use crate::{modules::Module, unix_socket::new_unix_socket};
+use crate::{event_queue::EventQueue, unix_socket::new_unix_socket};
 use state::HyprlandState;
 use std::{cell::RefCell, rc::Rc};
 
@@ -15,7 +15,7 @@ mod writer;
 pub(crate) struct Hyprland;
 
 impl Hyprland {
-    pub(crate) fn connect() -> (Option<HyprlandReader>, Option<HyprlandWriter>) {
+    pub(crate) fn connect(events: EventQueue) -> (Option<HyprlandReader>, Option<HyprlandWriter>) {
         let xdg_runtime_dir = match std::env::var("XDG_RUNTIME_DIR") {
             Ok(var) => var,
             Err(err) => {
@@ -44,8 +44,16 @@ impl Hyprland {
         let state = Rc::new(RefCell::new(HyprlandState::empty()));
 
         (
-            Some(HyprlandReader::new((reader_addr, Rc::clone(&state)))),
-            Some(HyprlandWriter::new((writer_addr, Rc::clone(&state)))),
+            Some(HyprlandReader::new(
+                reader_addr,
+                Rc::clone(&state),
+                events.clone(),
+            )),
+            Some(HyprlandWriter::new(
+                writer_addr,
+                Rc::clone(&state),
+                events.clone(),
+            )),
         )
     }
 }

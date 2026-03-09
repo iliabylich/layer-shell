@@ -1,4 +1,4 @@
-use crate::{Event, dbus::Message, sansio::DBusQueue};
+use crate::{Event, dbus::Message, event_queue::EventQueue, sansio::DBusQueue};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -22,10 +22,11 @@ pub(crate) struct Network {
     tx_rx: TxRx,
     speed: Speed,
     ssid_and_strength: SsidAndStrength,
+    events: EventQueue,
 }
 
 impl Network {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(events: EventQueue) -> Self {
         Self {
             wireless_connection: WirelessConnection::new(),
             primary_device: PrimaryDevice::new(),
@@ -33,6 +34,7 @@ impl Network {
             tx_rx: TxRx::new(),
             speed: Speed::new(),
             ssid_and_strength: SsidAndStrength::new(),
+            events,
         }
     }
 
@@ -77,36 +79,31 @@ impl Network {
         }
     }
 
-    fn on_tx_rx_event(&mut self, e: TxRxEvent, events: &mut Vec<Event>) {
+    fn on_tx_rx_event(&mut self, e: TxRxEvent) {
         if let Some(tx) = e.tx {
             let event = self.speed.update_tx(tx);
-            events.push(event);
+            self.events.push_back(event);
         }
 
         if let Some(rx) = e.rx {
             let event = self.speed.update_rx(rx);
-            events.push(event);
+            self.events.push_back(event);
         }
     }
 
-    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent, events: &mut Vec<Event>) {
+    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
         if let Some(ssid) = e.ssid {
             let event = Event::NetworkSsid { ssid: ssid.into() };
-            events.push(event)
+            self.events.push_back(event)
         }
 
         if let Some(strength) = e.strength {
             let event = Event::NetworkStrength { strength };
-            events.push(event)
+            self.events.push_back(event)
         }
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        queue: &DBusQueue,
-        message: &Message,
-        events: &mut Vec<Event>,
-    ) {
+    pub(crate) fn on_message(&mut self, queue: &DBusQueue, message: &Message) {
         if let Some(e) = self.wireless_connection.on_message(queue, message) {
             self.on_wireless_connection_event(queue, e);
             return;
@@ -123,12 +120,12 @@ impl Network {
         }
 
         if let Some(e) = self.tx_rx.on_message(message) {
-            self.on_tx_rx_event(e, events);
+            self.on_tx_rx_event(e);
             return;
         }
 
         if let Some(e) = self.ssid_and_strength.on_message(message) {
-            self.on_ssid_and_strength_event(e, events);
+            self.on_ssid_and_strength_event(e);
         }
     }
 }

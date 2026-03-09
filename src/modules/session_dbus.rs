@@ -1,5 +1,4 @@
 use crate::{
-    Event,
     dbus::{Message, MessageDecoder},
     macros::report_and_exit,
     modules::Module,
@@ -13,22 +12,16 @@ pub(crate) struct SessionDBus {
     conn: DBusConnection,
 }
 
-fn socket_path() -> Result<String> {
-    let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
-    let (_, path) = address
-        .split_once("=")
-        .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
-    Ok(path.to_string())
-}
+impl SessionDBus {
+    pub(crate) fn new(queue: DBusQueue) -> Self {
+        fn socket_path() -> Result<String> {
+            let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
+            let (_, path) = address
+                .split_once("=")
+                .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
+            Ok(path.to_string())
+        }
 
-impl Module for SessionDBus {
-    type Input = DBusQueue;
-    type Output = Option<Message<'static>>;
-    type Error = anyhow::Error;
-
-    const MODULE_ID: ModuleId = ModuleId::SessionDBus;
-
-    fn new(queue: DBusQueue) -> Self {
         let socket_path = socket_path().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let addr = new_unix_socket(socket_path.as_bytes());
 
@@ -36,17 +29,19 @@ impl Module for SessionDBus {
             conn: DBusConnection::new(addr, queue),
         }
     }
+}
+
+impl Module for SessionDBus {
+    type Output = Option<Message<'static>>;
+    type Error = anyhow::Error;
+
+    const MODULE_ID: ModuleId = ModuleId::SessionDBus;
 
     fn wants(&mut self) -> Wants {
         self.conn.wants()
     }
 
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        _events: &mut Vec<Event>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
         let Some(buf) = self.conn.satisfy(satisfy, res)? else {
             return Ok(None);
         };

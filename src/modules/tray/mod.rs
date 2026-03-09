@@ -1,4 +1,6 @@
-use crate::{Event, dbus::Message, modules::tray::app::TrayEvent, sansio::DBusQueue};
+use crate::{
+    Event, dbus::Message, event_queue::EventQueue, modules::tray::app::TrayEvent, sansio::DBusQueue,
+};
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
 pub use item::TrayItem;
@@ -21,14 +23,16 @@ pub(crate) struct Tray {
     status_notifier_watcher: StatusNotifierWatcher,
     name_lost_or_changed: NameLostOrNameOwnerChanged,
     registry: HashMap<Service, App>,
+    events: EventQueue,
 }
 
 impl Tray {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(events: EventQueue) -> Self {
         Self {
             status_notifier_watcher: StatusNotifierWatcher::new(),
             name_lost_or_changed: NameLostOrNameOwnerChanged::new(),
             registry: HashMap::new(),
+            events,
         }
     }
 
@@ -37,12 +41,7 @@ impl Tray {
         self.name_lost_or_changed.init(queue);
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        queue: &DBusQueue,
-        message: &Message,
-        events: &mut Vec<Event>,
-    ) {
+    pub(crate) fn on_message(&mut self, queue: &DBusQueue, message: &Message) {
         if let Some(service) = self.status_notifier_watcher.on_message(queue, message) {
             log::info!(target: "Tray", "Added {service:?}");
             let mut tray_app = App::new(service.clone());
@@ -67,7 +66,7 @@ impl Tray {
 
             log::info!(target: "Tray", "Removed {address}");
             tray_app.reset(queue);
-            events.push(Event::TrayAppRemoved {
+            self.events.push_back(Event::TrayAppRemoved {
                 service: address.into(),
             })
         }
@@ -88,7 +87,7 @@ impl Tray {
                         items: layout.into(),
                     },
                 };
-                events.push(event);
+                self.events.push_back(event);
             }
         }
     }

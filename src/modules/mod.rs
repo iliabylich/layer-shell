@@ -29,7 +29,6 @@ pub use tray::{TrayIcon, TrayIconPixmap, TrayItem};
 pub use weather::{WeatherCode, WeatherOnDay, WeatherOnHour};
 
 use crate::{
-    Event,
     sansio::{Satisfy, Wants},
     user_data::ModuleId,
 };
@@ -37,22 +36,13 @@ use anyhow::Result;
 use std::convert::Infallible;
 
 pub(crate) trait Module {
-    type Input;
     type Output;
     type Error: std::fmt::Debug;
 
     const MODULE_ID: ModuleId;
 
-    fn new(input: Self::Input) -> Self
-    where
-        Self: Sized;
     fn wants(&mut self) -> Wants;
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<Self::Output, Self::Error>;
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error>;
     fn tick(&mut self, tick: u64);
 }
 
@@ -60,15 +50,10 @@ impl<T> Module for Option<T>
 where
     T: Module,
 {
-    type Input = T::Input;
     type Output = Option<T::Output>;
     type Error = Infallible;
 
     const MODULE_ID: ModuleId = T::MODULE_ID;
-
-    fn new(input: Self::Input) -> Self {
-        Some(T::new(input))
-    }
 
     fn wants(&mut self) -> Wants {
         let Some(inner) = self else {
@@ -78,17 +63,12 @@ where
         inner.wants()
     }
 
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<Option<T::Output>, Self::Error> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<T::Output>, Self::Error> {
         let Some(inner) = self else {
             return Ok(None);
         };
 
-        match inner.satisfy(satisfy, res, events) {
+        match inner.satisfy(satisfy, res) {
             Ok(out) => Ok(Some(out)),
             Err(err) => {
                 log::error!("Module {:?} has crashed: {err:?}", Self::MODULE_ID);

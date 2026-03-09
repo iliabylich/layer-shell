@@ -1,5 +1,6 @@
 use crate::{
     Event,
+    event_queue::EventQueue,
     modules::Module,
     sansio::{FileReader, Satisfy, Wants},
     user_data::ModuleId,
@@ -15,32 +16,30 @@ mod store;
 pub(crate) struct CPU {
     reader: FileReader,
     store: Store,
+    events: EventQueue,
+}
+
+impl CPU {
+    pub(crate) fn new(events: EventQueue) -> Self {
+        Self {
+            reader: FileReader::new(c"/proc/stat"),
+            store: Store::new(),
+            events,
+        }
+    }
 }
 
 impl Module for CPU {
-    type Input = ();
     type Output = ();
     type Error = anyhow::Error;
 
     const MODULE_ID: ModuleId = ModuleId::CPU;
 
-    fn new((): Self::Input) -> Self {
-        Self {
-            reader: FileReader::new(c"/proc/stat"),
-            store: Store::new(),
-        }
-    }
-
     fn wants(&mut self) -> Wants {
         self.reader.wants()
     }
 
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
         let Some(buf) = self.reader.satisfy(satisfy, res)? else {
             return Ok(());
         };
@@ -51,7 +50,7 @@ impl Module for CPU {
         let event = Event::CpuUsage {
             usage_per_core: usage_per_core.into(),
         };
-        events.push(event);
+        self.events.push_back(event);
         Ok(())
     }
 

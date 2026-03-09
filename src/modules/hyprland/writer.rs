@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    event_queue::EventQueue,
     modules::{
         Module,
         hyprland::{
@@ -22,9 +22,34 @@ pub(crate) struct HyprlandWriter {
     queue: VecDeque<Box<dyn WriterResource>>,
     addr: sockaddr_un,
     state: Rc<RefCell<HyprlandState>>,
+    events: EventQueue,
 }
 
 impl HyprlandWriter {
+    pub(crate) fn new(
+        addr: sockaddr_un,
+        state: Rc<RefCell<HyprlandState>>,
+        events: EventQueue,
+    ) -> Self {
+        let mut queue: VecDeque<Box<dyn WriterResource>> = VecDeque::new();
+
+        queue.push_back(Box::new(ActiveWorkspaceResource));
+        queue.push_back(Box::new(DevicesResource));
+
+        let resource = Box::new(WorkspacesResource);
+
+        Self {
+            current: Some((
+                UnixSocketOneshotWriter::new(addr, resource.command().as_ref()),
+                resource,
+            )),
+            queue,
+            addr,
+            state,
+            events,
+        }
+    }
+
     fn enqueue(&mut self, resource: Box<dyn WriterResource>) {
         if self.current.is_none() {
             self.current = Some((
@@ -46,30 +71,10 @@ impl HyprlandWriter {
 }
 
 impl Module for HyprlandWriter {
-    type Input = (sockaddr_un, Rc<RefCell<HyprlandState>>);
     type Output = ();
     type Error = anyhow::Error;
 
     const MODULE_ID: ModuleId = ModuleId::HyprlandWriter;
-
-    fn new((addr, state): Self::Input) -> Self {
-        let mut queue: VecDeque<Box<dyn WriterResource>> = VecDeque::new();
-
-        queue.push_back(Box::new(ActiveWorkspaceResource));
-        queue.push_back(Box::new(DevicesResource));
-
-        let resource = Box::new(WorkspacesResource);
-
-        Self {
-            current: Some((
-                UnixSocketOneshotWriter::new(addr, resource.command().as_ref()),
-                resource,
-            )),
-            queue,
-            addr,
-            state,
-        }
-    }
 
     fn wants(&mut self) -> Wants {
         let Some((socket_writer, _)) = &mut self.current else {
@@ -79,12 +84,7 @@ impl Module for HyprlandWriter {
         socket_writer.wants()
     }
 
-    fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-        events: &mut Vec<Event>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
         let Some((socket_writer, resource)) = &mut self.current else {
             return Ok(());
         };
@@ -110,7 +110,7 @@ impl Module for HyprlandWriter {
 
         let mut state = self.state.borrow_mut();
         if let Some(event) = state.apply(diff) {
-            events.push(event);
+            self.events.push_back(event);
         }
 
         Ok(())
