@@ -1,4 +1,4 @@
-use crate::dbus::{Message, MessageEncoder};
+use crate::dbus::{Message, MessageEncoder, messages::org_freedesktop_dbus::Hello};
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 #[derive(Clone)]
@@ -31,10 +31,12 @@ struct Inner {
 
 impl Inner {
     fn new() -> Self {
-        Self {
+        let mut this = Self {
             serial: 1,
             q: VecDeque::new(),
-        }
+        };
+        this.push_back(&mut Hello.into());
+        this
     }
 
     fn encode_in_place(&mut self, message: &mut Message) -> Vec<u8> {

@@ -19,7 +19,6 @@ pub use event::Event;
 pub use ffi::{FFIArray, FFIString};
 
 use crate::{
-    dbus::messages::org_freedesktop_dbus::Hello,
     event_queue::EventQueue,
     liburing::IoUring,
     logger::Logger,
@@ -42,13 +41,11 @@ struct IO {
     timer: Timer,
 
     session_dbus: Option<SessionDBus>,
-    session_dbus_queue: DBusQueue,
     sound: Sound,
     control: Control,
     tray: Tray,
 
     system_dbus: Option<SystemDBus>,
-    system_dbus_queue: DBusQueue,
     network: Network,
 
     hyprland_reader: Option<HyprlandReader>,
@@ -86,13 +83,11 @@ impl IO {
             timer: Timer::new(),
 
             session_dbus: Some(SessionDBus::new(session_dbus_queue.clone())),
-            session_dbus_queue: session_dbus_queue.clone(),
             sound: Sound::new(events.clone(), session_dbus_queue.clone()),
             control: Control::new(session_dbus_queue.clone()),
             tray: Tray::new(events.clone(), session_dbus_queue.clone()),
 
             system_dbus: Some(SystemDBus::new(system_dbus_queue.clone())),
-            system_dbus_queue: system_dbus_queue.clone(),
             network: Network::new(events.clone(), system_dbus_queue.clone()),
 
             hyprland_reader,
@@ -123,13 +118,11 @@ impl IO {
         schedule_wanted(&mut self.cpu);
         schedule_wanted(&mut self.memory);
 
-        self.session_dbus_queue.push_back(&mut Hello.into());
         self.sound.init();
         self.control.init();
         self.tray.init();
         schedule_wanted(&mut self.session_dbus);
 
-        self.system_dbus_queue.push_back(&mut Hello.into());
         self.network.init();
         schedule_wanted(&mut self.system_dbus);
 
@@ -141,7 +134,6 @@ impl IO {
             ControlRequest::CapsLockToggled => {
                 self.hyprland_queue.enqueue_get_caps_lock();
                 schedule_wanted(&mut self.hyprland_writer);
-                IoUring::submit_if_dirty();
             }
             ControlRequest::Exit => self.events.push_back(Event::Exit),
             ControlRequest::ReloadStyles => self.events.push_back(Event::ReloadStyles),
@@ -270,7 +262,6 @@ impl IO {
             ($($arg:tt)*) => {{
                 self.hyprland_queue.enqueue_dispatch(format!($($arg)*), );
                 schedule_wanted(&mut self.hyprland_writer);
-                IoUring::submit_if_dirty();
             }};
         }
         match cmd {
@@ -305,9 +296,10 @@ impl IO {
             Command::TriggerTray { uuid } => {
                 self.tray.trigger(&uuid);
                 schedule_wanted(&mut self.session_dbus);
-                IoUring::submit_if_dirty();
             }
         }
+
+        IoUring::submit_if_dirty();
     }
 
     fn deinit(&mut self) {
