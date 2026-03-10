@@ -14,7 +14,7 @@ mod weather;
 pub(crate) use clock::Clock;
 pub(crate) use control::{Control, ControlRequest};
 pub(crate) use cpu::CPU;
-pub(crate) use hyprland::{Hyprland, HyprlandReader, HyprlandWriter};
+pub(crate) use hyprland::{Hyprland, HyprlandQueue, HyprlandReader, HyprlandWriter};
 pub(crate) use location::Location;
 pub(crate) use memory::Memory;
 pub(crate) use network::Network;

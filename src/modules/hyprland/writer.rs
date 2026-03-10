@@ -2,67 +2,49 @@ use crate::{
     event_queue::EventQueue,
     modules::{
         Module,
-        hyprland::{
-            resources::{
-                ActiveWorkspaceResource, CapsLockResource, DevicesResource, DispatchResource,
-                WorkspacesResource, WriterResource,
-            },
-            state::HyprlandState,
-        },
+        hyprland::{HyprlandQueue, resources::WriterResource, state::HyprlandState},
     },
     sansio::{Satisfy, UnixSocketOneshotWriter, Wants},
     user_data::ModuleId,
 };
 use anyhow::{Context as _, Result};
 use libc::sockaddr_un;
-use std::collections::VecDeque;
 
 pub(crate) struct HyprlandWriter {
     current: Option<(UnixSocketOneshotWriter, Box<dyn WriterResource>)>,
-    queue: VecDeque<Box<dyn WriterResource>>,
+    queue: HyprlandQueue,
     addr: sockaddr_un,
     state: HyprlandState,
     events: EventQueue,
 }
 
 impl HyprlandWriter {
-    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState, events: EventQueue) -> Self {
-        let mut queue: VecDeque<Box<dyn WriterResource>> = VecDeque::new();
-
-        queue.push_back(Box::new(ActiveWorkspaceResource));
-        queue.push_back(Box::new(DevicesResource));
-
-        let resource = Box::new(WorkspacesResource);
-
-        Self {
-            current: Some((
-                UnixSocketOneshotWriter::new(addr, resource.command().as_ref()),
-                resource,
-            )),
+    pub(crate) fn new(
+        addr: sockaddr_un,
+        state: HyprlandState,
+        events: EventQueue,
+        queue: HyprlandQueue,
+    ) -> Self {
+        let mut this = Self {
+            current: None,
             queue,
             addr,
             state,
             events,
-        }
+        };
+        this.pop_from_queue_into_current();
+        this
     }
 
-    fn enqueue(&mut self, resource: Box<dyn WriterResource>) {
-        if self.current.is_none() {
+    fn pop_from_queue_into_current(&mut self) {
+        if self.current.is_none()
+            && let Some(resource) = self.queue.pop_front()
+        {
             self.current = Some((
                 UnixSocketOneshotWriter::new(self.addr, resource.command().as_ref()),
                 resource,
             ));
-        } else {
-            self.queue.push_back(resource);
         }
-    }
-
-    pub(crate) fn enqueue_get_caps_lock(&mut self) {
-        self.enqueue(Box::new(CapsLockResource));
-    }
-
-    pub(crate) fn enqueue_dispatch(&mut self, cmd: String) {
-        self.enqueue(Box::new(DispatchResource::new(cmd)));
     }
 }
 
@@ -73,6 +55,8 @@ impl Module for HyprlandWriter {
     const MODULE_ID: ModuleId = ModuleId::HyprlandWriter;
 
     fn wants(&mut self) -> Wants {
+        self.pop_from_queue_into_current();
+
         let Some((socket_writer, _)) = &mut self.current else {
             return Wants::Nothing;
         };
@@ -93,12 +77,7 @@ impl Module for HyprlandWriter {
         let diff = resource.parse(json).context("parse error")?;
 
         self.current = None;
-        if let Some(next) = self.queue.pop_front() {
-            self.current = Some((
-                UnixSocketOneshotWriter::new(self.addr, next.command().as_ref()),
-                next,
-            ));
-        }
+        self.pop_from_queue_into_current();
 
         let Some(diff) = diff else {
             return Ok(());

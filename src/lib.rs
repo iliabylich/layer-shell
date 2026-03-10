@@ -25,8 +25,9 @@ use crate::{
     logger::Logger,
     macros::report_and_exit,
     modules::{
-        CPU, Clock, Control, ControlRequest, Hyprland, HyprlandReader, HyprlandWriter, Location,
-        Memory, Module, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
+        CPU, Clock, Control, ControlRequest, Hyprland, HyprlandQueue, HyprlandReader,
+        HyprlandWriter, Location, Memory, Module, Network, SessionDBus, Sound, SystemDBus, Tray,
+        Weather,
     },
     sansio::{DBusQueue, Satisfy, Wants},
     timer::Timer,
@@ -42,21 +43,22 @@ struct IO {
 
     session_dbus: Option<SessionDBus>,
     session_dbus_queue: DBusQueue,
+    sound: Sound,
+    control: Control,
+    tray: Tray,
 
     system_dbus: Option<SystemDBus>,
     system_dbus_queue: DBusQueue,
+    network: Network,
 
     hyprland_reader: Option<HyprlandReader>,
     hyprland_writer: Option<HyprlandWriter>,
+    hyprland_queue: HyprlandQueue,
 
     location: Option<Location>,
     weather: Option<Weather>,
     cpu: Option<CPU>,
     memory: Option<Memory>,
-    sound: Sound,
-    control: Control,
-    network: Network,
-    tray: Tray,
 
     on_event: extern "C" fn(event: *const Event),
     running: bool,
@@ -71,7 +73,7 @@ impl IO {
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
         let events = EventQueue::new();
 
-        let (hyprland_reader, hyprland_writer) = Hyprland::connect(events.clone());
+        let (hyprland_reader, hyprland_writer, hyprland_queue) = Hyprland::connect(events.clone());
 
         let session_dbus_queue = DBusQueue::new();
         let system_dbus_queue = DBusQueue::new();
@@ -93,10 +95,12 @@ impl IO {
             system_dbus_queue: system_dbus_queue.clone(),
             network: Network::new(events.clone(), system_dbus_queue.clone()),
 
-            location: Some(Location::new()),
-            weather: None,
             hyprland_reader,
             hyprland_writer,
+            hyprland_queue,
+
+            location: Some(Location::new()),
+            weather: None,
             cpu: Some(CPU::new(events.clone())),
             memory: Some(Memory::new(events.clone())),
 
@@ -135,10 +139,8 @@ impl IO {
     fn on_control_req(&mut self, req: ControlRequest) {
         match req {
             ControlRequest::CapsLockToggled => {
-                if let Some(hyprland_writer) = &mut self.hyprland_writer {
-                    hyprland_writer.enqueue_get_caps_lock();
-                    schedule_wanted(hyprland_writer);
-                }
+                self.hyprland_queue.enqueue_get_caps_lock();
+                schedule_wanted(&mut self.hyprland_writer);
                 IoUring::submit_if_dirty();
             }
             ControlRequest::Exit => self.events.push_back(Event::Exit),
@@ -266,10 +268,8 @@ impl IO {
 
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
-                if let Some(hyprland_writer) = &mut self.hyprland_writer {
-                    hyprland_writer.enqueue_dispatch(format!($($arg)*), );
-                    schedule_wanted(hyprland_writer);
-                }
+                self.hyprland_queue.enqueue_dispatch(format!($($arg)*), );
+                schedule_wanted(&mut self.hyprland_writer);
                 IoUring::submit_if_dirty();
             }};
         }
