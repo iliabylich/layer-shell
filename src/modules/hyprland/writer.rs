@@ -15,22 +15,18 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use libc::sockaddr_un;
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::collections::VecDeque;
 
 pub(crate) struct HyprlandWriter {
     current: Option<(UnixSocketOneshotWriter, Box<dyn WriterResource>)>,
     queue: VecDeque<Box<dyn WriterResource>>,
     addr: sockaddr_un,
-    state: Rc<RefCell<HyprlandState>>,
+    state: HyprlandState,
     events: EventQueue,
 }
 
 impl HyprlandWriter {
-    pub(crate) fn new(
-        addr: sockaddr_un,
-        state: Rc<RefCell<HyprlandState>>,
-        events: EventQueue,
-    ) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState, events: EventQueue) -> Self {
         let mut queue: VecDeque<Box<dyn WriterResource>> = VecDeque::new();
 
         queue.push_back(Box::new(ActiveWorkspaceResource));
@@ -108,8 +104,7 @@ impl Module for HyprlandWriter {
             return Ok(());
         };
 
-        let mut state = self.state.borrow_mut();
-        if let Some(event) = state.apply(diff) {
+        if let Some(event) = self.state.apply(diff) {
             self.events.push_back(event);
         }
 

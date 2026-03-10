@@ -42,8 +42,7 @@ impl Inner {
         self.serial += 1;
 
         *message.serial_mut() = serial;
-        let message = MessageEncoder::encode(&message);
-        message
+        MessageEncoder::encode(message)
     }
 
     fn push_back(&mut self, message: &mut Message) {

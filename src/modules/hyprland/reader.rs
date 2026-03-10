@@ -9,20 +9,15 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use libc::sockaddr_un;
-use std::{cell::RefCell, rc::Rc};
 
 pub(crate) struct HyprlandReader {
     socket_reader: UnixSocketReader,
-    state: Rc<RefCell<HyprlandState>>,
+    state: HyprlandState,
     events: EventQueue,
 }
 
 impl HyprlandReader {
-    pub(crate) fn new(
-        addr: sockaddr_un,
-        state: Rc<RefCell<HyprlandState>>,
-        events: EventQueue,
-    ) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState, events: EventQueue) -> Self {
         Self {
             socket_reader: UnixSocketReader::new(addr),
             state,
@@ -47,13 +42,11 @@ impl Module for HyprlandReader {
         };
 
         let s = std::str::from_utf8(&buf[..len]).context("decoding error")?;
-        let mut state = self.state.borrow_mut();
-
         for line in s.lines() {
             let Some(diff) = try_parse(line).context("parse error")? else {
                 continue;
             };
-            if let Some(event) = state.apply(diff) {
+            if let Some(event) = self.state.apply(diff) {
                 self.events.push_back(event);
             }
         }

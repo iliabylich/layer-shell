@@ -5,7 +5,6 @@ pub use state::HyprlandWorkspace;
 
 use crate::{event_queue::EventQueue, unix_socket::new_unix_socket};
 use state::HyprlandState;
-use std::{cell::RefCell, rc::Rc};
 
 mod reader;
 mod resources;
@@ -41,17 +40,17 @@ impl Hyprland {
             format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket.sock").as_bytes(),
         );
 
-        let state = Rc::new(RefCell::new(HyprlandState::empty()));
+        let state = HyprlandState::empty();
 
         (
             Some(HyprlandReader::new(
                 reader_addr,
-                Rc::clone(&state),
+                state.clone(),
                 events.clone(),
             )),
             Some(HyprlandWriter::new(
                 writer_addr,
-                Rc::clone(&state),
+                state.clone(),
                 events.clone(),
             )),
         )

@@ -4,6 +4,7 @@ use crate::dbus::types::{Flags, MessageType};
 pub(crate) struct Header {
     pub(crate) message_type: MessageType,
     pub(crate) flags: Flags,
+    #[expect(dead_code)]
     pub(crate) body_len: usize,
     pub(crate) serial: u32,
 }

@@ -1,10 +1,9 @@
 use crate::event::Event;
-use std::collections::HashSet;
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
+#[derive(Clone)]
 pub(crate) struct HyprlandState {
-    workspace_ids: Option<HashSet<u64>>,
-    active_workspace_id: Option<u64>,
-    lang: Option<String>,
+    inner: Rc<RefCell<Inner>>,
 }
 
 pub(crate) enum HyprlandDiff {
@@ -21,13 +20,32 @@ pub(crate) enum HyprlandDiff {
 impl HyprlandState {
     pub(crate) fn empty() -> Self {
         Self {
+            inner: Rc::new(RefCell::new(Inner::empty())),
+        }
+    }
+
+    pub(crate) fn apply(&self, diff: HyprlandDiff) -> Option<Event> {
+        let mut inner = self.inner.borrow_mut();
+        inner.apply(diff)
+    }
+}
+
+struct Inner {
+    workspace_ids: Option<HashSet<u64>>,
+    active_workspace_id: Option<u64>,
+    lang: Option<String>,
+}
+
+impl Inner {
+    fn empty() -> Self {
+        Self {
             workspace_ids: None,
             active_workspace_id: None,
             lang: None,
         }
     }
 
-    pub(crate) fn apply(&mut self, diff: HyprlandDiff) -> Option<Event> {
+    fn apply(&mut self, diff: HyprlandDiff) -> Option<Event> {
         enum Changed {
             Workspaces,
             Language,
