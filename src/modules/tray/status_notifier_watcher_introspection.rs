@@ -1,6 +1,7 @@
 use crate::{
     dbus::{
         IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
+        decoder::IncomingMessage,
         types::{CompleteType, Value},
     },
     sansio::DBusQueue,
@@ -37,7 +38,7 @@ impl StatusNotifierWatcherIntrospection {
         self.queue.push_back(&mut reply)
     }
 
-    pub(crate) fn process_message(&mut self, message: &Message) -> bool {
+    pub(crate) fn process_message(&mut self, message: IncomingMessage<'_>) -> bool {
         let Ok((serial, sender, req)) = self.introspection.handle(message) else {
             return false;
         };

@@ -1,10 +1,11 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::{Module, weather::weather_response::WeatherResponse},
+    modules::weather::weather_response::WeatherResponse,
     sansio::{Https, HttpsRequest, Satisfy, Wants},
     user_data::ModuleId,
 };
+use anyhow::Result;
 pub use weather_code::WeatherCode;
 pub use weather_response::{WeatherOnDay, WeatherOnHour};
 
@@ -29,19 +30,16 @@ impl Weather {
             events,
         }
     }
-}
 
-impl Module for Weather {
-    type Output = ();
-    type Error = anyhow::Error;
+    pub(crate) const fn module_id(&self) -> ModuleId {
+        ModuleId::Weather
+    }
 
-    const MODULE_ID: ModuleId = ModuleId::Weather;
-
-    fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Wants {
         self.https.wants()
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         let Some(response) = self.https.satisfy(satisfy, res)? else {
             return Ok(());
         };
@@ -51,7 +49,7 @@ impl Module for Weather {
         Ok(())
     }
 
-    fn tick(&mut self, tick: u64) {
+    pub(crate) fn tick(&mut self, tick: u64) {
         if tick.is_multiple_of(120) {
             self.https = Https::new(HttpsRequest::get(HOST, path(self.lat, self.lng)))
         }

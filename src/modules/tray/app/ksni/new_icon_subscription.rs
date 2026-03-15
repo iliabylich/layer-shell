@@ -1,9 +1,10 @@
 use crate::dbus::{
     Message, OneshotResource,
-    messages::{interface_is, member_is, message_is, path_is, sender_is},
+    decoder::{Body, IncomingMessage, MessageType},
+    messages::{interface_is, member_is, path_is, sender_is},
     types::Value,
 };
-use anyhow::Result;
+use anyhow::{Context as _, Result, ensure};
 use std::borrow::Cow;
 
 pub(crate) struct NewIconSubscription;
@@ -27,22 +28,18 @@ impl OneshotResource for NewIconSubscription {
         }
     }
 
-    fn try_process(&self, _body: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
         Ok(())
     }
 }
 
-pub(crate) fn parse_new_icon_signal(message: &Message, address: &str) -> Result<()> {
-    message_is!(
-        message,
-        Message::Signal {
-            path,
-            interface,
-            member,
-            sender: Some(sender),
-            ..
-        }
-    );
+pub(crate) fn parse_new_icon_signal(message: IncomingMessage<'_>, address: &str) -> Result<()> {
+    ensure!(message.message_type == MessageType::Signal);
+
+    let path = message.path.context("no Path")?;
+    let interface = message.interface.context("no Interface")?;
+    let member = message.member.context("no Member")?;
+    let sender = message.sender.context("no Sender")?;
 
     interface_is!(interface, "org.kde.StatusNotifierItem");
     path_is!(path, "/StatusNotifierItem");

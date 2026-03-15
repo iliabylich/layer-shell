@@ -1,19 +1,6 @@
 pub(crate) mod introspect;
 pub(crate) mod org_freedesktop_dbus;
 
-macro_rules! message_is {
-    ($message:expr, $pat:pat) => {
-        let $pat = $message else {
-            anyhow::bail!(
-                "expected Message::{}, got {:?}",
-                stringify!($expected),
-                $message
-            );
-        };
-    };
-}
-pub(crate) use message_is;
-
 macro_rules! interface_is {
     ($interface:expr, $expected:expr) => {{
         if $interface != $expected {
@@ -67,33 +54,16 @@ macro_rules! member_is {
 }
 pub(crate) use member_is;
 
-pub(crate) fn as_array<T, const N: usize>(slice: &[T]) -> Option<&[T; N]> {
-    slice.try_into().ok()
-}
-
-macro_rules! body_is {
-    ($body:expr, $expected:pat) => {
-        let Some($expected) = $crate::dbus::messages::as_array($body) else {
-            anyhow::bail!("body format mismatch: {:?}", $body);
-        };
-    };
-}
-pub(crate) use body_is;
-
 macro_rules! value_is {
     ($value:expr, $pat:pat) => {
         let $pat = $value else {
-            anyhow::bail!("value format mismatch: {:?}", $value);
+            anyhow::bail!(
+                "value format mismatch ({}:{}): {:?}",
+                file!(),
+                line!(),
+                $value
+            );
         };
     };
 }
 pub(crate) use value_is;
-
-macro_rules! type_is {
-    ($type:expr, $pat:pat) => {
-        let $pat = $type else {
-            anyhow::bail!("type mismatch: {:?}", $type);
-        };
-    };
-}
-pub(crate) use type_is;

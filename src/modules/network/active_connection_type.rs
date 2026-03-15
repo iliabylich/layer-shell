@@ -1,12 +1,12 @@
 use crate::{
     dbus::{
         Message, Oneshot, OneshotResource,
-        messages::{body_is, org_freedesktop_dbus::GetProperty, value_is},
-        types::Value,
+        decoder::{Body, IncomingMessage, Value},
+        messages::{org_freedesktop_dbus::GetProperty, value_is},
     },
     sansio::DBusQueue,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 pub(crate) struct ActiveConnectionType {
     path: Option<String>,
@@ -30,7 +30,7 @@ impl ActiveConnectionType {
         self.oneshot.reset();
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<(bool, String)> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<(bool, String)> {
         let is_wireless = self.oneshot.process(message).ok().flatten()?;
         Some((is_wireless, self.path.clone()?))
     }
@@ -51,10 +51,11 @@ impl OneshotResource for Resource {
         .into()
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        body_is!(body, [type_]);
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let type_ = body.try_next()?.context("no Type in Body")?;
         value_is!(type_, Value::Variant(type_));
-        value_is!(&**type_, Value::String(type_));
+        let type_ = type_.materialize()?;
+        value_is!(type_, Value::String(type_));
 
         Ok(type_.contains("wireless"))
     }

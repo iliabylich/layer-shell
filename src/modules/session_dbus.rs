@@ -1,7 +1,6 @@
 use crate::{
-    dbus::{Message, MessageDecoder},
+    dbus::decoder::IncomingMessage,
     macros::report_and_exit,
-    modules::Module,
     sansio::{DBusConnection, DBusQueue, Satisfy, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
@@ -29,26 +28,25 @@ impl SessionDBus {
             conn: DBusConnection::new(addr, queue),
         }
     }
-}
 
-impl Module for SessionDBus {
-    type Output = Option<Message<'static>>;
-    type Error = anyhow::Error;
+    pub(crate) const fn module_id(&self) -> ModuleId {
+        ModuleId::SessionDBus
+    }
 
-    const MODULE_ID: ModuleId = ModuleId::SessionDBus;
-
-    fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Wants {
         self.conn.wants()
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+    ) -> Result<Option<IncomingMessage<'_>>> {
         let Some(buf) = self.conn.satisfy(satisfy, res)? else {
             return Ok(None);
         };
 
-        let message = MessageDecoder::decode(buf)?;
+        let message = IncomingMessage::new(buf)?;
         Ok(Some(message))
     }
-
-    fn tick(&mut self, _tick: u64) {}
 }

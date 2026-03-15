@@ -1,8 +1,8 @@
 use crate::{
     dbus::{
         Message, OneshotResource,
-        messages::{type_is, value_is},
-        types::{CompleteType, Value},
+        decoder::{ArrayValue, Body, Value},
+        messages::value_is,
     },
     modules::{TrayItem, tray::uuid::UUID},
 };
@@ -28,6 +28,8 @@ impl OneshotResource for GetLayout {
     type Output = Vec<TrayItem>;
 
     fn make_request(&self, (destination, path): (String, String)) -> Message<'static> {
+        use crate::dbus::types::{CompleteType, Value};
+
         let body = vec![
             Value::Int32(0),
             Value::Int32(1),
@@ -60,31 +62,30 @@ impl OneshotResource for GetLayout {
         }
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        let root: &[Value; 2] = body
-            .try_into()
-            .with_context(|| format!("expected 2 elements, got {}", body.len()))?;
-        let root = &root[1];
-        value_is!(root, Value::Struct(fields));
-        let fields: &[Value; 3] = fields
-            .as_slice()
-            .try_into()
-            .with_context(|| format!("expected 3 fields, got {}", fields.len()))?;
-        value_is!(
-            &fields[2],
-            Value::Array(CompleteType::Variant, top_level_items)
-        );
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let _ = body.try_next()?.context("no root item id")?;
+        let root = body.try_next()?.context("no root")?;
+        value_is!(root, Value::Struct(root));
+
+        let mut iter = root.iter()?;
+        let _ = iter.try_next()?.context("expected 3 items")?;
+        let _ = iter.try_next()?.context("expected 3 items")?;
+        let top_level_items = iter.try_next()?.context("expected 3 items")?;
+
+        value_is!(top_level_items, Value::Array(top_level_items));
 
         parse_items(&self.service, &self.menu, top_level_items)
     }
 }
 
-fn parse_items(service: &str, menu: &str, items: &[Value]) -> Result<Vec<TrayItem>> {
+fn parse_items(service: &str, menu: &str, items: ArrayValue<'_>) -> Result<Vec<TrayItem>> {
     let mut out = vec![];
     let mut batch = vec![];
+    let mut iter = items.iter();
 
-    for item in items {
+    while let Some(item) = iter.try_next()? {
         value_is!(item, Value::Variant(item));
+        let item = item.materialize()?;
         let item = parse_item(service, menu, item)?;
         match item {
             ItemOrSeparator::Skip => continue,
@@ -112,73 +113,74 @@ fn parse_items(service: &str, menu: &str, items: &[Value]) -> Result<Vec<TrayIte
     Ok(out)
 }
 
-fn parse_item(service: &str, menu: &str, item: &Value) -> Result<ItemOrSeparator> {
+fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSeparator> {
     value_is!(item, Value::Struct(fields));
-    let fields: &[Value; 3] = fields
-        .as_slice()
-        .try_into()
-        .with_context(|| format!("expected 3 fields, got {}", fields.len()))?;
 
-    value_is!(&fields[0], Value::Int32(id));
-    let id = *id;
+    let mut fields_iter = fields.iter()?;
+
+    let id = fields_iter.try_next()?.context("expected 3 items")?;
+    value_is!(id, Value::Int32(id));
     let uuid = UUID::encode(service, id);
 
-    value_is!(
-        &fields[1],
-        Value::Array(CompleteType::DictEntry(key_t, value_t), props)
-    );
-    type_is!(&**key_t, CompleteType::String);
-    type_is!(&**value_t, CompleteType::Variant);
-    let mut type_ = &Cow::Borrowed("standard");
-    let mut label = &Cow::Borrowed("");
+    let props = fields_iter.try_next()?.context("expected 3 items")?;
+    value_is!(props, Value::Array(props));
+    let mut props_iter = props.iter();
+    let mut type_ = Cow::Borrowed("standard");
+    let mut label = Cow::Borrowed("");
     let mut enabled = true;
     let mut visible = true;
-    let mut toggle_type = &Cow::Borrowed("");
+    let mut toggle_type = Cow::Borrowed("");
     let mut toggle_state = -1;
-    let mut children_display = &Cow::Borrowed("");
-    for prop in props {
-        value_is!(prop, Value::DictEntry(key, value));
-        value_is!(&**key, Value::String(key));
-        value_is!(&**value, Value::Variant(value));
+    let mut children_display = Cow::Borrowed("");
+    while let Some(prop) = props_iter.try_next()? {
+        value_is!(prop, Value::DictEntry(dict_entry));
+        let (key, value) = dict_entry.key_value()?;
+        value_is!(key, Value::String(key));
+        value_is!(value, Value::Variant(value));
 
-        match key.as_ref() {
+        match key {
             "type" => {
-                value_is!(&**value, Value::String(value));
-                type_ = value;
+                let value = value.materialize()?;
+                value_is!(value, Value::String(value));
+                type_ = Cow::Owned(value.to_string());
             }
             "label" => {
-                value_is!(&**value, Value::String(value));
-                label = value;
+                let value = value.materialize()?;
+                value_is!(value, Value::String(value));
+                label = Cow::Owned(value.to_string());
             }
             "enabled" => {
-                value_is!(&**value, Value::Bool(value));
-                enabled = *value;
+                let value = value.materialize()?;
+                value_is!(value, Value::Bool(value));
+                enabled = value;
             }
             "visible" => {
-                value_is!(&**value, Value::Bool(value));
-                visible = *value;
+                let value = value.materialize()?;
+                value_is!(value, Value::Bool(value));
+                visible = value;
             }
             "toggle-type" => {
-                value_is!(&**value, Value::String(value));
-                toggle_type = value;
+                let value = value.materialize()?;
+                value_is!(value, Value::String(value));
+                toggle_type = Cow::Owned(value.to_string());
             }
             "toggle-state" => {
-                value_is!(&**value, Value::Int32(value));
-                toggle_state = *value;
+                let value = value.materialize()?;
+                value_is!(value, Value::Int32(value));
+                toggle_state = value;
             }
             "children-display" => {
-                value_is!(&**value, Value::String(value));
-                children_display = value;
+                let value = value.materialize()?;
+                value_is!(value, Value::String(value));
+                children_display = Cow::Owned(value.to_string());
             }
 
             _ => log::warn!(target: "Tray", "Unknown dbusmenu prop: {key}"),
         }
     }
 
-    value_is!(
-        &fields[2],
-        Value::Array(CompleteType::Variant, children_values)
-    );
+    let children_values = fields_iter.try_next()?.context("expected 3 items")?;
+    value_is!(children_values, Value::Array(children_values));
     let children = parse_items(service, menu, children_values)?;
 
     if !visible {

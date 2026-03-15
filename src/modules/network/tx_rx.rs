@@ -1,8 +1,8 @@
 use crate::{
     dbus::{
         Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        decoder::{Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
-        types::Value,
     },
     sansio::DBusQueue,
 };
@@ -38,7 +38,7 @@ impl TxRx {
             .start("org.freedesktop.NetworkManager", path);
     }
 
-    pub(crate) fn on_message(&self, message: &Message) -> Option<TxRxEvent> {
+    pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {
         self.subscription.process(message)
     }
 }
@@ -53,6 +53,8 @@ impl OneshotResource for Resource {
     type Output = ();
 
     fn make_request(&self, path: String) -> Message<'static> {
+        use crate::dbus::types::Value;
+
         SetProperty::new(
             "org.freedesktop.NetworkManager",
             path,
@@ -63,7 +65,7 @@ impl OneshotResource for Resource {
         .into()
     }
 
-    fn try_process(&self, _body: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
         panic!("doesn't have to be checked")
     }
 }
@@ -71,27 +73,35 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = TxRxEvent;
 
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
+        path_is!(path, self.path.as_deref().context("no path")?);
+
+        let interface = body.try_next()?.context("no Interface in Body")?;
+        value_is!(interface, Value::String(interface));
         interface_is!(
             interface,
             "org.freedesktop.NetworkManager.Device.Statistics"
         );
-        path_is!(path, self.path.as_deref().context("no path")?);
 
+        let attributes = body.try_next()?.context("no Attributes in Body")?;
+        value_is!(attributes, Value::Array(attributes));
+        let mut iter = attributes.iter();
         let mut tx = None;
         let mut rx = None;
-
-        for item in items {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
+        while let Some(attribute) = iter.try_next()? {
+            value_is!(attribute, Value::DictEntry(attribute));
+            let (key, value) = attribute.key_value()?;
+            value_is!(key, Value::String(key));
+            value_is!(value, Value::Variant(value));
 
             if key == "TxBytes" {
-                value_is!(&**value, Value::UInt64(value));
-                tx = Some(*value);
+                let value = value.materialize()?;
+                value_is!(value, Value::UInt64(value));
+                tx = Some(value);
             } else if key == "RxBytes" {
-                value_is!(&**value, Value::UInt64(value));
-                rx = Some(*value);
+                let value = value.materialize()?;
+                value_is!(value, Value::UInt64(value));
+                rx = Some(value);
             }
         }
 

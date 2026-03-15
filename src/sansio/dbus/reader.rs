@@ -18,7 +18,7 @@ pub(crate) struct DBusReader {
     bytes_read: usize,
     message_len: usize,
     state: State,
-    buf: *mut u8,
+    buf: Box<[u8; BUF_SIZE]>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -38,27 +38,25 @@ impl DBusReader {
             bytes_read: 0,
             message_len: 0,
             state: State::CanReadHeader,
-            buf: Box::leak(Box::new([0; BUF_SIZE])).as_mut_ptr(),
+            buf: Box::new([0; BUF_SIZE]),
         }
     }
 
     pub(crate) fn wants(&mut self) -> Wants {
-        let buf: &'static mut [u8] = unsafe { std::slice::from_raw_parts_mut(self.buf, BUF_SIZE) };
-
         match self.state {
             State::CanReadHeader => {
                 self.state = State::WaitingForHeader;
 
                 Wants::Read {
                     fd: self.fd,
-                    buf: buf.as_mut_ptr(),
+                    buf: self.buf.as_mut_ptr(),
                     len: HEADER_LEN,
                 }
             }
             State::WaitingForHeader => Wants::Nothing,
 
             State::CanReadBody => {
-                let buf = &mut buf[self.bytes_read..self.message_len];
+                let buf = &mut self.buf[self.bytes_read..self.message_len];
                 self.state = State::WaitingForBody;
                 Wants::Read {
                     fd: self.fd,
@@ -70,7 +68,7 @@ impl DBusReader {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
         match (self.state, satisfy) {
             (State::WaitingForHeader, Satisfy::Read) => {
                 if res == 0 {
@@ -81,7 +79,7 @@ impl DBusReader {
                 ensure!(bytes_read == HEADER_LEN);
                 self.bytes_read += bytes_read;
 
-                let header = unsafe { &*self.buf.cast::<Header>() };
+                let header = unsafe { &*self.buf.as_ptr().cast::<Header>() };
 
                 self.message_len = HEADER_LEN
                     + (header.header_fields_len as usize).next_multiple_of(8)
@@ -104,10 +102,7 @@ impl DBusReader {
                     self.message_len = 0;
                     self.state = State::CanReadHeader;
 
-                    let buf: &'static mut [u8] =
-                        unsafe { std::slice::from_raw_parts_mut(self.buf, BUF_SIZE) };
-
-                    return Ok(Some(&buf[..message_len]));
+                    return Ok(Some(&self.buf[..message_len]));
                 } else {
                     self.state = State::CanReadBody;
                 }

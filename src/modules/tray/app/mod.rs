@@ -1,5 +1,5 @@
 use crate::{
-    dbus::{Message, Oneshot, Subscription, types::Value},
+    dbus::{Message, Oneshot, Subscription, decoder::IncomingMessage, types::Value},
     macros::report_and_exit,
     modules::{TrayIcon, TrayItem, tray::service::Service},
     sansio::DBusQueue,
@@ -149,7 +149,7 @@ impl App {
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<TrayEvent> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<TrayEvent> {
         if let Some(AllProps { menu, icon }) =
             self.all_props_request.process(message).ok().flatten()
         {

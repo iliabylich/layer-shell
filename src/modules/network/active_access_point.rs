@@ -1,12 +1,12 @@
 use crate::{
     dbus::{
         Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-        types::Value,
+        decoder::{Body, IncomingMessage, Value},
+        messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
     sansio::DBusQueue,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 
 pub(crate) struct ActiveAccessPoint {
     oneshot: Oneshot<Resource>,
@@ -47,7 +47,10 @@ impl ActiveAccessPoint {
         self.oneshot.start(path.to_string());
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<ActiveAccessPointEvent> {
+    pub(crate) fn on_message(
+        &mut self,
+        message: IncomingMessage<'_>,
+    ) -> Option<ActiveAccessPointEvent> {
         None.or_else(|| self.oneshot.process(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(ActiveAccessPointEvent::from)
@@ -70,13 +73,11 @@ impl OneshotResource for Resource {
         .into()
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        body_is!(body, [active_access_point]);
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let active_access_point = body.try_next()?.context("no ActiveAccessPoint in Body")?;
         value_is!(active_access_point, Value::Variant(active_access_point));
-        value_is!(
-            &**active_access_point,
-            Value::ObjectPath(active_access_point)
-        );
+        let active_access_point = active_access_point.materialize()?;
+        value_is!(active_access_point, Value::ObjectPath(active_access_point));
 
         Ok(active_access_point.to_string())
     }
@@ -85,17 +86,25 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = String;
 
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/org/freedesktop/NetworkManager");
+
+        let interface = body.try_next()?.context("no Interface in Body")?;
+        value_is!(interface, Value::String(interface));
         interface_is!(interface, "org.freedesktop.NetworkManager.Device.Wireless");
 
-        for item in items {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
+        let attributes = body.try_next()?.context("no Attributes in Body")?;
+        value_is!(attributes, Value::Array(attributes));
+        let mut iter = attributes.iter();
+        while let Some(attribute) = iter.try_next()? {
+            value_is!(attribute, Value::DictEntry(dict_entry));
+            let (key, value) = dict_entry.key_value()?;
+            value_is!(key, Value::String(key));
+            value_is!(value, Value::Variant(value));
 
             if key == "ActiveAccessPoint" {
-                value_is!(&**value, Value::ObjectPath(value));
+                let value = value.materialize()?;
+                value_is!(value, Value::ObjectPath(value));
                 return Ok(value.to_string());
             }
         }

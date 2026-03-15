@@ -1,8 +1,8 @@
 use crate::{
     dbus::{
         Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-        types::{CompleteType, Value},
+        decoder::{Body, IncomingMessage, Value},
+        messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
     sansio::DBusQueue,
 };
@@ -47,7 +47,10 @@ impl PrimaryDevice {
         self.oneshot.start(path);
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryDeviceEvent> {
+    pub(crate) fn on_message(
+        &mut self,
+        message: IncomingMessage<'_>,
+    ) -> Option<PrimaryDeviceEvent> {
         None.or_else(|| self.oneshot.process(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(PrimaryDeviceEvent::from)
@@ -70,11 +73,13 @@ impl OneshotResource for Resource {
         .into()
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        body_is!(body, [devices]);
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let devices = body.try_next()?.context("no Devices in Body")?;
         value_is!(devices, Value::Variant(devices));
-        value_is!(&**devices, Value::Array(CompleteType::ObjectPath, devices));
-        let device = devices.first().context("expected at least one device")?;
+        let devices = devices.materialize()?;
+        value_is!(devices, Value::Array(devices));
+        let mut iter = devices.iter();
+        let device = iter.try_next()?.context("expected at least one device")?;
         value_is!(device, Value::ObjectPath(device));
 
         Ok(device.to_string())
@@ -84,22 +89,31 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = String;
 
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/org/freedesktop/NetworkManager");
+
+        let interface = body.try_next()?.context("no Interface in Body")?;
+        value_is!(interface, Value::String(interface));
         interface_is!(
             interface,
             "org.freedesktop.NetworkManager.Connection.Active"
         );
 
-        for item in items {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
+        let items = body.try_next()?.context("no Items in Body")?;
+        value_is!(items, Value::Array(items));
+        let mut iter = items.iter();
+        while let Some(item) = iter.try_next()? {
+            value_is!(item, Value::DictEntry(dict_entry));
+            let (key, value) = dict_entry.key_value()?;
+            value_is!(key, Value::String(key));
+            value_is!(value, Value::Variant(value));
 
             if key == "Devices" {
                 let devices = value;
-                value_is!(&**devices, Value::Array(CompleteType::ObjectPath, devices));
-                let device = devices.first().context("expected at least one device")?;
+                let devices = devices.materialize()?;
+                value_is!(devices, Value::Array(devices));
+                let mut iter = devices.iter();
+                let device = iter.try_next()?.context("expected at least one device")?;
                 value_is!(device, Value::ObjectPath(device));
                 return Ok(device.to_string());
             }

@@ -1,11 +1,8 @@
 use crate::{
     macros::report_and_exit,
-    modules::Module,
     sansio::{Satisfy, TimerFd, Wants},
     user_data::ModuleId,
 };
-use anyhow::Result;
-use std::convert::Infallible;
 
 pub(crate) struct Timer {
     timerfd: TimerFd,
@@ -17,27 +14,18 @@ impl Timer {
             timerfd: TimerFd::new(),
         }
     }
-}
 
-impl Module for Timer {
-    type Output = u64;
-    type Error = Infallible;
+    pub(crate) const fn module_id(&self) -> ModuleId {
+        ModuleId::Timer
+    }
 
-    const MODULE_ID: ModuleId = ModuleId::Timer;
-
-    fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Wants {
         self.timerfd.wants()
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
-        let tick = self
-            .timerfd
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> u64 {
+        self.timerfd
             .satisfy(satisfy, res)
-            .unwrap_or_else(|err| report_and_exit!("{err:?}"));
-        Ok(tick)
-    }
-
-    fn tick(&mut self, _tick: u64) {
-        unreachable!("timer procudes ticks, but doesn't consume")
+            .unwrap_or_else(|err| report_and_exit!("{err:?}"))
     }
 }

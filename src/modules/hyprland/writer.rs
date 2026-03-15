@@ -1,9 +1,6 @@
 use crate::{
     event_queue::EventQueue,
-    modules::{
-        Module,
-        hyprland::{HyprlandQueue, resources::WriterResource, state::HyprlandState},
-    },
+    modules::hyprland::{HyprlandQueue, resources::WriterResource, state::HyprlandState},
     sansio::{Satisfy, UnixSocketOneshotWriter, Wants},
     user_data::ModuleId,
 };
@@ -46,15 +43,12 @@ impl HyprlandWriter {
             ));
         }
     }
-}
 
-impl Module for HyprlandWriter {
-    type Output = ();
-    type Error = anyhow::Error;
+    pub(crate) const fn module_id(&self) -> ModuleId {
+        ModuleId::HyprlandWriter
+    }
 
-    const MODULE_ID: ModuleId = ModuleId::HyprlandWriter;
-
-    fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Wants {
         self.pop_from_queue_into_current();
 
         let Some((socket_writer, _)) = &mut self.current else {
@@ -64,7 +58,7 @@ impl Module for HyprlandWriter {
         socket_writer.wants()
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         let Some((socket_writer, resource)) = &mut self.current else {
             return Ok(());
         };
@@ -89,6 +83,4 @@ impl Module for HyprlandWriter {
 
         Ok(())
     }
-
-    fn tick(&mut self, _tick: u64) {}
 }

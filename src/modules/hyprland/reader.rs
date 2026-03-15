@@ -1,9 +1,6 @@
 use crate::{
     event_queue::EventQueue,
-    modules::{
-        Module,
-        hyprland::state::{HyprlandDiff, HyprlandState},
-    },
+    modules::hyprland::state::{HyprlandDiff, HyprlandState},
     sansio::{Satisfy, UnixSocketReader, Wants},
     user_data::ModuleId,
 };
@@ -24,19 +21,16 @@ impl HyprlandReader {
             events,
         }
     }
-}
 
-impl Module for HyprlandReader {
-    type Output = ();
-    type Error = anyhow::Error;
+    pub(crate) const fn module_id(&self) -> ModuleId {
+        ModuleId::HyprlandReader
+    }
 
-    const MODULE_ID: ModuleId = ModuleId::HyprlandReader;
-
-    fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Wants {
         self.socket_reader.wants()
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         let Some((buf, len)) = self.socket_reader.satisfy(satisfy, res)? else {
             return Ok(());
         };
@@ -52,8 +46,6 @@ impl Module for HyprlandReader {
         }
         Ok(())
     }
-
-    fn tick(&mut self, _tick: u64) {}
 }
 
 fn try_parse(line: &str) -> Result<Option<HyprlandDiff>> {

@@ -1,6 +1,9 @@
-use super::{body_is, interface_is, member_is, message_is, path_is};
-use crate::dbus::types::{Message, Value};
-use anyhow::Result;
+use super::{interface_is, member_is, path_is};
+use crate::dbus::{
+    decoder::{IncomingMessage, MessageType},
+    types::{Message, Value},
+};
+use anyhow::{Context as _, Result, ensure};
 use std::borrow::Cow;
 
 #[derive(Debug)]
@@ -11,34 +14,29 @@ pub(crate) struct IntrospectRequest<'a> {
     pub(crate) sender: &'a str,
 }
 
-impl<'a> TryFrom<&'a Message<'a>> for IntrospectRequest<'a> {
+impl<'a> TryFrom<IncomingMessage<'a>> for IntrospectRequest<'a> {
     type Error = anyhow::Error;
 
-    fn try_from(message: &'a Message<'a>) -> Result<Self> {
-        message_is!(
-            message,
-            Message::MethodCall {
-                serial,
-                path,
-                member,
-                interface: Some(interface),
-                destination: Some(destination),
-                sender: Some(sender),
-                body,
-                ..
-            }
-        );
+    fn try_from(message: IncomingMessage<'a>) -> Result<Self> {
+        ensure!(message.message_type == MessageType::MethodCall);
+
+        let serial = message.serial;
+        let path = message.path.context("no Path")?;
+        let member = message.member.context("no Member")?;
+        let interface = message.interface.context("no Interface")?;
+        let destination = message.destination.context("no Destination")?;
+        let sender = message.sender.context("no Sender")?;
+        ensure!(message.body.is_none());
 
         path_is!(path, "/");
         member_is!(member, "Introspect");
         interface_is!(interface, "org.freedesktop.DBus.Introspectable");
-        body_is!(body, []);
 
         Ok(Self {
-            serial: *serial,
-            destination: destination.as_ref(),
-            path: path.as_ref(),
-            sender: sender.as_ref(),
+            serial,
+            destination,
+            path,
+            sender,
         })
     }
 }

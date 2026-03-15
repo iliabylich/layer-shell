@@ -2,6 +2,7 @@ use crate::dbus::types::signature::CompleteType;
 use std::borrow::Cow;
 
 #[derive(Debug, PartialEq, Clone)]
+#[expect(dead_code)]
 pub(crate) enum Value<'a> {
     Byte(u8),
     Bool(bool),

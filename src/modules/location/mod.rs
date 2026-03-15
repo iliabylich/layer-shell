@@ -1,5 +1,4 @@
 use crate::{
-    modules::Module,
     sansio::{Https, HttpsRequest, Satisfy, Wants},
     user_data::ModuleId,
 };
@@ -20,24 +19,20 @@ impl Location {
             https: Https::new(HttpsRequest::get(HOST, "/")),
         }
     }
-}
 
-impl Module for Location {
-    type Output = Option<(f64, f64)>;
-    type Error = anyhow::Error;
-    const MODULE_ID: ModuleId = ModuleId::GeoLocation;
+    pub(crate) const fn module_id(&self) -> ModuleId {
+        ModuleId::GeoLocation
+    }
 
-    fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Wants {
         self.https.wants()
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Self::Output, Self::Error> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<(f64, f64)>> {
         let Some(response) = self.https.satisfy(satisfy, res)? else {
             return Ok(None);
         };
         let location = LocationResponse::parse(response)?;
         Ok(Some(location))
     }
-
-    fn tick(&mut self, _tick: u64) {}
 }

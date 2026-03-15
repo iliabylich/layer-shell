@@ -1,17 +1,17 @@
 use crate::{
     dbus::{
         Message,
+        decoder::{IncomingMessage, MessageType},
         messages::{
-            body_is, destination_is, interface_is,
+            destination_is, interface_is,
             introspect::{IntrospectRequest, IntrospectResponse},
-            message_is,
             org_freedesktop_dbus::RequestName,
             path_is,
         },
     },
     sansio::DBusQueue,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 
 pub(crate) struct Control {
     queue: DBusQueue,
@@ -27,7 +27,7 @@ impl Control {
         self.queue.push_back(&mut message)
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<ControlRequest> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
             let mut reply: Message =
                 IntrospectResponse::new(serial, sender, INTROSPECTION.to_string()).into();
@@ -63,7 +63,7 @@ const INTROSPECTION: &str = r#"
 </node>
 "#;
 
-fn try_parse_introspect_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, u32)> {
+fn try_parse_introspect_req<'a>(message: IncomingMessage<'a>) -> Result<(&'a str, u32)> {
     let IntrospectRequest {
         destination,
         path,
@@ -76,27 +76,21 @@ fn try_parse_introspect_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, u3
     Ok((sender, serial))
 }
 
-fn try_parse_control_req<'a>(message: &'a Message<'a>) -> Result<(&'a str, &'a str, u32)> {
-    message_is!(
-        message,
-        Message::MethodCall {
-            path,
-            member,
-            interface: Some(interface),
-            destination: Some(destination),
-            body,
-            sender: Some(sender),
-            serial,
-            ..
-        }
-    );
+fn try_parse_control_req<'a>(message: IncomingMessage<'a>) -> Result<(&'a str, &'a str, u32)> {
+    ensure!(message.message_type == MessageType::MethodCall);
+    let serial = message.serial;
+    let path = message.path.context("no Path")?;
+    let member = message.member.context("no Member")?;
+    let interface = message.interface.context("no Interface")?;
+    let destination = message.destination.context("no Destination")?;
+    let sender = message.sender.context("no Sender")?;
 
     path_is!(path, "/");
-    destination_is!(destination.as_ref(), "org.me.LayerShellControl");
-    interface_is!(interface.as_ref(), "org.me.LayerShellControl");
-    body_is!(body, []);
+    destination_is!(destination, "org.me.LayerShellControl");
+    interface_is!(interface, "org.me.LayerShellControl");
+    ensure!(message.body.is_none());
 
-    Ok((member.as_ref(), sender.as_ref(), *serial))
+    Ok((member, sender, serial))
 }
 
 #[derive(Debug)]

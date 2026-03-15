@@ -1,22 +1,18 @@
 use crate::{
     dbus::{
         Message,
-        messages::{
-            body_is, interface_is, message_is,
-            org_freedesktop_dbus::{AddMatch, RemoveMatch},
-            type_is,
-        },
-        types::{CompleteType, Value},
+        decoder::{Body, IncomingMessage, MessageType},
+        messages::org_freedesktop_dbus::{AddMatch, RemoveMatch},
     },
     sansio::DBusQueue,
 };
-use anyhow::Result;
+use anyhow::{Result, bail, ensure};
 
 pub(crate) trait SubscriptionResource {
-    type Output;
+    type Output: std::fmt::Debug;
 
     fn set_path(&mut self, path: String);
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output>;
+    fn try_process(&self, path: &str, body: Body<'_>) -> Result<Self::Output>;
 }
 
 pub(crate) struct Subscription<S>
@@ -67,30 +63,26 @@ where
         self.unsubscribe()
     }
 
-    fn try_process(&self, message: &Message) -> Result<S::Output> {
-        message_is!(
-            message,
-            Message::Signal {
-                path,
-                interface,
-                body,
-                ..
-            }
-        );
+    fn try_process(&self, message: IncomingMessage<'_>) -> Result<S::Output> {
+        ensure!(message.message_type == MessageType::Signal);
 
-        interface_is!(interface, "org.freedesktop.DBus.Properties");
-        body_is!(
-            body,
-            [Value::String(interface), Value::Array(item_t, items), _]
-        );
-        type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
-        type_is!(&**key_t, CompleteType::String);
-        type_is!(&**value_t, CompleteType::Variant);
+        let Some(interface) = message.interface else {
+            bail!("no Interface")
+        };
+        ensure!(interface == "org.freedesktop.DBus.Properties");
 
-        self.resource.try_process(path, interface, items)
+        let Some(path) = message.path else {
+            bail!("no Path")
+        };
+
+        let Some(body) = message.body else {
+            bail!("no Body")
+        };
+
+        self.resource.try_process(path, body)
     }
 
-    pub(crate) fn process(&self, message: &Message) -> Option<S::Output> {
+    pub(crate) fn process(&self, message: IncomingMessage<'_>) -> Option<S::Output> {
         self.try_process(message).ok()
     }
 }

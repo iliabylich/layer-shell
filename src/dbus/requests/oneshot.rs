@@ -1,5 +1,8 @@
 use crate::{
-    dbus::{Message, types::Value},
+    dbus::{
+        Message,
+        decoder::{Body, IncomingMessage, MessageType},
+    },
     sansio::DBusQueue,
 };
 use anyhow::{Result, bail};
@@ -9,7 +12,7 @@ pub(crate) trait OneshotResource {
     type Output;
 
     fn make_request(&self, input: Self::Input) -> Message<'static>;
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output>;
+    fn try_process(&self, body: Body<'_>) -> Result<Self::Output>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -51,21 +54,27 @@ where
         self.state = OneshotState::WaitingForReply(reply_serial);
     }
 
-    fn try_process(&self, message: &Message) -> Result<Option<T::Output>> {
-        match message {
-            Message::Error { error_name, .. } => {
-                bail!("DBus error: {error_name}")
+    fn try_process(&self, message: IncomingMessage<'_>) -> Result<Option<T::Output>> {
+        match message.message_type {
+            MessageType::Error => {
+                bail!("DBus error: {:?}", message.error_name)
             }
-            Message::MethodReturn { body, .. } => Ok(self.resource.try_process(body).ok()),
+            MessageType::MethodReturn => {
+                if let Some(body) = message.body {
+                    Ok(self.resource.try_process(body).ok())
+                } else {
+                    Ok(None)
+                }
+            }
             _ => Ok(None),
         }
     }
 
-    pub(crate) fn process(&mut self, message: &Message) -> Result<Option<T::Output>> {
+    pub(crate) fn process(&mut self, message: IncomingMessage<'_>) -> Result<Option<T::Output>> {
         let OneshotState::WaitingForReply(reply_serial) = self.state else {
             return Ok(None);
         };
-        if message.reply_serial() != Some(reply_serial) {
+        if message.reply_serial != Some(reply_serial) {
             return Ok(None);
         }
         self.state = OneshotState::ReplyReceived;

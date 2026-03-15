@@ -1,12 +1,12 @@
 use crate::{
     dbus::{
         SubscriptionResource,
-        messages::{interface_is, path_is, type_is, value_is},
-        types::{CompleteType, Value},
+        decoder::{ArrayValue, Body, Value},
+        messages::{interface_is, path_is, value_is},
     },
     modules::{TrayIcon, TrayIconPixmap},
 };
-use anyhow::{Result, anyhow};
+use anyhow::{Context as _, Result};
 
 pub(crate) struct AllPropsSubscription;
 
@@ -15,10 +15,15 @@ impl SubscriptionResource for AllPropsSubscription {
 
     fn set_path(&mut self, _path: String) {}
 
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/StatusNotifierItem");
+
+        let interface = body.try_next()?.context("no interface")?;
+        value_is!(interface, Value::String(interface));
         interface_is!(interface, "org.kde.StatusNotifierItem");
 
+        let items = body.try_next()?.context("no items")?;
+        value_is!(items, Value::Array(items));
         parse(items)
     }
 }
@@ -29,61 +34,66 @@ pub(crate) struct AllPropsUpdate {
     pub(crate) icon: Option<TrayIcon>,
 }
 
-pub(crate) fn parse(attributes: &[Value]) -> Result<AllPropsUpdate> {
+pub(crate) fn parse(attributes: ArrayValue<'_>) -> Result<AllPropsUpdate> {
     let mut menu = None;
     let mut icon_name = None;
     let mut icon_pixmap = None;
 
-    for item in attributes {
-        value_is!(item, Value::DictEntry(key, value));
-        value_is!(&**key, Value::String(key));
-        value_is!(&**value, Value::Variant(value));
+    let mut iter = attributes.iter();
+    while let Some(item) = iter.try_next()? {
+        value_is!(item, Value::DictEntry(dict_entry));
+        let (key, value) = dict_entry.key_value()?;
+        value_is!(key, Value::String(key));
+        value_is!(value, Value::Variant(value));
 
-        match key.as_ref() {
+        match key {
             "Menu" => {
-                value_is!(&**value, Value::ObjectPath(value));
+                let value = value.materialize()?;
+                value_is!(value, Value::ObjectPath(value));
                 menu = Some(value.to_string());
             }
             "IconName" => {
-                value_is!(&**value, Value::String(value));
+                let value = value.materialize()?;
+                value_is!(value, Value::String(value));
                 icon_name = Some(value.to_string());
             }
             "IconPixmap" => {
-                value_is!(&**value, Value::Array(CompleteType::Struct(item_t), value));
+                let value = value.materialize()?;
+                value_is!(value, Value::Array(value));
 
-                let [item1_t, item2_t, item3_t]: &[CompleteType; 3] = item_t
-                    .as_slice()
-                    .try_into()
-                    .map_err(|_| anyhow!("wrong IconPixmap size"))?;
-                type_is!(item1_t, CompleteType::Int32);
-                type_is!(item2_t, CompleteType::Int32);
-                type_is!(item3_t, CompleteType::Array(item3_t));
-                type_is!(&**item3_t, CompleteType::Byte);
-
-                let Ok([w_h_bytes]): Result<&[Value; 1], _> = value.as_slice().try_into() else {
+                let mut iter = value.iter();
+                let Some(w_h_bytes) = iter.try_next()? else {
                     continue;
                 };
                 value_is!(w_h_bytes, Value::Struct(w_h_bytes));
 
-                let [w, h, bytes]: &[Value; 3] = w_h_bytes
-                    .as_slice()
-                    .try_into()
-                    .map_err(|_| anyhow!("wrong inner IconPixmap size"))?;
+                let mut iter = w_h_bytes.iter()?;
 
-                value_is!(w, Value::Int32(w));
-                value_is!(h, Value::Int32(h));
-                value_is!(bytes, Value::Array(CompleteType::Byte, bytes));
-                let bytes = bytes
-                    .iter()
-                    .map(|byte| {
+                let width = iter.try_next()?;
+                let Some(width) = width else {
+                    continue;
+                };
+                value_is!(width, Value::Int32(width));
+
+                let height = iter.try_next()?.context("no height")?;
+                value_is!(height, Value::Int32(height));
+
+                let bytes = iter.try_next()?.context("no bytes")?;
+                value_is!(bytes, Value::Array(bytes));
+
+                let bytes = {
+                    let mut out = vec![];
+                    let mut iter = bytes.iter();
+                    while let Some(byte) = iter.try_next()? {
                         value_is!(byte, Value::Byte(byte));
-                        Ok(*byte)
-                    })
-                    .collect::<Result<Vec<_>>>()?;
+                        out.push(byte);
+                    }
+                    out
+                };
 
                 icon_pixmap = Some(TrayIconPixmap {
-                    width: *w,
-                    height: *h,
+                    width,
+                    height,
                     bytes: bytes.into(),
                 });
             }

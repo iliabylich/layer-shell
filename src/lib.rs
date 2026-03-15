@@ -25,8 +25,7 @@ use crate::{
     macros::report_and_exit,
     modules::{
         CPU, Clock, Control, ControlRequest, Hyprland, HyprlandQueue, HyprlandReader,
-        HyprlandWriter, Location, Memory, Module, Network, SessionDBus, Sound, SystemDBus, Tray,
-        Weather,
+        HyprlandWriter, Location, Memory, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
     },
     sansio::{DBusQueue, Satisfy, Wants},
     timer::Timer,
@@ -39,15 +38,14 @@ struct IO {
     events: EventQueue,
 
     timer: Timer,
+    clock: Clock,
 
     session_dbus: Option<SessionDBus>,
     sound: Sound,
     control: Control,
     tray: Tray,
-
     system_dbus: Option<SystemDBus>,
     network: Network,
-
     hyprland_reader: Option<HyprlandReader>,
     hyprland_writer: Option<HyprlandWriter>,
     hyprland_queue: HyprlandQueue,
@@ -63,6 +61,21 @@ struct IO {
 }
 
 static mut GLOBAL_IO: *mut IO = std::ptr::null_mut();
+
+macro_rules! schedule {
+    ($module:expr) => {{
+        let wants = $module.wants();
+        let module_id = $module.module_id();
+        schedule_wanted(wants, module_id)
+    }};
+}
+macro_rules! schedule_opt {
+    ($module:expr) => {
+        if let Some(module) = &mut $module {
+            schedule!(module)
+        }
+    };
+}
 
 impl IO {
     fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Self {
@@ -81,15 +94,14 @@ impl IO {
             events: events.clone(),
 
             timer: Timer::new(),
+            clock: Clock::new(events.clone()),
 
             session_dbus: Some(SessionDBus::new(session_dbus_queue.clone())),
             sound: Sound::new(events.clone(), session_dbus_queue.clone()),
             control: Control::new(session_dbus_queue.clone()),
             tray: Tray::new(events.clone(), session_dbus_queue.clone()),
-
             system_dbus: Some(SystemDBus::new(system_dbus_queue.clone())),
             network: Network::new(events.clone(), system_dbus_queue.clone()),
-
             hyprland_reader,
             hyprland_writer,
             hyprland_queue,
@@ -110,21 +122,21 @@ impl IO {
     }
 
     fn init(&mut self) {
-        schedule_wanted(&mut self.timer);
+        schedule!(self.timer);
 
-        schedule_wanted(&mut self.location);
-        schedule_wanted(&mut self.hyprland_reader);
-        schedule_wanted(&mut self.hyprland_writer);
-        schedule_wanted(&mut self.cpu);
-        schedule_wanted(&mut self.memory);
+        schedule_opt!(self.location);
+        schedule_opt!(self.hyprland_reader);
+        schedule_opt!(self.hyprland_writer);
+        schedule_opt!(self.cpu);
+        schedule_opt!(self.memory);
 
         self.sound.init();
         self.control.init();
         self.tray.init();
-        schedule_wanted(&mut self.session_dbus);
+        schedule_opt!(self.session_dbus);
 
         self.network.init();
-        schedule_wanted(&mut self.system_dbus);
+        schedule_opt!(self.system_dbus);
 
         IoUring::submit_if_dirty();
     }
@@ -133,7 +145,7 @@ impl IO {
         match req {
             ControlRequest::CapsLockToggled => {
                 self.hyprland_queue.enqueue_get_caps_lock();
-                schedule_wanted(&mut self.hyprland_writer);
+                schedule_opt!(self.hyprland_writer);
             }
             ControlRequest::Exit => self.events.push_back(Event::Exit),
             ControlRequest::ReloadStyles => self.events.push_back(Event::ReloadStyles),
@@ -148,8 +160,6 @@ impl IO {
             return;
         }
 
-        let mut events = vec![];
-
         while let Some(cqe) = IoUring::try_get_cqe() {
             let res = cqe.res();
             let user_data = cqe.user_data();
@@ -157,75 +167,108 @@ impl IO {
             let UserData { module_id, op, .. } = UserData::from(user_data);
             let satisfy = Satisfy::from(op);
 
+            macro_rules! satisfy {
+                ($module:expr) => {
+                    $module.satisfy(satisfy, res)
+                };
+            }
+            macro_rules! satisfy_opt {
+                ($module:expr) => {
+                    if let Some(module) = &mut $module {
+                        match satisfy!(module) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                log::error!("Module {:?} has crashed: {err:?}", module.module_id());
+                                $module = None;
+                                Default::default()
+                            }
+                        }
+                    } else {
+                        Default::default()
+                    }
+                };
+            }
+
             match module_id {
                 ModuleId::GeoLocation => {
-                    let Ok(latlng) = self.location.satisfy(satisfy, res);
-                    schedule_wanted(&mut self.location);
-                    if let Some((lat, lng)) = latlng.flatten() {
+                    let latlng = satisfy_opt!(self.location);
+                    schedule_opt!(self.location);
+                    if let Some((lat, lng)) = latlng {
                         self.weather = Some(Weather::new(lat, lng, self.events.clone()));
-                        schedule_wanted(&mut self.weather);
+                        schedule_opt!(self.weather);
                     }
                 }
 
                 ModuleId::Weather => {
-                    let Ok(_) = self.weather.satisfy(satisfy, res);
-                    schedule_wanted(&mut self.weather);
+                    satisfy_opt!(self.weather);
+                    schedule_opt!(self.weather);
                 }
 
                 ModuleId::HyprlandReader => {
-                    let Ok(_) = self.hyprland_reader.satisfy(satisfy, res);
-                    schedule_wanted(&mut self.hyprland_reader);
+                    satisfy_opt!(self.hyprland_reader);
+                    schedule_opt!(self.hyprland_reader);
                 }
                 ModuleId::HyprlandWriter => {
-                    let Ok(_) = self.hyprland_writer.satisfy(satisfy, res);
-                    schedule_wanted(&mut self.hyprland_writer);
+                    satisfy_opt!(self.hyprland_writer);
+                    schedule_opt!(self.hyprland_writer);
                 }
 
                 ModuleId::SessionDBus => {
-                    let Ok(message) = self.session_dbus.satisfy(satisfy, res);
+                    let message = satisfy_opt!(self.session_dbus);
 
-                    if let Some(message) = message.flatten() {
-                        self.sound.on_message(&message);
-                        self.tray.on_message(&message);
+                    if let Some(message) = message {
+                        self.sound.on_message(message);
+                        self.tray.on_message(message);
 
-                        if let Some(req) = self.control.on_message(&message) {
+                        if let Some(req) = self.control.on_message(message) {
                             self.on_control_req(req);
                         }
                     }
 
-                    schedule_wanted(&mut self.session_dbus);
+                    schedule_opt!(self.session_dbus);
                 }
 
                 ModuleId::SystemDBus => {
-                    let Ok(message) = self.system_dbus.satisfy(satisfy, res);
+                    let message = satisfy_opt!(self.system_dbus);
 
-                    if let Some(message) = message.flatten() {
-                        self.network.on_message(&message);
+                    if let Some(message) = message {
+                        self.network.on_message(message);
                     }
 
-                    schedule_wanted(&mut self.system_dbus);
+                    schedule_opt!(self.system_dbus);
                 }
 
                 ModuleId::CPU => {
-                    let Ok(_) = self.cpu.satisfy(satisfy, res);
-                    schedule_wanted(&mut self.cpu);
+                    satisfy_opt!(self.cpu);
+                    schedule_opt!(self.cpu);
                 }
                 ModuleId::Memory => {
-                    let Ok(_) = self.memory.satisfy(satisfy, res);
-                    schedule_wanted(&mut self.memory);
+                    satisfy_opt!(self.memory);
+                    schedule_opt!(self.memory);
                 }
                 ModuleId::Timer => {
-                    let Ok(tick) = self.timer.satisfy(satisfy, res);
-                    schedule_wanted(&mut self.timer);
+                    let tick = self.timer.satisfy(satisfy, res);
+                    schedule!(self.timer);
 
-                    Clock::tick(&mut events);
-                    self.weather.tick(tick);
-                    self.cpu.tick(tick);
-                    schedule_wanted(&mut self.cpu);
-                    self.memory.tick(tick);
-                    schedule_wanted(&mut self.memory);
+                    self.clock.tick();
+
+                    if let Some(weather) = &mut self.weather {
+                        weather.tick(tick);
+                        schedule!(weather);
+                    }
+
+                    if let Some(cpu) = &mut self.cpu {
+                        cpu.tick(tick);
+                        schedule!(cpu);
+                    }
+
+                    if let Some(memory) = &mut self.memory {
+                        memory.tick(tick);
+                        schedule!(memory);
+                    }
+
                     self.sound.tick(tick);
-                    schedule_wanted(&mut self.session_dbus);
+                    schedule_opt!(self.session_dbus);
                 }
             }
 
@@ -233,13 +276,6 @@ impl IO {
         }
 
         IoUring::submit_if_dirty();
-
-        for event in events {
-            if self.logging_enabled {
-                log::info!(target: "IO", "{event:?}");
-            }
-            (self.on_event)(&event);
-        }
 
         while let Some(event) = self.events.pop_front() {
             if self.logging_enabled {
@@ -261,7 +297,7 @@ impl IO {
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
                 self.hyprland_queue.enqueue_dispatch(format!($($arg)*), );
-                schedule_wanted(&mut self.hyprland_writer);
+                schedule_opt!(self.hyprland_writer);
             }};
         }
         match cmd {
@@ -295,7 +331,7 @@ impl IO {
 
             Command::TriggerTray { uuid } => {
                 self.tray.trigger(&uuid);
-                schedule_wanted(&mut self.session_dbus);
+                schedule_opt!(self.session_dbus);
             }
         }
 
@@ -410,30 +446,27 @@ pub extern "C" fn io_change_theme() {
     process_command(Command::ChangeTheme);
 }
 
-fn schedule_wanted<T>(module: &mut T)
-where
-    T: Module,
-{
-    match module.wants() {
+fn schedule_wanted(wants: Wants, module_id: ModuleId) {
+    match wants {
         Wants::Socket { domain, r#type } => {
             let mut sqe = IoUring::get_sqe();
             sqe.prep_socket(domain, r#type, 0, 0);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Socket));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::Socket));
         }
         Wants::Connect { fd, addr, addrlen } => {
             let mut sqe = IoUring::get_sqe();
             sqe.prep_connect(fd, addr, addrlen);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Connect));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::Connect));
         }
         Wants::Read { fd, buf, len } => {
             let mut sqe = IoUring::get_sqe();
             sqe.prep_read(fd, buf, len);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Read));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
         }
         Wants::Write { fd, buf, len } => {
             let mut sqe = IoUring::get_sqe();
             sqe.prep_write(fd, buf, len);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Write));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
         }
         Wants::ReadWrite {
             fd,
@@ -444,11 +477,11 @@ where
         } => {
             let mut sqe = IoUring::get_sqe();
             sqe.prep_read(fd, readbuf, readlen);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Read));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
 
             let mut sqe = IoUring::get_sqe();
             sqe.prep_write(fd, writebuf, writelen);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Write));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
         }
         Wants::OpenAt {
             dfd,
@@ -458,12 +491,12 @@ where
         } => {
             let mut sqe = IoUring::get_sqe();
             sqe.prep_openat(dfd, path, flags, mode);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::OpenAt));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::OpenAt));
         }
         Wants::Close { fd } => {
             let mut sqe = IoUring::get_sqe();
             sqe.prep_close(fd);
-            sqe.set_user_data(UserData::new(T::MODULE_ID, Satisfy::Close));
+            sqe.set_user_data(UserData::new(module_id, Satisfy::Close));
         }
         Wants::Nothing => {}
     }

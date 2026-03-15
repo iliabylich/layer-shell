@@ -1,12 +1,12 @@
 use crate::{
     dbus::{
         Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{body_is, interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-        types::Value,
+        decoder::{Body, IncomingMessage, Value},
+        messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
     sansio::DBusQueue,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 
 pub(crate) struct PrimaryConnection {
     oneshot: Oneshot<Resource>,
@@ -44,7 +44,10 @@ impl PrimaryConnection {
         );
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<PrimaryConnectionEvent> {
+    pub(crate) fn on_message(
+        &mut self,
+        message: IncomingMessage<'_>,
+    ) -> Option<PrimaryConnectionEvent> {
         None.or_else(|| self.oneshot.process(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(PrimaryConnectionEvent::from)
@@ -66,11 +69,11 @@ impl OneshotResource for Resource {
         .into()
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        body_is!(body, [path]);
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let path = body.try_next()?.context("empty Body")?;
         value_is!(path, Value::Variant(path));
-        value_is!(&**path, Value::ObjectPath(path));
-
+        let path = path.materialize()?;
+        value_is!(path, Value::ObjectPath(path));
         Ok(path.to_string())
     }
 }
@@ -78,17 +81,26 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = String;
 
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/org/freedesktop/NetworkManager");
+
+        let interface = body.try_next()?.context("empty Body")?;
+        value_is!(interface, Value::String(interface));
         interface_is!(interface, "org.freedesktop.NetworkManager");
 
-        for item in items {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
+        let items = body.try_next()?.context("no items in Body")?;
+        value_is!(items, Value::Array(items));
+        let mut iter = items.iter();
+
+        while let Some(item) = iter.try_next()? {
+            value_is!(item, Value::DictEntry(dict_entry));
+            let (key, value) = dict_entry.key_value()?;
+            value_is!(key, Value::String(key));
+            value_is!(value, Value::Variant(value));
 
             if key == "PrimaryConnection" {
-                value_is!(&**value, Value::ObjectPath(value));
+                let value = value.materialize()?;
+                value_is!(value, Value::ObjectPath(value));
                 return Ok(value.to_string());
             }
         }

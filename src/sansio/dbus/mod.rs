@@ -63,34 +63,38 @@ impl DBusConnection {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
-        match (&mut self.state, satisfy) {
-            (State::Connecting(connector), _) => {
-                if let Some(fd) = connector.satisfy(satisfy, res)? {
-                    self.state = State::Ready {
-                        reader: DBusReader::new(fd),
-                        writer: DBusWriter::new(fd, self.queue.clone()),
-                    };
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
+        if let State::Connecting(connector) = &mut self.state {
+            if let Some(fd) = connector.satisfy(satisfy, res)? {
+                self.state = State::Ready {
+                    reader: DBusReader::new(fd),
+                    writer: DBusWriter::new(fd, self.queue.clone()),
+                };
+            }
+            return Ok(None);
+        }
+
+        if let State::Ready { reader, writer } = &mut self.state
+            && matches!(satisfy, Satisfy::Read | Satisfy::Write)
+        {
+            match satisfy {
+                Satisfy::Read => {
+                    if let Some(buf) = reader.satisfy(satisfy, res)? {
+                        return Ok(Some(buf));
+                    } else {
+                        return Ok(None);
+                    }
                 }
-                Ok(None)
-            }
 
-            (State::Ready { reader, .. }, Satisfy::Read) => {
-                if let Some(buf) = reader.satisfy(satisfy, res)? {
-                    Ok(Some(buf))
-                } else {
-                    Ok(None)
+                Satisfy::Write => {
+                    writer.satisfy(satisfy, res)?;
+                    return Ok(None);
                 }
-            }
 
-            (State::Ready { writer, .. }, Satisfy::Write) => {
-                writer.satisfy(satisfy, res)?;
-                Ok(None)
-            }
-
-            (_, satisfy) => {
-                bail!("malformed DBusReader state: reader/writer can't handle {satisfy:?}")
+                _ => unreachable!(),
             }
         }
+
+        bail!("malformed DBusReader state: reader/writer can't handle {satisfy:?}")
     }
 }

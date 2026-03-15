@@ -1,4 +1,4 @@
-use crate::{Event, dbus::Message, event_queue::EventQueue, sansio::DBusQueue};
+use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, sansio::DBusQueue};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -103,7 +103,7 @@ impl Network {
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
         if let Some(e) = self.wireless_connection.on_message(message) {
             self.on_wireless_connection_event(e);
             return;

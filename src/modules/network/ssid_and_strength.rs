@@ -1,11 +1,8 @@
 use crate::{
     dbus::{
         Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{
-            body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is,
-            value_is,
-        },
-        types::{CompleteType, Value},
+        decoder::{Body, IncomingMessage, Value},
+        messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
     sansio::DBusQueue,
 };
@@ -41,22 +38,24 @@ impl SsidAndStrength {
         self.oneshot.start(path.to_string());
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<SsidAndStrengthEvent> {
+    pub(crate) fn on_message(
+        &mut self,
+        message: IncomingMessage<'_>,
+    ) -> Option<SsidAndStrengthEvent> {
         None.or_else(|| self.oneshot.process(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
     }
 }
 
-fn parse_ssid(ssid: &Value) -> Result<String> {
-    value_is!(ssid, Value::Array(CompleteType::Byte, ssid));
-    let ssid = ssid
-        .iter()
-        .map(|byte| {
-            value_is!(byte, Value::Byte(byte));
-            Ok(*byte)
-        })
-        .collect::<Result<Vec<_>>>()?;
-    let ssid = String::from_utf8_lossy(&ssid).to_string();
+fn parse_ssid(ssid: Value<'_>) -> Result<String> {
+    value_is!(ssid, Value::Array(ssid));
+    let mut iter = ssid.iter();
+    let mut bytes = vec![];
+    while let Some(byte) = iter.try_next()? {
+        value_is!(byte, Value::Byte(byte));
+        bytes.push(byte);
+    }
+    let ssid = String::from_utf8_lossy(&bytes).to_string();
     Ok(ssid)
 }
 
@@ -77,22 +76,26 @@ impl OneshotResource for Resource {
         .into()
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        body_is!(body, [Value::Array(item_t, array)]);
-        type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
-        type_is!(&**key_t, CompleteType::String);
-        type_is!(&**value_t, CompleteType::Variant);
-
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let properties = body.try_next()?.context("no Properties in Body")?;
+        value_is!(properties, Value::Array(properties));
+        let mut iter = properties.iter();
         let mut ssid = None;
         let mut strength = None;
-
-        for item in array {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
-            match key.as_ref() {
-                "Ssid" => ssid = Some(&**value),
-                "Strength" => strength = Some(&**value),
+        while let Some(property) = iter.try_next()? {
+            value_is!(property, Value::DictEntry(property));
+            let (key, value) = property.key_value()?;
+            value_is!(key, Value::String(key));
+            value_is!(value, Value::Variant(value));
+            match key {
+                "Ssid" => {
+                    let value = value.materialize()?;
+                    ssid = Some(value)
+                }
+                "Strength" => {
+                    let value = value.materialize()?;
+                    strength = Some(value)
+                }
                 _ => {}
             }
         }
@@ -105,7 +108,7 @@ impl OneshotResource for Resource {
 
         Ok(SsidAndStrengthEvent {
             ssid: Some(ssid),
-            strength: Some(*strength),
+            strength: Some(strength),
         })
     }
 }
@@ -113,24 +116,32 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = SsidAndStrengthEvent;
 
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
-        interface_is!(interface, "org.freedesktop.NetworkManager.AccessPoint");
+    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, self.path.as_deref().context("no path")?);
 
+        let interface = body.try_next()?.context("no Interface in Body")?;
+        value_is!(interface, Value::String(interface));
+        interface_is!(interface, "org.freedesktop.NetworkManager.AccessPoint");
+
+        let attributes = body.try_next()?.context("no Attributes in Body")?;
+        value_is!(attributes, Value::Array(attributes));
+        let mut iter = attributes.iter();
         let mut ssid = None;
         let mut strength = None;
-
-        for item in items {
-            value_is!(item, Value::DictEntry(key, value));
-            value_is!(&**key, Value::String(key));
-            value_is!(&**value, Value::Variant(value));
+        while let Some(attribute) = iter.try_next()? {
+            value_is!(attribute, Value::DictEntry(attribute));
+            let (key, value) = attribute.key_value()?;
+            value_is!(key, Value::String(key));
+            value_is!(value, Value::Variant(value));
 
             if key == "Ssid" {
+                let value = value.materialize()?;
                 let value = parse_ssid(value)?;
                 ssid = Some(value);
             } else if key == "Strength" {
-                value_is!(&**value, Value::Byte(value));
-                strength = Some(*value);
+                let value = value.materialize()?;
+                value_is!(value, Value::Byte(value));
+                strength = Some(value);
             }
         }
 

@@ -2,16 +2,13 @@ use crate::{
     Event,
     dbus::{
         Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
-        messages::{
-            body_is, interface_is, org_freedesktop_dbus::GetAllProperties, path_is, type_is,
-            value_is,
-        },
-        types::{CompleteType, Value},
+        decoder::{ArrayValue, Body, IncomingMessage, Value},
+        messages::{interface_is, org_freedesktop_dbus::GetAllProperties, value_is},
     },
     event_queue::EventQueue,
     sansio::DBusQueue,
 };
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, ensure};
 
 pub(crate) struct Sound {
     oneshot: Oneshot<Resource>,
@@ -36,7 +33,7 @@ impl Sound {
         self.oneshot.start(())
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
         match self.oneshot.process(message) {
             Ok(Some((volume, muted))) => {
                 self.events.push_back(Event::InitialSound { volume, muted });
@@ -88,13 +85,11 @@ impl OneshotResource for Resource {
         .into()
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        body_is!(body, [Value::Array(item_t, array)]);
-        type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
-        type_is!(&**key_t, CompleteType::String);
-        type_is!(&**value_t, CompleteType::Variant);
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let attributes = body.try_next()?.context("expected 1 value")?;
+        value_is!(attributes, Value::Array(attributes));
 
-        let (volume, muted) = parse(array)?;
+        let (volume, muted) = parse(attributes)?;
         let volume = volume.context("no Volume")?;
         let muted = muted.context("no Muted")?;
 
@@ -105,33 +100,44 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = (Option<u32>, Option<bool>);
 
-    fn try_process(&self, path: &str, interface: &str, items: &[Value]) -> Result<Self::Output> {
-        path_is!(path, "/org/local/PipewireDBus");
+    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
+        ensure!(path == "/org/local/PipewireDBus");
+
+        let interface = body.try_next()?.context("no interface in Body")?;
+        value_is!(interface, Value::String(interface));
         interface_is!(interface, "org.local.PipewireDBus");
 
-        parse(items)
+        let attributes = body.try_next()?.context("no attributes in Body")?;
+        value_is!(attributes, Value::Array(attributes));
+
+        parse(attributes)
     }
 
     fn set_path(&mut self, _: String) {}
 }
 
-fn parse(attributes: &[Value]) -> Result<(Option<u32>, Option<bool>)> {
+fn parse(attributes: ArrayValue) -> Result<(Option<u32>, Option<bool>)> {
     let mut volume = None;
     let mut muted = None;
 
-    for attribute in attributes {
-        value_is!(attribute, Value::DictEntry(key, value));
-        value_is!(&**key, Value::String(key));
-        value_is!(&**value, Value::Variant(value));
+    let mut iter = attributes.iter();
+    while let Some(item) = iter.try_next()? {
+        value_is!(item, Value::DictEntry(dict_entry));
+
+        let (key, value) = dict_entry.key_value()?;
+        value_is!(key, Value::String(key));
+        value_is!(value, Value::Variant(value));
 
         if key == "Volume" {
-            value_is!(&**value, Value::UInt32(value));
-            volume = Some(normalize_volume(*value));
+            let value = value.materialize()?;
+            value_is!(value, Value::UInt32(value));
+            volume = Some(normalize_volume(value));
         }
 
         if key == "Muted" {
-            value_is!(&**value, Value::Bool(value));
-            muted = Some(*value);
+            let value = value.materialize()?;
+            value_is!(value, Value::Bool(value));
+            muted = Some(value)
         }
     }
 

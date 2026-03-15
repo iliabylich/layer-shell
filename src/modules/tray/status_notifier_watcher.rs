@@ -1,18 +1,17 @@
 use crate::{
     dbus::{
         Message,
+        decoder::{IncomingMessage, MessageType, Value},
         messages::{
-            body_is, destination_is, interface_is, message_is, org_freedesktop_dbus::RequestName,
-            path_is, value_is,
+            destination_is, interface_is, org_freedesktop_dbus::RequestName, path_is, value_is,
         },
-        types::Value,
     },
     modules::tray::{
         service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
     },
     sansio::DBusQueue,
 };
-use anyhow::Result;
+use anyhow::{Context as _, Result, ensure};
 
 pub(crate) struct StatusNotifierWatcher {
     reply_serial: Option<u32>,
@@ -44,7 +43,7 @@ impl StatusNotifierWatcher {
         self.request()
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<Service> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<Service> {
         if self.introspection.process_message(message) {
             return None;
         }
@@ -72,28 +71,24 @@ enum KSNIRequest {
 }
 
 impl KSNIRequest {
-    fn parse(message: &Message) -> Result<(u32, String, Self)> {
-        message_is!(
-            message,
-            Message::MethodCall {
-                serial,
-                path,
-                member,
-                interface: Some(interface),
-                destination: Some(destination),
-                sender: Some(sender),
-                body,
-                ..
-            }
-        );
+    fn parse(message: IncomingMessage<'_>) -> Result<(u32, String, Self)> {
+        ensure!(message.message_type == MessageType::MethodCall);
+
+        let serial = message.serial;
+        let path = message.path.context("no Path")?;
+        let member = message.member.context("no Member")?;
+        let interface = message.interface.context("no Interface")?;
+        let destination = message.destination.context("no Destination")?;
+        let sender = message.sender.context("no Sender")?;
+        let mut body = message.body.context("no Body")?;
 
         path_is!(path, "/StatusNotifierWatcher");
         interface_is!(interface, "org.kde.StatusNotifierWatcher");
         destination_is!(destination, "org.kde.StatusNotifierWatcher");
 
-        let req = match member.as_ref() {
+        let req = match member {
             "RegisterStatusNotifierItem" => {
-                body_is!(body, [address]);
+                let address = body.try_next()?.context("no Address")?;
                 value_is!(address, Value::String(address));
 
                 Self::NewItem {
@@ -104,6 +99,6 @@ impl KSNIRequest {
             _ => Self::Other,
         };
 
-        Ok((*serial, sender.to_string(), req))
+        Ok((serial, sender.to_string(), req))
     }
 }

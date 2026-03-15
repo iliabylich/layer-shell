@@ -30,16 +30,6 @@ pub(crate) enum Message<'a> {
         unix_fds: Option<u32>,
         body: Vec<Value<'a>>,
     },
-    Signal {
-        serial: u32,
-        path: Cow<'a, str>,
-        interface: Cow<'a, str>,
-        member: Cow<'a, str>,
-        destination: Option<Cow<'a, str>>,
-        sender: Option<Cow<'a, str>>,
-        unix_fds: Option<u32>,
-        body: Vec<Value<'a>>,
-    },
 }
 
 impl<'a> Message<'a> {
@@ -47,8 +37,7 @@ impl<'a> Message<'a> {
         match self {
             Self::MethodCall { serial, .. }
             | Self::MethodReturn { serial, .. }
-            | Self::Error { serial, .. }
-            | Self::Signal { serial, .. } => *serial,
+            | Self::Error { serial, .. } => *serial,
         }
     }
 
@@ -56,8 +45,7 @@ impl<'a> Message<'a> {
         match self {
             Self::MethodCall { serial, .. }
             | Self::MethodReturn { serial, .. }
-            | Self::Error { serial, .. }
-            | Self::Signal { serial, .. } => serial,
+            | Self::Error { serial, .. } => serial,
         }
     }
 
@@ -66,20 +54,19 @@ impl<'a> Message<'a> {
             Self::MethodCall { .. } => MessageType::MethodCall,
             Self::MethodReturn { .. } => MessageType::MethodReturn,
             Self::Error { .. } => MessageType::Error,
-            Self::Signal { .. } => MessageType::Signal,
         }
     }
 
     pub(crate) fn path(&self) -> Option<&str> {
         match self {
-            Self::MethodCall { path, .. } | Self::Signal { path, .. } => Some(path.as_ref()),
+            Self::MethodCall { path, .. } => Some(path.as_ref()),
             _ => None,
         }
     }
 
     pub(crate) fn member(&self) -> Option<&str> {
         match self {
-            Self::MethodCall { member, .. } | Self::Signal { member, .. } => Some(member),
+            Self::MethodCall { member, .. } => Some(member),
             _ => None,
         }
     }
@@ -87,7 +74,6 @@ impl<'a> Message<'a> {
     pub(crate) fn interface(&self) -> Option<&str> {
         match self {
             Self::MethodCall { interface, .. } => interface.as_deref(),
-            Self::Signal { interface, .. } => Some(interface),
             _ => None,
         }
     }
@@ -112,8 +98,7 @@ impl<'a> Message<'a> {
         match self {
             Self::MethodCall { destination, .. }
             | Self::MethodReturn { destination, .. }
-            | Self::Error { destination, .. }
-            | Self::Signal { destination, .. } => destination.as_deref(),
+            | Self::Error { destination, .. } => destination.as_deref(),
         }
     }
 
@@ -121,8 +106,7 @@ impl<'a> Message<'a> {
         match self {
             Self::MethodCall { sender, .. }
             | Self::MethodReturn { sender, .. }
-            | Self::Error { sender, .. }
-            | Self::Signal { sender, .. } => sender.as_deref(),
+            | Self::Error { sender, .. } => sender.as_deref(),
         }
     }
 
@@ -130,8 +114,7 @@ impl<'a> Message<'a> {
         match self {
             Self::MethodCall { body, .. }
             | Self::MethodReturn { body, .. }
-            | Self::Error { body, .. }
-            | Self::Signal { body, .. } => body,
+            | Self::Error { body, .. } => body,
         }
     }
 
@@ -139,8 +122,7 @@ impl<'a> Message<'a> {
         match self {
             Self::MethodCall { unix_fds, .. }
             | Self::MethodReturn { unix_fds, .. }
-            | Self::Error { unix_fds, .. }
-            | Self::Signal { unix_fds, .. } => *unix_fds,
+            | Self::Error { unix_fds, .. } => *unix_fds,
         }
     }
 

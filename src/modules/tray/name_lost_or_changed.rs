@@ -1,12 +1,12 @@
 use crate::{
     dbus::{
         Message, Oneshot, OneshotResource,
-        messages::{body_is, interface_is, member_is, message_is, path_is, value_is},
-        types::Value,
+        decoder::{IncomingMessage, MessageType, Value},
+        messages::{interface_is, member_is, path_is, value_is},
     },
     sansio::DBusQueue,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use std::borrow::Cow;
 
 pub(crate) struct NameLostOrNameOwnerChanged {
@@ -24,7 +24,7 @@ impl NameLostOrNameOwnerChanged {
         self.name_changed.start(())
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<String> {
+    pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<&'a str> {
         parse_name_owner_changed(message).ok()
     }
 }
@@ -37,6 +37,7 @@ impl OneshotResource for NameOwnerChangedResource {
     type Output = ();
 
     fn make_request(&self, _: Self::Input) -> Message<'static> {
+        use crate::dbus::types::Value;
         Message::MethodCall {
             serial: 0,
             path: Cow::Borrowed("/org/freedesktop/DBus"),
@@ -51,34 +52,33 @@ impl OneshotResource for NameOwnerChangedResource {
         }
     }
 
-    fn try_process(&self, _: &[Value]) -> Result<Self::Output> {
-        unimplemented!()
+    fn try_process(&self, _body: crate::dbus::decoder::Body<'_>) -> Result<Self::Output> {
+        unreachable!()
     }
 }
 
-fn parse_name_owner_changed(message: &Message) -> Result<String> {
-    message_is!(
-        message,
-        Message::Signal {
-            path,
-            interface,
-            member,
-            body,
-            ..
-        }
-    );
+fn parse_name_owner_changed<'a>(message: IncomingMessage<'a>) -> Result<&'a str> {
+    ensure!(message.message_type == MessageType::Signal);
+
+    let path = message.path.context("no Path")?;
+    let interface = message.interface.context("no Interface")?;
+    let member = message.member.context("no Member")?;
+    let mut body = message.body.context("no Body")?;
 
     path_is!(path, "/org/freedesktop/DBus");
     interface_is!(interface, "org.freedesktop.DBus");
     member_is!(member, "NameOwnerChanged");
-    body_is!(body, [alias, from, to]);
+
+    let alias = body.try_next()?.context("no alias")?;
+    let from = body.try_next()?.context("no from")?;
+    let to = body.try_next()?.context("no to")?;
 
     value_is!(alias, Value::String(alias));
     value_is!(from, Value::String(_));
     value_is!(to, Value::String(to));
 
     if to.is_empty() {
-        Ok(alias.to_string())
+        Ok(alias)
     } else {
         bail!("unrelated")
     }

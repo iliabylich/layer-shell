@@ -2,12 +2,12 @@ use super::{AllPropsUpdate, parse};
 use crate::{
     dbus::{
         Message, OneshotResource,
-        messages::{body_is, org_freedesktop_dbus::GetAllProperties, type_is},
-        types::{CompleteType, Value},
+        decoder::{Body, Value},
+        messages::{org_freedesktop_dbus::GetAllProperties, value_is},
     },
     modules::TrayIcon,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 
 pub(crate) struct GetAllPropsOneshot;
 
@@ -25,12 +25,9 @@ impl OneshotResource for GetAllPropsOneshot {
         GetAllProperties::new(input, "/StatusNotifierItem", "org.kde.StatusNotifierItem").into()
     }
 
-    fn try_process(&self, body: &[Value]) -> Result<Self::Output> {
-        body_is!(body, [Value::Array(item_t, array)]);
-        type_is!(item_t, CompleteType::DictEntry(key_t, value_t));
-        type_is!(&**key_t, CompleteType::String);
-        type_is!(&**value_t, CompleteType::Variant);
-
+    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        let array = body.try_next()?.context("no array")?;
+        value_is!(array, Value::Array(array));
         match parse(array)? {
             AllPropsUpdate {
                 menu: Some(menu),

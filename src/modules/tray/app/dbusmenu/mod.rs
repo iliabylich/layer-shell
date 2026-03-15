@@ -1,9 +1,10 @@
 use crate::dbus::{
     Message, OneshotResource,
-    messages::{interface_is, member_is, message_is, path_is, sender_is},
+    decoder::{Body, IncomingMessage, MessageType},
+    messages::{interface_is, member_is, path_is, sender_is},
     types::Value,
 };
-use anyhow::Result;
+use anyhow::{Context as _, Result, ensure};
 pub(crate) use get_layout::GetLayout;
 use std::borrow::Cow;
 
@@ -30,26 +31,22 @@ impl OneshotResource for LayoutUpdatedSubscription {
         }
     }
 
-    fn try_process(&self, _body: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
         Ok(())
     }
 }
 
 pub(crate) fn parse_layout_updated_signal(
-    message: &Message,
+    message: IncomingMessage<'_>,
     address: &str,
     expected_path: &str,
 ) -> Result<()> {
-    message_is!(
-        message,
-        Message::Signal {
-            path,
-            interface,
-            member,
-            sender: Some(sender),
-            ..
-        }
-    );
+    ensure!(message.message_type == MessageType::Signal);
+
+    let path = message.path.context("no Path")?;
+    let interface = message.interface.context("no Interface")?;
+    let member = message.member.context("no Member")?;
+    let sender = message.sender.context("no Sender")?;
 
     interface_is!(interface, "com.canonical.dbusmenu");
     path_is!(path, expected_path);
@@ -80,26 +77,22 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
         }
     }
 
-    fn try_process(&self, _body: &[Value]) -> Result<Self::Output> {
+    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
         Ok(())
     }
 }
 
 pub(crate) fn parse_items_properties_updated_signal(
-    message: &Message,
+    message: IncomingMessage<'_>,
     address: &str,
     expected_path: &str,
 ) -> Result<()> {
-    message_is!(
-        message,
-        Message::Signal {
-            path,
-            interface,
-            member,
-            sender: Some(sender),
-            ..
-        }
-    );
+    ensure!(message.message_type == MessageType::Signal);
+
+    let path = message.path.context("no Path")?;
+    let interface = message.interface.context("no Interface")?;
+    let member = message.member.context("no Member")?;
+    let sender = message.sender.context("no Sender")?;
 
     interface_is!(interface, "com.canonical.dbusmenu");
     path_is!(path, expected_path);

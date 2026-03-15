@@ -1,5 +1,5 @@
 use crate::{
-    dbus::Message,
+    dbus::decoder::IncomingMessage,
     modules::network::{
         active_connection_type::ActiveConnectionType,
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
@@ -71,7 +71,10 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: &Message) -> Option<WirelessConnectionEvent> {
+    pub(crate) fn on_message(
+        &mut self,
+        message: IncomingMessage<'_>,
+    ) -> Option<WirelessConnectionEvent> {
         if let Some(e) = self.primary_connection.on_message(message) {
             return self.on_primary_connection_event(e);
         }
