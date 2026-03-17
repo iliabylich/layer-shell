@@ -51,11 +51,11 @@ impl StatusNotifierWatcher {
         if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    self.reply_ok(serial, &sender);
-                    return Some(Service::new(sender, address));
+                    self.reply_ok(serial, sender);
+                    return Some(Service::new(sender.to_string(), address.to_string()));
                 }
                 KSNIRequest::Other => {
-                    self.reply_ok(serial, &sender);
+                    self.reply_ok(serial, sender);
                     return None;
                 }
             }
@@ -65,13 +65,13 @@ impl StatusNotifierWatcher {
     }
 }
 
-enum KSNIRequest {
-    NewItem { address: String },
+enum KSNIRequest<'a> {
+    NewItem { address: &'a str },
     Other,
 }
 
-impl KSNIRequest {
-    fn parse(message: IncomingMessage<'_>) -> Result<(u32, String, Self)> {
+impl<'a> KSNIRequest<'a> {
+    fn parse(message: IncomingMessage<'a>) -> Result<(u32, &'a str, Self)> {
         ensure!(message.message_type == MessageType::MethodCall);
 
         let serial = message.serial;
@@ -91,14 +91,12 @@ impl KSNIRequest {
                 let address = body.try_next()?.context("no Address")?;
                 value_is!(address, Value::String(address));
 
-                Self::NewItem {
-                    address: address.to_string(),
-                }
+                Self::NewItem { address }
             }
 
             _ => Self::Other,
         };
 
-        Ok((serial, sender.to_string(), req))
+        Ok((serial, sender, req))
     }
 }

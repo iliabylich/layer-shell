@@ -44,22 +44,22 @@ impl StatusNotifierWatcherIntrospection {
         };
 
         match req {
-            IntrospectibleObjectAtRequest::Introspect { path } => match path.as_str() {
+            IntrospectibleObjectAtRequest::Introspect { path } => match path {
                 "/" => self.reply_ok(
                     serial,
-                    &sender,
+                    sender,
                     vec![Value::String(Cow::Owned(root_introspection_xml()))],
                 ),
                 "/StatusNotifierWatcher" => self.reply_ok(
                     serial,
-                    &sender,
+                    sender,
                     vec![Value::String(Cow::Owned(ksni_introspection_xml()))],
                 ),
-                _ => self.reply_err(serial, &sender),
+                _ => self.reply_err(serial, sender),
             },
 
             IntrospectibleObjectAtRequest::GetAllProperties { path, interface } => {
-                match (path.as_str(), interface.as_str()) {
+                match (path, interface) {
                     ("/StatusNotifierWatcher", "org.kde.StatusNotifierWatcher") => {
                         let body = vec![Value::Array(
                             CompleteType::DictEntry(
@@ -88,10 +88,10 @@ impl StatusNotifierWatcherIntrospection {
                                 ),
                             ],
                         )];
-                        self.reply_ok(serial, &sender, body);
+                        self.reply_ok(serial, sender, body);
                     }
 
-                    _ => self.reply_err(serial, &sender),
+                    _ => self.reply_err(serial, sender),
                 }
             }
 
@@ -100,7 +100,7 @@ impl StatusNotifierWatcherIntrospection {
                 interface,
                 property_name,
             } => {
-                let value = match (path.as_str(), interface.as_str(), property_name.as_str()) {
+                let value = match (path, interface, property_name) {
                     (
                         "/StatusNotifierWatcher",
                         "org.kde.StatusNotifierWatcher",
@@ -120,16 +120,16 @@ impl StatusNotifierWatcherIntrospection {
                     ) => Value::Variant(Box::new(Value::Array(CompleteType::String, vec![]))),
 
                     _ => {
-                        self.reply_err(serial, &sender);
+                        self.reply_err(serial, sender);
                         return true;
                     }
                 };
 
-                self.reply_ok(serial, &sender, vec![value]);
+                self.reply_ok(serial, sender, vec![value]);
             }
 
             _ => {
-                self.reply_err(serial, &sender);
+                self.reply_err(serial, sender);
             }
         }
 

@@ -2,11 +2,14 @@ use crate::{
     dbus::{
         Message,
         decoder::{Body, IncomingMessage, MessageType},
-        messages::org_freedesktop_dbus::{AddMatch, RemoveMatch},
+        messages::{
+            interface_is,
+            org_freedesktop_dbus::{AddMatch, RemoveMatch},
+        },
     },
     sansio::DBusQueue,
 };
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context as _, Result, ensure};
 
 pub(crate) trait SubscriptionResource {
     type Output: std::fmt::Debug;
@@ -66,18 +69,10 @@ where
     fn try_process(&self, message: IncomingMessage<'_>) -> Result<S::Output> {
         ensure!(message.message_type == MessageType::Signal);
 
-        let Some(interface) = message.interface else {
-            bail!("no Interface")
-        };
-        ensure!(interface == "org.freedesktop.DBus.Properties");
-
-        let Some(path) = message.path else {
-            bail!("no Path")
-        };
-
-        let Some(body) = message.body else {
-            bail!("no Body")
-        };
+        let interface = message.interface.context("no Interface")?;
+        interface_is!(interface, "org.freedesktop.DBus.Properties");
+        let path = message.path.context("no Path")?;
+        let body = message.body.context("no Body")?;
 
         self.resource.try_process(path, body)
     }

@@ -125,13 +125,13 @@ fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSepara
     let props = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(props, Value::Array(props));
     let mut props_iter = props.iter();
-    let mut type_ = Cow::Borrowed("standard");
-    let mut label = Cow::Borrowed("");
+    let mut type_ = "standard";
+    let mut label = "";
     let mut enabled = true;
     let mut visible = true;
-    let mut toggle_type = Cow::Borrowed("");
+    let mut toggle_type = "";
     let mut toggle_state = -1;
-    let mut children_display = Cow::Borrowed("");
+    let mut children_display = "";
     while let Some(prop) = props_iter.try_next()? {
         value_is!(prop, Value::DictEntry(dict_entry));
         let (key, value) = dict_entry.key_value()?;
@@ -142,12 +142,12 @@ fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSepara
             "type" => {
                 let value = value.materialize()?;
                 value_is!(value, Value::String(value));
-                type_ = Cow::Owned(value.to_string());
+                type_ = value;
             }
             "label" => {
                 let value = value.materialize()?;
                 value_is!(value, Value::String(value));
-                label = Cow::Owned(value.to_string());
+                label = value;
             }
             "enabled" => {
                 let value = value.materialize()?;
@@ -162,7 +162,7 @@ fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSepara
             "toggle-type" => {
                 let value = value.materialize()?;
                 value_is!(value, Value::String(value));
-                toggle_type = Cow::Owned(value.to_string());
+                toggle_type = value;
             }
             "toggle-state" => {
                 let value = value.materialize()?;
@@ -172,7 +172,7 @@ fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSepara
             "children-display" => {
                 let value = value.materialize()?;
                 value_is!(value, Value::String(value));
-                children_display = Cow::Owned(value.to_string());
+                children_display = value;
             }
 
             _ => log::warn!(target: "Tray", "Unknown dbusmenu prop: {key}"),

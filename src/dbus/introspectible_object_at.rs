@@ -13,10 +13,10 @@ impl IntrospectibleObjectAt {
         Self { destination }
     }
 
-    pub(crate) fn handle(
+    pub(crate) fn handle<'a>(
         &self,
-        message: IncomingMessage<'_>,
-    ) -> Result<(u32, String, IntrospectibleObjectAtRequest)> {
+        message: IncomingMessage<'a>,
+    ) -> Result<(u32, &'a str, IntrospectibleObjectAtRequest<'a>)> {
         ensure!(message.message_type == MessageType::MethodCall);
 
         let serial = message.serial;
@@ -31,9 +31,7 @@ impl IntrospectibleObjectAt {
 
         let req = match interface {
             "org.freedesktop.DBus.Introspectable" => match member {
-                "Introspect" => IntrospectibleObjectAtRequest::Introspect {
-                    path: path.to_string(),
-                },
+                "Introspect" => IntrospectibleObjectAtRequest::Introspect { path },
                 _ => bail!("unknown member {member:?}"),
             },
 
@@ -52,19 +50,16 @@ impl IntrospectibleObjectAt {
                     value_is!(property_name, Value::String(property_name));
 
                     IntrospectibleObjectAtRequest::GetProperty {
-                        path: path.to_string(),
-                        interface: interface.to_string(),
-                        property_name: property_name.to_string(),
+                        path,
+                        interface,
+                        property_name,
                     }
                 }
                 "GetAll" => {
                     let interface = body.try_next()?.context("no Interface")?;
                     value_is!(interface, Value::String(interface));
 
-                    IntrospectibleObjectAtRequest::GetAllProperties {
-                        path: path.to_string(),
-                        interface: interface.to_string(),
-                    }
+                    IntrospectibleObjectAtRequest::GetAllProperties { path, interface }
                 }
                 "Set" => IntrospectibleObjectAtRequest::SetProperty,
                 _ => bail!("unknown member {member:?}"),
@@ -73,27 +68,27 @@ impl IntrospectibleObjectAt {
             _ => bail!("unknown interface {interface:?}"),
         };
 
-        Ok((serial, sender.to_string(), req))
+        Ok((serial, sender, req))
     }
 }
 
 #[derive(Debug)]
-pub(crate) enum IntrospectibleObjectAtRequest {
+pub(crate) enum IntrospectibleObjectAtRequest<'a> {
     Introspect {
-        path: String,
+        path: &'a str,
     },
 
     Ping,
     GetMachineId,
 
     GetProperty {
-        path: String,
-        interface: String,
-        property_name: String,
+        path: &'a str,
+        interface: &'a str,
+        property_name: &'a str,
     },
     GetAllProperties {
-        path: String,
-        interface: String,
+        path: &'a str,
+        interface: &'a str,
     },
     SetProperty,
 }
