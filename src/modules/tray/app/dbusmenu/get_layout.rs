@@ -4,20 +4,21 @@ use crate::{
         decoder::{ArrayValue, Body, Value},
         messages::value_is,
     },
+    ffi::ShortString,
     modules::{TrayItem, tray::uuid::UUID},
 };
 use anyhow::{Context, Result};
 use std::borrow::Cow;
 
 pub(crate) struct GetLayout {
-    service: String,
+    service: ShortString,
     menu: String,
 }
 
 impl GetLayout {
-    pub(crate) fn new(service: impl Into<String>) -> Self {
+    pub(crate) fn new(service: ShortString) -> Self {
         Self {
-            service: service.into(),
+            service,
             menu: String::new(),
         }
     }
@@ -74,11 +75,11 @@ impl OneshotResource for GetLayout {
 
         value_is!(top_level_items, Value::Array(top_level_items));
 
-        parse_items(&self.service, &self.menu, top_level_items)
+        parse_items(self.service, &self.menu, top_level_items)
     }
 }
 
-fn parse_items(service: &str, menu: &str, items: ArrayValue<'_>) -> Result<Vec<TrayItem>> {
+fn parse_items(service: ShortString, menu: &str, items: ArrayValue<'_>) -> Result<Vec<TrayItem>> {
     let mut out = vec![];
     let mut batch = vec![];
     let mut iter = items.iter();
@@ -113,7 +114,7 @@ fn parse_items(service: &str, menu: &str, items: ArrayValue<'_>) -> Result<Vec<T
     Ok(out)
 }
 
-fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSeparator> {
+fn parse_item(service: ShortString, menu: &str, item: Value<'_>) -> Result<ItemOrSeparator> {
     value_is!(item, Value::Struct(fields));
 
     let mut fields_iter = fields.iter()?;
@@ -188,8 +189,8 @@ fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSepara
     } else if children_display == "submenu" {
         Ok(ItemOrSeparator::Item(TrayItem::Nested {
             id,
-            uuid: uuid.into(),
-            label: label.to_string().into(),
+            uuid,
+            label: ShortString::from(label),
             children: children.into(),
         }))
     } else if type_ == "separator" {
@@ -197,28 +198,28 @@ fn parse_item(service: &str, menu: &str, item: Value<'_>) -> Result<ItemOrSepara
     } else if !enabled {
         Ok(ItemOrSeparator::Item(TrayItem::Disabled {
             id,
-            uuid: uuid.into(),
-            label: label.to_string().into(),
+            uuid,
+            label: ShortString::from(label),
         }))
     } else if toggle_type == "checkmark" {
         Ok(ItemOrSeparator::Item(TrayItem::Checkbox {
             id,
-            uuid: uuid.into(),
-            label: label.to_string().into(),
+            uuid,
+            label: ShortString::from(label),
             checked: toggle_state == 1,
         }))
     } else if toggle_type == "radio" {
         Ok(ItemOrSeparator::Item(TrayItem::Radio {
             id,
-            uuid: uuid.into(),
-            label: label.to_string().into(),
+            uuid,
+            label: ShortString::from(label),
             selected: toggle_state == 1,
         }))
     } else {
         Ok(ItemOrSeparator::Item(TrayItem::Regular {
             id,
-            uuid: uuid.into(),
-            label: label.to_string().into(),
+            uuid,
+            label: ShortString::from(label),
         }))
     }
 }

@@ -1,4 +1,4 @@
-use crate::event::Event;
+use crate::{event::Event, ffi::ShortString};
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 #[derive(Clone)]
@@ -97,8 +97,8 @@ impl Inner {
             }
 
             Changed::Language => {
-                let lang = self.lang.clone()?;
-                Some(Event::Language { lang: lang.into() })
+                let lang = self.lang.as_ref().map(|s| ShortString::from(s.as_str()))?;
+                Some(Event::Language { lang })
             }
         }
     }

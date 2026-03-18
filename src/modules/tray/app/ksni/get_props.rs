@@ -5,6 +5,7 @@ use crate::{
         decoder::{Body, Value},
         messages::{org_freedesktop_dbus::GetAllProperties, value_is},
     },
+    ffi::ShortString,
     modules::TrayIcon,
 };
 use anyhow::{Context, Result, bail};
@@ -18,11 +19,16 @@ pub(crate) struct AllProps {
 }
 
 impl OneshotResource for GetAllPropsOneshot {
-    type Input = String;
+    type Input = ShortString;
     type Output = AllProps;
 
     fn make_request(&self, input: Self::Input) -> Message<'static> {
-        GetAllProperties::new(input, "/StatusNotifierItem", "org.kde.StatusNotifierItem").into()
+        GetAllProperties::new(
+            input.as_str().to_string(),
+            "/StatusNotifierItem",
+            "org.kde.StatusNotifierItem",
+        )
+        .into()
     }
 
     fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {

@@ -1,13 +1,13 @@
-use crate::{FFIArray, FFIString};
+use crate::{FFIArray, ffi::ShortString};
 
 #[derive(Clone, Debug, Default)]
 #[repr(C)]
 pub enum TrayIcon {
     Path {
-        path: FFIString,
+        path: ShortString,
     },
     Name {
-        name: FFIString,
+        name: ShortString,
     },
     Pixmap(TrayIconPixmap),
     #[default]
@@ -15,14 +15,14 @@ pub enum TrayIcon {
 }
 
 impl TrayIcon {
-    pub(crate) fn detect_name_or_path(name_or_path: String) -> Self {
+    pub(crate) fn detect_name_or_path(name_or_path: &str) -> Self {
         if name_or_path.starts_with("/") {
             Self::Path {
-                path: name_or_path.into(),
+                path: ShortString::from(name_or_path),
             }
         } else {
             Self::Name {
-                name: name_or_path.into(),
+                name: ShortString::from(name_or_path),
             }
         }
     }

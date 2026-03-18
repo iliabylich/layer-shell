@@ -106,7 +106,7 @@ pub(crate) fn parse(attributes: ArrayValue<'_>) -> Result<AllPropsUpdate> {
             if name_or_path.is_empty() {
                 None
             } else {
-                Some(TrayIcon::detect_name_or_path(name_or_path))
+                Some(TrayIcon::detect_name_or_path(&name_or_path))
             }
         })
         .or_else(|| icon_pixmap.map(TrayIcon::Pixmap));

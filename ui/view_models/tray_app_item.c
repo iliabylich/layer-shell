@@ -107,31 +107,38 @@ static void visit_all(TrayAppItem *self, IO_FFIArray_TrayItem items,
 static void visit(TrayAppItem *self, IO_TrayItem tray_item, GMenu *menu);
 
 static void visit_regular(TrayAppItem *self, Regular regular, GMenu *menu) {
-  add_menu_item(menu, regular.id, regular.label, NULL);
-  add_action(self, regular.id, regular.uuid, NULL, NULL);
+  char *label = (char *)(&regular.label);
+  char *uuid = (char *)(&regular.uuid);
+  add_menu_item(menu, regular.id, label, NULL);
+  add_action(self, regular.id, uuid, NULL, NULL);
 }
 
 static void visit_disabled(TrayAppItem *, Disabled disabled, GMenu *menu) {
-  add_menu_item(menu, disabled.id, disabled.label, NULL);
+  char *label = (char *)(&disabled.label);
+  add_menu_item(menu, disabled.id, label, NULL);
 }
 
 static void visit_checkbox(TrayAppItem *self, Checkbox checkbox, GMenu *menu) {
-  add_menu_item(menu, checkbox.id, checkbox.label, NULL);
-  add_action(self, checkbox.id, checkbox.uuid, NULL,
+  char *label = (char *)(&checkbox.label);
+  char *uuid = (char *)(&checkbox.uuid);
+  add_menu_item(menu, checkbox.id, label, NULL);
+  add_action(self, checkbox.id, uuid, NULL,
              g_variant_new_boolean(checkbox.checked));
 }
 
 static void visit_radio(TrayAppItem *self, Radio radio, GMenu *menu) {
-  add_menu_item(menu, radio.id, radio.label, g_variant_new_boolean(true));
-  add_action(self, radio.id, radio.uuid, G_VARIANT_TYPE_BOOLEAN,
+  char *label = (char *)(&radio.label);
+  char *uuid = (char *)(&radio.uuid);
+  add_menu_item(menu, radio.id, label, g_variant_new_boolean(true));
+  add_action(self, radio.id, uuid, G_VARIANT_TYPE_BOOLEAN,
              g_variant_new_boolean(radio.selected));
 }
 
 static void visit_nested(TrayAppItem *self, Nested nested, GMenu *menu) {
+  char *label = (char *)(&nested.label);
   GMenu *submenu = g_menu_new();
   visit_all(self, nested.children, submenu);
-  GMenuItem *menu_item =
-      g_menu_item_new_submenu(nested.label, G_MENU_MODEL(submenu));
+  GMenuItem *menu_item = g_menu_item_new_submenu(label, G_MENU_MODEL(submenu));
   g_menu_append_item(menu, menu_item);
   g_object_unref(menu_item);
 }
@@ -245,10 +252,12 @@ const char *tray_app_item_get_service(TrayAppItem *self) {
 void tray_app_item_update_icon(TrayAppItem *self, IO_TrayIcon icon) {
   switch (icon.tag) {
   case IO_TrayIcon_Path:
-    icon_from_path(self, icon.path.path);
+    char *path = (char *)(&icon.path.path);
+    icon_from_path(self, path);
     break;
   case IO_TrayIcon_Name:
-    icon_from_name(self, icon.name.name);
+    char *name = (char *)(&icon.name.name);
+    icon_from_name(self, name);
     break;
   case IO_TrayIcon_Pixmap:
     icon_from_pixmap(self, icon.pixmap.bytes.ptr, icon.pixmap.bytes.len,

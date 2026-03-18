@@ -1,4 +1,7 @@
-use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, sansio::DBusQueue};
+use crate::{
+    Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, ffi::ShortString,
+    sansio::DBusQueue,
+};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -93,7 +96,9 @@ impl Network {
 
     fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
         if let Some(ssid) = e.ssid {
-            let event = Event::NetworkSsid { ssid: ssid.into() };
+            let event = Event::NetworkSsid {
+                ssid: ShortString::from(ssid.as_str()),
+            };
             self.events.push_back(event)
         }
 

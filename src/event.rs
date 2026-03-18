@@ -1,5 +1,5 @@
 use crate::{
-    ffi::{FFIArray, FFIString},
+    ffi::{FFIArray, ShortString},
     modules::{HyprlandWorkspace, TrayIcon, TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour},
 };
 
@@ -21,7 +21,7 @@ pub enum Event {
         workspaces: FFIArray<HyprlandWorkspace>,
     },
     Language {
-        lang: FFIString,
+        lang: ShortString,
     },
     Weather {
         temperature: f32,
@@ -30,7 +30,7 @@ pub enum Event {
         daily_forecast: FFIArray<WeatherOnDay>,
     },
     NetworkSsid {
-        ssid: FFIString,
+        ssid: ShortString,
     },
     NetworkStrength {
         strength: u8,
@@ -42,20 +42,20 @@ pub enum Event {
         bytes_per_sec: u64,
     },
     TrayAppAdded {
-        service: FFIString,
+        service: ShortString,
         items: FFIArray<TrayItem>,
         icon: TrayIcon,
     },
     TrayAppIconUpdated {
-        service: FFIString,
+        service: ShortString,
         icon: TrayIcon,
     },
     TrayAppMenuUpdated {
-        service: FFIString,
+        service: ShortString,
         items: FFIArray<TrayItem>,
     },
     TrayAppRemoved {
-        service: FFIString,
+        service: ShortString,
     },
     ToggleSessionScreen,
     ReloadStyles,

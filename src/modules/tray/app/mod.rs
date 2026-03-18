@@ -71,16 +71,13 @@ impl App {
     fn schedule_request_props(&mut self) {
         self.all_props_request.reset();
         self.all_props_request = Oneshot::new(GetAllPropsOneshot, self.queue.clone());
-        self.all_props_request
-            .start(self.service.name().to_string());
+        self.all_props_request.start(self.service.name());
     }
 
     pub(crate) fn init(&mut self) {
         self.new_icon_subscription = Oneshot::new(NewIconSubscription, self.queue.clone());
-        self.new_icon_subscription
-            .start(self.service.name().to_string());
-        self.all_props_request
-            .start(self.service.name().to_string());
+        self.new_icon_subscription.start(self.service.name());
+        self.all_props_request.start(self.service.name());
         self.all_props_subscription
             .start("org.freedesktop.DBus", "/StatusNotifierItem");
     }
@@ -198,19 +195,25 @@ impl App {
             return None;
         }
 
-        if parse_new_icon_signal(message, self.service.raw_address()).is_ok() {
+        if parse_new_icon_signal(message, self.service.raw_address().as_str()).is_ok() {
             log::info!(target: "Tray", "Received NewIcon signal");
             self.schedule_request_props();
             return None;
         }
 
-        if parse_layout_updated_signal(message, self.service.raw_address(), &self.menu).is_ok() {
+        if parse_layout_updated_signal(message, self.service.raw_address().as_str(), &self.menu)
+            .is_ok()
+        {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
             self.schedule_get_layout();
             return None;
         }
-        if parse_items_properties_updated_signal(message, self.service.raw_address(), &self.menu)
-            .is_ok()
+        if parse_items_properties_updated_signal(
+            message,
+            self.service.raw_address().as_str(),
+            &self.menu,
+        )
+        .is_ok()
         {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
             self.schedule_get_layout();
@@ -226,7 +229,7 @@ impl App {
         });
 
         let mut message = Message::MethodCall {
-            destination: Some(Cow::Borrowed(self.service.name())),
+            destination: Some(Cow::Owned(self.service.name().as_str().to_string())),
             path: Cow::Borrowed(&self.menu),
             interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
             serial: 0,

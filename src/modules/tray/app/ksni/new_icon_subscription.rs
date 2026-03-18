@@ -1,8 +1,11 @@
-use crate::dbus::{
-    Message, OneshotResource,
-    decoder::{Body, IncomingMessage, MessageType},
-    messages::{interface_is, member_is, path_is, sender_is},
-    types::Value,
+use crate::{
+    dbus::{
+        Message, OneshotResource,
+        decoder::{Body, IncomingMessage, MessageType},
+        messages::{interface_is, member_is, path_is, sender_is},
+        types::Value,
+    },
+    ffi::ShortString,
 };
 use anyhow::{Context as _, Result, ensure};
 use std::borrow::Cow;
@@ -10,7 +13,7 @@ use std::borrow::Cow;
 pub(crate) struct NewIconSubscription;
 
 impl OneshotResource for NewIconSubscription {
-    type Input = String;
+    type Input = ShortString;
     type Output = ();
 
     fn make_request(&self, address: Self::Input) -> Message<'static> {

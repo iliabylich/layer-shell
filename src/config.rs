@@ -1,4 +1,4 @@
-use crate::ffi::FFIString;
+use crate::{ffi::ShortString, macros::report_and_exit};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -52,7 +52,7 @@ pub struct IOConfig {
 }
 #[repr(C)]
 pub struct IOTerminal {
-    pub label: FFIString,
+    pub label: ShortString,
     pub command: *mut *mut std::ffi::c_char,
 }
 
@@ -68,7 +68,7 @@ impl From<&Config> for IOConfig {
 impl From<&Terminal> for IOTerminal {
     fn from(terminal: &Terminal) -> Self {
         Self {
-            label: terminal.label.clone().into(),
+            label: terminal.label.as_str().into(),
             command: vec_of_string_to_null_terminated_c_array(terminal.command.clone()),
         }
     }
@@ -77,7 +77,11 @@ impl From<&Terminal> for IOTerminal {
 fn vec_of_string_to_null_terminated_c_array(cmd: Vec<String>) -> *mut *mut std::ffi::c_char {
     let mut cmd = cmd
         .into_iter()
-        .map(|s| FFIString::from(s).into_raw())
+        .map(|s| {
+            std::ffi::CString::new(s)
+                .unwrap_or_else(|err| report_and_exit!("{:?}", err))
+                .into_raw()
+        })
         .collect::<Vec<_>>();
     cmd.push(std::ptr::null_mut());
     let mut cmd = cmd.into_boxed_slice();

@@ -16,10 +16,11 @@ mod user_data;
 use command::Command;
 use config::{Config, IOConfig};
 pub use event::Event;
-pub use ffi::{FFIArray, FFIString};
+pub use ffi::FFIArray;
 
 use crate::{
     event_queue::EventQueue,
+    ffi::ShortString,
     liburing::IoUring,
     logger::Logger,
     macros::report_and_exit,
@@ -330,7 +331,7 @@ impl IO {
             }
 
             Command::TriggerTray { uuid } => {
-                self.tray.trigger(&uuid);
+                self.tray.trigger(uuid);
                 schedule_opt!(self.session_dbus);
             }
         }
@@ -425,8 +426,12 @@ pub extern "C" fn io_logout() {
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_trigger_tray(uuid: *const std::ffi::c_char) {
+    let uuid = unsafe { std::ffi::CStr::from_ptr(uuid) }
+        .to_str()
+        .unwrap_or_else(|err| report_and_exit!("{:?}", err));
+
     process_command(Command::TriggerTray {
-        uuid: FFIString::from(uuid).into(),
+        uuid: ShortString::from(uuid),
     });
 }
 #[unsafe(no_mangle)]

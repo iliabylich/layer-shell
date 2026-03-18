@@ -1,3 +1,5 @@
+use crate::ffi::ShortString;
+
 #[derive(Debug)]
 #[must_use]
 pub(crate) enum Command {
@@ -13,5 +15,5 @@ pub(crate) enum Command {
     SpawnSystemMonitor,
     ChangeTheme,
 
-    TriggerTray { uuid: String },
+    TriggerTray { uuid: ShortString },
 }

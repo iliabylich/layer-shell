@@ -1,6 +1,6 @@
 use crate::{
-    Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, modules::tray::app::TrayEvent,
-    sansio::DBusQueue,
+    Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, ffi::ShortString,
+    modules::tray::app::TrayEvent, sansio::DBusQueue,
 };
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
@@ -53,11 +53,11 @@ impl Tray {
             return;
         }
 
-        if let Some(address) = self.name_lost_or_changed.on_message(message) {
+        if let Some(service) = self.name_lost_or_changed.on_message(message) {
             let Some(key) = self
                 .registry
                 .keys()
-                .find(|k| k.name() == address || k.raw_address() == address)
+                .find(|s| s.name() == service || s.raw_address() == service)
                 .cloned()
             else {
                 return;
@@ -67,16 +67,14 @@ impl Tray {
                 return;
             };
 
-            log::info!(target: "Tray", "Removed {address}");
+            log::info!(target: "Tray", "Removed {service}");
             tray_app.reset();
-            self.events.push_back(Event::TrayAppRemoved {
-                service: address.to_string().into(),
-            })
+            self.events.push_back(Event::TrayAppRemoved { service })
         }
 
         for (service, app) in &mut self.registry {
             if let Some(event) = app.on_message(message) {
-                let service = service.name().to_string().into();
+                let service = service.name();
 
                 let event = match event {
                     TrayEvent::Initialized(icon, layout) => Event::TrayAppAdded {
@@ -95,7 +93,7 @@ impl Tray {
         }
     }
 
-    pub(crate) fn trigger(&self, uuid: &str) {
+    pub(crate) fn trigger(&self, uuid: ShortString) {
         let Ok((service, id)) = UUID::decode(uuid) else {
             log::error!("malformed UUID: {uuid:?}");
             return;

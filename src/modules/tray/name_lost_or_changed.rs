@@ -4,6 +4,7 @@ use crate::{
         decoder::{IncomingMessage, MessageType, Value},
         messages::{interface_is, member_is, path_is, value_is},
     },
+    ffi::ShortString,
     sansio::DBusQueue,
 };
 use anyhow::{Context, Result, bail, ensure};
@@ -24,8 +25,9 @@ impl NameLostOrNameOwnerChanged {
         self.name_changed.start(())
     }
 
-    pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<&'a str> {
-        parse_name_owner_changed(message).ok()
+    pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<ShortString> {
+        let address = parse_name_owner_changed(message).ok()?;
+        Some(ShortString::from(address))
     }
 }
 

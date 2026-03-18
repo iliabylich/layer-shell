@@ -1,3 +1,5 @@
+use crate::ffi::ShortString;
+
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub(crate) struct Service {
     raw_address: String,
@@ -9,11 +11,11 @@ impl Service {
         Self { raw_address, name }
     }
 
-    pub(crate) fn raw_address(&self) -> &str {
-        &self.raw_address
+    pub(crate) fn raw_address(&self) -> ShortString {
+        ShortString::from(self.raw_address.as_str())
     }
 
-    pub(crate) fn name(&self) -> &str {
-        &self.name
+    pub(crate) fn name(&self) -> ShortString {
+        ShortString::from(self.name.as_str())
     }
 }
