@@ -47,14 +47,6 @@ fn config_dir() -> Result<PathBuf> {
 
 #[repr(C)]
 pub struct IOConfig {
-    pub lock: FFIString,
-    pub reboot: FFIString,
-    pub shutdown: FFIString,
-    pub edit_wifi: FFIString,
-    pub edit_bluetooth: FFIString,
-    pub open_system_monitor: FFIString,
-    pub change_theme: FFIString,
-
     pub ping: *mut *mut std::ffi::c_char,
     pub terminal: IOTerminal,
 }
@@ -67,14 +59,6 @@ pub struct IOTerminal {
 impl From<&Config> for IOConfig {
     fn from(config: &Config) -> Self {
         Self {
-            lock: config.lock.clone().into(),
-            reboot: config.reboot.clone().into(),
-            shutdown: config.shutdown.clone().into(),
-            edit_wifi: config.edit_wifi.clone().into(),
-            edit_bluetooth: config.edit_bluetooth.clone().into(),
-            open_system_monitor: config.open_system_monitor.clone().into(),
-            change_theme: config.change_theme.clone().into(),
-
             ping: vec_of_string_to_null_terminated_c_array(config.ping.clone()),
             terminal: IOTerminal::from(&config.terminal),
         }
