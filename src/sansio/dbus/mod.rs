@@ -68,7 +68,7 @@ impl DBusConnection {
             if let Some(fd) = connector.satisfy(satisfy, res)? {
                 self.state = State::Ready {
                     reader: DBusReader::new(fd),
-                    writer: DBusWriter::new(fd, self.queue.clone()),
+                    writer: DBusWriter::new(fd, self.queue.copy()),
                 };
             }
             return Ok(None);

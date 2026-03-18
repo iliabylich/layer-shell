@@ -1,5 +1,6 @@
 use crate::{
     dbus::{Message, Oneshot, Subscription, decoder::IncomingMessage, types::Value},
+    ffi::ShortString,
     macros::report_and_exit,
     modules::{TrayIcon, TrayItem, tray::service::Service},
     sansio::DBusQueue,
@@ -26,7 +27,7 @@ pub(crate) struct App {
     layout_updated_subscription: Oneshot<LayoutUpdatedSubscription>,
     items_properties_updated_subscription: Oneshot<ItemsPropertiesUpdatedSubscription>,
 
-    menu: String,
+    menu: ShortString,
     get_layout: Oneshot<GetLayout>,
 
     state: State,
@@ -50,18 +51,18 @@ pub(crate) enum TrayEvent {
 impl App {
     pub(crate) fn new(service: Service, queue: DBusQueue) -> Self {
         Self {
-            service: service.clone(),
-            all_props_request: Oneshot::new(GetAllPropsOneshot, queue.clone()),
-            new_icon_subscription: Oneshot::new(NewIconSubscription, queue.clone()),
-            all_props_subscription: Subscription::new(AllPropsSubscription, queue.clone()),
-            layout_updated_subscription: Oneshot::new(LayoutUpdatedSubscription, queue.clone()),
+            service,
+            all_props_request: Oneshot::new(GetAllPropsOneshot, queue.copy()),
+            new_icon_subscription: Oneshot::new(NewIconSubscription, queue.copy()),
+            all_props_subscription: Subscription::new(AllPropsSubscription, queue.copy()),
+            layout_updated_subscription: Oneshot::new(LayoutUpdatedSubscription, queue.copy()),
             items_properties_updated_subscription: Oneshot::new(
                 ItemsPropertiesUpdatedSubscription,
-                queue.clone(),
+                queue.copy(),
             ),
 
-            menu: String::new(),
-            get_layout: Oneshot::new(GetLayout::new(service.name()), queue.clone()),
+            menu: ShortString::from(""),
+            get_layout: Oneshot::new(GetLayout::new(service.name()), queue.copy()),
 
             state: State::Nothing,
             queue,
@@ -70,12 +71,12 @@ impl App {
 
     fn schedule_request_props(&mut self) {
         self.all_props_request.reset();
-        self.all_props_request = Oneshot::new(GetAllPropsOneshot, self.queue.clone());
+        self.all_props_request = Oneshot::new(GetAllPropsOneshot, self.queue.copy());
         self.all_props_request.start(self.service.name());
     }
 
     pub(crate) fn init(&mut self) {
-        self.new_icon_subscription = Oneshot::new(NewIconSubscription, self.queue.clone());
+        self.new_icon_subscription = Oneshot::new(NewIconSubscription, self.queue.copy());
         self.new_icon_subscription.start(self.service.name());
         self.all_props_request.start(self.service.name());
         self.all_props_subscription
@@ -90,22 +91,22 @@ impl App {
     }
 
     fn schedule_get_layout(&mut self) {
-        let mut get_layout = Oneshot::new(GetLayout::new(self.service.name()), self.queue.clone());
-        get_layout.start((self.service.name().to_string(), self.menu.clone()));
+        let mut get_layout = Oneshot::new(GetLayout::new(self.service.name()), self.queue.copy());
+        get_layout.start((self.service.name(), self.menu));
         self.get_layout = get_layout;
     }
 
-    fn on_menu_received(&mut self, menu: String) {
-        if !self.menu.is_empty() {
+    fn on_menu_received(&mut self, menu: ShortString) {
+        if !self.menu.as_str().is_empty() {
             return;
         }
 
         self.menu = menu;
         self.schedule_get_layout();
         self.layout_updated_subscription
-            .start((self.service.name().to_string(), self.menu.clone()));
+            .start((self.service.name(), self.menu));
         self.items_properties_updated_subscription
-            .start((self.service.name().to_string(), self.menu.clone()));
+            .start((self.service.name(), self.menu));
     }
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
@@ -201,8 +202,12 @@ impl App {
             return None;
         }
 
-        if parse_layout_updated_signal(message, self.service.raw_address().as_str(), &self.menu)
-            .is_ok()
+        if parse_layout_updated_signal(
+            message,
+            self.service.raw_address().as_str(),
+            self.menu.as_str(),
+        )
+        .is_ok()
         {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
             self.schedule_get_layout();
@@ -211,7 +216,7 @@ impl App {
         if parse_items_properties_updated_signal(
             message,
             self.service.raw_address().as_str(),
-            &self.menu,
+            self.menu.as_str(),
         )
         .is_ok()
         {
@@ -230,7 +235,7 @@ impl App {
 
         let mut message = Message::MethodCall {
             destination: Some(Cow::Owned(self.service.name().as_str().to_string())),
-            path: Cow::Borrowed(&self.menu),
+            path: Cow::Owned(self.menu.to_string()),
             interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
             serial: 0,
             member: Cow::Borrowed("Event"),

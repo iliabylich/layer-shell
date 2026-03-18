@@ -6,6 +6,7 @@ use crate::{
             destination_is, interface_is, org_freedesktop_dbus::RequestName, path_is, value_is,
         },
     },
+    ffi::ShortString,
     modules::tray::{
         service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
     },
@@ -23,7 +24,7 @@ impl StatusNotifierWatcher {
     pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
             reply_serial: None,
-            introspection: StatusNotifierWatcherIntrospection::new(queue.clone()),
+            introspection: StatusNotifierWatcherIntrospection::new(queue.copy()),
             queue,
         }
     }
@@ -52,7 +53,10 @@ impl StatusNotifierWatcher {
             match req {
                 KSNIRequest::NewItem { address } => {
                     self.reply_ok(serial, sender);
-                    return Some(Service::new(sender.to_string(), address.to_string()));
+                    return Some(Service::new(
+                        ShortString::from(sender),
+                        ShortString::from(address),
+                    ));
                 }
                 KSNIRequest::Other => {
                     self.reply_ok(serial, sender);

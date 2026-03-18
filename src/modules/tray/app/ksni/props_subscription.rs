@@ -4,6 +4,7 @@ use crate::{
         decoder::{ArrayValue, Body, Value},
         messages::{interface_is, path_is, value_is},
     },
+    ffi::ShortString,
     modules::{TrayIcon, TrayIconPixmap},
 };
 use anyhow::{Context as _, Result};
@@ -30,7 +31,7 @@ impl SubscriptionResource for AllPropsSubscription {
 
 #[derive(Debug)]
 pub(crate) struct AllPropsUpdate {
-    pub(crate) menu: Option<String>,
+    pub(crate) menu: Option<ShortString>,
     pub(crate) icon: Option<TrayIcon>,
 }
 
@@ -50,12 +51,12 @@ pub(crate) fn parse(attributes: ArrayValue<'_>) -> Result<AllPropsUpdate> {
             "Menu" => {
                 let value = value.materialize()?;
                 value_is!(value, Value::ObjectPath(value));
-                menu = Some(value.to_string());
+                menu = Some(value);
             }
             "IconName" => {
                 let value = value.materialize()?;
                 value_is!(value, Value::String(value));
-                icon_name = Some(value.to_string());
+                icon_name = Some(value);
             }
             "IconPixmap" => {
                 let value = value.materialize()?;
@@ -106,10 +107,13 @@ pub(crate) fn parse(attributes: ArrayValue<'_>) -> Result<AllPropsUpdate> {
             if name_or_path.is_empty() {
                 None
             } else {
-                Some(TrayIcon::detect_name_or_path(&name_or_path))
+                Some(TrayIcon::detect_name_or_path(name_or_path))
             }
         })
         .or_else(|| icon_pixmap.map(TrayIcon::Pixmap));
 
-    Ok(AllPropsUpdate { menu, icon })
+    Ok(AllPropsUpdate {
+        menu: menu.map(ShortString::from),
+        icon,
+    })
 }

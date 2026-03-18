@@ -3,7 +3,7 @@ use crate::macros::report_and_exit;
 pub const MAX_LEN: usize = 128;
 
 #[repr(C)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ShortString {
     pub(crate) bytes: [u8; MAX_LEN],
 }

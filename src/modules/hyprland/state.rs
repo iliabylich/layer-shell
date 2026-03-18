@@ -1,7 +1,6 @@
 use crate::{event::Event, ffi::ShortString};
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
-#[derive(Clone)]
 pub(crate) struct HyprlandState {
     inner: Rc<RefCell<Inner>>,
 }
@@ -12,7 +11,7 @@ pub(crate) enum HyprlandDiff {
     RemoveWorkspaceId(u64),
 
     SetActiveWorkspaceId(u64),
-    SetLanguage(String),
+    SetLanguage(ShortString),
 
     SetCapsLockEnabled(bool),
 }
@@ -28,12 +27,18 @@ impl HyprlandState {
         let mut inner = self.inner.borrow_mut();
         inner.apply(diff)
     }
+
+    pub(crate) fn copy(&self) -> Self {
+        Self {
+            inner: Rc::clone(&self.inner),
+        }
+    }
 }
 
 struct Inner {
     workspace_ids: Option<HashSet<u64>>,
     active_workspace_id: Option<u64>,
-    lang: Option<String>,
+    lang: Option<ShortString>,
 }
 
 impl Inner {

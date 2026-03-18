@@ -1,7 +1,6 @@
 use crate::Event;
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-#[derive(Clone)]
 pub(crate) struct EventQueue {
     queue: Rc<RefCell<VecDeque<Event>>>,
 }
@@ -21,5 +20,11 @@ impl EventQueue {
     pub(crate) fn pop_front(&self) -> Option<Event> {
         let mut q = self.queue.borrow_mut();
         q.pop_front()
+    }
+
+    pub(crate) fn copy(&self) -> Self {
+        Self {
+            queue: Rc::clone(&self.queue),
+        }
     }
 }

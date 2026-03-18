@@ -31,12 +31,12 @@ pub(crate) struct Network {
 impl Network {
     pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
         Self {
-            wireless_connection: WirelessConnection::new(queue.clone()),
-            primary_device: PrimaryDevice::new(queue.clone()),
-            active_access_point: ActiveAccessPoint::new(queue.clone()),
-            tx_rx: TxRx::new(queue.clone()),
+            wireless_connection: WirelessConnection::new(queue.copy()),
+            primary_device: PrimaryDevice::new(queue.copy()),
+            active_access_point: ActiveAccessPoint::new(queue.copy()),
+            tx_rx: TxRx::new(queue.copy()),
             speed: Speed::new(),
-            ssid_and_strength: SsidAndStrength::new(queue.clone()),
+            ssid_and_strength: SsidAndStrength::new(queue.copy()),
             events,
         }
     }

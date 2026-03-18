@@ -21,8 +21,8 @@ pub(crate) struct Sound {
 impl Sound {
     pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource, queue.clone()),
-            subscription: Subscription::new(Resource, queue.clone()),
+            oneshot: Oneshot::new(Resource, queue.copy()),
+            subscription: Subscription::new(Resource, queue.copy()),
             healthy: true,
             events,
             queue,
@@ -64,7 +64,7 @@ impl Sound {
     pub(crate) fn tick(&mut self, tick: u64) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
-            self.oneshot = Oneshot::new(Resource, self.queue.clone());
+            self.oneshot = Oneshot::new(Resource, self.queue.copy());
             self.oneshot.start(());
         }
     }

@@ -14,7 +14,7 @@ pub(crate) struct GetAllPropsOneshot;
 
 #[derive(Debug)]
 pub(crate) struct AllProps {
-    pub(crate) menu: String,
+    pub(crate) menu: ShortString,
     pub(crate) icon: TrayIcon,
 }
 

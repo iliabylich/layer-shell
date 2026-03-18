@@ -4,7 +4,6 @@ use crate::modules::hyprland::resources::{
 };
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-#[derive(Clone)]
 pub(crate) struct HyprlandQueue {
     q: Rc<RefCell<VecDeque<Box<dyn WriterResource>>>>,
     dummy: bool,
@@ -49,5 +48,12 @@ impl HyprlandQueue {
     pub(crate) fn pop_front(&self) -> Option<Box<dyn WriterResource>> {
         let mut q = self.q.borrow_mut();
         q.pop_front()
+    }
+
+    pub(crate) fn copy(&self) -> Self {
+        Self {
+            q: Rc::clone(&self.q),
+            dummy: self.dummy,
+        }
     }
 }

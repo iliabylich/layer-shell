@@ -29,8 +29,8 @@ pub(crate) enum WirelessConnectionEvent {
 impl WirelessConnection {
     pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            primary_connection: PrimaryConnection::new(queue.clone()),
-            active_connection_type: ActiveConnectionType::new(queue.clone()),
+            primary_connection: PrimaryConnection::new(queue.copy()),
+            active_connection_type: ActiveConnectionType::new(queue.copy()),
             state: State::default(),
         }
     }

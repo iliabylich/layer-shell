@@ -31,8 +31,8 @@ pub(crate) struct Tray {
 impl Tray {
     pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
         Self {
-            status_notifier_watcher: StatusNotifierWatcher::new(queue.clone()),
-            name_lost_or_changed: NameLostOrNameOwnerChanged::new(queue.clone()),
+            status_notifier_watcher: StatusNotifierWatcher::new(queue.copy()),
+            name_lost_or_changed: NameLostOrNameOwnerChanged::new(queue.copy()),
             registry: HashMap::new(),
             events,
             queue,
@@ -47,7 +47,7 @@ impl Tray {
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
         if let Some(service) = self.status_notifier_watcher.on_message(message) {
             log::info!(target: "Tray", "Added {service:?}");
-            let mut tray_app = App::new(service.clone(), self.queue.clone());
+            let mut tray_app = App::new(service, self.queue.copy());
             tray_app.init();
             self.registry.insert(service, tray_app);
             return;

@@ -31,8 +31,8 @@ impl From<String> for PrimaryConnectionEvent {
 impl PrimaryConnection {
     pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource, queue.clone()),
-            subscription: Subscription::new(Resource, queue.clone()),
+            oneshot: Oneshot::new(Resource, queue.copy()),
+            subscription: Subscription::new(Resource, queue.copy()),
         }
     }
 

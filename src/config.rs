@@ -59,7 +59,7 @@ pub struct IOTerminal {
 impl From<&Config> for IOConfig {
     fn from(config: &Config) -> Self {
         Self {
-            ping: vec_of_string_to_null_terminated_c_array(config.ping.clone()),
+            ping: vec_of_string_to_null_terminated_c_array(&config.ping),
             terminal: IOTerminal::from(&config.terminal),
         }
     }
@@ -69,16 +69,16 @@ impl From<&Terminal> for IOTerminal {
     fn from(terminal: &Terminal) -> Self {
         Self {
             label: terminal.label.as_str().into(),
-            command: vec_of_string_to_null_terminated_c_array(terminal.command.clone()),
+            command: vec_of_string_to_null_terminated_c_array(&terminal.command),
         }
     }
 }
 
-fn vec_of_string_to_null_terminated_c_array(cmd: Vec<String>) -> *mut *mut std::ffi::c_char {
+fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> *mut *mut std::ffi::c_char {
     let mut cmd = cmd
-        .into_iter()
+        .iter()
         .map(|s| {
-            std::ffi::CString::new(s)
+            std::ffi::CString::new(s.clone().into_bytes())
                 .unwrap_or_else(|err| report_and_exit!("{:?}", err))
                 .into_raw()
         })

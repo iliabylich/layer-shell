@@ -1,5 +1,6 @@
 use crate::{
     event_queue::EventQueue,
+    ffi::ShortString,
     modules::hyprland::state::{HyprlandDiff, HyprlandState},
     sansio::{Satisfy, UnixSocketReader, Wants},
     user_data::ModuleId,
@@ -69,7 +70,7 @@ fn try_parse(line: &str) -> Result<Option<HyprlandDiff>> {
         "createworkspace" => HyprlandDiff::AddWorkspaceId(num_payload()?),
         "destroyworkspace" => HyprlandDiff::RemoveWorkspaceId(num_payload()?),
         "workspace" => HyprlandDiff::SetActiveWorkspaceId(num_payload()?),
-        "activelayout" => HyprlandDiff::SetLanguage(last_substring()?.to_string()),
+        "activelayout" => HyprlandDiff::SetLanguage(ShortString::from(last_substring()?)),
         _ => return Ok(None),
     };
 

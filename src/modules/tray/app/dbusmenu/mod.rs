@@ -1,8 +1,11 @@
-use crate::dbus::{
-    Message, OneshotResource,
-    decoder::{Body, IncomingMessage, MessageType},
-    messages::{interface_is, member_is, path_is, sender_is},
-    types::Value,
+use crate::{
+    dbus::{
+        Message, OneshotResource,
+        decoder::{Body, IncomingMessage, MessageType},
+        messages::{interface_is, member_is, path_is, sender_is},
+        types::Value,
+    },
+    ffi::ShortString,
 };
 use anyhow::{Context as _, Result, ensure};
 pub(crate) use get_layout::GetLayout;
@@ -13,10 +16,10 @@ mod get_layout;
 pub(crate) struct LayoutUpdatedSubscription;
 
 impl OneshotResource for LayoutUpdatedSubscription {
-    type Input = (String, String);
+    type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(&self, (address, path): (String, String)) -> Message<'static> {
+    fn make_request(&self, (address, path): (ShortString, ShortString)) -> Message<'static> {
         Message::MethodCall {
             destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
             path: Cow::Borrowed("/org/freedesktop/DBus"),
@@ -59,10 +62,10 @@ pub(crate) fn parse_layout_updated_signal(
 pub(crate) struct ItemsPropertiesUpdatedSubscription;
 
 impl OneshotResource for ItemsPropertiesUpdatedSubscription {
-    type Input = (String, String);
+    type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(&self, (address, path): (String, String)) -> Message<'static> {
+    fn make_request(&self, (address, path): (ShortString, ShortString)) -> Message<'static> {
         Message::MethodCall {
             destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
             path: Cow::Borrowed("/org/freedesktop/DBus"),

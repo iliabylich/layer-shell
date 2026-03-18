@@ -22,8 +22,8 @@ pub(crate) struct TxRxEvent {
 impl TxRx {
     pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource::default(), queue.clone()),
-            subscription: Subscription::new(Resource::default(), queue.clone()),
+            oneshot: Oneshot::new(Resource::default(), queue.copy()),
+            subscription: Subscription::new(Resource::default(), queue.copy()),
         }
     }
 

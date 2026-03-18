@@ -55,14 +55,14 @@ impl Hyprland {
         (
             Some(HyprlandReader::new(
                 reader_addr,
-                state.clone(),
-                events.clone(),
+                state.copy(),
+                events.copy(),
             )),
             Some(HyprlandWriter::new(
                 writer_addr,
-                state.clone(),
-                events.clone(),
-                queue.clone(),
+                state.copy(),
+                events.copy(),
+                queue.copy(),
             )),
             queue,
         )

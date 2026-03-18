@@ -25,10 +25,10 @@ impl GetLayout {
 }
 
 impl OneshotResource for GetLayout {
-    type Input = (String, String);
+    type Input = (ShortString, ShortString);
     type Output = Vec<TrayItem>;
 
-    fn make_request(&self, (destination, path): (String, String)) -> Message<'static> {
+    fn make_request(&self, (destination, path): (ShortString, ShortString)) -> Message<'static> {
         use crate::dbus::types::{CompleteType, Value};
 
         let body = vec![
@@ -52,8 +52,8 @@ impl OneshotResource for GetLayout {
         ];
 
         Message::MethodCall {
-            destination: Some(Cow::Owned(destination)),
-            path: Cow::Owned(path),
+            destination: Some(Cow::Owned(destination.to_string())),
+            path: Cow::Owned(path.to_string()),
             interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
             serial: 0,
             member: Cow::Borrowed("GetLayout"),

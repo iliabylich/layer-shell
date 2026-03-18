@@ -1,7 +1,6 @@
 use crate::dbus::{Message, MessageEncoder, messages::org_freedesktop_dbus::Hello};
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-#[derive(Clone)]
 pub(crate) struct DBusQueue {
     inner: Rc<RefCell<Inner>>,
 }
@@ -21,6 +20,12 @@ impl DBusQueue {
     pub(crate) fn pop_front(&self) -> Option<Vec<u8>> {
         let mut inner = self.inner.borrow_mut();
         inner.pop_front()
+    }
+
+    pub(crate) fn copy(&self) -> Self {
+        Self {
+            inner: Rc::clone(&self.inner),
+        }
     }
 }
 

@@ -1,4 +1,7 @@
-use crate::modules::hyprland::{resources::WriterResource, state::HyprlandDiff};
+use crate::{
+    ffi::ShortString,
+    modules::hyprland::{resources::WriterResource, state::HyprlandDiff},
+};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -29,6 +32,8 @@ impl WriterResource for DevicesResource {
             .context("expected at least one hyprland device")?
             .active_keymap;
 
-        Ok(Some(HyprlandDiff::SetLanguage(active_keymap)))
+        Ok(Some(HyprlandDiff::SetLanguage(ShortString::from(
+            active_keymap.as_str(),
+        ))))
     }
 }

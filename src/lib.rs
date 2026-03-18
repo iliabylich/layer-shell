@@ -84,7 +84,7 @@ impl IO {
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
         let events = EventQueue::new();
 
-        let (hyprland_reader, hyprland_writer, hyprland_queue) = Hyprland::connect(events.clone());
+        let (hyprland_reader, hyprland_writer, hyprland_queue) = Hyprland::connect(events.copy());
 
         let session_dbus_queue = DBusQueue::new();
         let system_dbus_queue = DBusQueue::new();
@@ -92,25 +92,25 @@ impl IO {
         let mut this = Self {
             config,
             io_config,
-            events: events.clone(),
+            events: events.copy(),
 
             timer: Timer::new(),
-            clock: Clock::new(events.clone()),
+            clock: Clock::new(events.copy()),
 
-            session_dbus: Some(SessionDBus::new(session_dbus_queue.clone())),
-            sound: Sound::new(events.clone(), session_dbus_queue.clone()),
-            control: Control::new(session_dbus_queue.clone()),
-            tray: Tray::new(events.clone(), session_dbus_queue.clone()),
-            system_dbus: Some(SystemDBus::new(system_dbus_queue.clone())),
-            network: Network::new(events.clone(), system_dbus_queue.clone()),
+            session_dbus: Some(SessionDBus::new(session_dbus_queue.copy())),
+            sound: Sound::new(events.copy(), session_dbus_queue.copy()),
+            control: Control::new(session_dbus_queue.copy()),
+            tray: Tray::new(events.copy(), session_dbus_queue.copy()),
+            system_dbus: Some(SystemDBus::new(system_dbus_queue.copy())),
+            network: Network::new(events.copy(), system_dbus_queue.copy()),
             hyprland_reader,
             hyprland_writer,
             hyprland_queue,
 
             location: Some(Location::new()),
             weather: None,
-            cpu: Some(CPU::new(events.clone())),
-            memory: Some(Memory::new(events.clone())),
+            cpu: Some(CPU::new(events.copy())),
+            memory: Some(Memory::new(events.copy())),
 
             on_event,
             running: true,
@@ -195,7 +195,7 @@ impl IO {
                     let latlng = satisfy_opt!(self.location);
                     schedule_opt!(self.location);
                     if let Some((lat, lng)) = latlng {
-                        self.weather = Some(Weather::new(lat, lng, self.events.clone()));
+                        self.weather = Some(Weather::new(lat, lng, self.events.copy()));
                         schedule_opt!(self.weather);
                     }
                 }
