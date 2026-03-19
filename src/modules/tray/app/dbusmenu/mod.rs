@@ -25,10 +25,10 @@ impl OneshotResource for LayoutUpdatedSubscription {
     ) -> OutgoingMessage<'static> {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
-            path: Cow::Borrowed("/org/freedesktop/DBus"),
-            interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
+            path: ShortString::from("/org/freedesktop/DBus"),
+            interface: Some(ShortString::from("org.freedesktop.DBus")),
             serial: 0,
-            member: Cow::Borrowed("AddMatch"),
+            member: ShortString::from("AddMatch"),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(Cow::Owned(format!(
@@ -74,10 +74,10 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
     ) -> OutgoingMessage<'static> {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
-            path: Cow::Borrowed("/org/freedesktop/DBus"),
-            interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
+            path: ShortString::from("/org/freedesktop/DBus"),
+            interface: Some(ShortString::from("org.freedesktop.DBus")),
             serial: 0,
-            member: Cow::Borrowed("AddMatch"),
+            member: ShortString::from("AddMatch"),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(Cow::Owned(format!(

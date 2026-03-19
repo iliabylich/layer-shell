@@ -17,9 +17,9 @@ impl<'a> From<RequestName<'a>> for OutgoingMessage<'a> {
     fn from(value: RequestName) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: Cow::Borrowed("/org/freedesktop/DBus"),
-            member: Cow::Borrowed("RequestName"),
-            interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
+            path: ShortString::from("/org/freedesktop/DBus"),
+            member: ShortString::from("RequestName"),
+            interface: Some(ShortString::from("org.freedesktop.DBus")),
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,

@@ -18,9 +18,9 @@ impl<'a> From<RemoveMatch<'a>> for OutgoingMessage<'a> {
     fn from(value: RemoveMatch) -> Self {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: Cow::Borrowed("/org/freedesktop/DBus"),
-            member: Cow::Borrowed("RemoveMatch"),
-            interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
+            path: ShortString::from("/org/freedesktop/DBus"),
+            member: ShortString::from("RemoveMatch"),
+            interface: Some(ShortString::from("org.freedesktop.DBus")),
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,

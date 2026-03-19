@@ -56,10 +56,10 @@ impl OneshotResource for GetLayout {
 
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::from(destination)),
-            path: Cow::Owned(path.to_string()),
-            interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
+            path,
+            interface: Some(ShortString::from("com.canonical.dbusmenu")),
             serial: 0,
-            member: Cow::Borrowed("GetLayout"),
+            member: ShortString::from("GetLayout"),
             sender: None,
             unix_fds: None,
             body,

@@ -58,7 +58,7 @@ impl OneshotResource for Resource {
 
         SetProperty::new(
             ShortString::from("org.freedesktop.NetworkManager"),
-            path,
+            ShortString::from(path.as_str()),
             "org.freedesktop.NetworkManager.Device.Statistics",
             "RefreshRateMs",
             Value::UInt32(1000),

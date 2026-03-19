@@ -8,11 +8,11 @@ use std::borrow::Cow;
 pub(crate) enum OutgoingMessage<'a> {
     MethodCall {
         destination: Option<ShortString>,
-        path: Cow<'a, str>,
-        interface: Option<Cow<'a, str>>,
+        path: ShortString,
+        interface: Option<ShortString>,
         serial: u32,
-        member: Cow<'a, str>,
-        sender: Option<Cow<'a, str>>,
+        member: ShortString,
+        sender: Option<ShortString>,
         unix_fds: Option<u32>,
         body: Vec<Value<'a>>,
     },
@@ -20,7 +20,7 @@ pub(crate) enum OutgoingMessage<'a> {
         serial: u32,
         reply_serial: u32,
         destination: Option<ShortString>,
-        sender: Option<Cow<'a, str>>,
+        sender: Option<ShortString>,
         unix_fds: Option<u32>,
         body: Vec<Value<'a>>,
     },
@@ -29,7 +29,7 @@ pub(crate) enum OutgoingMessage<'a> {
         error_name: Cow<'a, str>,
         reply_serial: u32,
         destination: Option<ShortString>,
-        sender: Option<Cow<'a, str>>,
+        sender: Option<ShortString>,
         unix_fds: Option<u32>,
         body: Vec<Value<'a>>,
     },
@@ -60,23 +60,26 @@ impl<'a> OutgoingMessage<'a> {
         }
     }
 
-    pub(crate) fn path(&self) -> Option<&str> {
+    pub(crate) fn path(&self) -> Option<ShortString> {
         match self {
-            Self::MethodCall { path, .. } => Some(path.as_ref()),
+            Self::MethodCall { path, .. } => Some(*path),
             _ => None,
         }
     }
 
-    pub(crate) fn member(&self) -> Option<&str> {
+    pub(crate) fn member(&self) -> Option<ShortString> {
         match self {
-            Self::MethodCall { member, .. } => Some(member),
+            Self::MethodCall { member, .. } => Some(*member),
             _ => None,
         }
     }
 
-    pub(crate) fn interface(&self) -> Option<&str> {
+    pub(crate) fn interface(&self) -> Option<ShortString> {
         match self {
-            Self::MethodCall { interface, .. } => interface.as_deref(),
+            Self::MethodCall {
+                interface: Some(interface),
+                ..
+            } => Some(*interface),
             _ => None,
         }
     }
@@ -105,11 +108,11 @@ impl<'a> OutgoingMessage<'a> {
         }
     }
 
-    pub(crate) fn sender(&self) -> Option<&str> {
+    pub(crate) fn sender(&self) -> Option<ShortString> {
         match self {
             Self::MethodCall { sender, .. }
             | Self::MethodReturn { sender, .. }
-            | Self::Error { sender, .. } => sender.as_deref(),
+            | Self::Error { sender, .. } => Some(*sender.as_ref()?),
         }
     }
 

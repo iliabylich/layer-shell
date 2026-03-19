@@ -42,9 +42,9 @@ impl OneshotResource for NameOwnerChangedResource {
         use crate::dbus::types::Value;
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: Cow::Borrowed("/org/freedesktop/DBus"),
-            member: Cow::Borrowed("AddMatch"),
-            interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
+            path: ShortString::from("/org/freedesktop/DBus"),
+            member: ShortString::from("AddMatch"),
+            interface: Some(ShortString::from("org.freedesktop.DBus")),
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,

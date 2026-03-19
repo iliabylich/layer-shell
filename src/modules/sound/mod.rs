@@ -80,7 +80,7 @@ impl OneshotResource for Resource {
     fn make_request(&self, _input: Self::Input) -> OutgoingMessage<'static> {
         GetAllProperties::new(
             ShortString::from("org.local.PipewireDBus"),
-            "/org/local/PipewireDBus",
+            ShortString::from("/org/local/PipewireDBus"),
             "org.local.PipewireDBus",
         )
         .into()

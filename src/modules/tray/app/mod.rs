@@ -235,10 +235,10 @@ impl App {
 
         let mut message = OutgoingMessage::MethodCall {
             destination: Some(self.service.name()),
-            path: Cow::Owned(self.menu.to_string()),
-            interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
+            path: self.menu,
+            interface: Some(ShortString::from("com.canonical.dbusmenu")),
             serial: 0,
-            member: Cow::Borrowed("Event"),
+            member: ShortString::from("Event"),
             sender: None,
             unix_fds: None,
             body: vec![

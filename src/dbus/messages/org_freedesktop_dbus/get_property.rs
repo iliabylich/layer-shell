@@ -7,7 +7,7 @@ use std::borrow::Cow;
 #[derive(Debug)]
 pub(crate) struct GetProperty<'a> {
     destination: ShortString,
-    path: Cow<'a, str>,
+    path: ShortString,
     interface: Cow<'a, str>,
     property: Cow<'a, str>,
 }
@@ -15,13 +15,13 @@ pub(crate) struct GetProperty<'a> {
 impl<'a> GetProperty<'a> {
     pub(crate) fn new(
         destination: ShortString,
-        path: impl Into<Cow<'a, str>>,
+        path: ShortString,
         interface: impl Into<Cow<'a, str>>,
         property: impl Into<Cow<'a, str>>,
     ) -> Self {
         Self {
             destination,
-            path: path.into(),
+            path,
             interface: interface.into(),
             property: property.into(),
         }
@@ -33,8 +33,8 @@ impl<'a> From<GetProperty<'a>> for OutgoingMessage<'a> {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: value.path,
-            member: Cow::Borrowed("Get"),
-            interface: Some(Cow::Borrowed("org.freedesktop.DBus.Properties")),
+            member: ShortString::from("Get"),
+            interface: Some(ShortString::from("org.freedesktop.DBus.Properties")),
             destination: Some(value.destination),
             sender: None,
             unix_fds: None,

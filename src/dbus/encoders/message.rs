@@ -20,7 +20,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Path,
-                    &Value::ObjectPath(Cow::Borrowed(path)),
+                    &Value::ObjectPath(Cow::Owned(path.to_string())),
                 );
             }
             if let Some(interface) = message.interface() {
@@ -28,7 +28,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Interface,
-                    &Value::String(Cow::Borrowed(interface)),
+                    &Value::String(Cow::Owned(interface.to_string())),
                 );
             }
             if let Some(member) = message.member() {
@@ -36,7 +36,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Member,
-                    &Value::String(Cow::Borrowed(member)),
+                    &Value::String(Cow::Owned(member.to_string())),
                 );
             }
             if let Some(error_name) = message.error_name() {
@@ -60,7 +60,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Destination,
-                    &Value::String(Cow::Owned(destination.as_str().to_string())),
+                    &Value::String(Cow::Owned(destination.to_string())),
                 );
             }
             if let Some(sender) = message.sender() {
@@ -68,7 +68,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Sender,
-                    &Value::String(Cow::Borrowed(sender)),
+                    &Value::String(Cow::Owned(sender.to_string())),
                 );
             }
             if let Some(unix_fds) = message.unix_fds() {
