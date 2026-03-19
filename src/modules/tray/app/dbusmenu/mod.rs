@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message, OneshotResource,
+        OneshotResource, OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
         messages::{interface_is, member_is, path_is, sender_is},
         types::Value,
@@ -19,9 +19,12 @@ impl OneshotResource for LayoutUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(&self, (address, path): (ShortString, ShortString)) -> Message<'static> {
-        Message::MethodCall {
-            destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
+    fn make_request(
+        &self,
+        (address, path): (ShortString, ShortString),
+    ) -> OutgoingMessage<'static> {
+        OutgoingMessage::MethodCall {
+            destination: Some(ShortString::from("org.freedesktop.DBus")),
             path: Cow::Borrowed("/org/freedesktop/DBus"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
             serial: 0,
@@ -65,9 +68,12 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(&self, (address, path): (ShortString, ShortString)) -> Message<'static> {
-        Message::MethodCall {
-            destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
+    fn make_request(
+        &self,
+        (address, path): (ShortString, ShortString),
+    ) -> OutgoingMessage<'static> {
+        OutgoingMessage::MethodCall {
+            destination: Some(ShortString::from("org.freedesktop.DBus")),
             path: Cow::Borrowed("/org/freedesktop/DBus"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
             serial: 0,

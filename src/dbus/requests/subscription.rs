@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message,
+        OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
         messages::{
             interface_is,
@@ -44,14 +44,14 @@ where
             return;
         };
 
-        let mut message: Message = RemoveMatch::new(&old_path).into();
+        let mut message: OutgoingMessage = RemoveMatch::new(&old_path).into();
         self.queue.push_back(&mut message);
     }
 
     fn subscribe(&mut self, sender: impl AsRef<str>, path: impl AsRef<str>) {
         let sender = sender.as_ref();
         let path = path.as_ref();
-        let mut message: Message = AddMatch::new(sender, path).into();
+        let mut message: OutgoingMessage = AddMatch::new(sender, path).into();
         self.queue.push_back(&mut message);
         self.path = Some(path.to_string());
         self.resource.set_path(path.to_string());

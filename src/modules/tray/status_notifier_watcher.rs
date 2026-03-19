@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message,
+        OutgoingMessage,
         decoder::{IncomingMessage, MessageType, Value},
         messages::{
             destination_is, interface_is, org_freedesktop_dbus::RequestName, path_is, value_is,
@@ -30,13 +30,13 @@ impl StatusNotifierWatcher {
     }
 
     pub(crate) fn request(&mut self) {
-        let mut message: Message = RequestName::new("org.kde.StatusNotifierWatcher").into();
+        let mut message: OutgoingMessage = RequestName::new("org.kde.StatusNotifierWatcher").into();
         self.queue.push_back(&mut message);
         self.reply_serial = Some(message.serial());
     }
 
     fn reply_ok(&self, serial: u32, destination: &str) {
-        let mut reply = Message::new_method_return_no_body(serial, destination);
+        let mut reply = OutgoingMessage::new_method_return_no_body(serial, destination);
         self.queue.push_back(&mut reply);
     }
 

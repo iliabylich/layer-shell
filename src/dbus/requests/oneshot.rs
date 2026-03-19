@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message,
+        OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
     },
     sansio::DBusQueue,
@@ -11,7 +11,7 @@ pub(crate) trait OneshotResource {
     type Input;
     type Output;
 
-    fn make_request(&self, input: Self::Input) -> Message<'static>;
+    fn make_request(&self, input: Self::Input) -> OutgoingMessage<'static>;
     fn try_process(&self, body: Body<'_>) -> Result<Self::Output>;
 }
 

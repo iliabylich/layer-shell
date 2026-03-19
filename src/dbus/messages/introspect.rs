@@ -1,7 +1,10 @@
 use super::{interface_is, member_is, path_is};
-use crate::dbus::{
-    decoder::{IncomingMessage, MessageType},
-    types::{Message, Value},
+use crate::{
+    dbus::{
+        decoder::{IncomingMessage, MessageType},
+        types::{OutgoingMessage, Value},
+    },
+    ffi::ShortString,
 };
 use anyhow::{Context as _, Result, ensure};
 use std::borrow::Cow;
@@ -57,12 +60,12 @@ impl<'a> IntrospectResponse<'a> {
     }
 }
 
-impl<'a> From<IntrospectResponse<'a>> for Message<'a> {
+impl<'a> From<IntrospectResponse<'a>> for OutgoingMessage<'a> {
     fn from(value: IntrospectResponse<'a>) -> Self {
-        Message::MethodReturn {
+        OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial: value.reply_serial,
-            destination: Some(Cow::Borrowed(value.destination)),
+            destination: Some(ShortString::from(value.destination)),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(Cow::Owned(value.xml))],

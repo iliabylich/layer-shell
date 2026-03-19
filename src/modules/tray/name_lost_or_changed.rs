@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message, Oneshot, OneshotResource,
+        Oneshot, OneshotResource, OutgoingMessage,
         decoder::{IncomingMessage, MessageType, Value},
         messages::{interface_is, member_is, path_is, value_is},
     },
@@ -38,14 +38,14 @@ impl OneshotResource for NameOwnerChangedResource {
 
     type Output = ();
 
-    fn make_request(&self, _: Self::Input) -> Message<'static> {
+    fn make_request(&self, _: Self::Input) -> OutgoingMessage<'static> {
         use crate::dbus::types::Value;
-        Message::MethodCall {
+        OutgoingMessage::MethodCall {
             serial: 0,
             path: Cow::Borrowed("/org/freedesktop/DBus"),
             member: Cow::Borrowed("AddMatch"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
-            destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
+            destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(Cow::Borrowed(

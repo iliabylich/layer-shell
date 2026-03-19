@@ -1,9 +1,12 @@
-use crate::dbus::types::{Message, Value};
+use crate::{
+    dbus::types::{OutgoingMessage, Value},
+    ffi::ShortString,
+};
 use std::borrow::Cow;
 
 #[derive(Debug)]
 pub(crate) struct GetProperty<'a> {
-    destination: Cow<'a, str>,
+    destination: ShortString,
     path: Cow<'a, str>,
     interface: Cow<'a, str>,
     property: Cow<'a, str>,
@@ -11,13 +14,13 @@ pub(crate) struct GetProperty<'a> {
 
 impl<'a> GetProperty<'a> {
     pub(crate) fn new(
-        destination: impl Into<Cow<'a, str>>,
+        destination: ShortString,
         path: impl Into<Cow<'a, str>>,
         interface: impl Into<Cow<'a, str>>,
         property: impl Into<Cow<'a, str>>,
     ) -> Self {
         Self {
-            destination: destination.into(),
+            destination,
             path: path.into(),
             interface: interface.into(),
             property: property.into(),
@@ -25,9 +28,9 @@ impl<'a> GetProperty<'a> {
     }
 }
 
-impl<'a> From<GetProperty<'a>> for Message<'a> {
+impl<'a> From<GetProperty<'a>> for OutgoingMessage<'a> {
     fn from(value: GetProperty<'a>) -> Self {
-        Message::MethodCall {
+        OutgoingMessage::MethodCall {
             serial: 0,
             path: value.path,
             member: Cow::Borrowed("Get"),

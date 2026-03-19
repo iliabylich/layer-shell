@@ -2,7 +2,7 @@ mod header_field_name;
 pub(crate) use header_field_name::HeaderFieldName;
 
 mod message;
-pub(crate) use message::Message;
+pub(crate) use message::OutgoingMessage;
 
 mod message_type;
 pub(crate) use message_type::MessageType;

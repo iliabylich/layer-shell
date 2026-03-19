@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message,
+        OutgoingMessage,
         decoder::{IncomingMessage, MessageType},
         messages::{
             destination_is, interface_is,
@@ -23,13 +23,13 @@ impl Control {
     }
 
     pub(crate) fn init(&mut self) {
-        let mut message: Message = RequestName::new("org.me.LayerShellControl").into();
+        let mut message: OutgoingMessage = RequestName::new("org.me.LayerShellControl").into();
         self.queue.push_back(&mut message)
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
-            let mut reply: Message =
+            let mut reply: OutgoingMessage =
                 IntrospectResponse::new(serial, sender, INTROSPECTION.to_string()).into();
             self.queue.push_back(&mut reply);
             return None;
@@ -37,11 +37,11 @@ impl Control {
 
         if let Ok((member, sender, serial)) = try_parse_control_req(message) {
             if let Ok(control_req) = ControlRequest::try_parse(member) {
-                let mut reply = Message::new_method_return_no_body(serial, sender);
+                let mut reply = OutgoingMessage::new_method_return_no_body(serial, sender);
                 self.queue.push_back(&mut reply);
                 return Some(control_req);
             } else {
-                let mut reply = Message::new_err_no_method(serial, sender);
+                let mut reply = OutgoingMessage::new_err_no_method(serial, sender);
                 self.queue.push_back(&mut reply);
                 return None;
             }

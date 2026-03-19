@@ -1,4 +1,7 @@
-use crate::dbus::types::{Message, Value};
+use crate::{
+    dbus::types::{OutgoingMessage, Value},
+    ffi::ShortString,
+};
 use std::borrow::Cow;
 
 pub(crate) struct RemoveMatch<'a> {
@@ -11,14 +14,14 @@ impl<'a> RemoveMatch<'a> {
     }
 }
 
-impl<'a> From<RemoveMatch<'a>> for Message<'a> {
+impl<'a> From<RemoveMatch<'a>> for OutgoingMessage<'a> {
     fn from(value: RemoveMatch) -> Self {
-        Message::MethodCall {
+        OutgoingMessage::MethodCall {
             serial: 0,
             path: Cow::Borrowed("/org/freedesktop/DBus"),
             member: Cow::Borrowed("RemoveMatch"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
-            destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
+            destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![Value::String(Cow::Owned(format!(

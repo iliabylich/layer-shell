@@ -1,9 +1,10 @@
 use crate::{
     dbus::{
-        IntrospectibleObjectAt, IntrospectibleObjectAtRequest, Message,
+        IntrospectibleObjectAt, IntrospectibleObjectAtRequest, OutgoingMessage,
         decoder::IncomingMessage,
         types::{CompleteType, Value},
     },
+    ffi::ShortString,
     sansio::DBusQueue,
 };
 use std::borrow::Cow;
@@ -22,10 +23,10 @@ impl StatusNotifierWatcherIntrospection {
     }
 
     fn reply_ok(&self, serial: u32, destination: &str, body: Vec<Value>) {
-        let mut message = Message::MethodReturn {
+        let mut message = OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial: serial,
-            destination: Some(Cow::Borrowed(destination)),
+            destination: Some(ShortString::from(destination)),
             sender: None,
             unix_fds: None,
             body,
@@ -34,7 +35,7 @@ impl StatusNotifierWatcherIntrospection {
     }
 
     fn reply_err(&self, serial: u32, destination: &str) {
-        let mut reply = Message::new_err_no_method(serial, destination);
+        let mut reply = OutgoingMessage::new_err_no_method(serial, destination);
         self.queue.push_back(&mut reply)
     }
 

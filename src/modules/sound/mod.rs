@@ -1,11 +1,12 @@
 use crate::{
     Event,
     dbus::{
-        Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
         decoder::{ArrayValue, Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, value_is},
     },
     event_queue::EventQueue,
+    ffi::ShortString,
     sansio::DBusQueue,
 };
 use anyhow::{Context as _, Result, ensure};
@@ -76,9 +77,9 @@ impl OneshotResource for Resource {
     type Input = ();
     type Output = (u32, bool);
 
-    fn make_request(&self, _input: Self::Input) -> Message<'static> {
+    fn make_request(&self, _input: Self::Input) -> OutgoingMessage<'static> {
         GetAllProperties::new(
-            "org.local.PipewireDBus",
+            ShortString::from("org.local.PipewireDBus"),
             "/org/local/PipewireDBus",
             "org.local.PipewireDBus",
         )

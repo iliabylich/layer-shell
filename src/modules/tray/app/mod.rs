@@ -1,5 +1,5 @@
 use crate::{
-    dbus::{Message, Oneshot, Subscription, decoder::IncomingMessage, types::Value},
+    dbus::{Oneshot, OutgoingMessage, Subscription, decoder::IncomingMessage, types::Value},
     ffi::ShortString,
     macros::report_and_exit,
     modules::{TrayIcon, TrayItem, tray::service::Service},
@@ -233,8 +233,8 @@ impl App {
             report_and_exit!(target: "Tray", "can't construct u32 from chrono timestamp: {err:?}")
         });
 
-        let mut message = Message::MethodCall {
-            destination: Some(Cow::Owned(self.service.name().as_str().to_string())),
+        let mut message = OutgoingMessage::MethodCall {
+            destination: Some(self.service.name()),
             path: Cow::Owned(self.menu.to_string()),
             interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
             serial: 0,

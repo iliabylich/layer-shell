@@ -1,7 +1,7 @@
 use super::{AllPropsUpdate, parse};
 use crate::{
     dbus::{
-        Message, OneshotResource,
+        OneshotResource, OutgoingMessage,
         decoder::{Body, Value},
         messages::{org_freedesktop_dbus::GetAllProperties, value_is},
     },
@@ -22,9 +22,9 @@ impl OneshotResource for GetAllPropsOneshot {
     type Input = ShortString;
     type Output = AllProps;
 
-    fn make_request(&self, input: Self::Input) -> Message<'static> {
+    fn make_request(&self, destination: ShortString) -> OutgoingMessage<'static> {
         GetAllProperties::new(
-            input.as_str().to_string(),
+            destination,
             "/StatusNotifierItem",
             "org.kde.StatusNotifierItem",
         )

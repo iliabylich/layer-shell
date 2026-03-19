@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message, OneshotResource,
+        OneshotResource, OutgoingMessage,
         decoder::{ArrayValue, Body, Value},
         messages::value_is,
     },
@@ -28,7 +28,10 @@ impl OneshotResource for GetLayout {
     type Input = (ShortString, ShortString);
     type Output = Vec<TrayItem>;
 
-    fn make_request(&self, (destination, path): (ShortString, ShortString)) -> Message<'static> {
+    fn make_request(
+        &self,
+        (destination, path): (ShortString, ShortString),
+    ) -> OutgoingMessage<'static> {
         use crate::dbus::types::{CompleteType, Value};
 
         let body = vec![
@@ -51,8 +54,8 @@ impl OneshotResource for GetLayout {
             ),
         ];
 
-        Message::MethodCall {
-            destination: Some(Cow::Owned(destination.to_string())),
+        OutgoingMessage::MethodCall {
+            destination: Some(ShortString::from(destination)),
             path: Cow::Owned(path.to_string()),
             interface: Some(Cow::Borrowed("com.canonical.dbusmenu")),
             serial: 0,

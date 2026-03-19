@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Message, OneshotResource,
+        OneshotResource, OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
         messages::{interface_is, member_is, path_is, sender_is},
         types::Value,
@@ -16,9 +16,9 @@ impl OneshotResource for NewIconSubscription {
     type Input = ShortString;
     type Output = ();
 
-    fn make_request(&self, address: Self::Input) -> Message<'static> {
-        Message::MethodCall {
-            destination: Some(Cow::Borrowed("org.freedesktop.DBus")),
+    fn make_request(&self, address: Self::Input) -> OutgoingMessage<'static> {
+        OutgoingMessage::MethodCall {
+            destination: Some(ShortString::from("org.freedesktop.DBus")),
             path: Cow::Borrowed("/org/freedesktop/DBus"),
             interface: Some(Cow::Borrowed("org.freedesktop.DBus")),
             serial: 0,

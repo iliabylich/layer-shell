@@ -1,9 +1,10 @@
 use crate::{
     dbus::{
-        Message, Oneshot, OneshotResource, Subscription, SubscriptionResource,
+        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
         decoder::{Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
+    ffi::ShortString,
     sansio::DBusQueue,
 };
 use anyhow::{Context, Result, bail};
@@ -59,9 +60,9 @@ impl OneshotResource for Resource {
     type Input = ();
     type Output = String;
 
-    fn make_request(&self, _input: Self::Input) -> Message<'static> {
+    fn make_request(&self, _input: Self::Input) -> OutgoingMessage<'static> {
         GetProperty::new(
-            "org.freedesktop.NetworkManager",
+            ShortString::from("org.freedesktop.NetworkManager"),
             "/org/freedesktop/NetworkManager",
             "org.freedesktop.NetworkManager",
             "PrimaryConnection",

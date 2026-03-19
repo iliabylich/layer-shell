@@ -1,4 +1,4 @@
-use crate::dbus::{Message, MessageEncoder, messages::org_freedesktop_dbus::Hello};
+use crate::dbus::{MessageEncoder, OutgoingMessage, messages::org_freedesktop_dbus::Hello};
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 pub(crate) struct DBusQueue {
@@ -12,7 +12,7 @@ impl DBusQueue {
         }
     }
 
-    pub(crate) fn push_back(&self, message: &mut Message) {
+    pub(crate) fn push_back(&self, message: &mut OutgoingMessage) {
         let mut inner = self.inner.borrow_mut();
         inner.push_back(message)
     }
@@ -44,7 +44,7 @@ impl Inner {
         this
     }
 
-    fn encode_in_place(&mut self, message: &mut Message) -> Vec<u8> {
+    fn encode_in_place(&mut self, message: &mut OutgoingMessage) -> Vec<u8> {
         let serial = self.serial;
         self.serial += 1;
 
@@ -52,7 +52,7 @@ impl Inner {
         MessageEncoder::encode(message)
     }
 
-    fn push_back(&mut self, message: &mut Message) {
+    fn push_back(&mut self, message: &mut OutgoingMessage) {
         let message = self.encode_in_place(message);
         self.q.push_back(message);
     }

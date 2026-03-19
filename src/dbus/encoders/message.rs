@@ -1,13 +1,13 @@
 use crate::dbus::{
     encoders::{EncodingBuffer, HeaderEncoder, SignatureEncoder, ValueEncoder},
-    types::{HeaderFieldName, Message, Signature, Value},
+    types::{HeaderFieldName, OutgoingMessage, Signature, Value},
 };
 use std::borrow::Cow;
 
 pub(crate) struct MessageEncoder;
 
 impl MessageEncoder {
-    pub(crate) fn encode(message: &Message) -> Vec<u8> {
+    pub(crate) fn encode(message: &OutgoingMessage) -> Vec<u8> {
         let mut buf = EncodingBuffer::new();
 
         HeaderEncoder::encode(&mut buf, message.message_type() as u8, 0, message.serial());
@@ -60,7 +60,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Destination,
-                    &Value::String(Cow::Borrowed(destination)),
+                    &Value::String(Cow::Owned(destination.as_str().to_string())),
                 );
             }
             if let Some(sender) = message.sender() {
