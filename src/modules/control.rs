@@ -25,7 +25,7 @@ impl Control {
 
     pub(crate) fn init(&mut self) {
         let mut message: OutgoingMessage =
-            RequestName::new(ShortString::from("org.me.LayerShellControl")).into();
+            RequestName::new(ShortString::new_const("org.me.LayerShellControl")).into();
         self.queue.push_back(&mut message)
     }
 

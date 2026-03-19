@@ -40,8 +40,8 @@ impl PrimaryConnection {
     pub(crate) fn init(&mut self) {
         self.oneshot.start(());
         self.subscription.start(
-            ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from("/org/freedesktop/NetworkManager"),
+            ShortString::new_const("org.freedesktop.NetworkManager"),
+            ShortString::new_const("/org/freedesktop/NetworkManager"),
         );
     }
 
@@ -62,10 +62,10 @@ impl OneshotResource for Resource {
 
     fn make_request(&self, _input: Self::Input) -> OutgoingMessage {
         GetProperty::new(
-            ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from("/org/freedesktop/NetworkManager"),
-            ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from("PrimaryConnection"),
+            ShortString::new_const("org.freedesktop.NetworkManager"),
+            ShortString::new_const("/org/freedesktop/NetworkManager"),
+            ShortString::new_const("org.freedesktop.NetworkManager"),
+            ShortString::new_const("PrimaryConnection"),
         )
         .into()
     }

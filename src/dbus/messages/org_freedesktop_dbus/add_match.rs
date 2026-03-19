@@ -18,10 +18,10 @@ impl From<AddMatch> for OutgoingMessage {
     fn from(value: AddMatch) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: ShortString::from("/org/freedesktop/DBus"),
-            member: ShortString::from("AddMatch"),
-            interface: Some(ShortString::from("org.freedesktop.DBus")),
-            destination: Some(ShortString::from("org.freedesktop.DBus")),
+            path: ShortString::new_const("/org/freedesktop/DBus"),
+            member: ShortString::new_const("AddMatch"),
+            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
+            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![Value::LongString(format!(

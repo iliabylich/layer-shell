@@ -60,7 +60,7 @@ impl App {
                 queue.copy(),
             ),
 
-            menu: ShortString::from(""),
+            menu: ShortString::new_const(""),
             get_layout: Oneshot::new(GetLayout::new(service.name()), queue.copy()),
 
             state: State::Nothing,
@@ -79,8 +79,8 @@ impl App {
         self.new_icon_subscription.start(self.service.name());
         self.all_props_request.start(self.service.name());
         self.all_props_subscription.start(
-            ShortString::from("org.freedesktop.DBus"),
-            ShortString::from("/StatusNotifierItem"),
+            ShortString::new_const("org.freedesktop.DBus"),
+            ShortString::new_const("/StatusNotifierItem"),
         );
     }
 
@@ -227,14 +227,14 @@ impl App {
         let mut message = OutgoingMessage::MethodCall {
             destination: Some(self.service.name()),
             path: self.menu,
-            interface: Some(ShortString::from("com.canonical.dbusmenu")),
+            interface: Some(ShortString::new_const("com.canonical.dbusmenu")),
             serial: 0,
-            member: ShortString::from("Event"),
+            member: ShortString::new_const("Event"),
             sender: None,
             unix_fds: None,
             body: vec![
                 Value::Int32(id),
-                Value::ShortString(ShortString::from("clicked")),
+                Value::ShortString(ShortString::new_const("clicked")),
                 Value::Variant(Box::new(Value::Int32(0))),
                 Value::UInt32(timestamp),
             ],

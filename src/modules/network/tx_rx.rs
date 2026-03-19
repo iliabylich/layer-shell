@@ -35,8 +35,10 @@ impl TxRx {
 
     pub(crate) fn init(&mut self, path: ShortString) {
         self.oneshot.start(path);
-        self.subscription
-            .start(ShortString::from("org.freedesktop.NetworkManager"), path);
+        self.subscription.start(
+            ShortString::new_const("org.freedesktop.NetworkManager"),
+            path,
+        );
     }
 
     pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {
@@ -57,10 +59,10 @@ impl OneshotResource for Resource {
         use crate::dbus::types::Value;
 
         SetProperty::new(
-            ShortString::from("org.freedesktop.NetworkManager"),
+            ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
-            ShortString::from("org.freedesktop.NetworkManager.Device.Statistics"),
-            ShortString::from("RefreshRateMs"),
+            ShortString::new_const("org.freedesktop.NetworkManager.Device.Statistics"),
+            ShortString::new_const("RefreshRateMs"),
             Value::UInt32(1000),
         )
         .into()

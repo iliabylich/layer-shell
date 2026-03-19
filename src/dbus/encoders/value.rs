@@ -261,7 +261,7 @@ fn test_encode_f64() {
 fn test_encode_string() {
     let mut buf = EncodingBuffer::new();
     buf.encode_u8(0);
-    ValueEncoder::encode_short_str(&mut buf, ShortString::from("abcd"));
+    ValueEncoder::encode_short_str(&mut buf, ShortString::new_const("abcd"));
     assert_eq!(buf.done(), b"\0\0\0\0\x04\x00\x00\x00abcd\0")
 }
 
@@ -269,7 +269,7 @@ fn test_encode_string() {
 fn test_encode_object_path() {
     let mut buf = EncodingBuffer::new();
     buf.encode_u8(0);
-    ValueEncoder::encode_object_path(&mut buf, ShortString::from("abcd"));
+    ValueEncoder::encode_object_path(&mut buf, ShortString::new_const("abcd"));
     assert_eq!(buf.done(), b"\0\0\0\0\x04\x00\x00\x00abcd\0")
 }
 

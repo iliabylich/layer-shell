@@ -17,11 +17,11 @@ impl OneshotResource for NewIconSubscription {
 
     fn make_request(&self, address: Self::Input) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
-            destination: Some(ShortString::from("org.freedesktop.DBus")),
-            path: ShortString::from("/org/freedesktop/DBus"),
-            interface: Some(ShortString::from("org.freedesktop.DBus")),
+            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
+            path: ShortString::new_const("/org/freedesktop/DBus"),
+            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
             serial: 0,
-            member: ShortString::from("AddMatch"),
+            member: ShortString::new_const("AddMatch"),
             sender: None,
             unix_fds: None,
             body: vec![Value::LongString(format!(

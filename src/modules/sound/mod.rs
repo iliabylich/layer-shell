@@ -39,8 +39,8 @@ impl Sound {
             Ok(Some((volume, muted))) => {
                 self.events.push_back(Event::InitialSound { volume, muted });
                 self.subscription.start(
-                    ShortString::from("org.local.PipewireDBus"),
-                    ShortString::from("/org/local/PipewireDBus"),
+                    ShortString::new_const("org.local.PipewireDBus"),
+                    ShortString::new_const("/org/local/PipewireDBus"),
                 );
 
                 return;
@@ -81,9 +81,9 @@ impl OneshotResource for Resource {
 
     fn make_request(&self, _input: Self::Input) -> OutgoingMessage {
         GetAllProperties::new(
-            ShortString::from("org.local.PipewireDBus"),
-            ShortString::from("/org/local/PipewireDBus"),
-            ShortString::from("org.local.PipewireDBus"),
+            ShortString::new_const("org.local.PipewireDBus"),
+            ShortString::new_const("/org/local/PipewireDBus"),
+            ShortString::new_const("org.local.PipewireDBus"),
         )
         .into()
     }

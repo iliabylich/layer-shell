@@ -146,12 +146,12 @@ impl OutgoingMessage {
     pub(crate) fn new_err_no_method(reply_serial: u32, destination: &str) -> Self {
         OutgoingMessage::Error {
             serial: 0,
-            error_name: ShortString::from("org.freedesktop.DBus.Error.UnknownMethod"),
+            error_name: ShortString::new_const("org.freedesktop.DBus.Error.UnknownMethod"),
             reply_serial,
             destination: Some(ShortString::from(destination)),
             sender: None,
             unix_fds: None,
-            body: vec![Value::ShortString(ShortString::from("Unknown method"))],
+            body: vec![Value::ShortString(ShortString::new_const("Unknown method"))],
         }
     }
 }

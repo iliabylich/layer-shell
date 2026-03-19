@@ -31,7 +31,7 @@ impl StatusNotifierWatcher {
 
     pub(crate) fn request(&mut self) {
         let mut message: OutgoingMessage =
-            RequestName::new(ShortString::from("org.kde.StatusNotifierWatcher")).into();
+            RequestName::new(ShortString::new_const("org.kde.StatusNotifierWatcher")).into();
         self.queue.push_back(&mut message);
         self.reply_serial = Some(message.serial());
     }

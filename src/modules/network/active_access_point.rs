@@ -43,8 +43,10 @@ impl ActiveAccessPoint {
     }
 
     pub(crate) fn init(&mut self, path: ShortString) {
-        self.subscription
-            .start(ShortString::from("org.freedesktop.NetworkManager"), path);
+        self.subscription.start(
+            ShortString::new_const("org.freedesktop.NetworkManager"),
+            path,
+        );
         self.oneshot.start(path);
     }
 
@@ -66,10 +68,10 @@ impl OneshotResource for Resource {
 
     fn make_request(&self, path: ShortString) -> OutgoingMessage {
         GetProperty::new(
-            ShortString::from("org.freedesktop.NetworkManager"),
+            ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
-            ShortString::from("org.freedesktop.NetworkManager.Device.Wireless"),
-            ShortString::from("ActiveAccessPoint"),
+            ShortString::new_const("org.freedesktop.NetworkManager.Device.Wireless"),
+            ShortString::new_const("ActiveAccessPoint"),
         )
         .into()
     }

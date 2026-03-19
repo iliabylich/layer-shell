@@ -47,10 +47,10 @@ impl OneshotResource for Resource {
 
     fn make_request(&self, path: ShortString) -> OutgoingMessage {
         GetProperty::new(
-            ShortString::from("org.freedesktop.NetworkManager"),
+            ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
-            ShortString::from("org.freedesktop.NetworkManager.Connection.Active"),
-            ShortString::from("Type"),
+            ShortString::new_const("org.freedesktop.NetworkManager.Connection.Active"),
+            ShortString::new_const("Type"),
         )
         .into()
     }

@@ -6,10 +6,10 @@ impl From<Hello> for OutgoingMessage {
     fn from(_: Hello) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: ShortString::from("/org/freedesktop/DBus"),
-            member: ShortString::from("Hello"),
-            interface: Some(ShortString::from("org.freedesktop.DBus")),
-            destination: Some(ShortString::from("org.freedesktop.DBus")),
+            path: ShortString::new_const("/org/freedesktop/DBus"),
+            member: ShortString::new_const("Hello"),
+            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
+            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![],

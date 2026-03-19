@@ -27,6 +27,20 @@ impl From<&str> for ShortString {
 }
 
 impl ShortString {
+    pub(crate) const fn new_const(s: &str) -> Self {
+        assert!(s.len() < MAX_LEN, "too long for ShortString");
+
+        let mut bytes = [0; MAX_LEN];
+        let mut idx = 0;
+        while idx < s.len() {
+            bytes[idx] = s.as_bytes()[idx];
+            idx += 1;
+        }
+        bytes[s.len()] = 0;
+
+        Self { bytes }
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.bytes
             .iter()

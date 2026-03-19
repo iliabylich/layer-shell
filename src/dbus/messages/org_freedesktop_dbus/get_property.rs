@@ -12,7 +12,7 @@ pub(crate) struct GetProperty {
 }
 
 impl GetProperty {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         destination: ShortString,
         path: ShortString,
         interface: ShortString,
@@ -32,8 +32,8 @@ impl From<GetProperty> for OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: value.path,
-            member: ShortString::from("Get"),
-            interface: Some(ShortString::from("org.freedesktop.DBus.Properties")),
+            member: ShortString::new_const("Get"),
+            interface: Some(ShortString::new_const("org.freedesktop.DBus.Properties")),
             destination: Some(value.destination),
             sender: None,
             unix_fds: None,

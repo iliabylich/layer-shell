@@ -9,8 +9,13 @@ pub(crate) struct GetAllProperties {
     path: ShortString,
     interface: ShortString,
 }
+
 impl GetAllProperties {
-    pub(crate) fn new(destination: ShortString, path: ShortString, interface: ShortString) -> Self {
+    pub(crate) const fn new(
+        destination: ShortString,
+        path: ShortString,
+        interface: ShortString,
+    ) -> Self {
         Self {
             destination,
             path,
@@ -18,13 +23,14 @@ impl GetAllProperties {
         }
     }
 }
+
 impl From<GetAllProperties> for OutgoingMessage {
     fn from(value: GetAllProperties) -> Self {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: value.path,
-            member: ShortString::from("GetAll"),
-            interface: Some(ShortString::from("org.freedesktop.DBus.Properties")),
+            member: ShortString::new_const("GetAll"),
+            interface: Some(ShortString::new_const("org.freedesktop.DBus.Properties")),
             destination: Some(value.destination),
             sender: None,
             unix_fds: None,

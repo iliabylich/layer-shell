@@ -7,19 +7,21 @@ use crate::{
 pub(crate) struct RequestName {
     name: ShortString,
 }
+
 impl RequestName {
-    pub(crate) fn new(name: ShortString) -> Self {
+    pub(crate) const fn new(name: ShortString) -> Self {
         Self { name }
     }
 }
+
 impl From<RequestName> for OutgoingMessage {
     fn from(value: RequestName) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: ShortString::from("/org/freedesktop/DBus"),
-            member: ShortString::from("RequestName"),
-            interface: Some(ShortString::from("org.freedesktop.DBus")),
-            destination: Some(ShortString::from("org.freedesktop.DBus")),
+            path: ShortString::new_const("/org/freedesktop/DBus"),
+            member: ShortString::new_const("RequestName"),
+            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
+            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![Value::ShortString(value.name), Value::UInt32(7)],
