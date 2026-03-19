@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context, Result};
 
 pub(crate) struct ActiveConnectionType {
-    path: Option<String>,
+    path: Option<ShortString>,
     oneshot: Oneshot<Resource>,
 }
 
@@ -22,32 +22,35 @@ impl ActiveConnectionType {
         }
     }
 
-    pub(crate) fn request(&mut self, path: &str) {
-        self.oneshot.start(path.to_string());
-        self.path = Some(path.to_string());
+    pub(crate) fn request(&mut self, path: ShortString) {
+        self.oneshot.start(path);
+        self.path = Some(path);
     }
 
     pub(crate) fn reset(&mut self) {
         self.oneshot.reset();
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<(bool, String)> {
+    pub(crate) fn on_message(
+        &mut self,
+        message: IncomingMessage<'_>,
+    ) -> Option<(bool, ShortString)> {
         let is_wireless = self.oneshot.process(message).ok().flatten()?;
-        Some((is_wireless, self.path.clone()?))
+        Some((is_wireless, self.path?))
     }
 }
 
 struct Resource;
 impl OneshotResource for Resource {
-    type Input = String;
+    type Input = ShortString;
     type Output = bool;
 
-    fn make_request(&self, path: String) -> OutgoingMessage<'static> {
+    fn make_request(&self, path: ShortString) -> OutgoingMessage {
         GetProperty::new(
             ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from(path.as_str()),
-            "org.freedesktop.NetworkManager.Connection.Active",
-            "Type",
+            path,
+            ShortString::from("org.freedesktop.NetworkManager.Connection.Active"),
+            ShortString::from("Type"),
         )
         .into()
     }

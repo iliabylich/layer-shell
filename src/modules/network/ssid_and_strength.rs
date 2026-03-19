@@ -16,7 +16,7 @@ pub(crate) struct SsidAndStrength {
 
 #[derive(Debug)]
 pub(crate) struct SsidAndStrengthEvent {
-    pub(crate) ssid: Option<String>,
+    pub(crate) ssid: Option<ShortString>,
     pub(crate) strength: Option<u8>,
 }
 
@@ -33,10 +33,10 @@ impl SsidAndStrength {
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: &str) {
+    pub(crate) fn init(&mut self, path: ShortString) {
         self.subscription
-            .start("org.freedesktop.NetworkManager", path);
-        self.oneshot.start(path.to_string());
+            .start(ShortString::from("org.freedesktop.NetworkManager"), path);
+        self.oneshot.start(path);
     }
 
     pub(crate) fn on_message(
@@ -48,7 +48,7 @@ impl SsidAndStrength {
     }
 }
 
-fn parse_ssid(ssid: Value<'_>) -> Result<String> {
+fn parse_ssid(ssid: Value<'_>) -> Result<ShortString> {
     value_is!(ssid, Value::Array(ssid));
     let mut iter = ssid.iter();
     let mut bytes = vec![];
@@ -57,22 +57,22 @@ fn parse_ssid(ssid: Value<'_>) -> Result<String> {
         bytes.push(byte);
     }
     let ssid = String::from_utf8_lossy(&bytes).to_string();
-    Ok(ssid)
+    Ok(ShortString::from(ssid.as_str()))
 }
 
 #[derive(Default)]
 struct Resource {
-    path: Option<String>,
+    path: Option<ShortString>,
 }
 impl OneshotResource for Resource {
-    type Input = String;
+    type Input = ShortString;
     type Output = SsidAndStrengthEvent;
 
-    fn make_request(&self, path: String) -> OutgoingMessage<'static> {
+    fn make_request(&self, path: ShortString) -> OutgoingMessage {
         GetAllProperties::new(
             ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from(path.as_str()),
-            "org.freedesktop.NetworkManager.AccessPoint",
+            path,
+            ShortString::from("org.freedesktop.NetworkManager.AccessPoint"),
         )
         .into()
     }
@@ -117,8 +117,8 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = SsidAndStrengthEvent;
 
-    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
-        path_is!(path, self.path.as_deref().context("no path")?);
+    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
+        path_is!(path, self.path.context("no path")?);
 
         let interface = body.try_next()?.context("no Interface in Body")?;
         value_is!(interface, Value::String(interface));
@@ -149,7 +149,7 @@ impl SubscriptionResource for Resource {
         Ok(SsidAndStrengthEvent { ssid, strength })
     }
 
-    fn set_path(&mut self, path: String) {
+    fn set_path(&mut self, path: ShortString) {
         self.path = Some(path)
     }
 }

@@ -7,7 +7,6 @@ use crate::{
     ffi::ShortString,
     sansio::DBusQueue,
 };
-use std::borrow::Cow;
 
 pub(crate) struct StatusNotifierWatcherIntrospection {
     introspection: IntrospectibleObjectAt,
@@ -49,12 +48,12 @@ impl StatusNotifierWatcherIntrospection {
                 "/" => self.reply_ok(
                     serial,
                     sender,
-                    vec![Value::String(Cow::Owned(root_introspection_xml()))],
+                    vec![Value::LongString(root_introspection_xml())],
                 ),
                 "/StatusNotifierWatcher" => self.reply_ok(
                     serial,
                     sender,
-                    vec![Value::String(Cow::Owned(ksni_introspection_xml()))],
+                    vec![Value::LongString(ksni_introspection_xml())],
                 ),
                 _ => self.reply_err(serial, sender),
             },
@@ -69,17 +68,19 @@ impl StatusNotifierWatcherIntrospection {
                             ),
                             vec![
                                 Value::DictEntry(
-                                    Box::new(Value::String(Cow::Borrowed("ProtocolVersion"))),
+                                    Box::new(Value::ShortString(ShortString::from(
+                                        "ProtocolVersion",
+                                    ))),
                                     Box::new(Value::Variant(Box::new(Value::Int32(42)))),
                                 ),
                                 Value::DictEntry(
-                                    Box::new(Value::String(Cow::Borrowed(
+                                    Box::new(Value::ShortString(ShortString::from(
                                         "IsStatusNotifierHostRegistered",
                                     ))),
                                     Box::new(Value::Variant(Box::new(Value::Bool(true)))),
                                 ),
                                 Value::DictEntry(
-                                    Box::new(Value::String(Cow::Borrowed(
+                                    Box::new(Value::ShortString(ShortString::from(
                                         "RegisteredStatusNotifierItems",
                                     ))),
                                     Box::new(Value::Variant(Box::new(Value::Array(

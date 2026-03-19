@@ -15,12 +15,12 @@ pub(crate) struct PrimaryConnection {
 }
 
 pub(crate) enum PrimaryConnectionEvent {
-    Connected(String),
+    Connected(ShortString),
     Disconnected,
 }
 
-impl From<String> for PrimaryConnectionEvent {
-    fn from(path: String) -> Self {
+impl From<ShortString> for PrimaryConnectionEvent {
+    fn from(path: ShortString) -> Self {
         if path == "/" {
             PrimaryConnectionEvent::Disconnected
         } else {
@@ -40,8 +40,8 @@ impl PrimaryConnection {
     pub(crate) fn init(&mut self) {
         self.oneshot.start(());
         self.subscription.start(
-            "org.freedesktop.NetworkManager",
-            "/org/freedesktop/NetworkManager",
+            ShortString::from("org.freedesktop.NetworkManager"),
+            ShortString::from("/org/freedesktop/NetworkManager"),
         );
     }
 
@@ -58,14 +58,14 @@ impl PrimaryConnection {
 struct Resource;
 impl OneshotResource for Resource {
     type Input = ();
-    type Output = String;
+    type Output = ShortString;
 
-    fn make_request(&self, _input: Self::Input) -> OutgoingMessage<'static> {
+    fn make_request(&self, _input: Self::Input) -> OutgoingMessage {
         GetProperty::new(
             ShortString::from("org.freedesktop.NetworkManager"),
             ShortString::from("/org/freedesktop/NetworkManager"),
-            "org.freedesktop.NetworkManager",
-            "PrimaryConnection",
+            ShortString::from("org.freedesktop.NetworkManager"),
+            ShortString::from("PrimaryConnection"),
         )
         .into()
     }
@@ -75,14 +75,14 @@ impl OneshotResource for Resource {
         value_is!(path, Value::Variant(path));
         let path = path.materialize()?;
         value_is!(path, Value::ObjectPath(path));
-        Ok(path.to_string())
+        Ok(ShortString::from(path))
     }
 }
 
 impl SubscriptionResource for Resource {
-    type Output = String;
+    type Output = ShortString;
 
-    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/org/freedesktop/NetworkManager");
 
         let interface = body.try_next()?.context("empty Body")?;
@@ -102,12 +102,12 @@ impl SubscriptionResource for Resource {
             if key == "PrimaryConnection" {
                 let value = value.materialize()?;
                 value_is!(value, Value::ObjectPath(value));
-                return Ok(value.to_string());
+                return Ok(ShortString::from(value));
             }
         }
 
         bail!("unrelated")
     }
 
-    fn set_path(&mut self, _: String) {}
+    fn set_path(&mut self, _: ShortString) {}
 }

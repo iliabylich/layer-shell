@@ -9,7 +9,6 @@ use crate::{
 };
 use anyhow::{Context as _, Result, ensure};
 pub(crate) use get_layout::GetLayout;
-use std::borrow::Cow;
 
 mod get_layout;
 
@@ -19,10 +18,7 @@ impl OneshotResource for LayoutUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(
-        &self,
-        (address, path): (ShortString, ShortString),
-    ) -> OutgoingMessage<'static> {
+    fn make_request(&self, (address, path): (ShortString, ShortString)) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             path: ShortString::from("/org/freedesktop/DBus"),
@@ -31,9 +27,9 @@ impl OneshotResource for LayoutUpdatedSubscription {
             member: ShortString::from("AddMatch"),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Owned(format!(
+            body: vec![Value::LongString(format!(
                 "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='LayoutUpdated',path='{path}'"
-            )))],
+            ))],
         }
     }
 
@@ -44,8 +40,8 @@ impl OneshotResource for LayoutUpdatedSubscription {
 
 pub(crate) fn parse_layout_updated_signal(
     message: IncomingMessage<'_>,
-    address: &str,
-    expected_path: &str,
+    address: ShortString,
+    expected_path: ShortString,
 ) -> Result<()> {
     ensure!(message.message_type == MessageType::Signal);
 
@@ -68,10 +64,7 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(
-        &self,
-        (address, path): (ShortString, ShortString),
-    ) -> OutgoingMessage<'static> {
+    fn make_request(&self, (address, path): (ShortString, ShortString)) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             path: ShortString::from("/org/freedesktop/DBus"),
@@ -80,9 +73,9 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
             member: ShortString::from("AddMatch"),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Owned(format!(
+            body: vec![Value::LongString(format!(
                 "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='ItemsPropertiesUpdated',path='{path}'"
-            )))],
+            ))],
         }
     }
 
@@ -93,8 +86,8 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
 
 pub(crate) fn parse_items_properties_updated_signal(
     message: IncomingMessage<'_>,
-    address: &str,
-    expected_path: &str,
+    address: ShortString,
+    expected_path: ShortString,
 ) -> Result<()> {
     ensure!(message.message_type == MessageType::Signal);
 

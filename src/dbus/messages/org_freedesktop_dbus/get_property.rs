@@ -2,34 +2,33 @@ use crate::{
     dbus::types::{OutgoingMessage, Value},
     ffi::ShortString,
 };
-use std::borrow::Cow;
 
 #[derive(Debug)]
-pub(crate) struct GetProperty<'a> {
+pub(crate) struct GetProperty {
     destination: ShortString,
     path: ShortString,
-    interface: Cow<'a, str>,
-    property: Cow<'a, str>,
+    interface: ShortString,
+    property: ShortString,
 }
 
-impl<'a> GetProperty<'a> {
+impl GetProperty {
     pub(crate) fn new(
         destination: ShortString,
         path: ShortString,
-        interface: impl Into<Cow<'a, str>>,
-        property: impl Into<Cow<'a, str>>,
+        interface: ShortString,
+        property: ShortString,
     ) -> Self {
         Self {
             destination,
             path,
-            interface: interface.into(),
-            property: property.into(),
+            interface,
+            property,
         }
     }
 }
 
-impl<'a> From<GetProperty<'a>> for OutgoingMessage<'a> {
-    fn from(value: GetProperty<'a>) -> Self {
+impl From<GetProperty> for OutgoingMessage {
+    fn from(value: GetProperty) -> Self {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: value.path,
@@ -39,8 +38,8 @@ impl<'a> From<GetProperty<'a>> for OutgoingMessage<'a> {
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::String(value.interface),
-                Value::String(value.property),
+                Value::ShortString(value.interface),
+                Value::ShortString(value.property),
             ],
         }
     }

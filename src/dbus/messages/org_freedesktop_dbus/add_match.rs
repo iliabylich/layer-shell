@@ -2,20 +2,19 @@ use crate::{
     dbus::types::{OutgoingMessage, Value},
     ffi::ShortString,
 };
-use std::borrow::Cow;
 
-pub(crate) struct AddMatch<'a> {
-    sender: &'a str,
-    path: &'a str,
+pub(crate) struct AddMatch {
+    sender: ShortString,
+    path: ShortString,
 }
 
-impl<'a> AddMatch<'a> {
-    pub(crate) fn new(sender: &'a str, path: &'a str) -> Self {
+impl AddMatch {
+    pub(crate) fn new(sender: ShortString, path: ShortString) -> Self {
         Self { sender, path }
     }
 }
 
-impl<'a> From<AddMatch<'a>> for OutgoingMessage<'a> {
+impl From<AddMatch> for OutgoingMessage {
     fn from(value: AddMatch) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
@@ -25,10 +24,10 @@ impl<'a> From<AddMatch<'a>> for OutgoingMessage<'a> {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Owned(format!(
+            body: vec![Value::LongString(format!(
                 "type='signal',sender='{}',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{}'",
                 value.sender, value.path
-            )))],
+            ))],
         }
     }
 }

@@ -8,7 +8,6 @@ use crate::{
     ffi::ShortString,
 };
 use anyhow::{Context as _, Result, ensure};
-use std::borrow::Cow;
 
 pub(crate) struct NewIconSubscription;
 
@@ -16,7 +15,7 @@ impl OneshotResource for NewIconSubscription {
     type Input = ShortString;
     type Output = ();
 
-    fn make_request(&self, address: Self::Input) -> OutgoingMessage<'static> {
+    fn make_request(&self, address: Self::Input) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             path: ShortString::from("/org/freedesktop/DBus"),
@@ -25,9 +24,9 @@ impl OneshotResource for NewIconSubscription {
             member: ShortString::from("AddMatch"),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Owned(format!(
+            body: vec![Value::LongString(format!(
                 "type='signal',sender='{address}',interface='org.kde.StatusNotifierItem',member='NewIcon',path='/StatusNotifierItem'"
-            )))],
+            ))],
         }
     }
 
@@ -36,7 +35,10 @@ impl OneshotResource for NewIconSubscription {
     }
 }
 
-pub(crate) fn parse_new_icon_signal(message: IncomingMessage<'_>, address: &str) -> Result<()> {
+pub(crate) fn parse_new_icon_signal(
+    message: IncomingMessage<'_>,
+    address: ShortString,
+) -> Result<()> {
     ensure!(message.message_type == MessageType::Signal);
 
     let path = message.path.context("no Path")?;

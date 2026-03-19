@@ -14,9 +14,9 @@ pub(crate) struct AllPropsSubscription;
 impl SubscriptionResource for AllPropsSubscription {
     type Output = AllPropsUpdate;
 
-    fn set_path(&mut self, _path: String) {}
+    fn set_path(&mut self, _path: ShortString) {}
 
-    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/StatusNotifierItem");
 
         let interface = body.try_next()?.context("no interface")?;

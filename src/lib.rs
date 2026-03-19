@@ -425,6 +425,7 @@ pub extern "C" fn io_logout() {
     process_command(Command::Logout);
 }
 #[unsafe(no_mangle)]
+#[expect(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn io_trigger_tray(uuid: *const std::ffi::c_char) {
     let uuid = unsafe { std::ffi::CStr::from_ptr(uuid) }
         .to_str()

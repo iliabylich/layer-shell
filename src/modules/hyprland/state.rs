@@ -102,7 +102,7 @@ impl Inner {
             }
 
             Changed::Language => {
-                let lang = self.lang.as_ref().map(|s| ShortString::from(s.as_str()))?;
+                let lang = self.lang?;
                 Some(Event::Language { lang })
             }
         }

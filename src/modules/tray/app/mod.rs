@@ -13,7 +13,6 @@ use ksni::{
     AllProps, AllPropsSubscription, AllPropsUpdate, GetAllPropsOneshot, NewIconSubscription,
     parse_new_icon_signal,
 };
-use std::borrow::Cow;
 
 mod dbusmenu;
 mod ksni;
@@ -79,8 +78,10 @@ impl App {
         self.new_icon_subscription = Oneshot::new(NewIconSubscription, self.queue.copy());
         self.new_icon_subscription.start(self.service.name());
         self.all_props_request.start(self.service.name());
-        self.all_props_subscription
-            .start("org.freedesktop.DBus", "/StatusNotifierItem");
+        self.all_props_subscription.start(
+            ShortString::from("org.freedesktop.DBus"),
+            ShortString::from("/StatusNotifierItem"),
+        );
     }
 
     pub(crate) fn reset(&mut self) {
@@ -97,7 +98,7 @@ impl App {
     }
 
     fn on_menu_received(&mut self, menu: ShortString) {
-        if !self.menu.as_str().is_empty() {
+        if self.menu != "" {
             return;
         }
 
@@ -196,29 +197,19 @@ impl App {
             return None;
         }
 
-        if parse_new_icon_signal(message, self.service.raw_address().as_str()).is_ok() {
+        if parse_new_icon_signal(message, self.service.raw_address()).is_ok() {
             log::info!(target: "Tray", "Received NewIcon signal");
             self.schedule_request_props();
             return None;
         }
 
-        if parse_layout_updated_signal(
-            message,
-            self.service.raw_address().as_str(),
-            self.menu.as_str(),
-        )
-        .is_ok()
-        {
+        if parse_layout_updated_signal(message, self.service.raw_address(), self.menu).is_ok() {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
             self.schedule_get_layout();
             return None;
         }
-        if parse_items_properties_updated_signal(
-            message,
-            self.service.raw_address().as_str(),
-            self.menu.as_str(),
-        )
-        .is_ok()
+        if parse_items_properties_updated_signal(message, self.service.raw_address(), self.menu)
+            .is_ok()
         {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
             self.schedule_get_layout();
@@ -243,7 +234,7 @@ impl App {
             unix_fds: None,
             body: vec![
                 Value::Int32(id),
-                Value::String(Cow::Borrowed("clicked")),
+                Value::ShortString(ShortString::from("clicked")),
                 Value::Variant(Box::new(Value::Int32(0))),
                 Value::UInt32(timestamp),
             ],

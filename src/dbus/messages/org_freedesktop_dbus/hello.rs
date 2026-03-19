@@ -2,8 +2,8 @@ use crate::{dbus::types::OutgoingMessage, ffi::ShortString};
 
 pub(crate) struct Hello;
 
-impl From<Hello> for OutgoingMessage<'static> {
-    fn from(_: Hello) -> OutgoingMessage<'static> {
+impl From<Hello> for OutgoingMessage {
+    fn from(_: Hello) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: ShortString::from("/org/freedesktop/DBus"),

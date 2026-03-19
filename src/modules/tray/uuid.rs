@@ -7,7 +7,7 @@ pub(crate) struct UUID;
 
 impl UUID {
     pub(crate) fn encode(service: ShortString, id: i32) -> ShortString {
-        let uuid = format!("{}**{}", service.as_str(), id);
+        let uuid = format!("{}**{}", service, id);
         ShortString::from(uuid.as_str())
     }
 

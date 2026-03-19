@@ -2,10 +2,10 @@ use crate::{
     dbus::types::{MessageType, Value},
     ffi::ShortString,
 };
-use std::borrow::Cow;
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum OutgoingMessage<'a> {
+#[expect(clippy::large_enum_variant)]
+pub(crate) enum OutgoingMessage {
     MethodCall {
         destination: Option<ShortString>,
         path: ShortString,
@@ -14,7 +14,7 @@ pub(crate) enum OutgoingMessage<'a> {
         member: ShortString,
         sender: Option<ShortString>,
         unix_fds: Option<u32>,
-        body: Vec<Value<'a>>,
+        body: Vec<Value>,
     },
     MethodReturn {
         serial: u32,
@@ -22,20 +22,20 @@ pub(crate) enum OutgoingMessage<'a> {
         destination: Option<ShortString>,
         sender: Option<ShortString>,
         unix_fds: Option<u32>,
-        body: Vec<Value<'a>>,
+        body: Vec<Value>,
     },
     Error {
         serial: u32,
-        error_name: Cow<'a, str>,
+        error_name: ShortString,
         reply_serial: u32,
         destination: Option<ShortString>,
         sender: Option<ShortString>,
         unix_fds: Option<u32>,
-        body: Vec<Value<'a>>,
+        body: Vec<Value>,
     },
 }
 
-impl<'a> OutgoingMessage<'a> {
+impl OutgoingMessage {
     pub(crate) fn serial(&self) -> u32 {
         match self {
             Self::MethodCall { serial, .. }
@@ -84,9 +84,9 @@ impl<'a> OutgoingMessage<'a> {
         }
     }
 
-    pub(crate) fn error_name(&self) -> Option<&str> {
+    pub(crate) fn error_name(&self) -> Option<ShortString> {
         match self {
-            Self::Error { error_name, .. } => Some(error_name),
+            Self::Error { error_name, .. } => Some(*error_name),
             _ => None,
         }
     }
@@ -116,7 +116,7 @@ impl<'a> OutgoingMessage<'a> {
         }
     }
 
-    pub(crate) fn body(&self) -> &[Value<'a>] {
+    pub(crate) fn body(&self) -> &[Value] {
         match self {
             Self::MethodCall { body, .. }
             | Self::MethodReturn { body, .. }
@@ -132,7 +132,7 @@ impl<'a> OutgoingMessage<'a> {
         }
     }
 
-    pub(crate) fn new_method_return_no_body(reply_serial: u32, destination: &'a str) -> Self {
+    pub(crate) fn new_method_return_no_body(reply_serial: u32, destination: &str) -> Self {
         OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial,
@@ -143,15 +143,15 @@ impl<'a> OutgoingMessage<'a> {
         }
     }
 
-    pub(crate) fn new_err_no_method(reply_serial: u32, destination: &'a str) -> Self {
+    pub(crate) fn new_err_no_method(reply_serial: u32, destination: &str) -> Self {
         OutgoingMessage::Error {
             serial: 0,
-            error_name: Cow::Borrowed("org.freedesktop.DBus.Error.UnknownMethod"),
+            error_name: ShortString::from("org.freedesktop.DBus.Error.UnknownMethod"),
             reply_serial,
             destination: Some(ShortString::from(destination)),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Borrowed("Unknown method"))],
+            body: vec![Value::ShortString(ShortString::from("Unknown method"))],
         }
     }
 }

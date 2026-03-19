@@ -16,11 +16,11 @@ pub(crate) struct ActiveAccessPoint {
 
 #[derive(Debug)]
 pub(crate) enum ActiveAccessPointEvent {
-    Connected(String),
+    Connected(ShortString),
     Disconnected,
 }
-impl From<String> for ActiveAccessPointEvent {
-    fn from(path: String) -> Self {
+impl From<ShortString> for ActiveAccessPointEvent {
+    fn from(path: ShortString) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
@@ -42,10 +42,10 @@ impl ActiveAccessPoint {
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: &str) {
+    pub(crate) fn init(&mut self, path: ShortString) {
         self.subscription
-            .start("org.freedesktop.NetworkManager", path);
-        self.oneshot.start(path.to_string());
+            .start(ShortString::from("org.freedesktop.NetworkManager"), path);
+        self.oneshot.start(path);
     }
 
     pub(crate) fn on_message(
@@ -61,15 +61,15 @@ impl ActiveAccessPoint {
 struct Resource;
 
 impl OneshotResource for Resource {
-    type Input = String;
-    type Output = String;
+    type Input = ShortString;
+    type Output = ShortString;
 
-    fn make_request(&self, path: String) -> OutgoingMessage<'static> {
+    fn make_request(&self, path: ShortString) -> OutgoingMessage {
         GetProperty::new(
             ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from(path.as_str()),
-            "org.freedesktop.NetworkManager.Device.Wireless",
-            "ActiveAccessPoint",
+            path,
+            ShortString::from("org.freedesktop.NetworkManager.Device.Wireless"),
+            ShortString::from("ActiveAccessPoint"),
         )
         .into()
     }
@@ -80,14 +80,14 @@ impl OneshotResource for Resource {
         let active_access_point = active_access_point.materialize()?;
         value_is!(active_access_point, Value::ObjectPath(active_access_point));
 
-        Ok(active_access_point.to_string())
+        Ok(ShortString::from(active_access_point))
     }
 }
 
 impl SubscriptionResource for Resource {
-    type Output = String;
+    type Output = ShortString;
 
-    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/org/freedesktop/NetworkManager");
 
         let interface = body.try_next()?.context("no Interface in Body")?;
@@ -106,12 +106,12 @@ impl SubscriptionResource for Resource {
             if key == "ActiveAccessPoint" {
                 let value = value.materialize()?;
                 value_is!(value, Value::ObjectPath(value));
-                return Ok(value.to_string());
+                return Ok(ShortString::from(value));
             }
         }
 
         bail!("unrelated")
     }
 
-    fn set_path(&mut self, _: String) {}
+    fn set_path(&mut self, _: ShortString) {}
 }

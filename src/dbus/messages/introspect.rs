@@ -7,20 +7,19 @@ use crate::{
     ffi::ShortString,
 };
 use anyhow::{Context as _, Result, ensure};
-use std::borrow::Cow;
 
 #[derive(Debug)]
-pub(crate) struct IntrospectRequest<'a> {
+pub(crate) struct IntrospectRequest {
     pub(crate) serial: u32,
-    pub(crate) destination: &'a str,
-    pub(crate) path: &'a str,
-    pub(crate) sender: &'a str,
+    pub(crate) destination: ShortString,
+    pub(crate) path: ShortString,
+    pub(crate) sender: ShortString,
 }
 
-impl<'a> TryFrom<IncomingMessage<'a>> for IntrospectRequest<'a> {
+impl TryFrom<IncomingMessage<'_>> for IntrospectRequest {
     type Error = anyhow::Error;
 
-    fn try_from(message: IncomingMessage<'a>) -> Result<Self> {
+    fn try_from(message: IncomingMessage) -> Result<Self> {
         ensure!(message.message_type == MessageType::MethodCall);
 
         let serial = message.serial;
@@ -37,21 +36,21 @@ impl<'a> TryFrom<IncomingMessage<'a>> for IntrospectRequest<'a> {
 
         Ok(Self {
             serial,
-            destination,
-            path,
-            sender,
+            destination: ShortString::from(destination),
+            path: ShortString::from(path),
+            sender: ShortString::from(sender),
         })
     }
 }
 
-pub(crate) struct IntrospectResponse<'a> {
+pub(crate) struct IntrospectResponse {
     reply_serial: u32,
-    destination: &'a str,
+    destination: ShortString,
     xml: String,
 }
 
-impl<'a> IntrospectResponse<'a> {
-    pub(crate) fn new(reply_serial: u32, destination: &'a str, xml: String) -> Self {
+impl IntrospectResponse {
+    pub(crate) fn new(reply_serial: u32, destination: ShortString, xml: String) -> Self {
         Self {
             reply_serial,
             destination,
@@ -60,15 +59,15 @@ impl<'a> IntrospectResponse<'a> {
     }
 }
 
-impl<'a> From<IntrospectResponse<'a>> for OutgoingMessage<'a> {
-    fn from(value: IntrospectResponse<'a>) -> Self {
+impl From<IntrospectResponse> for OutgoingMessage {
+    fn from(value: IntrospectResponse) -> Self {
         OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial: value.reply_serial,
-            destination: Some(ShortString::from(value.destination)),
+            destination: Some(value.destination),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Owned(value.xml))],
+            body: vec![Value::LongString(value.xml)],
         }
     }
 }

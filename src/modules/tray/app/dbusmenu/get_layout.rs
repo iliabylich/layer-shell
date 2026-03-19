@@ -8,7 +8,6 @@ use crate::{
     modules::{TrayItem, tray::uuid::UUID},
 };
 use anyhow::{Context, Result};
-use std::borrow::Cow;
 
 pub(crate) struct GetLayout {
     service: ShortString,
@@ -28,10 +27,7 @@ impl OneshotResource for GetLayout {
     type Input = (ShortString, ShortString);
     type Output = Vec<TrayItem>;
 
-    fn make_request(
-        &self,
-        (destination, path): (ShortString, ShortString),
-    ) -> OutgoingMessage<'static> {
+    fn make_request(&self, (destination, path): (ShortString, ShortString)) -> OutgoingMessage {
         use crate::dbus::types::{CompleteType, Value};
 
         let body = vec![
@@ -40,22 +36,22 @@ impl OneshotResource for GetLayout {
             Value::Array(
                 CompleteType::String,
                 vec![
-                    Value::String(Cow::Borrowed("type")),
-                    Value::String(Cow::Borrowed("label")),
-                    Value::String(Cow::Borrowed("enabled")),
-                    Value::String(Cow::Borrowed("visible")),
-                    Value::String(Cow::Borrowed("icon-name")),
-                    Value::String(Cow::Borrowed("icon-data")),
-                    Value::String(Cow::Borrowed("shortcut")),
-                    Value::String(Cow::Borrowed("toggle-type")),
-                    Value::String(Cow::Borrowed("toggle-state")),
-                    Value::String(Cow::Borrowed("children-display")),
+                    Value::ShortString(ShortString::from("type")),
+                    Value::ShortString(ShortString::from("label")),
+                    Value::ShortString(ShortString::from("enabled")),
+                    Value::ShortString(ShortString::from("visible")),
+                    Value::ShortString(ShortString::from("icon-name")),
+                    Value::ShortString(ShortString::from("icon-data")),
+                    Value::ShortString(ShortString::from("shortcut")),
+                    Value::ShortString(ShortString::from("toggle-type")),
+                    Value::ShortString(ShortString::from("toggle-state")),
+                    Value::ShortString(ShortString::from("children-display")),
                 ],
             ),
         ];
 
         OutgoingMessage::MethodCall {
-            destination: Some(ShortString::from(destination)),
+            destination: Some(destination),
             path,
             interface: Some(ShortString::from("com.canonical.dbusmenu")),
             serial: 0,
@@ -228,6 +224,7 @@ fn parse_item(service: ShortString, menu: &str, item: Value<'_>) -> Result<ItemO
 }
 
 #[derive(Debug)]
+#[expect(clippy::large_enum_variant)]
 enum ItemOrSeparator {
     Item(TrayItem),
     Separator,

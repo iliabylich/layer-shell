@@ -53,3 +53,15 @@ impl std::fmt::Display for ShortString {
         write!(f, "{}", self.as_str())
     }
 }
+
+impl PartialEq<&str> for ShortString {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
+
+impl PartialEq<ShortString> for &str {
+    fn eq(&self, other: &ShortString) -> bool {
+        self == &other.as_str()
+    }
+}

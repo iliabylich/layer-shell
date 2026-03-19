@@ -33,10 +33,10 @@ impl TxRx {
         self.subscription.reset();
     }
 
-    pub(crate) fn init(&mut self, path: &str) {
-        self.oneshot.start(path.to_string());
+    pub(crate) fn init(&mut self, path: ShortString) {
+        self.oneshot.start(path);
         self.subscription
-            .start("org.freedesktop.NetworkManager", path);
+            .start(ShortString::from("org.freedesktop.NetworkManager"), path);
     }
 
     pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {
@@ -46,21 +46,21 @@ impl TxRx {
 
 #[derive(Default)]
 struct Resource {
-    path: Option<String>,
+    path: Option<ShortString>,
 }
 
 impl OneshotResource for Resource {
-    type Input = String;
+    type Input = ShortString;
     type Output = ();
 
-    fn make_request(&self, path: String) -> OutgoingMessage<'static> {
+    fn make_request(&self, path: ShortString) -> OutgoingMessage {
         use crate::dbus::types::Value;
 
         SetProperty::new(
             ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from(path.as_str()),
-            "org.freedesktop.NetworkManager.Device.Statistics",
-            "RefreshRateMs",
+            path,
+            ShortString::from("org.freedesktop.NetworkManager.Device.Statistics"),
+            ShortString::from("RefreshRateMs"),
             Value::UInt32(1000),
         )
         .into()
@@ -74,8 +74,8 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = TxRxEvent;
 
-    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
-        path_is!(path, self.path.as_deref().context("no path")?);
+    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
+        path_is!(path, self.path.context("no path")?);
 
         let interface = body.try_next()?.context("no Interface in Body")?;
         value_is!(interface, Value::String(interface));
@@ -109,7 +109,7 @@ impl SubscriptionResource for Resource {
         Ok(TxRxEvent { tx, rx })
     }
 
-    fn set_path(&mut self, path: String) {
+    fn set_path(&mut self, path: ShortString) {
         self.path = Some(path)
     }
 }

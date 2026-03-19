@@ -9,6 +9,7 @@ use crate::{
             path_is,
         },
     },
+    ffi::ShortString,
     sansio::DBusQueue,
 };
 use anyhow::{Context, Result, bail, ensure};
@@ -23,7 +24,8 @@ impl Control {
     }
 
     pub(crate) fn init(&mut self) {
-        let mut message: OutgoingMessage = RequestName::new("org.me.LayerShellControl").into();
+        let mut message: OutgoingMessage =
+            RequestName::new(ShortString::from("org.me.LayerShellControl")).into();
         self.queue.push_back(&mut message)
     }
 
@@ -63,7 +65,7 @@ const INTROSPECTION: &str = r#"
 </node>
 "#;
 
-fn try_parse_introspect_req<'a>(message: IncomingMessage<'a>) -> Result<(&'a str, u32)> {
+fn try_parse_introspect_req(message: IncomingMessage) -> Result<(ShortString, u32)> {
     let IntrospectRequest {
         destination,
         path,

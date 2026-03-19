@@ -1,7 +1,4 @@
-use crate::{
-    Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, ffi::ShortString,
-    sansio::DBusQueue,
-};
+use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, sansio::DBusQueue};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -59,9 +56,9 @@ impl Network {
     fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
-                self.active_access_point.init(&path);
+                self.active_access_point.init(path);
                 self.speed.reset();
-                self.tx_rx.init(&path);
+                self.tx_rx.init(path);
             }
             PrimaryDeviceEvent::Disconnected => {
                 self.active_access_point.reset();
@@ -74,7 +71,7 @@ impl Network {
     fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent) {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
-                self.ssid_and_strength.init(&path);
+                self.ssid_and_strength.init(path);
             }
             ActiveAccessPointEvent::Disconnected => {
                 self.ssid_and_strength.reset();
@@ -96,9 +93,7 @@ impl Network {
 
     fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
         if let Some(ssid) = e.ssid {
-            let event = Event::NetworkSsid {
-                ssid: ShortString::from(ssid.as_str()),
-            };
+            let event = Event::NetworkSsid { ssid };
             self.events.push_back(event)
         }
 

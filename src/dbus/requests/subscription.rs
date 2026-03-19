@@ -7,6 +7,7 @@ use crate::{
             org_freedesktop_dbus::{AddMatch, RemoveMatch},
         },
     },
+    ffi::ShortString,
     sansio::DBusQueue,
 };
 use anyhow::{Context as _, Result, ensure};
@@ -14,15 +15,15 @@ use anyhow::{Context as _, Result, ensure};
 pub(crate) trait SubscriptionResource {
     type Output: std::fmt::Debug;
 
-    fn set_path(&mut self, path: String);
-    fn try_process(&self, path: &str, body: Body<'_>) -> Result<Self::Output>;
+    fn set_path(&mut self, path: ShortString);
+    fn try_process(&self, path: ShortString, body: Body<'_>) -> Result<Self::Output>;
 }
 
 pub(crate) struct Subscription<S>
 where
     S: SubscriptionResource,
 {
-    path: Option<String>,
+    path: Option<ShortString>,
     resource: S,
     queue: DBusQueue,
 }
@@ -44,20 +45,18 @@ where
             return;
         };
 
-        let mut message: OutgoingMessage = RemoveMatch::new(&old_path).into();
+        let mut message: OutgoingMessage = RemoveMatch::new(old_path).into();
         self.queue.push_back(&mut message);
     }
 
-    fn subscribe(&mut self, sender: impl AsRef<str>, path: impl AsRef<str>) {
-        let sender = sender.as_ref();
-        let path = path.as_ref();
+    fn subscribe(&mut self, sender: ShortString, path: ShortString) {
         let mut message: OutgoingMessage = AddMatch::new(sender, path).into();
         self.queue.push_back(&mut message);
-        self.path = Some(path.to_string());
-        self.resource.set_path(path.to_string());
+        self.path = Some(path);
+        self.resource.set_path(path);
     }
 
-    pub(crate) fn start(&mut self, sender: impl AsRef<str>, path: impl AsRef<str>) {
+    pub(crate) fn start(&mut self, sender: ShortString, path: ShortString) {
         self.unsubscribe();
         self.subscribe(sender, path);
     }
@@ -74,7 +73,7 @@ where
         let path = message.path.context("no Path")?;
         let body = message.body.context("no Body")?;
 
-        self.resource.try_process(path, body)
+        self.resource.try_process(ShortString::from(path), body)
     }
 
     pub(crate) fn process(&self, message: IncomingMessage<'_>) -> Option<S::Output> {

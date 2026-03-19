@@ -3,13 +3,13 @@ use crate::{
     dbus::{
         Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
         decoder::{ArrayValue, Body, IncomingMessage, Value},
-        messages::{interface_is, org_freedesktop_dbus::GetAllProperties, value_is},
+        messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
     event_queue::EventQueue,
     ffi::ShortString,
     sansio::DBusQueue,
 };
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result};
 
 pub(crate) struct Sound {
     oneshot: Oneshot<Resource>,
@@ -38,8 +38,10 @@ impl Sound {
         match self.oneshot.process(message) {
             Ok(Some((volume, muted))) => {
                 self.events.push_back(Event::InitialSound { volume, muted });
-                self.subscription
-                    .start("org.local.PipewireDBus", "/org/local/PipewireDBus");
+                self.subscription.start(
+                    ShortString::from("org.local.PipewireDBus"),
+                    ShortString::from("/org/local/PipewireDBus"),
+                );
 
                 return;
             }
@@ -77,11 +79,11 @@ impl OneshotResource for Resource {
     type Input = ();
     type Output = (u32, bool);
 
-    fn make_request(&self, _input: Self::Input) -> OutgoingMessage<'static> {
+    fn make_request(&self, _input: Self::Input) -> OutgoingMessage {
         GetAllProperties::new(
             ShortString::from("org.local.PipewireDBus"),
             ShortString::from("/org/local/PipewireDBus"),
-            "org.local.PipewireDBus",
+            ShortString::from("org.local.PipewireDBus"),
         )
         .into()
     }
@@ -101,8 +103,8 @@ impl OneshotResource for Resource {
 impl SubscriptionResource for Resource {
     type Output = (Option<u32>, Option<bool>);
 
-    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
-        ensure!(path == "/org/local/PipewireDBus");
+    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
+        path_is!(path, "/org/local/PipewireDBus");
 
         let interface = body.try_next()?.context("no interface in Body")?;
         value_is!(interface, Value::String(interface));
@@ -114,7 +116,7 @@ impl SubscriptionResource for Resource {
         parse(attributes)
     }
 
-    fn set_path(&mut self, _: String) {}
+    fn set_path(&mut self, _: ShortString) {}
 }
 
 fn parse(attributes: ArrayValue) -> Result<(Option<u32>, Option<bool>)> {

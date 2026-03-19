@@ -2,18 +2,17 @@ use crate::{
     dbus::types::{OutgoingMessage, Value},
     ffi::ShortString,
 };
-use std::borrow::Cow;
 
 #[derive(Debug)]
-pub(crate) struct RequestName<'a> {
-    name: &'a str,
+pub(crate) struct RequestName {
+    name: ShortString,
 }
-impl<'a> RequestName<'a> {
-    pub(crate) fn new(name: &'a str) -> Self {
+impl RequestName {
+    pub(crate) fn new(name: ShortString) -> Self {
         Self { name }
     }
 }
-impl<'a> From<RequestName<'a>> for OutgoingMessage<'a> {
+impl From<RequestName> for OutgoingMessage {
     fn from(value: RequestName) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
@@ -23,7 +22,7 @@ impl<'a> From<RequestName<'a>> for OutgoingMessage<'a> {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Borrowed(value.name)), Value::UInt32(7)],
+            body: vec![Value::ShortString(value.name), Value::UInt32(7)],
         }
     }
 }

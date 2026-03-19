@@ -1,9 +1,8 @@
-use crate::dbus::types::signature::CompleteType;
-use std::borrow::Cow;
+use crate::{dbus::types::signature::CompleteType, ffi::ShortString};
 
 #[derive(Debug, PartialEq, Clone)]
 #[expect(dead_code)]
-pub(crate) enum Value<'a> {
+pub(crate) enum Value {
     Byte(u8),
     Bool(bool),
     Int16(i16),
@@ -15,16 +14,17 @@ pub(crate) enum Value<'a> {
     Double(f64),
     UnixFD(u32),
 
-    String(Cow<'a, str>),
-    ObjectPath(Cow<'a, str>),
+    ShortString(ShortString),
+    LongString(String),
+    ObjectPath(ShortString),
     Signature(Vec<u8>),
-    Struct(Vec<Value<'a>>),
-    Array(CompleteType, Vec<Value<'a>>),
-    DictEntry(Box<Value<'a>>, Box<Value<'a>>),
-    Variant(Box<Value<'a>>),
+    Struct(Vec<Value>),
+    Array(CompleteType, Vec<Value>),
+    DictEntry(Box<Value>, Box<Value>),
+    Variant(Box<Value>),
 }
 
-impl<'a> Value<'a> {
+impl Value {
     pub(crate) fn complete_type(&self) -> CompleteType {
         match self {
             Self::Byte(_) => CompleteType::Byte,
@@ -37,7 +37,8 @@ impl<'a> Value<'a> {
             Self::UInt64(_) => CompleteType::UInt64,
             Self::Double(_) => CompleteType::Double,
             Self::UnixFD(_) => CompleteType::UnixFD,
-            Self::String(_) => CompleteType::String,
+            Self::ShortString(_) => CompleteType::String,
+            Self::LongString(_) => CompleteType::String,
             Self::ObjectPath(_) => CompleteType::ObjectPath,
             Self::Signature(_) => CompleteType::Signature,
             Self::Struct(values) => {

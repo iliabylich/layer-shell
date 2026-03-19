@@ -1,6 +1,9 @@
-use crate::dbus::{
-    encoders::{EncodingBuffer, SignatureEncoder},
-    types::{CompleteType, HeaderFieldName, Value},
+use crate::{
+    dbus::{
+        encoders::{EncodingBuffer, SignatureEncoder},
+        types::{CompleteType, HeaderFieldName, Value},
+    },
+    ffi::ShortString,
 };
 
 pub(crate) struct ValueEncoder;
@@ -49,15 +52,21 @@ impl ValueEncoder {
         buf.encode_f64(value);
     }
 
-    pub(crate) fn encode_str(buf: &mut EncodingBuffer, s: &str) {
+    pub(crate) fn encode_short_str(buf: &mut EncodingBuffer, s: ShortString) {
+        Self::encode_u32(buf, s.len() as u32);
+        buf.encode_bytes(s.as_str().as_bytes());
+        buf.encode_u8(0);
+    }
+
+    pub(crate) fn encode_long_str(buf: &mut EncodingBuffer, s: &str) {
         Self::encode_u32(buf, s.len() as u32);
         buf.encode_bytes(s.as_bytes());
         buf.encode_u8(0);
     }
 
-    pub(crate) fn encode_object_path(buf: &mut EncodingBuffer, path: &str) {
+    pub(crate) fn encode_object_path(buf: &mut EncodingBuffer, path: ShortString) {
         Self::encode_u32(buf, path.len() as u32);
-        buf.encode_bytes(path.as_bytes());
+        buf.encode_bytes(path.as_str().as_bytes());
         buf.encode_u8(0);
     }
 
@@ -123,8 +132,9 @@ impl ValueEncoder {
             Value::UInt64(value) => Self::encode_u64(buf, *value),
             Value::Double(value) => Self::encode_f64(buf, *value),
             Value::UnixFD(value) => Self::encode_u32(buf, *value),
-            Value::String(s) => Self::encode_str(buf, s),
-            Value::ObjectPath(path) => Self::encode_object_path(buf, path),
+            Value::ShortString(s) => Self::encode_short_str(buf, *s),
+            Value::LongString(s) => Self::encode_long_str(buf, s),
+            Value::ObjectPath(path) => Self::encode_object_path(buf, *path),
             Value::Signature(sig) => Self::encode_signature(buf, sig),
             Value::Struct(fields) => Self::encode_struct(buf, fields),
             Value::Array(item_type, items) => Self::encode_array(buf, item_type, items),
@@ -251,7 +261,7 @@ fn test_encode_f64() {
 fn test_encode_string() {
     let mut buf = EncodingBuffer::new();
     buf.encode_u8(0);
-    ValueEncoder::encode_str(&mut buf, "abcd");
+    ValueEncoder::encode_short_str(&mut buf, ShortString::from("abcd"));
     assert_eq!(buf.done(), b"\0\0\0\0\x04\x00\x00\x00abcd\0")
 }
 
@@ -259,7 +269,7 @@ fn test_encode_string() {
 fn test_encode_object_path() {
     let mut buf = EncodingBuffer::new();
     buf.encode_u8(0);
-    ValueEncoder::encode_object_path(&mut buf, "abcd");
+    ValueEncoder::encode_object_path(&mut buf, ShortString::from("abcd"));
     assert_eq!(buf.done(), b"\0\0\0\0\x04\x00\x00\x00abcd\0")
 }
 

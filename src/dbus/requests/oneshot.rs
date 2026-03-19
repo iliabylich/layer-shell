@@ -11,7 +11,7 @@ pub(crate) trait OneshotResource {
     type Input;
     type Output;
 
-    fn make_request(&self, input: Self::Input) -> OutgoingMessage<'static>;
+    fn make_request(&self, input: Self::Input) -> OutgoingMessage;
     fn try_process(&self, body: Body<'_>) -> Result<Self::Output>;
 }
 

@@ -8,7 +8,6 @@ use crate::{
     sansio::DBusQueue,
 };
 use anyhow::{Context, Result, bail, ensure};
-use std::borrow::Cow;
 
 pub(crate) struct NameLostOrNameOwnerChanged {
     name_changed: Oneshot<NameOwnerChangedResource>,
@@ -38,7 +37,7 @@ impl OneshotResource for NameOwnerChangedResource {
 
     type Output = ();
 
-    fn make_request(&self, _: Self::Input) -> OutgoingMessage<'static> {
+    fn make_request(&self, _: Self::Input) -> OutgoingMessage {
         use crate::dbus::types::Value;
         OutgoingMessage::MethodCall {
             serial: 0,
@@ -48,9 +47,9 @@ impl OneshotResource for NameOwnerChangedResource {
             destination: Some(ShortString::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::String(Cow::Borrowed(
-                "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',path='/org/freedesktop/DBus'",
-            ))],
+            body: vec![Value::LongString(
+                "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',path='/org/freedesktop/DBus'".to_string(),
+            )],
         }
     }
 

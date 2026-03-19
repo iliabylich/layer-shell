@@ -22,11 +22,11 @@ impl OneshotResource for GetAllPropsOneshot {
     type Input = ShortString;
     type Output = AllProps;
 
-    fn make_request(&self, destination: ShortString) -> OutgoingMessage<'static> {
+    fn make_request(&self, destination: ShortString) -> OutgoingMessage {
         GetAllProperties::new(
             destination,
             ShortString::from("/StatusNotifierItem"),
-            "org.kde.StatusNotifierItem",
+            ShortString::from("org.kde.StatusNotifierItem"),
         )
         .into()
     }

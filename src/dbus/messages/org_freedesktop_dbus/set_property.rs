@@ -2,36 +2,35 @@ use crate::{
     dbus::{OutgoingMessage, types::Value},
     ffi::ShortString,
 };
-use std::borrow::Cow;
 
-pub(crate) struct SetProperty<'a> {
+pub(crate) struct SetProperty {
     destination: ShortString,
     path: ShortString,
-    interface: Cow<'a, str>,
-    property: Cow<'a, str>,
-    value: Value<'a>,
+    interface: ShortString,
+    property: ShortString,
+    value: Value,
 }
 
-impl<'a> SetProperty<'a> {
+impl SetProperty {
     pub(crate) fn new(
         destination: ShortString,
         path: ShortString,
-        interface: impl Into<Cow<'a, str>>,
-        property: impl Into<Cow<'a, str>>,
-        value: Value<'a>,
+        interface: ShortString,
+        property: ShortString,
+        value: Value,
     ) -> Self {
         Self {
             destination,
             path,
-            interface: interface.into(),
-            property: property.into(),
+            interface,
+            property,
             value,
         }
     }
 }
 
-impl<'a> From<SetProperty<'a>> for OutgoingMessage<'a> {
-    fn from(message: SetProperty<'a>) -> Self {
+impl From<SetProperty> for OutgoingMessage {
+    fn from(message: SetProperty) -> Self {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: message.path,
@@ -41,8 +40,8 @@ impl<'a> From<SetProperty<'a>> for OutgoingMessage<'a> {
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::String(message.interface),
-                Value::String(message.property),
+                Value::ShortString(message.interface),
+                Value::ShortString(message.property),
                 Value::Variant(Box::new(message.value)),
             ],
         }

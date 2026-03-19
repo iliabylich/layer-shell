@@ -16,11 +16,11 @@ pub(crate) struct PrimaryDevice {
 
 #[derive(Debug)]
 pub(crate) enum PrimaryDeviceEvent {
-    Connected(String),
+    Connected(ShortString),
     Disconnected,
 }
-impl From<String> for PrimaryDeviceEvent {
-    fn from(path: String) -> Self {
+impl From<ShortString> for PrimaryDeviceEvent {
+    fn from(path: ShortString) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
@@ -42,9 +42,9 @@ impl PrimaryDevice {
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: String) {
+    pub(crate) fn init(&mut self, path: ShortString) {
         self.subscription
-            .start("org.freedesktop.NetworkManager", &path);
+            .start(ShortString::from("org.freedesktop.NetworkManager"), path);
         self.oneshot.start(path);
     }
 
@@ -61,15 +61,15 @@ impl PrimaryDevice {
 struct Resource;
 
 impl OneshotResource for Resource {
-    type Input = String;
-    type Output = String;
+    type Input = ShortString;
+    type Output = ShortString;
 
-    fn make_request(&self, path: String) -> OutgoingMessage<'static> {
+    fn make_request(&self, path: ShortString) -> OutgoingMessage {
         GetProperty::new(
             ShortString::from("org.freedesktop.NetworkManager"),
-            ShortString::from(path.as_str()),
-            "org.freedesktop.NetworkManager.Connection.Active",
-            "Devices",
+            path,
+            ShortString::from("org.freedesktop.NetworkManager.Connection.Active"),
+            ShortString::from("Devices"),
         )
         .into()
     }
@@ -83,14 +83,14 @@ impl OneshotResource for Resource {
         let device = iter.try_next()?.context("expected at least one device")?;
         value_is!(device, Value::ObjectPath(device));
 
-        Ok(device.to_string())
+        Ok(ShortString::from(device))
     }
 }
 
 impl SubscriptionResource for Resource {
-    type Output = String;
+    type Output = ShortString;
 
-    fn try_process(&self, path: &str, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
         path_is!(path, "/org/freedesktop/NetworkManager");
 
         let interface = body.try_next()?.context("no Interface in Body")?;
@@ -116,12 +116,12 @@ impl SubscriptionResource for Resource {
                 let mut iter = devices.iter();
                 let device = iter.try_next()?.context("expected at least one device")?;
                 value_is!(device, Value::ObjectPath(device));
-                return Ok(device.to_string());
+                return Ok(ShortString::from(device));
             }
         }
 
         bail!("unrelated")
     }
 
-    fn set_path(&mut self, _: String) {}
+    fn set_path(&mut self, _: ShortString) {}
 }
