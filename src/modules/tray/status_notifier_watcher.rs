@@ -30,15 +30,13 @@ impl StatusNotifierWatcher {
     }
 
     pub(crate) fn request(&mut self) {
-        let mut message: OutgoingMessage =
-            RequestName::new(ShortString::new_const("org.kde.StatusNotifierWatcher")).into();
-        self.queue.push_back(&mut message);
-        self.reply_serial = Some(message.serial());
+        let message = RequestName::new(ShortString::new_const("org.kde.StatusNotifierWatcher"));
+        self.reply_serial = Some(self.queue.push_back(message));
     }
 
     fn reply_ok(&self, serial: u32, destination: &str) {
-        let mut reply = OutgoingMessage::new_method_return_no_body(serial, destination);
-        self.queue.push_back(&mut reply);
+        let reply = OutgoingMessage::new_method_return_no_body(serial, destination);
+        self.queue.push_back(reply);
     }
 
     pub(crate) fn init(&mut self) {

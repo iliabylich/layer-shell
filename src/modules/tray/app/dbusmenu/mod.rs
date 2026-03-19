@@ -18,7 +18,7 @@ impl OneshotResource for LayoutUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(&self, (address, path): (ShortString, ShortString)) -> OutgoingMessage {
+    fn request(&self, (address, path): (ShortString, ShortString)) -> impl Into<OutgoingMessage> {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             path: ShortString::new_const("/org/freedesktop/DBus"),
@@ -33,7 +33,7 @@ impl OneshotResource for LayoutUpdatedSubscription {
         }
     }
 
-    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
         Ok(())
     }
 }
@@ -64,7 +64,7 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
-    fn make_request(&self, (address, path): (ShortString, ShortString)) -> OutgoingMessage {
+    fn request(&self, (address, path): (ShortString, ShortString)) -> impl Into<OutgoingMessage> {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             path: ShortString::new_const("/org/freedesktop/DBus"),
@@ -79,7 +79,7 @@ impl OneshotResource for ItemsPropertiesUpdatedSubscription {
         }
     }
 
-    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
         Ok(())
     }
 }

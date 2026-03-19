@@ -1,7 +1,7 @@
 use crate::{
     dbus::{
         Oneshot, OneshotResource, OutgoingMessage,
-        decoder::{IncomingMessage, MessageType, Value},
+        decoder::{Body, IncomingMessage, MessageType, Value},
         messages::{interface_is, member_is, path_is, value_is},
     },
     ffi::ShortString,
@@ -21,7 +21,7 @@ impl NameLostOrNameOwnerChanged {
     }
 
     pub(crate) fn init(&mut self) {
-        self.name_changed.start(())
+        self.name_changed.send(())
     }
 
     pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<ShortString> {
@@ -37,7 +37,7 @@ impl OneshotResource for NameOwnerChangedResource {
 
     type Output = ();
 
-    fn make_request(&self, _: Self::Input) -> OutgoingMessage {
+    fn request(&self, _: Self::Input) -> impl Into<OutgoingMessage> {
         use crate::dbus::types::Value;
         OutgoingMessage::MethodCall {
             serial: 0,
@@ -53,7 +53,7 @@ impl OneshotResource for NameOwnerChangedResource {
         }
     }
 
-    fn try_process(&self, _body: crate::dbus::decoder::Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
         unreachable!()
     }
 }

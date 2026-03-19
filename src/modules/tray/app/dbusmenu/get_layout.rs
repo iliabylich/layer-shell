@@ -27,7 +27,10 @@ impl OneshotResource for GetLayout {
     type Input = (ShortString, ShortString);
     type Output = Vec<TrayItem>;
 
-    fn make_request(&self, (destination, path): (ShortString, ShortString)) -> OutgoingMessage {
+    fn request(
+        &self,
+        (destination, path): (ShortString, ShortString),
+    ) -> impl Into<OutgoingMessage> {
         use crate::dbus::types::{CompleteType, Value};
 
         let body = vec![
@@ -62,7 +65,7 @@ impl OneshotResource for GetLayout {
         }
     }
 
-    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
         let _ = body.try_next()?.context("no root item id")?;
         let root = body.try_next()?.context("no root")?;
         value_is!(root, Value::Struct(root));

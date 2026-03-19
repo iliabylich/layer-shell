@@ -38,14 +38,14 @@ impl SsidAndStrength {
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
         );
-        self.oneshot.start(path);
+        self.oneshot.send(path);
     }
 
     pub(crate) fn on_message(
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<SsidAndStrengthEvent> {
-        None.or_else(|| self.oneshot.process(message).ok().flatten())
+        None.or_else(|| self.oneshot.try_rev(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
     }
 }
@@ -70,16 +70,15 @@ impl OneshotResource for Resource {
     type Input = ShortString;
     type Output = SsidAndStrengthEvent;
 
-    fn make_request(&self, path: ShortString) -> OutgoingMessage {
+    fn request(&self, path: ShortString) -> impl Into<OutgoingMessage> {
         GetAllProperties::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
             ShortString::new_const("org.freedesktop.NetworkManager.AccessPoint"),
         )
-        .into()
     }
 
-    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
         let properties = body.try_next()?.context("no Properties in Body")?;
         value_is!(properties, Value::Array(properties));
         let mut iter = properties.iter();

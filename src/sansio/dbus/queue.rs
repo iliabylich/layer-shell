@@ -12,7 +12,7 @@ impl DBusQueue {
         }
     }
 
-    pub(crate) fn push_back(&self, message: &mut OutgoingMessage) {
+    pub(crate) fn push_back(&self, message: impl Into<OutgoingMessage>) -> u32 {
         let mut inner = self.inner.borrow_mut();
         inner.push_back(message)
     }
@@ -40,21 +40,17 @@ impl Inner {
             serial: 1,
             q: VecDeque::new(),
         };
-        this.push_back(&mut Hello.into());
+        this.push_back(Hello);
         this
     }
 
-    fn encode_in_place(&mut self, message: &mut OutgoingMessage) -> Vec<u8> {
-        let serial = self.serial;
+    fn push_back(&mut self, message: impl Into<OutgoingMessage>) -> u32 {
+        let mut message: OutgoingMessage = message.into();
+        *message.serial_mut() = self.serial;
         self.serial += 1;
-
-        *message.serial_mut() = serial;
-        MessageEncoder::encode(message)
-    }
-
-    fn push_back(&mut self, message: &mut OutgoingMessage) {
-        let message = self.encode_in_place(message);
-        self.q.push_back(message);
+        let buf = MessageEncoder::encode(&message);
+        self.q.push_back(buf);
+        message.serial()
     }
 
     fn pop_front(&mut self) -> Option<Vec<u8>> {

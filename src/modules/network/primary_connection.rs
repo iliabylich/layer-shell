@@ -38,7 +38,7 @@ impl PrimaryConnection {
     }
 
     pub(crate) fn init(&mut self) {
-        self.oneshot.start(());
+        self.oneshot.send(());
         self.subscription.start(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             ShortString::new_const("/org/freedesktop/NetworkManager"),
@@ -49,7 +49,7 @@ impl PrimaryConnection {
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<PrimaryConnectionEvent> {
-        None.or_else(|| self.oneshot.process(message).ok().flatten())
+        None.or_else(|| self.oneshot.try_rev(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(PrimaryConnectionEvent::from)
     }
@@ -60,17 +60,16 @@ impl OneshotResource for Resource {
     type Input = ();
     type Output = ShortString;
 
-    fn make_request(&self, _input: Self::Input) -> OutgoingMessage {
+    fn request(&self, _input: Self::Input) -> impl Into<OutgoingMessage> {
         GetProperty::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             ShortString::new_const("/org/freedesktop/NetworkManager"),
             ShortString::new_const("org.freedesktop.NetworkManager"),
             ShortString::new_const("PrimaryConnection"),
         )
-        .into()
     }
 
-    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
         let path = body.try_next()?.context("empty Body")?;
         value_is!(path, Value::Variant(path));
         let path = path.materialize()?;

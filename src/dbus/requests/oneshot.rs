@@ -11,8 +11,8 @@ pub(crate) trait OneshotResource {
     type Input;
     type Output;
 
-    fn make_request(&self, input: Self::Input) -> OutgoingMessage;
-    fn try_process(&self, body: Body<'_>) -> Result<Self::Output>;
+    fn request(&self, input: Self::Input) -> impl Into<OutgoingMessage>;
+    fn try_recv(&self, body: Body<'_>) -> Result<Self::Output>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -43,34 +43,17 @@ where
         }
     }
 
-    pub(crate) fn start(&mut self, input: T::Input) {
+    pub(crate) fn send(&mut self, input: T::Input) {
         if !matches!(self.state, OneshotState::None) {
             return;
         };
 
-        let mut message = self.resource.make_request(input);
-        self.queue.push_back(&mut message);
-        let reply_serial = message.serial();
+        let message = self.resource.request(input).into();
+        let reply_serial = self.queue.push_back(message);
         self.state = OneshotState::WaitingForReply(reply_serial);
     }
 
-    fn try_process(&self, message: IncomingMessage<'_>) -> Result<Option<T::Output>> {
-        match message.message_type {
-            MessageType::Error => {
-                bail!("DBus error: {:?}", message.error_name)
-            }
-            MessageType::MethodReturn => {
-                if let Some(body) = message.body {
-                    Ok(self.resource.try_process(body).ok())
-                } else {
-                    Ok(None)
-                }
-            }
-            _ => Ok(None),
-        }
-    }
-
-    pub(crate) fn process(&mut self, message: IncomingMessage<'_>) -> Result<Option<T::Output>> {
+    pub(crate) fn try_rev(&mut self, message: IncomingMessage<'_>) -> Result<Option<T::Output>> {
         let OneshotState::WaitingForReply(reply_serial) = self.state else {
             return Ok(None);
         };
@@ -79,7 +62,19 @@ where
         }
         self.state = OneshotState::ReplyReceived;
 
-        self.try_process(message)
+        match message.message_type {
+            MessageType::Error => {
+                bail!("DBus error: {:?}", message.error_name)
+            }
+            MessageType::MethodReturn => {
+                if let Some(body) = message.body {
+                    Ok(self.resource.try_recv(body).ok())
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Ok(None),
+        }
     }
 
     pub(crate) fn reset(&mut self) {

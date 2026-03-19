@@ -5,7 +5,7 @@ pub const MAX_LEN: usize = 128;
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ShortString {
-    pub(crate) bytes: [u8; MAX_LEN],
+    bytes: [u8; MAX_LEN],
 }
 
 const _: () = {

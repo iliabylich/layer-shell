@@ -22,7 +22,7 @@ impl StatusNotifierWatcherIntrospection {
     }
 
     fn reply_ok(&self, serial: u32, destination: &str, body: Vec<Value>) {
-        let mut message = OutgoingMessage::MethodReturn {
+        let message = OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial: serial,
             destination: Some(ShortString::from(destination)),
@@ -30,12 +30,12 @@ impl StatusNotifierWatcherIntrospection {
             unix_fds: None,
             body,
         };
-        self.queue.push_back(&mut message)
+        self.queue.push_back(message);
     }
 
     fn reply_err(&self, serial: u32, destination: &str) {
-        let mut reply = OutgoingMessage::new_err_no_method(serial, destination);
-        self.queue.push_back(&mut reply)
+        let reply = OutgoingMessage::new_err_no_method(serial, destination);
+        self.queue.push_back(reply);
     }
 
     pub(crate) fn process_message(&mut self, message: IncomingMessage<'_>) -> bool {

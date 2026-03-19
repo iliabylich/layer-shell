@@ -23,7 +23,7 @@ impl ActiveConnectionType {
     }
 
     pub(crate) fn request(&mut self, path: ShortString) {
-        self.oneshot.start(path);
+        self.oneshot.send(path);
         self.path = Some(path);
     }
 
@@ -35,7 +35,7 @@ impl ActiveConnectionType {
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<(bool, ShortString)> {
-        let is_wireless = self.oneshot.process(message).ok().flatten()?;
+        let is_wireless = self.oneshot.try_rev(message).ok().flatten()?;
         Some((is_wireless, self.path?))
     }
 }
@@ -45,17 +45,16 @@ impl OneshotResource for Resource {
     type Input = ShortString;
     type Output = bool;
 
-    fn make_request(&self, path: ShortString) -> OutgoingMessage {
+    fn request(&self, path: ShortString) -> impl Into<OutgoingMessage> {
         GetProperty::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
             ShortString::new_const("org.freedesktop.NetworkManager.Connection.Active"),
             ShortString::new_const("Type"),
         )
-        .into()
     }
 
-    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
         let type_ = body.try_next()?.context("no Type in Body")?;
         value_is!(type_, Value::Variant(type_));
         let type_ = type_.materialize()?;

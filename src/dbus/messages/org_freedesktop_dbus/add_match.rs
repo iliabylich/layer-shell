@@ -9,7 +9,7 @@ pub(crate) struct AddMatch {
 }
 
 impl AddMatch {
-    pub(crate) fn new(sender: ShortString, path: ShortString) -> Self {
+    pub(crate) const fn new(sender: ShortString, path: ShortString) -> Self {
         Self { sender, path }
     }
 }

@@ -22,16 +22,15 @@ impl OneshotResource for GetAllPropsOneshot {
     type Input = ShortString;
     type Output = AllProps;
 
-    fn make_request(&self, destination: ShortString) -> OutgoingMessage {
+    fn request(&self, destination: ShortString) -> impl Into<OutgoingMessage> {
         GetAllProperties::new(
             destination,
             ShortString::new_const("/StatusNotifierItem"),
             ShortString::new_const("org.kde.StatusNotifierItem"),
         )
-        .into()
     }
 
-    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
         let array = body.try_next()?.context("no array")?;
         value_is!(array, Value::Array(array));
         match parse(array)? {

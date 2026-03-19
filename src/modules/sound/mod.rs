@@ -31,11 +31,11 @@ impl Sound {
     }
 
     pub(crate) fn init(&mut self) {
-        self.oneshot.start(())
+        self.oneshot.send(())
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
-        match self.oneshot.process(message) {
+        match self.oneshot.try_rev(message) {
             Ok(Some((volume, muted))) => {
                 self.events.push_back(Event::InitialSound { volume, muted });
                 self.subscription.start(
@@ -68,7 +68,7 @@ impl Sound {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
             self.oneshot = Oneshot::new(Resource, self.queue.copy());
-            self.oneshot.start(());
+            self.oneshot.send(());
         }
     }
 }
@@ -79,16 +79,15 @@ impl OneshotResource for Resource {
     type Input = ();
     type Output = (u32, bool);
 
-    fn make_request(&self, _input: Self::Input) -> OutgoingMessage {
+    fn request(&self, _input: Self::Input) -> impl Into<OutgoingMessage> {
         GetAllProperties::new(
             ShortString::new_const("org.local.PipewireDBus"),
             ShortString::new_const("/org/local/PipewireDBus"),
             ShortString::new_const("org.local.PipewireDBus"),
         )
-        .into()
     }
 
-    fn try_process(&self, mut body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
         let attributes = body.try_next()?.context("expected 1 value")?;
         value_is!(attributes, Value::Array(attributes));
 

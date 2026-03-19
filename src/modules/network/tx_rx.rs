@@ -34,7 +34,7 @@ impl TxRx {
     }
 
     pub(crate) fn init(&mut self, path: ShortString) {
-        self.oneshot.start(path);
+        self.oneshot.send(path);
         self.subscription.start(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
@@ -55,7 +55,7 @@ impl OneshotResource for Resource {
     type Input = ShortString;
     type Output = ();
 
-    fn make_request(&self, path: ShortString) -> OutgoingMessage {
+    fn request(&self, path: ShortString) -> impl Into<OutgoingMessage> {
         use crate::dbus::types::Value;
 
         SetProperty::new(
@@ -65,10 +65,9 @@ impl OneshotResource for Resource {
             ShortString::new_const("RefreshRateMs"),
             Value::UInt32(1000),
         )
-        .into()
     }
 
-    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
         panic!("doesn't have to be checked")
     }
 }

@@ -41,17 +41,17 @@ where
     }
 
     fn unsubscribe(&mut self) {
-        let Some(old_path) = self.path.take() else {
+        let Some(path) = self.path.take() else {
             return;
         };
 
-        let mut message: OutgoingMessage = RemoveMatch::new(old_path).into();
-        self.queue.push_back(&mut message);
+        let message: OutgoingMessage = RemoveMatch::new(path).into();
+        self.queue.push_back(message);
     }
 
     fn subscribe(&mut self, sender: ShortString, path: ShortString) {
-        let mut message: OutgoingMessage = AddMatch::new(sender, path).into();
-        self.queue.push_back(&mut message);
+        let message: OutgoingMessage = AddMatch::new(sender, path).into();
+        self.queue.push_back(message);
         self.path = Some(path);
         self.resource.set_path(path);
     }

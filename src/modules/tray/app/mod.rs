@@ -71,13 +71,13 @@ impl App {
     fn schedule_request_props(&mut self) {
         self.all_props_request.reset();
         self.all_props_request = Oneshot::new(GetAllPropsOneshot, self.queue.copy());
-        self.all_props_request.start(self.service.name());
+        self.all_props_request.send(self.service.name());
     }
 
     pub(crate) fn init(&mut self) {
         self.new_icon_subscription = Oneshot::new(NewIconSubscription, self.queue.copy());
-        self.new_icon_subscription.start(self.service.name());
-        self.all_props_request.start(self.service.name());
+        self.new_icon_subscription.send(self.service.name());
+        self.all_props_request.send(self.service.name());
         self.all_props_subscription.start(
             ShortString::new_const("org.freedesktop.DBus"),
             ShortString::new_const("/StatusNotifierItem"),
@@ -93,7 +93,7 @@ impl App {
 
     fn schedule_get_layout(&mut self) {
         let mut get_layout = Oneshot::new(GetLayout::new(self.service.name()), self.queue.copy());
-        get_layout.start((self.service.name(), self.menu));
+        get_layout.send((self.service.name(), self.menu));
         self.get_layout = get_layout;
     }
 
@@ -105,9 +105,9 @@ impl App {
         self.menu = menu;
         self.schedule_get_layout();
         self.layout_updated_subscription
-            .start((self.service.name(), self.menu));
+            .send((self.service.name(), self.menu));
         self.items_properties_updated_subscription
-            .start((self.service.name(), self.menu));
+            .send((self.service.name(), self.menu));
     }
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
@@ -150,7 +150,7 @@ impl App {
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<TrayEvent> {
         if let Some(AllProps { menu, icon }) =
-            self.all_props_request.process(message).ok().flatten()
+            self.all_props_request.try_rev(message).ok().flatten()
         {
             log::info!(target: "Tray", "Received requested props for {:?}", self.service);
 
@@ -158,7 +158,7 @@ impl App {
             return self.on_icon_received(icon);
         }
 
-        if let Some(()) = self.new_icon_subscription.process(message).ok().flatten() {
+        if let Some(()) = self.new_icon_subscription.try_rev(message).ok().flatten() {
             log::info!(target: "Tray", "Subscribed to NewIcon");
             return None;
         }
@@ -170,14 +170,14 @@ impl App {
             }
         }
 
-        if let Some(layout) = self.get_layout.process(message).ok().flatten() {
+        if let Some(layout) = self.get_layout.try_rev(message).ok().flatten() {
             log::info!(target: "Tray", "Got layout");
             return self.on_layout_receieved(layout);
         }
 
         if self
             .layout_updated_subscription
-            .process(message)
+            .try_rev(message)
             .ok()
             .flatten()
             .is_some()
@@ -188,7 +188,7 @@ impl App {
 
         if self
             .items_properties_updated_subscription
-            .process(message)
+            .try_rev(message)
             .ok()
             .flatten()
             .is_some()
@@ -224,7 +224,7 @@ impl App {
             report_and_exit!(target: "Tray", "can't construct u32 from chrono timestamp: {err:?}")
         });
 
-        let mut message = OutgoingMessage::MethodCall {
+        let message = OutgoingMessage::MethodCall {
             destination: Some(self.service.name()),
             path: self.menu,
             interface: Some(ShortString::new_const("com.canonical.dbusmenu")),
@@ -240,6 +240,6 @@ impl App {
             ],
         };
 
-        self.queue.push_back(&mut message);
+        self.queue.push_back(message);
     }
 }

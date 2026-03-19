@@ -15,7 +15,7 @@ impl OneshotResource for NewIconSubscription {
     type Input = ShortString;
     type Output = ();
 
-    fn make_request(&self, address: Self::Input) -> OutgoingMessage {
+    fn request(&self, address: Self::Input) -> impl Into<OutgoingMessage> {
         OutgoingMessage::MethodCall {
             destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             path: ShortString::new_const("/org/freedesktop/DBus"),
@@ -30,7 +30,7 @@ impl OneshotResource for NewIconSubscription {
         }
     }
 
-    fn try_process(&self, _body: Body<'_>) -> Result<Self::Output> {
+    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
         Ok(())
     }
 }
