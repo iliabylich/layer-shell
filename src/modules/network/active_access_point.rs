@@ -32,8 +32,8 @@ impl From<ShortString> for ActiveAccessPointEvent {
 impl ActiveAccessPoint {
     pub(crate) fn new(queue: DBusQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource, queue.copy()),
-            subscription: Subscription::new(Resource, queue.copy()),
+            oneshot: Oneshot::new(Resource::default(), queue.copy()),
+            subscription: Subscription::new(Resource::default(), queue.copy()),
         }
     }
 
@@ -60,7 +60,10 @@ impl ActiveAccessPoint {
     }
 }
 
-struct Resource;
+#[derive(Default)]
+struct Resource {
+    path: Option<ShortString>,
+}
 
 impl OneshotResource for Resource {
     type Input = ShortString;
@@ -89,7 +92,7 @@ impl SubscriptionResource for Resource {
     type Output = ShortString;
 
     fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
-        path_is!(path, "/org/freedesktop/NetworkManager");
+        path_is!(path, self.path.context("no path")?);
 
         let interface = body.try_next()?.context("no Interface in Body")?;
         value_is!(interface, Value::String(interface));
@@ -114,5 +117,7 @@ impl SubscriptionResource for Resource {
         bail!("unrelated")
     }
 
-    fn set_path(&mut self, _: ShortString) {}
+    fn set_path(&mut self, path: ShortString) {
+        self.path = Some(path)
+    }
 }

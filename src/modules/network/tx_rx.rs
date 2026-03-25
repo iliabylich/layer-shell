@@ -68,7 +68,7 @@ impl OneshotResource for Resource {
     }
 
     fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
-        panic!("doesn't have to be checked")
+        unreachable!()
     }
 }
 
