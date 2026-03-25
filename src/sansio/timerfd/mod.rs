@@ -31,10 +31,11 @@ impl TimerFd {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<u64> {
         match satisfy {
             Satisfy::Read => {
-                ensure!(res > 0);
+                ensure!(res as usize == self.buf.len());
+                let expirations = u64::from_ne_bytes(self.buf);
 
                 let ticks = self.ticks;
-                self.ticks += 1;
+                self.ticks = self.ticks.saturating_add(expirations);
 
                 Ok(ticks)
             }
