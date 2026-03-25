@@ -1,5 +1,5 @@
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context as _, Result, bail, ensure};
 
 #[repr(C, packed)]
 struct Header {
@@ -17,6 +17,7 @@ pub(crate) struct DBusReader {
     fd: i32,
     bytes_read: usize,
     message_len: usize,
+    discard_remaining: usize,
     state: State,
     buf: Box<[u8; BUF_SIZE]>,
 }
@@ -27,6 +28,8 @@ enum State {
     WaitingForHeader,
     CanReadBody,
     WaitingForBody,
+    CanDiscardBody,
+    WaitingForDiscardBody,
 }
 
 const BUF_SIZE: usize = 500_000;
@@ -37,6 +40,7 @@ impl DBusReader {
             fd,
             bytes_read: 0,
             message_len: 0,
+            discard_remaining: 0,
             state: State::CanReadHeader,
             buf: Box::new([0; BUF_SIZE]),
         }
@@ -65,6 +69,17 @@ impl DBusReader {
                 }
             }
             State::WaitingForBody => Wants::Nothing,
+
+            State::CanDiscardBody => {
+                let len = self.discard_remaining.min(BUF_SIZE);
+                self.state = State::WaitingForDiscardBody;
+                Wants::Read {
+                    fd: self.fd,
+                    buf: self.buf.as_mut_ptr(),
+                    len,
+                }
+            }
+            State::WaitingForDiscardBody => Wants::Nothing,
         }
     }
 
@@ -81,11 +96,41 @@ impl DBusReader {
 
                 let header = unsafe { &*self.buf.as_ptr().cast::<Header>() };
 
-                self.message_len = HEADER_LEN
-                    + (header.header_fields_len as usize).next_multiple_of(8)
-                    + header.body_len as usize;
+                let header_fields_len = (header.header_fields_len as usize).next_multiple_of(8);
+                let message_len = HEADER_LEN
+                    .checked_add(header_fields_len)
+                    .and_then(|len| len.checked_add(header.body_len as usize))
+                    .context("dbus message length overflow")?;
+                if message_len <= BUF_SIZE {
+                    self.message_len = message_len;
+                    self.state = State::CanReadBody;
+                } else {
+                    self.discard_remaining = message_len - HEADER_LEN;
+                    self.state = State::CanDiscardBody;
+                }
 
-                self.state = State::CanReadBody;
+                Ok(None)
+            }
+
+            (State::WaitingForDiscardBody, Satisfy::Read) => {
+                ensure!(res > 0);
+                let bytes_read = res as usize;
+                ensure!(
+                    bytes_read <= self.discard_remaining,
+                    "dbus discard read overflow: {} > {}",
+                    bytes_read,
+                    self.discard_remaining
+                );
+
+                self.discard_remaining -= bytes_read;
+                if self.discard_remaining == 0 {
+                    self.bytes_read = 0;
+                    self.message_len = 0;
+                    self.discard_remaining = 0;
+                    self.state = State::CanReadHeader;
+                } else {
+                    self.state = State::CanDiscardBody;
+                }
 
                 Ok(None)
             }
