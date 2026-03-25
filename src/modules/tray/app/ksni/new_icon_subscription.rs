@@ -2,8 +2,7 @@ use crate::{
     dbus::{
         OneshotResource, OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
-        messages::{interface_is, member_is, path_is, sender_is},
-        types::Value,
+        messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
     },
     ffi::ShortString,
 };
@@ -11,23 +10,18 @@ use anyhow::{Context as _, Result, ensure};
 
 pub(crate) struct NewIconSubscription;
 
+pub(crate) fn new_icon_match_rule(address: ShortString) -> String {
+    format!(
+        "type='signal',sender='{address}',interface='org.kde.StatusNotifierItem',member='NewIcon',path='/StatusNotifierItem'"
+    )
+}
+
 impl OneshotResource for NewIconSubscription {
     type Input = ShortString;
     type Output = ();
 
     fn request(&self, address: Self::Input) -> impl Into<OutgoingMessage> {
-        OutgoingMessage::MethodCall {
-            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
-            path: ShortString::new_const("/org/freedesktop/DBus"),
-            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
-            serial: 0,
-            member: ShortString::new_const("AddMatch"),
-            sender: None,
-            unix_fds: None,
-            body: vec![Value::LongString(format!(
-                "type='signal',sender='{address}',interface='org.kde.StatusNotifierItem',member='NewIcon',path='/StatusNotifierItem'"
-            ))],
-        }
+        AddMatch::from_rule(new_icon_match_rule(address))
     }
 
     fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {

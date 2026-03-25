@@ -48,6 +48,7 @@ impl Sound {
             Ok(None) => {}
             Err(err) => {
                 log::error!("{err:?}");
+                self.subscription.reset();
                 self.healthy = false;
                 return;
             }

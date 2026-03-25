@@ -2,8 +2,7 @@ use crate::{
     dbus::{
         OneshotResource, OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
-        messages::{interface_is, member_is, path_is, sender_is},
-        types::Value,
+        messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
     },
     ffi::ShortString,
 };
@@ -14,23 +13,18 @@ mod get_layout;
 
 pub(crate) struct LayoutUpdatedSubscription;
 
+pub(crate) fn layout_updated_match_rule(address: ShortString, path: ShortString) -> String {
+    format!(
+        "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='LayoutUpdated',path='{path}'"
+    )
+}
+
 impl OneshotResource for LayoutUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
     fn request(&self, (address, path): (ShortString, ShortString)) -> impl Into<OutgoingMessage> {
-        OutgoingMessage::MethodCall {
-            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
-            path: ShortString::new_const("/org/freedesktop/DBus"),
-            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
-            serial: 0,
-            member: ShortString::new_const("AddMatch"),
-            sender: None,
-            unix_fds: None,
-            body: vec![Value::LongString(format!(
-                "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='LayoutUpdated',path='{path}'"
-            ))],
-        }
+        AddMatch::from_rule(layout_updated_match_rule(address, path))
     }
 
     fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
@@ -60,23 +54,21 @@ pub(crate) fn parse_layout_updated_signal(
 
 pub(crate) struct ItemsPropertiesUpdatedSubscription;
 
+pub(crate) fn items_properties_updated_match_rule(
+    address: ShortString,
+    path: ShortString,
+) -> String {
+    format!(
+        "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='ItemsPropertiesUpdated',path='{path}'"
+    )
+}
+
 impl OneshotResource for ItemsPropertiesUpdatedSubscription {
     type Input = (ShortString, ShortString);
     type Output = ();
 
     fn request(&self, (address, path): (ShortString, ShortString)) -> impl Into<OutgoingMessage> {
-        OutgoingMessage::MethodCall {
-            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
-            path: ShortString::new_const("/org/freedesktop/DBus"),
-            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
-            serial: 0,
-            member: ShortString::new_const("AddMatch"),
-            sender: None,
-            unix_fds: None,
-            body: vec![Value::LongString(format!(
-                "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='ItemsPropertiesUpdated',path='{path}'"
-            ))],
-        }
+        AddMatch::from_rule(items_properties_updated_match_rule(address, path))
     }
 
     fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {

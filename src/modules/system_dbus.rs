@@ -19,7 +19,7 @@ impl SystemDBus {
                     address
                         .split_once("=")
                         .map(|(_, path)| path.to_string())
-                        .context("malformed DBUS_SESSION_BUS_ADDRESS")
+                        .context("malformed DBUS_SYSTEM_BUS_ADDRESS")
                 })
                 .unwrap_or_else(|_| String::from("/var/run/dbus/system_bus_socket"))
         }

@@ -1,5 +1,8 @@
 use crate::{
-    dbus::{Oneshot, OutgoingMessage, Subscription, decoder::IncomingMessage, types::Value},
+    dbus::{
+        Oneshot, OutgoingMessage, Subscription, decoder::IncomingMessage,
+        messages::org_freedesktop_dbus::RemoveMatch, types::Value,
+    },
     ffi::ShortString,
     macros::report_and_exit,
     modules::{TrayIcon, TrayItem, tray::service::Service},
@@ -7,11 +10,12 @@ use crate::{
 };
 use dbusmenu::{
     GetLayout, ItemsPropertiesUpdatedSubscription, LayoutUpdatedSubscription,
+    items_properties_updated_match_rule, layout_updated_match_rule,
     parse_items_properties_updated_signal, parse_layout_updated_signal,
 };
 use ksni::{
     AllProps, AllPropsSubscription, AllPropsUpdate, GetAllPropsOneshot, NewIconSubscription,
-    parse_new_icon_signal,
+    new_icon_match_rule, parse_new_icon_signal,
 };
 
 mod dbusmenu;
@@ -85,10 +89,28 @@ impl App {
     }
 
     pub(crate) fn reset(&mut self) {
+        self.unsubscribe_matches();
         self.new_icon_subscription.reset();
         self.all_props_request.reset();
         self.all_props_subscription.reset();
         self.get_layout.reset();
+    }
+
+    fn remove_match(&self, rule: String) {
+        let message: OutgoingMessage = RemoveMatch::from_rule(rule).into();
+        self.queue.push_back(message);
+    }
+
+    fn unsubscribe_matches(&self) {
+        self.remove_match(new_icon_match_rule(self.service.name()));
+
+        if self.menu != "" {
+            self.remove_match(layout_updated_match_rule(self.service.name(), self.menu));
+            self.remove_match(items_properties_updated_match_rule(
+                self.service.name(),
+                self.menu,
+            ));
+        }
     }
 
     fn schedule_get_layout(&mut self) {

@@ -4,13 +4,20 @@ use crate::{
 };
 
 pub(crate) struct AddMatch {
-    sender: ShortString,
-    path: ShortString,
+    rule: String,
 }
 
 impl AddMatch {
-    pub(crate) const fn new(sender: ShortString, path: ShortString) -> Self {
-        Self { sender, path }
+    pub(crate) fn new(sender: ShortString, path: ShortString) -> Self {
+        Self {
+            rule: format!(
+                "type='signal',sender='{sender}',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{path}'"
+            ),
+        }
+    }
+
+    pub(crate) fn from_rule(rule: String) -> Self {
+        Self { rule }
     }
 }
 
@@ -24,10 +31,7 @@ impl From<AddMatch> for OutgoingMessage {
             destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::LongString(format!(
-                "type='signal',sender='{}',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{}'",
-                value.sender, value.path
-            ))],
+            body: vec![Value::LongString(value.rule)],
         }
     }
 }

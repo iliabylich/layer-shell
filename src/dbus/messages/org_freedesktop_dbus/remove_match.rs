@@ -4,12 +4,20 @@ use crate::{
 };
 
 pub(crate) struct RemoveMatch {
-    path: ShortString,
+    rule: String,
 }
 
 impl RemoveMatch {
-    pub(crate) const fn new(path: ShortString) -> Self {
-        Self { path }
+    pub(crate) fn new(path: ShortString) -> Self {
+        Self {
+            rule: format!(
+                "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{path}'"
+            ),
+        }
+    }
+
+    pub(crate) fn from_rule(rule: String) -> Self {
+        Self { rule }
     }
 }
 
@@ -23,10 +31,7 @@ impl From<RemoveMatch> for OutgoingMessage {
             destination: Some(ShortString::new_const("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::LongString(format!(
-                "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{}'",
-                value.path
-            ))],
+            body: vec![Value::LongString(value.rule)],
         }
     }
 }
