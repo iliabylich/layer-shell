@@ -248,7 +248,7 @@ impl TlsOverTcp {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Vec<u8>>> {
         match (&mut self.state, satisfy) {
             (State::CanSocket, Satisfy::Socket) => {
-                ensure!(res > 0);
+                ensure!(res >= 0);
                 self.fd = res;
                 self.state = State::CanConnect;
                 Ok(None)

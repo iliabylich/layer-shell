@@ -91,7 +91,7 @@ impl Dns {
     ) -> Result<Option<libc::sockaddr_in>> {
         match (&mut self.state, satisfy) {
             (State::CanSocket, Satisfy::Socket) => {
-                ensure!(res > 0);
+                ensure!(res >= 0);
                 let fd = res;
 
                 let addr = libc::sockaddr_in {
