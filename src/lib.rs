@@ -192,11 +192,20 @@ impl IO {
 
             match module_id {
                 ModuleId::GeoLocation => {
-                    let latlng = satisfy_opt!(self.location);
-                    schedule_opt!(self.location);
-                    if let Some((lat, lng)) = latlng {
-                        self.weather = Some(Weather::new(lat, lng, self.events.copy()));
-                        schedule_opt!(self.weather);
+                    if let Some(location) = &mut self.location {
+                        let latlng = location.satisfy(satisfy, res);
+
+                        if let Err(err) = latlng {
+                            log::error!("Module {:?} has crashed: {err:?}", ModuleId::GeoLocation);
+                            self.location = Some(Location::new());
+                            schedule_opt!(self.location);
+                        } else if let Ok(Some((lat, lng))) = latlng {
+                            self.weather = Some(Weather::new(lat, lng, self.events.copy()));
+                            schedule_opt!(self.weather);
+                            self.location = None;
+                        } else {
+                            schedule_opt!(self.location);
+                        }
                     }
                 }
 
