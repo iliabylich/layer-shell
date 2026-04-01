@@ -1,9 +1,9 @@
 use crate::{
     dbus::decoder::IncomingMessage,
-    macros::report_and_exit,
     sansio::{DBusConnection, DBusQueue, Satisfy, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
+    utils::report_and_exit,
 };
 use anyhow::{Context, Result};
 

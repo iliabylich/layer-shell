@@ -1,4 +1,4 @@
-use crate::macros::report_and_exit;
+use crate::utils::report_and_exit;
 pub(crate) struct Store(Option<Vec<(u8, u64, u64)>>);
 
 impl Store {

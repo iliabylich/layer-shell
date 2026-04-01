@@ -1,7 +1,7 @@
 use crate::{
-    macros::report_and_exit,
     sansio::{Satisfy, TimerFd, Wants},
     user_data::ModuleId,
+    utils::report_and_exit,
 };
 
 pub(crate) struct Timer {

@@ -1,7 +1,6 @@
+use crate::utils::report_and_exit;
 use core::str::FromStr;
 use log::{Level, LevelFilter, Metadata, Record};
-
-use crate::macros::report_and_exit;
 
 pub(crate) struct Logger {
     level: Level,

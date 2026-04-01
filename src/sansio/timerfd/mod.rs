@@ -1,6 +1,6 @@
 use crate::{
-    macros::assert_or_exit,
     sansio::{Satisfy, Wants},
+    utils::assert_or_exit,
 };
 use anyhow::{Result, bail, ensure};
 use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};

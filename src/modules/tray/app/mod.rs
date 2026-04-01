@@ -4,9 +4,9 @@ use crate::{
         messages::org_freedesktop_dbus::RemoveMatch, types::Value,
     },
     ffi::ShortString,
-    macros::report_and_exit,
     modules::{TrayIcon, TrayItem, tray::service::Service},
     sansio::DBusQueue,
+    utils::report_and_exit,
 };
 use dbusmenu::{
     GetLayout, ItemsPropertiesUpdatedSubscription, LayoutUpdatedSubscription,

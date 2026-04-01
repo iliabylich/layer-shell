@@ -11,7 +11,7 @@ pub(crate) use report_and_exit;
 macro_rules! assert_or_exit {
     ($cmp:expr, $($arg:tt)*) => {
         if !$cmp {
-            $crate::macros::report_and_exit!($($arg)*)
+            $crate::utils::report_and_exit!($($arg)*)
         }
     };
 }

@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 
-use crate::macros::report_and_exit;
+use crate::utils::report_and_exit;
 
 #[derive(Debug)]
 pub(crate) struct EncodingBuffer {

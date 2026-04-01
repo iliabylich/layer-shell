@@ -1,4 +1,4 @@
-use crate::macros::{assert_or_exit, report_and_exit};
+use crate::utils::{assert_or_exit, report_and_exit};
 
 pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use generated::{

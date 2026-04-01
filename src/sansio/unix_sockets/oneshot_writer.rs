@@ -1,6 +1,6 @@
 use crate::{
-    macros::report_and_exit,
     sansio::{Satisfy, Wants},
+    utils::report_and_exit,
 };
 use anyhow::{Result, bail, ensure};
 use core::fmt::Write;

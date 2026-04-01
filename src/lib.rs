@@ -5,13 +5,12 @@ mod event;
 mod event_queue;
 mod ffi;
 mod liburing;
-mod logger;
-mod macros;
 mod modules;
 mod sansio;
 mod timer;
 mod unix_socket;
 mod user_data;
+mod utils;
 
 use command::Command;
 use config::{Config, IOConfig};
@@ -22,8 +21,6 @@ use crate::{
     event_queue::EventQueue,
     ffi::ShortString,
     liburing::IoUring,
-    logger::Logger,
-    macros::report_and_exit,
     modules::{
         CPU, Clock, Control, ControlRequest, Hyprland, HyprlandQueue, HyprlandReader,
         HyprlandWriter, Location, Memory, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
@@ -31,6 +28,7 @@ use crate::{
     sansio::{DBusQueue, Satisfy, Wants},
     timer::Timer,
     user_data::{ModuleId, UserData},
+    utils::{Logger, report_and_exit},
 };
 
 struct IO {

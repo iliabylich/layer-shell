@@ -1,4 +1,4 @@
-use crate::macros::report_and_exit;
+use crate::utils::report_and_exit;
 
 pub const MAX_LEN: usize = 128;
 

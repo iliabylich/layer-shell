@@ -1,4 +1,4 @@
-use crate::macros::assert_or_exit;
+use crate::utils::assert_or_exit;
 use core::cell::Cell;
 
 #[repr(u8)]

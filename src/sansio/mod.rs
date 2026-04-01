@@ -14,7 +14,7 @@ pub(crate) use timerfd::TimerFd;
 pub(crate) use tls_over_tcp::TlsOverTcp;
 pub(crate) use unix_sockets::{UnixSocketOneshotWriter, UnixSocketReader};
 
-use crate::macros::assert_or_exit;
+use crate::utils::assert_or_exit;
 
 #[derive(Debug)]
 pub(crate) enum Wants {

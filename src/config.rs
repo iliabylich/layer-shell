@@ -1,4 +1,4 @@
-use crate::{ffi::ShortString, macros::report_and_exit};
+use crate::{ffi::ShortString, utils::report_and_exit};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
