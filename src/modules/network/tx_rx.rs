@@ -5,7 +5,7 @@ use crate::{
         messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
     },
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context, Result};
 
@@ -21,10 +21,10 @@ pub(crate) struct TxRxEvent {
 }
 
 impl TxRx {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource::default(), queue.copy()),
-            subscription: Subscription::new(Resource::default(), queue.copy()),
+            oneshot: Oneshot::new(Resource::default(), DBusConnectionKind::System),
+            subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
         }
     }
 

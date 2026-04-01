@@ -1,6 +1,6 @@
 use crate::{
     Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, ffi::ShortString,
-    modules::tray::app::TrayEvent, sansio::DBusQueue,
+    modules::tray::app::TrayEvent,
 };
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
@@ -25,17 +25,15 @@ pub(crate) struct Tray {
     name_lost_or_changed: NameLostOrNameOwnerChanged,
     registry: HashMap<Service, App>,
     events: EventQueue,
-    queue: DBusQueue,
 }
 
 impl Tray {
-    pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
+    pub(crate) fn new(events: EventQueue) -> Self {
         Self {
-            status_notifier_watcher: StatusNotifierWatcher::new(queue.copy()),
-            name_lost_or_changed: NameLostOrNameOwnerChanged::new(queue.copy()),
+            status_notifier_watcher: StatusNotifierWatcher::new(),
+            name_lost_or_changed: NameLostOrNameOwnerChanged::new(),
             registry: HashMap::new(),
             events,
-            queue,
         }
     }
 
@@ -47,7 +45,7 @@ impl Tray {
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
         if let Some(service) = self.status_notifier_watcher.on_message(message) {
             log::info!(target: "Tray", "Added {service:?}");
-            let mut tray_app = App::new(service, self.queue.copy());
+            let mut tray_app = App::new(service);
             tray_app.init();
             self.registry.insert(service, tray_app);
             return;

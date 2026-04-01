@@ -10,33 +10,31 @@ use crate::{
     modules::tray::{
         service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
     },
-    sansio::DBusQueue,
+    sansio::SessionDBusQueue,
 };
 use anyhow::{Context as _, Result, ensure};
 
 pub(crate) struct StatusNotifierWatcher {
     reply_serial: Option<u32>,
     introspection: StatusNotifierWatcherIntrospection,
-    queue: DBusQueue,
 }
 
 impl StatusNotifierWatcher {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             reply_serial: None,
-            introspection: StatusNotifierWatcherIntrospection::new(queue.copy()),
-            queue,
+            introspection: StatusNotifierWatcherIntrospection::new(),
         }
     }
 
     pub(crate) fn request(&mut self) {
         let message = RequestName::new(ShortString::new_const("org.kde.StatusNotifierWatcher"));
-        self.reply_serial = Some(self.queue.push_back(message));
+        self.reply_serial = Some(SessionDBusQueue::push_back(message));
     }
 
     fn reply_ok(&self, serial: u32, destination: &str) {
         let reply = OutgoingMessage::new_method_return_no_body(serial, destination);
-        self.queue.push_back(reply);
+        SessionDBusQueue::push_back(reply);
     }
 
     pub(crate) fn init(&mut self) {

@@ -5,7 +5,7 @@ use crate::{
         messages::{interface_is, member_is, path_is, value_is},
     },
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context, Result, bail, ensure};
 
@@ -14,9 +14,9 @@ pub(crate) struct NameLostOrNameOwnerChanged {
 }
 
 impl NameLostOrNameOwnerChanged {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            name_changed: Oneshot::new(NameOwnerChangedResource, queue),
+            name_changed: Oneshot::new(NameOwnerChangedResource, DBusConnectionKind::Session),
         }
     }
 

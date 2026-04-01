@@ -5,7 +5,7 @@ use crate::{
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context, Result, bail};
 
@@ -30,10 +30,10 @@ impl From<ShortString> for PrimaryConnectionEvent {
 }
 
 impl PrimaryConnection {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource, queue.copy()),
-            subscription: Subscription::new(Resource, queue.copy()),
+            oneshot: Oneshot::new(Resource, DBusConnectionKind::System),
+            subscription: Subscription::new(Resource, DBusConnectionKind::System),
         }
     }
 

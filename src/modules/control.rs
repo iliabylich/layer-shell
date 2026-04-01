@@ -10,39 +10,37 @@ use crate::{
         },
     },
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::SessionDBusQueue,
 };
 use anyhow::{Context, Result, bail, ensure};
 
-pub(crate) struct Control {
-    queue: DBusQueue,
-}
+pub(crate) struct Control;
 
 impl Control {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
-        Self { queue }
+    pub(crate) fn new() -> Self {
+        Self
     }
 
     pub(crate) fn init(&mut self) {
         let message = RequestName::new(ShortString::new_const("org.me.LayerShellControl"));
-        self.queue.push_back(message);
+        SessionDBusQueue::push_back(message);
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
             let reply = IntrospectResponse::new(serial, sender, INTROSPECTION.to_string());
-            self.queue.push_back(reply);
+            SessionDBusQueue::push_back(reply);
             return None;
         }
 
         if let Ok((member, sender, serial)) = try_parse_control_req(message) {
             if let Ok(control_req) = ControlRequest::try_parse(member) {
                 let reply = OutgoingMessage::new_method_return_no_body(serial, sender);
-                self.queue.push_back(reply);
+                SessionDBusQueue::push_back(reply);
                 return Some(control_req);
             } else {
                 let reply = OutgoingMessage::new_err_no_method(serial, sender);
-                self.queue.push_back(reply);
+                SessionDBusQueue::push_back(reply);
                 return None;
             }
         }

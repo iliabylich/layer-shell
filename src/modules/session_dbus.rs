@@ -1,6 +1,6 @@
 use crate::{
     dbus::decoder::IncomingMessage,
-    sansio::{DBusConnection, DBusQueue, Satisfy, Wants},
+    sansio::{DBusConnection, DBusConnectionKind, Satisfy, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
     utils::report_and_exit,
@@ -12,7 +12,7 @@ pub(crate) struct SessionDBus {
 }
 
 impl SessionDBus {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         fn socket_path() -> Result<String> {
             let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
             let (_, path) = address
@@ -25,7 +25,7 @@ impl SessionDBus {
         let addr = new_unix_socket(socket_path.as_bytes());
 
         Self {
-            conn: DBusConnection::new(addr, queue),
+            conn: DBusConnection::new(addr, DBusConnectionKind::Session),
         }
     }
 

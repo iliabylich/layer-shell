@@ -7,7 +7,7 @@ use crate::{
     },
     event_queue::EventQueue,
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context as _, Result};
 
@@ -16,17 +16,15 @@ pub(crate) struct Sound {
     subscription: Subscription<Resource>,
     healthy: bool,
     events: EventQueue,
-    queue: DBusQueue,
 }
 
 impl Sound {
-    pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
+    pub(crate) fn new(events: EventQueue) -> Self {
         Self {
-            oneshot: Oneshot::new(Resource, queue.copy()),
-            subscription: Subscription::new(Resource, queue.copy()),
+            oneshot: Oneshot::new(Resource, DBusConnectionKind::Session),
+            subscription: Subscription::new(Resource, DBusConnectionKind::Session),
             healthy: true,
             events,
-            queue,
         }
     }
 
@@ -68,7 +66,7 @@ impl Sound {
     pub(crate) fn tick(&mut self, tick: u64) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
-            self.oneshot = Oneshot::new(Resource, self.queue.copy());
+            self.oneshot = Oneshot::new(Resource, DBusConnectionKind::Session);
             self.oneshot.send(());
         }
     }

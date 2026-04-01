@@ -5,7 +5,7 @@ use crate::{
     },
     ffi::ShortString,
     modules::{TrayIcon, TrayItem, tray::service::Service},
-    sansio::DBusQueue,
+    sansio::{DBusConnectionKind, SessionDBusQueue},
     utils::report_and_exit,
 };
 use dbusmenu::{
@@ -34,7 +34,6 @@ pub(crate) struct App {
     get_layout: Oneshot<GetLayout>,
 
     state: State,
-    queue: DBusQueue,
 }
 
 enum State {
@@ -52,34 +51,39 @@ pub(crate) enum TrayEvent {
 }
 
 impl App {
-    pub(crate) fn new(service: Service, queue: DBusQueue) -> Self {
+    pub(crate) fn new(service: Service) -> Self {
         Self {
             service,
-            all_props_request: Oneshot::new(GetAllPropsOneshot, queue.copy()),
-            new_icon_subscription: Oneshot::new(NewIconSubscription, queue.copy()),
-            all_props_subscription: Subscription::new(AllPropsSubscription, queue.copy()),
-            layout_updated_subscription: Oneshot::new(LayoutUpdatedSubscription, queue.copy()),
+            all_props_request: Oneshot::new(GetAllPropsOneshot, DBusConnectionKind::Session),
+            new_icon_subscription: Oneshot::new(NewIconSubscription, DBusConnectionKind::Session),
+            all_props_subscription: Subscription::new(
+                AllPropsSubscription,
+                DBusConnectionKind::Session,
+            ),
+            layout_updated_subscription: Oneshot::new(
+                LayoutUpdatedSubscription,
+                DBusConnectionKind::Session,
+            ),
             items_properties_updated_subscription: Oneshot::new(
                 ItemsPropertiesUpdatedSubscription,
-                queue.copy(),
+                DBusConnectionKind::Session,
             ),
 
             menu: ShortString::new_const(""),
-            get_layout: Oneshot::new(GetLayout::new(service.name()), queue.copy()),
+            get_layout: Oneshot::new(GetLayout::new(service.name()), DBusConnectionKind::Session),
 
             state: State::Nothing,
-            queue,
         }
     }
 
     fn schedule_request_props(&mut self) {
         self.all_props_request.reset();
-        self.all_props_request = Oneshot::new(GetAllPropsOneshot, self.queue.copy());
+        self.all_props_request = Oneshot::new(GetAllPropsOneshot, DBusConnectionKind::Session);
         self.all_props_request.send(self.service.name());
     }
 
     pub(crate) fn init(&mut self) {
-        self.new_icon_subscription = Oneshot::new(NewIconSubscription, self.queue.copy());
+        self.new_icon_subscription = Oneshot::new(NewIconSubscription, DBusConnectionKind::Session);
         self.new_icon_subscription.send(self.service.name());
         self.all_props_request.send(self.service.name());
         self.all_props_subscription.start(
@@ -98,7 +102,7 @@ impl App {
 
     fn remove_match(&self, rule: String) {
         let message: OutgoingMessage = RemoveMatch::from_rule(rule).into();
-        self.queue.push_back(message);
+        SessionDBusQueue::push_back(message);
     }
 
     fn unsubscribe_matches(&self) {
@@ -114,7 +118,10 @@ impl App {
     }
 
     fn schedule_get_layout(&mut self) {
-        let mut get_layout = Oneshot::new(GetLayout::new(self.service.name()), self.queue.copy());
+        let mut get_layout = Oneshot::new(
+            GetLayout::new(self.service.name()),
+            DBusConnectionKind::Session,
+        );
         get_layout.send((self.service.name(), self.menu));
         self.get_layout = get_layout;
     }
@@ -262,6 +269,6 @@ impl App {
             ],
         };
 
-        self.queue.push_back(message);
+        SessionDBusQueue::push_back(message);
     }
 }

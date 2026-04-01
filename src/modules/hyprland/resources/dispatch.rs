@@ -16,13 +16,11 @@ impl DispatchResource {
 }
 impl WriterResource for DispatchResource {
     fn command(&self) -> ShortString {
-        log::error!("self.cmd is {}", self.cmd);
         let mut buf = [0; 128];
         let mut writer = ArrayWriter::new(&mut buf);
         write!(&mut writer, "dispatch {}", self.cmd).unwrap_or_else(|err: std::fmt::Error| {
             report_and_exit!("failed to write command to buffer: {err:?}")
         });
-        log::error!("buf is: {:?}", writer.as_str());
         ShortString::from(
             writer.as_str().unwrap_or_else(|err| {
                 report_and_exit!("command is too long for ShortString: {err:?}")

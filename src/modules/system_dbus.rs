@@ -1,6 +1,6 @@
 use crate::{
     dbus::decoder::IncomingMessage,
-    sansio::{DBusConnection, DBusQueue, Satisfy, Wants},
+    sansio::{DBusConnection, DBusConnectionKind, Satisfy, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
 };
@@ -11,7 +11,7 @@ pub(crate) struct SystemDBus {
 }
 
 impl SystemDBus {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         fn socket_path() -> String {
             std::env::var("DBUS_SYSTEM_BUS_ADDRESS")
                 .context("no DBUS_SYSTEM_BUS_ADDRESS")
@@ -27,7 +27,7 @@ impl SystemDBus {
         let addr = new_unix_socket(socket_path().as_bytes());
 
         Self {
-            conn: DBusConnection::new(addr, queue),
+            conn: DBusConnection::new(addr, DBusConnectionKind::System),
         }
     }
 

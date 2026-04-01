@@ -6,7 +6,9 @@ mod timerfd;
 mod tls_over_tcp;
 mod unix_sockets;
 
-pub(crate) use dbus::{DBusConnection, DBusQueue};
+pub(crate) use dbus::{
+    DBusConnection, DBusConnectionKind, DBusQueue, SessionDBusQueue, SystemDBusQueue,
+};
 pub(crate) use dns::Dns;
 pub(crate) use file_reader::FileReader;
 pub(crate) use https::{Https, HttpsRequest, HttpsResponse};

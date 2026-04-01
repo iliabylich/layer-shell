@@ -5,7 +5,7 @@ use crate::{
         messages::{org_freedesktop_dbus::GetProperty, value_is},
     },
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context, Result};
 
@@ -15,10 +15,10 @@ pub(crate) struct ActiveConnectionType {
 }
 
 impl ActiveConnectionType {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             path: None,
-            oneshot: Oneshot::new(Resource, queue),
+            oneshot: Oneshot::new(Resource, DBusConnectionKind::System),
         }
     }
 

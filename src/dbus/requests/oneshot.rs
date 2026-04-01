@@ -3,7 +3,7 @@ use crate::{
         OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
     },
-    sansio::DBusQueue,
+    sansio::{DBusConnectionKind, DBusQueue},
 };
 use anyhow::{Result, bail};
 
@@ -28,18 +28,18 @@ where
 {
     resource: T,
     state: OneshotState,
-    queue: DBusQueue,
+    kind: DBusConnectionKind,
 }
 
 impl<T> Oneshot<T>
 where
     T: OneshotResource,
 {
-    pub(crate) fn new(resource: T, queue: DBusQueue) -> Self {
+    pub(crate) fn new(resource: T, kind: DBusConnectionKind) -> Self {
         Self {
             state: OneshotState::None,
             resource,
-            queue,
+            kind,
         }
     }
 
@@ -49,7 +49,7 @@ where
         };
 
         let message = self.resource.request(input).into();
-        let reply_serial = self.queue.push_back(message);
+        let reply_serial = DBusQueue::push_back(self.kind, message);
         self.state = OneshotState::WaitingForReply(reply_serial);
     }
 

@@ -8,7 +8,7 @@ use crate::{
         },
     },
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::{DBusConnectionKind, DBusQueue},
 };
 use anyhow::{Context as _, Result, ensure};
 
@@ -25,18 +25,18 @@ where
 {
     path: Option<ShortString>,
     resource: S,
-    queue: DBusQueue,
+    kind: DBusConnectionKind,
 }
 
 impl<S> Subscription<S>
 where
     S: SubscriptionResource,
 {
-    pub(crate) fn new(resource: S, queue: DBusQueue) -> Self {
+    pub(crate) fn new(resource: S, kind: DBusConnectionKind) -> Self {
         Self {
             path: None,
             resource,
-            queue,
+            kind,
         }
     }
 
@@ -46,12 +46,12 @@ where
         };
 
         let message: OutgoingMessage = RemoveMatch::new(path).into();
-        self.queue.push_back(message);
+        DBusQueue::push_back(self.kind, message);
     }
 
     fn subscribe(&mut self, sender: ShortString, path: ShortString) {
         let message: OutgoingMessage = AddMatch::new(sender, path).into();
-        self.queue.push_back(message);
+        DBusQueue::push_back(self.kind, message);
         self.path = Some(path);
         self.resource.set_path(path);
     }

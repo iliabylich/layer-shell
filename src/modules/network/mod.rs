@@ -1,4 +1,4 @@
-use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, sansio::DBusQueue};
+use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -26,14 +26,14 @@ pub(crate) struct Network {
 }
 
 impl Network {
-    pub(crate) fn new(events: EventQueue, queue: DBusQueue) -> Self {
+    pub(crate) fn new(events: EventQueue) -> Self {
         Self {
-            wireless_connection: WirelessConnection::new(queue.copy()),
-            primary_device: PrimaryDevice::new(queue.copy()),
-            active_access_point: ActiveAccessPoint::new(queue.copy()),
-            tx_rx: TxRx::new(queue.copy()),
+            wireless_connection: WirelessConnection::new(),
+            primary_device: PrimaryDevice::new(),
+            active_access_point: ActiveAccessPoint::new(),
+            tx_rx: TxRx::new(),
             speed: Speed::new(),
-            ssid_and_strength: SsidAndStrength::new(queue.copy()),
+            ssid_and_strength: SsidAndStrength::new(),
             events,
         }
     }

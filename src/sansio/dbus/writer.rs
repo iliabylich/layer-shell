@@ -1,10 +1,10 @@
-use crate::sansio::{Satisfy, Wants, dbus::DBusQueue};
+use crate::sansio::{DBusConnectionKind, Satisfy, Wants, dbus::DBusQueue};
 use anyhow::{Result, bail, ensure};
 
 pub(crate) struct DBusWriter {
     fd: i32,
     current: Option<Vec<u8>>,
-    queue: DBusQueue,
+    kind: DBusConnectionKind,
     state: State,
 }
 
@@ -15,13 +15,13 @@ enum State {
 }
 
 impl DBusWriter {
-    pub(crate) fn new(fd: i32, queue: DBusQueue) -> Self {
-        let current = queue.pop_front();
+    pub(crate) fn new(fd: i32, kind: DBusConnectionKind) -> Self {
+        let current = DBusQueue::pop_front(kind);
 
         Self {
             fd,
             current,
-            queue,
+            kind,
             state: State::CanWrite,
         }
     }
@@ -30,7 +30,7 @@ impl DBusWriter {
         match self.state {
             State::CanWrite => {
                 if self.current.is_none() {
-                    self.current = self.queue.pop_front();
+                    self.current = DBusQueue::pop_front(self.kind);
                 }
 
                 let Some(buf) = self.current.as_mut() else {
@@ -61,7 +61,7 @@ impl DBusWriter {
             message.len()
         );
 
-        if let Some(next) = self.queue.pop_front() {
+        if let Some(next) = DBusQueue::pop_front(self.kind) {
             self.current = Some(next);
         }
         self.state = State::CanWrite;

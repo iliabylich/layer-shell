@@ -5,7 +5,7 @@ use libc::sockaddr_un;
 use reader::DBusReader;
 use writer::DBusWriter;
 
-pub(crate) use queue::DBusQueue;
+pub(crate) use queue::{DBusQueue, SessionDBusQueue, SystemDBusQueue};
 
 mod connector;
 mod queue;
@@ -14,7 +14,13 @@ mod writer;
 
 pub(crate) struct DBusConnection {
     state: State,
-    queue: DBusQueue,
+    kind: DBusConnectionKind,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum DBusConnectionKind {
+    System,
+    Session,
 }
 
 enum State {
@@ -26,10 +32,10 @@ enum State {
 }
 
 impl DBusConnection {
-    pub(crate) fn new(addr: sockaddr_un, queue: DBusQueue) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, kind: DBusConnectionKind) -> Self {
         Self {
             state: State::Connecting(DBusConnector::new(addr)),
-            queue,
+            kind,
         }
     }
 
@@ -68,7 +74,7 @@ impl DBusConnection {
             if let Some(fd) = connector.satisfy(satisfy, res)? {
                 self.state = State::Ready {
                     reader: DBusReader::new(fd),
-                    writer: DBusWriter::new(fd, self.queue.copy()),
+                    writer: DBusWriter::new(fd, self.kind),
                 };
             }
             return Ok(None);

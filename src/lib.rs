@@ -25,7 +25,7 @@ use crate::{
         CPU, Clock, Control, ControlRequest, Hyprland, HyprlandQueue, HyprlandReader,
         HyprlandWriter, Location, Memory, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
     },
-    sansio::{DBusQueue, Satisfy, Wants},
+    sansio::{Satisfy, SessionDBusQueue, SystemDBusQueue, Wants},
     timer::Timer,
     user_data::{ModuleId, UserData},
     utils::{Logger, report_and_exit},
@@ -84,9 +84,6 @@ impl IO {
 
         let (hyprland_reader, hyprland_writer, hyprland_queue) = Hyprland::connect(events.copy());
 
-        let session_dbus_queue = DBusQueue::new();
-        let system_dbus_queue = DBusQueue::new();
-
         let mut this = Self {
             config,
             io_config,
@@ -95,12 +92,12 @@ impl IO {
             timer: Timer::new(),
             clock: Clock::new(events.copy()),
 
-            session_dbus: Some(SessionDBus::new(session_dbus_queue.copy())),
-            sound: Sound::new(events.copy(), session_dbus_queue.copy()),
-            control: Control::new(session_dbus_queue.copy()),
-            tray: Tray::new(events.copy(), session_dbus_queue.copy()),
-            system_dbus: Some(SystemDBus::new(system_dbus_queue.copy())),
-            network: Network::new(events.copy(), system_dbus_queue.copy()),
+            session_dbus: Some(SessionDBus::new()),
+            sound: Sound::new(events.copy()),
+            control: Control::new(),
+            tray: Tray::new(events.copy()),
+            system_dbus: Some(SystemDBus::new()),
+            network: Network::new(events.copy()),
             hyprland_reader,
             hyprland_writer,
             hyprland_queue,
@@ -129,11 +126,13 @@ impl IO {
         schedule_opt!(self.cpu);
         schedule_opt!(self.memory);
 
+        SessionDBusQueue::init();
         self.sound.init();
         self.control.init();
         self.tray.init();
         schedule_opt!(self.session_dbus);
 
+        SystemDBusQueue::init();
         self.network.init();
         schedule_opt!(self.system_dbus);
 

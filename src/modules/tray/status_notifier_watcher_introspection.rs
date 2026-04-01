@@ -5,19 +5,17 @@ use crate::{
         types::{CompleteType, Value},
     },
     ffi::ShortString,
-    sansio::DBusQueue,
+    sansio::SessionDBusQueue,
 };
 
 pub(crate) struct StatusNotifierWatcherIntrospection {
     introspection: IntrospectibleObjectAt,
-    queue: DBusQueue,
 }
 
 impl StatusNotifierWatcherIntrospection {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             introspection: IntrospectibleObjectAt::new("org.kde.StatusNotifierWatcher"),
-            queue,
         }
     }
 
@@ -30,12 +28,12 @@ impl StatusNotifierWatcherIntrospection {
             unix_fds: None,
             body,
         };
-        self.queue.push_back(message);
+        SessionDBusQueue::push_back(message);
     }
 
     fn reply_err(&self, serial: u32, destination: &str) {
         let reply = OutgoingMessage::new_err_no_method(serial, destination);
-        self.queue.push_back(reply);
+        SessionDBusQueue::push_back(reply);
     }
 
     pub(crate) fn process_message(&mut self, message: IncomingMessage<'_>) -> bool {

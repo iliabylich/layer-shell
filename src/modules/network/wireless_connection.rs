@@ -5,7 +5,6 @@ use crate::{
         active_connection_type::ActiveConnectionType,
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
     },
-    sansio::DBusQueue,
 };
 
 #[derive(Default)]
@@ -28,10 +27,10 @@ pub(crate) enum WirelessConnectionEvent {
 }
 
 impl WirelessConnection {
-    pub(crate) fn new(queue: DBusQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            primary_connection: PrimaryConnection::new(queue.copy()),
-            active_connection_type: ActiveConnectionType::new(queue.copy()),
+            primary_connection: PrimaryConnection::new(),
+            active_connection_type: ActiveConnectionType::new(),
             state: State::default(),
         }
     }
