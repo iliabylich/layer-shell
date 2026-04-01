@@ -186,6 +186,10 @@ fn parse_item(service: ShortString, menu: &str, item: Value<'_>) -> Result<ItemO
     value_is!(children_values, Value::Array(children_values));
     let children = parse_items(service, menu, children_values)?;
 
+    if label.len() > 100 {
+        label = &label[..100];
+    }
+
     if !visible {
         Ok(ItemOrSeparator::Skip)
     } else if children_display == "submenu" {
