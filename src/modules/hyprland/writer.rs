@@ -12,22 +12,15 @@ pub(crate) struct HyprlandWriter {
     queue: HyprlandQueue,
     addr: sockaddr_un,
     state: HyprlandState,
-    events: EventQueue,
 }
 
 impl HyprlandWriter {
-    pub(crate) fn new(
-        addr: sockaddr_un,
-        state: HyprlandState,
-        events: EventQueue,
-        queue: HyprlandQueue,
-    ) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState, queue: HyprlandQueue) -> Self {
         let mut this = Self {
             current: None,
             queue,
             addr,
             state,
-            events,
         };
         this.pop_from_queue_into_current();
         this
@@ -78,7 +71,7 @@ impl HyprlandWriter {
         };
 
         if let Some(event) = self.state.apply(diff) {
-            self.events.push_back(event);
+            EventQueue::push_back(event);
         }
 
         Ok(())

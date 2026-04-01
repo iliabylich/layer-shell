@@ -11,14 +11,12 @@ mod parser;
 
 pub(crate) struct Memory {
     reader: FileReader,
-    events: EventQueue,
 }
 
 impl Memory {
-    pub(crate) fn new(events: EventQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             reader: FileReader::new(c"/proc/meminfo"),
-            events,
         }
     }
 
@@ -37,7 +35,7 @@ impl Memory {
         let s = core::str::from_utf8(buf).context("decoding error")?;
         let (used, total) = Parser::parse(s).context("parse error")?;
 
-        self.events.push_back(Event::Memory { used, total });
+        EventQueue::push_back(Event::Memory { used, total });
         Ok(())
     }
 

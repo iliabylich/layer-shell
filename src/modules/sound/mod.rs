@@ -15,16 +15,14 @@ pub(crate) struct Sound {
     oneshot: Oneshot<Resource>,
     subscription: Subscription<Resource>,
     healthy: bool,
-    events: EventQueue,
 }
 
 impl Sound {
-    pub(crate) fn new(events: EventQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             oneshot: Oneshot::new(Resource, DBusConnectionKind::Session),
             subscription: Subscription::new(Resource, DBusConnectionKind::Session),
             healthy: true,
-            events,
         }
     }
 
@@ -35,7 +33,7 @@ impl Sound {
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
         match self.oneshot.try_rev(message) {
             Ok(Some((volume, muted))) => {
-                self.events.push_back(Event::InitialSound { volume, muted });
+                EventQueue::push_back(Event::InitialSound { volume, muted });
                 self.subscription.start(
                     ShortString::new_const("org.local.PipewireDBus"),
                     ShortString::new_const("/org/local/PipewireDBus"),
@@ -54,11 +52,11 @@ impl Sound {
 
         if let Some((volume, muted)) = self.subscription.process(message) {
             if let Some(volume) = volume {
-                self.events.push_back(Event::VolumeChanged { volume });
+                EventQueue::push_back(Event::VolumeChanged { volume });
             }
 
             if let Some(muted) = muted {
-                self.events.push_back(Event::MuteChanged { muted });
+                EventQueue::push_back(Event::MuteChanged { muted });
             }
         }
     }

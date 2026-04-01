@@ -18,16 +18,14 @@ pub(crate) struct Weather {
     lat: f64,
     lng: f64,
     https: Https,
-    events: EventQueue,
 }
 
 impl Weather {
-    pub(crate) fn new(lat: f64, lng: f64, events: EventQueue) -> Self {
+    pub(crate) fn new(lat: f64, lng: f64) -> Self {
         Self {
             lat,
             lng,
             https: Https::new(HttpsRequest::get(HOST, path(lat, lng))),
-            events,
         }
     }
 
@@ -45,7 +43,7 @@ impl Weather {
         };
         let response = WeatherResponse::parse(response)?;
         let event = Event::try_from(response)?;
-        self.events.push_back(event);
+        EventQueue::push_back(event);
         Ok(())
     }
 

@@ -15,15 +15,13 @@ mod store;
 pub(crate) struct CPU {
     reader: FileReader,
     store: Store,
-    events: EventQueue,
 }
 
 impl CPU {
-    pub(crate) fn new(events: EventQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             reader: FileReader::new(c"/proc/stat"),
             store: Store::new(),
-            events,
         }
     }
 
@@ -46,7 +44,7 @@ impl CPU {
         let event = Event::CpuUsage {
             usage_per_core: usage_per_core.into(),
         };
-        self.events.push_back(event);
+        EventQueue::push_back(event);
         Ok(())
     }
 

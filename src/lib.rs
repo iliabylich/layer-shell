@@ -34,7 +34,6 @@ use crate::{
 struct IO {
     config: Config,
     io_config: *const IOConfig,
-    events: EventQueue,
 
     timer: Timer,
     clock: Clock,
@@ -80,32 +79,30 @@ impl IO {
     fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Self {
         let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
-        let events = EventQueue::new();
 
-        let (hyprland_reader, hyprland_writer, hyprland_queue) = Hyprland::connect(events.copy());
+        let (hyprland_reader, hyprland_writer, hyprland_queue) = Hyprland::connect();
 
         let mut this = Self {
             config,
             io_config,
-            events: events.copy(),
 
             timer: Timer::new(),
-            clock: Clock::new(events.copy()),
+            clock: Clock::new(),
 
             session_dbus: Some(SessionDBus::new()),
-            sound: Sound::new(events.copy()),
+            sound: Sound::new(),
             control: Control::new(),
-            tray: Tray::new(events.copy()),
+            tray: Tray::new(),
             system_dbus: Some(SystemDBus::new()),
-            network: Network::new(events.copy()),
+            network: Network::new(),
             hyprland_reader,
             hyprland_writer,
             hyprland_queue,
 
             location: Some(Location::new()),
             weather: None,
-            cpu: Some(CPU::new(events.copy())),
-            memory: Some(Memory::new(events.copy())),
+            cpu: Some(CPU::new()),
+            memory: Some(Memory::new()),
 
             on_event,
             running: true,
@@ -145,10 +142,10 @@ impl IO {
                 self.hyprland_queue.enqueue_get_caps_lock();
                 schedule_opt!(self.hyprland_writer);
             }
-            ControlRequest::Exit => self.events.push_back(Event::Exit),
-            ControlRequest::ReloadStyles => self.events.push_back(Event::ReloadStyles),
+            ControlRequest::Exit => EventQueue::push_back(Event::Exit),
+            ControlRequest::ReloadStyles => EventQueue::push_back(Event::ReloadStyles),
             ControlRequest::ToggleSessionScreen => {
-                self.events.push_back(Event::ToggleSessionScreen)
+                EventQueue::push_back(Event::ToggleSessionScreen)
             }
         }
     }
@@ -197,7 +194,7 @@ impl IO {
                             self.location = Some(Location::new());
                             schedule_opt!(self.location);
                         } else if let Ok(Some((lat, lng))) = latlng {
-                            self.weather = Some(Weather::new(lat, lng, self.events.copy()));
+                            self.weather = Some(Weather::new(lat, lng));
                             schedule_opt!(self.weather);
                             self.location = None;
                         } else {
@@ -284,7 +281,7 @@ impl IO {
 
         IoUring::submit_if_dirty();
 
-        while let Some(event) = self.events.pop_front() {
+        while let Some(event) = EventQueue::pop_front() {
             if self.logging_enabled {
                 log::info!(target: "IO", "{event:?}");
             }

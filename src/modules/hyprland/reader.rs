@@ -11,15 +11,13 @@ use libc::sockaddr_un;
 pub(crate) struct HyprlandReader {
     socket_reader: UnixSocketReader,
     state: HyprlandState,
-    events: EventQueue,
 }
 
 impl HyprlandReader {
-    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState, events: EventQueue) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState) -> Self {
         Self {
             socket_reader: UnixSocketReader::new(addr),
             state,
-            events,
         }
     }
 
@@ -42,7 +40,7 @@ impl HyprlandReader {
                 continue;
             };
             if let Some(event) = self.state.apply(diff) {
-                self.events.push_back(event);
+                EventQueue::push_back(event);
             }
         }
         Ok(())

@@ -24,16 +24,14 @@ pub(crate) struct Tray {
     status_notifier_watcher: StatusNotifierWatcher,
     name_lost_or_changed: NameLostOrNameOwnerChanged,
     registry: HashMap<Service, App>,
-    events: EventQueue,
 }
 
 impl Tray {
-    pub(crate) fn new(events: EventQueue) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             status_notifier_watcher: StatusNotifierWatcher::new(),
             name_lost_or_changed: NameLostOrNameOwnerChanged::new(),
             registry: HashMap::new(),
-            events,
         }
     }
 
@@ -67,7 +65,7 @@ impl Tray {
 
             log::info!(target: "Tray", "Removed {service}");
             tray_app.reset();
-            self.events.push_back(Event::TrayAppRemoved { service })
+            EventQueue::push_back(Event::TrayAppRemoved { service })
         }
 
         for (service, app) in &mut self.registry {
@@ -86,7 +84,7 @@ impl Tray {
                         items: layout.into(),
                     },
                 };
-                self.events.push_back(event);
+                EventQueue::push_back(event);
             }
         }
     }

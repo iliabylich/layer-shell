@@ -4,7 +4,7 @@ pub(crate) use writer::HyprlandWriter;
 
 pub use state::HyprlandWorkspace;
 
-use crate::{event_queue::EventQueue, unix_socket::new_unix_socket};
+use crate::unix_socket::new_unix_socket;
 use state::HyprlandState;
 
 mod queue;
@@ -16,9 +16,7 @@ mod writer;
 pub(crate) struct Hyprland;
 
 impl Hyprland {
-    pub(crate) fn connect(
-        events: EventQueue,
-    ) -> (
+    pub(crate) fn connect() -> (
         Option<HyprlandReader>,
         Option<HyprlandWriter>,
         HyprlandQueue,
@@ -53,17 +51,8 @@ impl Hyprland {
         let queue = HyprlandQueue::new();
 
         (
-            Some(HyprlandReader::new(
-                reader_addr,
-                state.copy(),
-                events.copy(),
-            )),
-            Some(HyprlandWriter::new(
-                writer_addr,
-                state.copy(),
-                events.copy(),
-                queue.copy(),
-            )),
+            Some(HyprlandReader::new(reader_addr, state.copy())),
+            Some(HyprlandWriter::new(writer_addr, state.copy(), queue.copy())),
             queue,
         )
     }
