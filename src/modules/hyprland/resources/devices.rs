@@ -4,12 +4,11 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
-use std::borrow::Cow;
 
 pub(crate) struct DevicesResource;
 impl WriterResource for DevicesResource {
-    fn command(&self) -> Cow<'static, str> {
-        Cow::Borrowed("[[BATCH]]j/devices")
+    fn command(&self) -> ShortString {
+        ShortString::from("[[BATCH]]j/devices")
     }
 
     fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {

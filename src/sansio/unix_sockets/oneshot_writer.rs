@@ -1,6 +1,7 @@
 use crate::{
+    ffi::ShortString,
     sansio::{Satisfy, Wants},
-    utils::report_and_exit,
+    utils::{ArrayWriter, report_and_exit},
 };
 use anyhow::{Result, bail, ensure};
 use core::fmt::Write;
@@ -26,11 +27,12 @@ enum State {
 }
 
 impl UnixSocketOneshotWriter {
-    pub(crate) fn new(addr: sockaddr_un, data: &str) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, data: ShortString) -> Self {
         let mut buf = [0; 4_096];
         let mut writer = ArrayWriter::new(&mut buf);
-        write!(&mut writer, "{}", data)
-            .unwrap_or_else(|err| report_and_exit!("failed to write command to buffer: {err:?}"));
+        write!(&mut writer, "{}", data).unwrap_or_else(|err: std::fmt::Error| {
+            report_and_exit!("failed to write command to buffer: {err:?}")
+        });
         let write_buflen = writer.offset;
 
         Self {
@@ -110,30 +112,5 @@ impl UnixSocketOneshotWriter {
                 bail!("malformed UnixSocketOneshotWriter state: {state:?} vs {satisfy:?}")
             }
         }
-    }
-}
-
-struct ArrayWriter<'a> {
-    buf: &'a mut [u8],
-    offset: usize,
-}
-impl<'a> ArrayWriter<'a> {
-    fn new(buf: &'a mut [u8]) -> Self {
-        ArrayWriter { buf, offset: 0 }
-    }
-}
-impl<'a> core::fmt::Write for ArrayWriter<'a> {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let bytes = s.as_bytes();
-
-        let remainder = &mut self.buf[self.offset..];
-        if remainder.len() < bytes.len() {
-            return Err(core::fmt::Error);
-        }
-        let remainder = &mut remainder[..bytes.len()];
-        remainder.copy_from_slice(bytes);
-
-        self.offset += bytes.len();
-        Ok(())
     }
 }

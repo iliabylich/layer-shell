@@ -1,12 +1,14 @@
-use crate::modules::hyprland::{resources::WriterResource, state::HyprlandDiff};
+use crate::{
+    ffi::ShortString,
+    modules::hyprland::{resources::WriterResource, state::HyprlandDiff},
+};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
-use std::borrow::Cow;
 
 pub(crate) struct CapsLockResource;
 impl WriterResource for CapsLockResource {
-    fn command(&self) -> Cow<'static, str> {
-        Cow::Borrowed("[[BATCH]]j/devices")
+    fn command(&self) -> ShortString {
+        ShortString::from("[[BATCH]]j/devices")
     }
 
     fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {

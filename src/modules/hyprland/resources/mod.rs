@@ -1,6 +1,5 @@
-use crate::modules::hyprland::state::HyprlandDiff;
+use crate::{ffi::ShortString, modules::hyprland::state::HyprlandDiff};
 use anyhow::Result;
-use std::borrow::Cow;
 
 mod active_workspace;
 mod caps_lock;
@@ -15,6 +14,6 @@ pub(crate) use dispatch::DispatchResource;
 pub(crate) use workspaces::WorkspacesResource;
 
 pub(crate) trait WriterResource {
-    fn command(&self) -> Cow<'static, str>;
+    fn command(&self) -> ShortString;
     fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>>;
 }

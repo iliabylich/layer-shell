@@ -38,7 +38,7 @@ impl HyprlandWriter {
             && let Some(resource) = self.queue.pop_front()
         {
             self.current = Some((
-                UnixSocketOneshotWriter::new(self.addr, resource.command().as_ref()),
+                UnixSocketOneshotWriter::new(self.addr, resource.command()),
                 resource,
             ));
         }

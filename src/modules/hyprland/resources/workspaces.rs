@@ -1,13 +1,15 @@
-use crate::modules::hyprland::{resources::WriterResource, state::HyprlandDiff};
+use crate::{
+    ffi::ShortString,
+    modules::hyprland::{resources::WriterResource, state::HyprlandDiff},
+};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
-use std::borrow::Cow;
 
 pub(crate) struct WorkspacesResource;
 
 impl WriterResource for WorkspacesResource {
-    fn command(&self) -> Cow<'static, str> {
-        Cow::Borrowed("[[BATCH]]j/workspaces")
+    fn command(&self) -> ShortString {
+        ShortString::from("[[BATCH]]j/workspaces")
     }
 
     fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {
