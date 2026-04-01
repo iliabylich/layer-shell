@@ -91,7 +91,7 @@ impl Dns {
     ) -> Result<Option<libc::sockaddr_in>> {
         match (&mut self.state, satisfy) {
             (State::CanSocket, Satisfy::Socket) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DNS::Socket failed: {res}");
                 let fd = res;
 
                 let addr = libc::sockaddr_in {
@@ -108,7 +108,7 @@ impl Dns {
             }
 
             (State::CanConnect { fd, .. }, Satisfy::Connect) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DNS::Connect failed: {res}");
 
                 let mut buf = [0_u8; MAX_DNS_PACKET];
                 let len = Request::write(&mut buf, self.domain, TYPE_A);
@@ -123,7 +123,7 @@ impl Dns {
             }
 
             (State::CanWrite { fd, len, pos, .. }, Satisfy::Write) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DNS::Write failed: {res}");
                 let bytes_written = res as usize;
 
                 *pos += bytes_written;
@@ -140,7 +140,7 @@ impl Dns {
             }
 
             (State::CanRead { fd, buf, len }, Satisfy::Read) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DNS::Read failed: {res}");
                 let bytes_read = res as usize;
 
                 *len += bytes_read;
@@ -155,7 +155,7 @@ impl Dns {
             }
 
             (State::CanClose { buf, len, .. }, Satisfy::Close) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DNS::Close failed: {res}");
 
                 let reply = Response::read(&buf[..*len])?;
                 self.state = State::Done;

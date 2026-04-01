@@ -77,33 +77,33 @@ impl UnixSocketOneshotWriter {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
         match (self.state, satisfy) {
             (State::CanSocket, Satisfy::Socket) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "UnixSocketOneshotWriter::Socket failed: {res}");
                 self.fd = res;
                 self.state = State::CanConnect;
                 Ok(None)
             }
 
             (State::CanConnect, Satisfy::Connect) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "UnixSocketOneshotWriter::Connect failed: {res}");
                 self.state = State::CanWrite;
                 Ok(None)
             }
 
             (State::CanWrite, Satisfy::Write) => {
-                ensure!(res > 0);
+                ensure!(res > 0, "UnixSocketOneshotWriter::Write failed: {res}");
                 self.state = State::CanRead;
                 Ok(None)
             }
 
             (State::CanRead, Satisfy::Read) => {
-                ensure!(res > 0);
+                ensure!(res > 0, "UnixSocketOneshotWriter::Read failed: {res}");
                 self.bytes_read = res as usize;
                 self.state = State::CanClose;
                 Ok(None)
             }
 
             (State::CanClose, Satisfy::Close) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "UnixSocketOneshotWriter::Close failed: {res}");
                 self.state = State::Done;
                 Ok(Some(&self.buf[..self.bytes_read]))
             }

@@ -89,7 +89,7 @@ impl DBusReader {
                 if res == 0 {
                     return Ok(None);
                 }
-                ensure!(res > 0);
+                ensure!(res > 0, "DBusReader::ReadHeader failed: {res}");
                 let bytes_read = res as usize;
                 ensure!(bytes_read == HEADER_LEN);
                 self.bytes_read += bytes_read;
@@ -113,7 +113,7 @@ impl DBusReader {
             }
 
             (State::WaitingForDiscardBody, Satisfy::Read) => {
-                ensure!(res > 0);
+                ensure!(res > 0, "DBusReader::DiscardBody failed: {res}");
                 let bytes_read = res as usize;
                 ensure!(
                     bytes_read <= self.discard_remaining,
@@ -136,7 +136,7 @@ impl DBusReader {
             }
 
             (State::WaitingForBody, Satisfy::Read) => {
-                ensure!(res > 0);
+                ensure!(res > 0, "DBusReader::ReadBody failed: {res}");
                 let bytes_read = res as usize;
                 self.bytes_read += bytes_read;
 

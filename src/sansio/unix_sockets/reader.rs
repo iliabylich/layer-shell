@@ -69,20 +69,20 @@ impl UnixSocketReader {
     ) -> Result<Option<([u8; 1_024], usize)>> {
         match (self.state, satisfy) {
             (State::WaitingForSocket, Satisfy::Socket) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "UnixSocketReader::Socket failed: {res}");
                 self.fd = res;
                 self.state = State::CanConnect;
                 Ok(None)
             }
 
             (State::WaitingForConnect, Satisfy::Connect) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "UnixSocketReader::Connect failed: {res}");
                 self.state = State::CanRead;
                 Ok(None)
             }
 
             (State::WaitingForRead, Satisfy::Read) => {
-                ensure!(res > 0);
+                ensure!(res > 0, "UnixSocketReader::Read failed: {res}");
                 let len = res as usize;
                 let buf = self.buf;
                 self.buf = [0; _];

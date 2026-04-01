@@ -248,20 +248,20 @@ impl TlsOverTcp {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Vec<u8>>> {
         match (&mut self.state, satisfy) {
             (State::CanSocket, Satisfy::Socket) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "TlsOverTcp::Socket failed: {res}");
                 self.fd = res;
                 self.state = State::CanConnect;
                 Ok(None)
             }
 
             (State::CanConnect, Satisfy::Connect) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "TlsOverTcp::Connect failed: {res}");
                 self.process_tls()?;
                 Ok(None)
             }
 
             (State::CanWrite, Satisfy::Write) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "TlsOverTcp::Write failed: {res}");
                 let bytes_written = res as usize;
                 self.done_writing(bytes_written);
                 self.process_tls()?;
@@ -269,7 +269,7 @@ impl TlsOverTcp {
             }
 
             (State::CanRead, Satisfy::Read) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "TlsOverTcp::Read failed: {res}");
                 let bytes_read = res as usize;
                 self.done_reading(bytes_read);
                 self.process_tls()?;
@@ -277,7 +277,7 @@ impl TlsOverTcp {
             }
 
             (State::CanClose, Satisfy::Close) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "TlsOverTcp::Close failed: {res}");
                 self.state = State::Done;
                 Ok(Some(core::mem::take(&mut self.response)))
             }

@@ -49,8 +49,11 @@ impl DBusWriter {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
-        ensure!(satisfy == Satisfy::Write);
-        ensure!(res >= 0);
+        ensure!(
+            satisfy == Satisfy::Write,
+            "DBusWriter got unexpected satisfy: {satisfy:?}"
+        );
+        ensure!(res >= 0, "DBusWriter::Write failed: {res}");
         let Some(message) = self.current.take() else {
             bail!("malformed DBusWriter state: received Write, but there's no current message");
         };

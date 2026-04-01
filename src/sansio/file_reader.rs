@@ -59,14 +59,14 @@ impl FileReader {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
         match (self.state, satisfy) {
             (State::WaitingForOpen, Satisfy::OpenAt) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "FileReader::Open failed: {res}");
                 self.fd = res;
                 self.state = State::CanRead;
                 Ok(None)
             }
 
             (State::WaitingForRead, Satisfy::Read) => {
-                ensure!(res > 0);
+                ensure!(res > 0, "FileReader::Read failed: {res}");
                 let bytes_read = res as usize;
                 let out = &self.buf[..bytes_read];
                 self.state = State::WaitingForTimer;

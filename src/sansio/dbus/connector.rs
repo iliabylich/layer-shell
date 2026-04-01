@@ -132,20 +132,20 @@ impl DBusConnector {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<i32>> {
         match (self.state, satisfy) {
             (State::WaitingForSocket, Satisfy::Socket) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DBusConnector::Socket failed: {res}");
                 self.fd = res;
                 self.state = State::CanConnect;
                 Ok(None)
             }
 
             (State::WaitingForConnect, Satisfy::Connect) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DBusConnector::Connect failed: {res}");
                 self.state = State::CanWriteZero;
                 Ok(None)
             }
 
             (State::WaitingForWriteZero, Satisfy::Write) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DBusConnector::Write failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"\0".len());
                 self.state = State::CanWriteAuthExternal;
@@ -153,7 +153,7 @@ impl DBusConnector {
             }
 
             (State::WaitingForWriteAuthExternal, Satisfy::Write) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DBusConnector::WriteAuthExternal failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"AUTH EXTERNAL\r\n".len());
                 self.state = State::CanReadData;
@@ -161,7 +161,7 @@ impl DBusConnector {
             }
 
             (State::WaitingForReadData, Satisfy::Read) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DBusConnector::ReadData failed: {res}");
                 let bytes_read = res as usize;
                 ensure!(&self.buf[..bytes_read] == b"DATA\r\n");
                 self.state = State::CanWriteData;
@@ -169,7 +169,7 @@ impl DBusConnector {
             }
 
             (State::WaitingForWriteData, Satisfy::Write) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DBusConnector::WriteData failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"DATA\r\n".len());
                 self.state = State::CanReadGUID;
@@ -177,13 +177,13 @@ impl DBusConnector {
             }
 
             (State::WaitingForReadGUID, Satisfy::Read) => {
-                ensure!(res > 0);
+                ensure!(res > 0, "DBusConnector::ReadGUID failed: {res}");
                 self.state = State::CanWriteBegin;
                 Ok(None)
             }
 
             (State::WaitingForWriteBegin, Satisfy::Write) => {
-                ensure!(res >= 0);
+                ensure!(res >= 0, "DBusConnector::WriteBegin failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"BEGIN\r\n".len());
                 self.state = State::Done;
