@@ -95,7 +95,7 @@ fn parse_items(service: ShortString, menu: &str, items: ArrayValue<'_>) -> Resul
             ItemOrSeparator::Item(item) => batch.push(item),
             ItemOrSeparator::Separator => {
                 let section = TrayItem::Section {
-                    children: std::mem::take(&mut batch).into(),
+                    children: core::mem::take(&mut batch).into(),
                 };
                 out.push(section);
             }
@@ -107,7 +107,7 @@ fn parse_items(service: ShortString, menu: &str, items: ArrayValue<'_>) -> Resul
             out = batch;
         } else {
             let section = TrayItem::Section {
-                children: std::mem::take(&mut batch).into(),
+                children: core::mem::take(&mut batch).into(),
             };
             out.push(section);
         }

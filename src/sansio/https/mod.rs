@@ -43,7 +43,7 @@ impl Https {
             State::Dns(dns) => {
                 if let Some(mut addr) = dns.satisfy(satisfy, res)? {
                     addr.sin_port = 443_u16.to_be();
-                    let request = std::mem::take(&mut self.request);
+                    let request = core::mem::take(&mut self.request);
                     let server_name = ServerName::try_from(self.domain)?;
                     self.state =
                         State::TlsOverTcp(Box::new(TlsOverTcp::new(addr, server_name, request)?));

@@ -39,7 +39,7 @@ impl CPU {
         let Some(buf) = self.reader.satisfy(satisfy, res)? else {
             return Ok(());
         };
-        let s = std::str::from_utf8(buf).context("decoding error")?;
+        let s = core::str::from_utf8(buf).context("decoding error")?;
         let data = Parser::parse_all(s).context("parse error")?;
 
         let usage_per_core = self.store.update(data);

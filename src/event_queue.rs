@@ -1,5 +1,6 @@
 use crate::Event;
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use core::cell::RefCell;
+use std::{collections::VecDeque, rc::Rc};
 
 pub(crate) struct EventQueue {
     queue: Rc<RefCell<VecDeque<Event>>>,

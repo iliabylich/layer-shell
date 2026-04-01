@@ -143,7 +143,7 @@ impl App {
                 None
             }
             State::OnlyLayout(layout) => {
-                let layout = std::mem::take(layout);
+                let layout = core::mem::take(layout);
                 self.state = State::All;
                 Some(TrayEvent::Initialized(new_icon, layout))
             }
@@ -158,7 +158,7 @@ impl App {
                 None
             }
             State::OnlyIcon(icon) => {
-                let icon = std::mem::take(icon);
+                let icon = core::mem::take(icon);
                 self.state = State::All;
                 Some(TrayEvent::Initialized(icon, new_layout))
             }

@@ -2,7 +2,8 @@ use crate::modules::hyprland::resources::{
     ActiveWorkspaceResource, CapsLockResource, DevicesResource, DispatchResource,
     WorkspacesResource, WriterResource,
 };
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use core::cell::RefCell;
+use std::{collections::VecDeque, rc::Rc};
 
 pub(crate) struct HyprlandQueue {
     q: Rc<RefCell<VecDeque<Box<dyn WriterResource>>>>,

@@ -67,7 +67,7 @@ impl HyprlandWriter {
             return Ok(());
         };
 
-        let json = std::str::from_utf8(buf).context("decoding error")?;
+        let json = core::str::from_utf8(buf).context("decoding error")?;
         let diff = resource.parse(json).context("parse error")?;
 
         self.current = None;

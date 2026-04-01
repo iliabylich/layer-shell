@@ -13,7 +13,7 @@ use crate::{
 use anyhow::{Context as _, Result, ensure};
 
 pub(crate) trait SubscriptionResource {
-    type Output: std::fmt::Debug;
+    type Output: core::fmt::Debug;
 
     fn set_path(&mut self, path: ShortString);
     fn try_process(&self, path: ShortString, body: Body<'_>) -> Result<Self::Output>;
@@ -81,11 +81,11 @@ where
     }
 }
 
-impl<S> std::fmt::Debug for Subscription<S>
+impl<S> core::fmt::Debug for Subscription<S>
 where
     S: SubscriptionResource,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Subscription")
             .field("path", &self.path)
             .finish()

@@ -86,7 +86,7 @@ impl<'a> Cursor<'a> {
     pub(crate) fn cut_signature(&mut self) -> Result<&'a str> {
         let len = self.cut_u8()? as usize;
         let sig = self.take(len)?;
-        let sig = std::str::from_utf8(sig).context("non-utf8 signature")?;
+        let sig = core::str::from_utf8(sig).context("non-utf8 signature")?;
         self.take(1)?;
         Ok(sig)
     }
@@ -94,7 +94,7 @@ impl<'a> Cursor<'a> {
     pub(crate) fn cut_string(&mut self) -> Result<&'a str> {
         let len = self.cut_u32()? as usize;
         let s = self.take(len).context("malformed string")?;
-        let s = std::str::from_utf8(s).context("non-utf8 string")?;
+        let s = core::str::from_utf8(s).context("non-utf8 string")?;
         self.take(1)?;
         Ok(s)
     }

@@ -36,8 +36,8 @@ pub struct TrayIconPixmap {
     pub bytes: FFIArray<u8>,
 }
 
-impl std::fmt::Debug for TrayIconPixmap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for TrayIconPixmap {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("TrayIconPixmap")
             .field("w", &self.width)
             .field("h", &self.height)

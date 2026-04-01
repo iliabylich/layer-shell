@@ -1,5 +1,6 @@
 use crate::{event::Event, ffi::ShortString};
-use std::{cell::RefCell, collections::HashSet, rc::Rc};
+use core::cell::RefCell;
+use std::{collections::HashSet, rc::Rc};
 
 pub(crate) struct HyprlandState {
     inner: Rc<RefCell<Inner>>,

@@ -61,7 +61,7 @@ impl Dns {
             State::CanConnect { fd, addr } => Wants::Connect {
                 fd: *fd,
                 addr: (addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-                addrlen: std::mem::size_of::<libc::sockaddr_in>() as u32,
+                addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
             },
             State::CanWrite { fd, buf, len, pos } => {
                 let buf = &buf[*pos..*len];

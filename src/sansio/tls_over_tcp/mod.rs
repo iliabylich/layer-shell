@@ -222,7 +222,7 @@ impl TlsOverTcp {
             State::CanConnect => Wants::Connect {
                 fd: self.fd,
                 addr: (&self.addr as *const libc::sockaddr_in).cast(),
-                addrlen: std::mem::size_of::<libc::sockaddr_in>() as u32,
+                addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
             },
             State::CanRead => {
                 let buf = &mut self.incoming_tls[self.incoming_end..];
@@ -279,7 +279,7 @@ impl TlsOverTcp {
             (State::CanClose, Satisfy::Close) => {
                 ensure!(res >= 0);
                 self.state = State::Done;
-                Ok(Some(std::mem::take(&mut self.response)))
+                Ok(Some(core::mem::take(&mut self.response)))
             }
 
             (state, satisfy) => {

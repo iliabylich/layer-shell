@@ -25,8 +25,8 @@ impl DnsName {
     }
 }
 
-impl std::fmt::Debug for DnsName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DNS({:?})", std::str::from_utf8(self.as_bytes()))
+impl core::fmt::Debug for DnsName {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "DNS({:?})", core::str::from_utf8(self.as_bytes()))
     }
 }

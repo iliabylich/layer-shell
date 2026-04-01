@@ -47,13 +47,13 @@ fn config_dir() -> Result<PathBuf> {
 
 #[repr(C)]
 pub struct IOConfig {
-    pub ping: *mut *mut std::ffi::c_char,
+    pub ping: *mut *mut core::ffi::c_char,
     pub terminal: IOTerminal,
 }
 #[repr(C)]
 pub struct IOTerminal {
     pub label: ShortString,
-    pub command: *mut *mut std::ffi::c_char,
+    pub command: *mut *mut core::ffi::c_char,
 }
 
 impl From<&Config> for IOConfig {
@@ -74,7 +74,7 @@ impl From<&Terminal> for IOTerminal {
     }
 }
 
-fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> *mut *mut std::ffi::c_char {
+fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> *mut *mut core::ffi::c_char {
     let mut cmd = cmd
         .iter()
         .map(|s| {
@@ -83,9 +83,9 @@ fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> *mut *mut std::ff
                 .into_raw()
         })
         .collect::<Vec<_>>();
-    cmd.push(std::ptr::null_mut());
+    cmd.push(core::ptr::null_mut());
     let mut cmd = cmd.into_boxed_slice();
     let ptr = cmd.as_mut_ptr();
-    std::mem::forget(cmd);
+    core::mem::forget(cmd);
     ptr
 }

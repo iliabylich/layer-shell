@@ -1,5 +1,6 @@
 use crate::dbus::{MessageEncoder, OutgoingMessage, messages::org_freedesktop_dbus::Hello};
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use core::cell::RefCell;
+use std::{collections::VecDeque, rc::Rc};
 
 pub(crate) struct DBusQueue {
     inner: Rc<RefCell<Inner>>,

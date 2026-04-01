@@ -65,7 +65,7 @@ fn create_timer() -> i32 {
         },
     };
 
-    let res = unsafe { timerfd_settime(fd, 0, &timer_spec, std::ptr::null_mut()) };
+    let res = unsafe { timerfd_settime(fd, 0, &timer_spec, core::ptr::null_mut()) };
     assert_or_exit!(
         res != -1,
         "timerfd_settime returned -1: {}",

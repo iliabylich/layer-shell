@@ -11,7 +11,7 @@ struct Header {
     _serial: u32,
     header_fields_len: u32,
 }
-const HEADER_LEN: usize = std::mem::size_of::<Header>();
+const HEADER_LEN: usize = core::mem::size_of::<Header>();
 
 pub(crate) struct DBusReader {
     fd: i32,

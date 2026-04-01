@@ -36,7 +36,7 @@ impl HyprlandReader {
             return Ok(());
         };
 
-        let s = std::str::from_utf8(&buf[..len]).context("decoding error")?;
+        let s = core::str::from_utf8(&buf[..len]).context("decoding error")?;
         for line in s.lines() {
             let Some(diff) = try_parse(line).context("parse error")? else {
                 continue;

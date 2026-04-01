@@ -1,5 +1,5 @@
 use crate::macros::assert_or_exit;
-use std::cell::Cell;
+use core::cell::Cell;
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -34,7 +34,7 @@ impl From<u8> for ModuleId {
             value <= MAX as u8,
             "received malformed ModuleId from io_uring: {value}"
         );
-        unsafe { std::mem::transmute::<u8, Self>(value) }
+        unsafe { core::mem::transmute::<u8, Self>(value) }
     }
 }
 
@@ -45,7 +45,7 @@ pub(crate) struct UserData {
     pub(crate) op: u8,
     pub(crate) req: u32,
 }
-const _: [u8; 8] = [0; std::mem::size_of::<UserData>()];
+const _: [u8; 8] = [0; core::mem::size_of::<UserData>()];
 
 thread_local! {
     static NEXT_REQUEST_ID: Cell<u32> = const { Cell::new(1) };

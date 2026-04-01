@@ -56,7 +56,7 @@ impl DBusConnector {
                 Wants::Connect {
                     fd: self.fd,
                     addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-                    addrlen: std::mem::size_of::<sockaddr_un>() as u32,
+                    addrlen: core::mem::size_of::<sockaddr_un>() as u32,
                 }
             }
             State::WaitingForConnect => Wants::Nothing,

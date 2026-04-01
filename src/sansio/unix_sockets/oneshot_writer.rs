@@ -3,8 +3,8 @@ use crate::{
     sansio::{Satisfy, Wants},
 };
 use anyhow::{Result, bail, ensure};
+use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
-use std::fmt::Write;
 
 pub(crate) struct UnixSocketOneshotWriter {
     addr: sockaddr_un,
@@ -52,7 +52,7 @@ impl UnixSocketOneshotWriter {
             State::CanConnect => Wants::Connect {
                 fd: self.fd,
                 addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-                addrlen: std::mem::size_of::<sockaddr_un>() as u32,
+                addrlen: core::mem::size_of::<sockaddr_un>() as u32,
             },
             State::CanWrite => {
                 let buf = &self.buf[..self.write_buflen];
@@ -122,13 +122,13 @@ impl<'a> ArrayWriter<'a> {
         ArrayWriter { buf, offset: 0 }
     }
 }
-impl<'a> std::fmt::Write for ArrayWriter<'a> {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+impl<'a> core::fmt::Write for ArrayWriter<'a> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
         let bytes = s.as_bytes();
 
         let remainder = &mut self.buf[self.offset..];
         if remainder.len() < bytes.len() {
-            return Err(std::fmt::Error);
+            return Err(core::fmt::Error);
         }
         let remainder = &mut remainder[..bytes.len()];
         remainder.copy_from_slice(bytes);

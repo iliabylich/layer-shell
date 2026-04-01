@@ -15,7 +15,9 @@ pub(crate) struct Header {
 
 impl Header {
     pub(crate) fn cut(cur: &mut Cursor<'_>) -> Result<Self> {
-        let header = cur.take(std::mem::size_of::<Self>()).context("no Header")?;
+        let header = cur
+            .take(core::mem::size_of::<Self>())
+            .context("no Header")?;
         let header = unsafe { *header.as_ptr().cast::<Self>() };
         Ok(header)
     }

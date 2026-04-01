@@ -82,11 +82,11 @@ where
     }
 }
 
-impl<T> std::fmt::Debug for Oneshot<T>
+impl<T> core::fmt::Debug for Oneshot<T>
 where
     T: OneshotResource,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("OneshotHandler")
             .field("state", &self.state)
             .finish()

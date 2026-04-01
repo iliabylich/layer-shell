@@ -1,5 +1,5 @@
+use core::str::FromStr;
 use log::{Level, LevelFilter, Metadata, Record};
-use std::str::FromStr;
 
 use crate::macros::report_and_exit;
 

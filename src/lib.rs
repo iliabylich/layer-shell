@@ -61,7 +61,7 @@ struct IO {
     logging_enabled: bool,
 }
 
-static mut GLOBAL_IO: *mut IO = std::ptr::null_mut();
+static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
 
 macro_rules! schedule {
     ($module:expr) => {{
@@ -385,7 +385,7 @@ pub extern "C" fn io_deinit() {
     unsafe {
         (*GLOBAL_IO).deinit();
         drop(Box::from_raw(GLOBAL_IO));
-        GLOBAL_IO = std::ptr::null_mut();
+        GLOBAL_IO = core::ptr::null_mut();
     }
 }
 
@@ -435,7 +435,7 @@ pub extern "C" fn io_logout() {
 }
 #[unsafe(no_mangle)]
 #[expect(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "C" fn io_trigger_tray(uuid: *const std::ffi::c_char) {
+pub extern "C" fn io_trigger_tray(uuid: *const core::ffi::c_char) {
     let uuid = unsafe { std::ffi::CStr::from_ptr(uuid) }
         .to_str()
         .unwrap_or_else(|err| report_and_exit!("{:?}", err));

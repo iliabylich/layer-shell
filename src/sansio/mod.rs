@@ -46,7 +46,7 @@ pub(crate) enum Wants {
     },
     OpenAt {
         dfd: i32,
-        path: *const ::std::os::raw::c_char,
+        path: *const core::ffi::c_char,
         flags: i32,
         mode: u32,
     },
@@ -81,6 +81,6 @@ impl From<u8> for Satisfy {
             value <= MAX as u8,
             "received malformed Satisfy from io_uring: {value}"
         );
-        unsafe { std::mem::transmute::<u8, Self>(value) }
+        unsafe { core::mem::transmute::<u8, Self>(value) }
     }
 }

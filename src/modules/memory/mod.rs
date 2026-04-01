@@ -34,7 +34,7 @@ impl Memory {
         let Some(buf) = self.reader.satisfy(satisfy, res)? else {
             return Ok(());
         };
-        let s = std::str::from_utf8(buf).context("decoding error")?;
+        let s = core::str::from_utf8(buf).context("decoding error")?;
         let (used, total) = Parser::parse(s).context("parse error")?;
 
         self.events.push_back(Event::Memory { used, total });
