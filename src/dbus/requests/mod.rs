@@ -1,5 +1,5 @@
 mod oneshot;
-pub(crate) use oneshot::{Oneshot, OneshotResource};
+pub(crate) use oneshot::OneshotMethodCall;
 
 mod subscription;
 pub(crate) use subscription::{Subscription, SubscriptionResource};

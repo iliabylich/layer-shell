@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
+        OneshotMethodCall, Subscription, SubscriptionResource,
         decoder::{Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 
 pub(crate) struct PrimaryDevice {
-    oneshot: Oneshot<Resource>,
+    oneshot: OneshotMethodCall<ShortString, ShortString, ()>,
     subscription: Subscription<Resource>,
 }
 
@@ -32,7 +32,7 @@ impl From<ShortString> for PrimaryDeviceEvent {
 impl PrimaryDevice {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource::default(), DBusConnectionKind::System),
+            oneshot: GET,
             subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
         }
     }
@@ -54,31 +54,23 @@ impl PrimaryDevice {
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<PrimaryDeviceEvent> {
-        None.or_else(|| self.oneshot.try_rev(message).ok().flatten())
+        None.or_else(|| self.oneshot.try_recv(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(PrimaryDeviceEvent::from)
     }
 }
 
-#[derive(Default)]
-struct Resource {
-    path: Option<ShortString>,
-}
-
-impl OneshotResource for Resource {
-    type Input = ShortString;
-    type Output = ShortString;
-
-    fn request(&self, path: ShortString) -> impl Into<OutgoingMessage> {
+const GET: OneshotMethodCall<ShortString, ShortString, ()> = OneshotMethodCall::builder()
+    .send(&|path, _data| {
         GetProperty::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
             ShortString::new_const("org.freedesktop.NetworkManager.Connection.Active"),
             ShortString::new_const("Devices"),
         )
-    }
-
-    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        .into()
+    })
+    .try_process(&|mut body, _data| {
         let devices = body.try_next()?.context("no Devices in Body")?;
         value_is!(devices, Value::Variant(devices));
         let devices = devices.materialize()?;
@@ -88,7 +80,12 @@ impl OneshotResource for Resource {
         value_is!(device, Value::ObjectPath(device));
 
         Ok(ShortString::from(device))
-    }
+    })
+    .kind(DBusConnectionKind::System);
+
+#[derive(Default)]
+struct Resource {
+    path: Option<ShortString>,
 }
 
 impl SubscriptionResource for Resource {

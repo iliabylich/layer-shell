@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
+        OneshotMethodCall, Subscription, SubscriptionResource,
         decoder::{Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
     },
@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context, Result};
 
 pub(crate) struct TxRx {
-    oneshot: Oneshot<Resource>,
+    oneshot: OneshotMethodCall<ShortString, (), ()>,
     subscription: Subscription<Resource>,
 }
 
@@ -23,7 +23,7 @@ pub(crate) struct TxRxEvent {
 impl TxRx {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource::default(), DBusConnectionKind::System),
+            oneshot: CONFIGURE,
             subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
         }
     }
@@ -46,16 +46,8 @@ impl TxRx {
     }
 }
 
-#[derive(Default)]
-struct Resource {
-    path: Option<ShortString>,
-}
-
-impl OneshotResource for Resource {
-    type Input = ShortString;
-    type Output = ();
-
-    fn request(&self, path: ShortString) -> impl Into<OutgoingMessage> {
+const CONFIGURE: OneshotMethodCall<ShortString, (), ()> = OneshotMethodCall::builder()
+    .send(&|path, _data| {
         use crate::dbus::types::Value;
 
         SetProperty::new(
@@ -65,11 +57,14 @@ impl OneshotResource for Resource {
             ShortString::new_const("RefreshRateMs"),
             Value::UInt32(1000),
         )
-    }
+        .into()
+    })
+    .try_process(&|_body, _data| unreachable!())
+    .kind(DBusConnectionKind::System);
 
-    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
-        unreachable!()
-    }
+#[derive(Default)]
+struct Resource {
+    path: Option<ShortString>,
 }
 
 impl SubscriptionResource for Resource {

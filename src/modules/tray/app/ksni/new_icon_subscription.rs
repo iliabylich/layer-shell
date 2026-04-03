@@ -1,32 +1,24 @@
 use crate::{
     dbus::{
-        OneshotResource, OutgoingMessage,
-        decoder::{Body, IncomingMessage, MessageType},
+        OneshotMethodCall,
+        decoder::{IncomingMessage, MessageType},
         messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
     },
     ffi::ShortString,
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context as _, Result, ensure};
 
-pub(crate) struct NewIconSubscription;
+pub(crate) const SUBSCRIBE_TO_NEW_ICON: OneshotMethodCall<ShortString, (), ()> =
+    OneshotMethodCall::builder()
+        .send(&|address, _data| AddMatch::from_rule(new_icon_match_rule(address)).into())
+        .try_process(&|_body, _data| Ok(()))
+        .kind(DBusConnectionKind::Session);
 
 pub(crate) fn new_icon_match_rule(address: ShortString) -> String {
     format!(
         "type='signal',sender='{address}',interface='org.kde.StatusNotifierItem',member='NewIcon',path='/StatusNotifierItem'"
     )
-}
-
-impl OneshotResource for NewIconSubscription {
-    type Input = ShortString;
-    type Output = ();
-
-    fn request(&self, address: Self::Input) -> impl Into<OutgoingMessage> {
-        AddMatch::from_rule(new_icon_match_rule(address))
-    }
-
-    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
-        Ok(())
-    }
 }
 
 pub(crate) fn parse_new_icon_signal(

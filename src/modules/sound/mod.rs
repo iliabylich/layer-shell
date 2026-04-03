@@ -1,7 +1,7 @@
 use crate::{
     Event,
     dbus::{
-        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
+        OneshotMethodCall, Subscription, SubscriptionResource,
         decoder::{ArrayValue, Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
@@ -12,7 +12,7 @@ use crate::{
 use anyhow::{Context as _, Result};
 
 pub(crate) struct Sound {
-    oneshot: Oneshot<Resource>,
+    oneshot: OneshotMethodCall<(), (u32, bool), ()>,
     subscription: Subscription<Resource>,
     healthy: bool,
 }
@@ -20,7 +20,7 @@ pub(crate) struct Sound {
 impl Sound {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource, DBusConnectionKind::Session),
+            oneshot: GET,
             subscription: Subscription::new(Resource, DBusConnectionKind::Session),
             healthy: true,
         }
@@ -31,7 +31,7 @@ impl Sound {
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
-        match self.oneshot.try_rev(message) {
+        match self.oneshot.try_recv(message) {
             Ok(Some((volume, muted))) => {
                 EventQueue::push_back(Event::InitialSound { volume, muted });
                 self.subscription.start(
@@ -64,27 +64,22 @@ impl Sound {
     pub(crate) fn tick(&mut self, tick: u64) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
-            self.oneshot = Oneshot::new(Resource, DBusConnectionKind::Session);
+            self.oneshot.reset();
             self.oneshot.send(());
         }
     }
 }
 
-struct Resource;
-
-impl OneshotResource for Resource {
-    type Input = ();
-    type Output = (u32, bool);
-
-    fn request(&self, _input: Self::Input) -> impl Into<OutgoingMessage> {
+const GET: OneshotMethodCall<(), (u32, bool), ()> = OneshotMethodCall::builder()
+    .send(&|_input, _data| {
         GetAllProperties::new(
             ShortString::new_const("org.local.PipewireDBus"),
             ShortString::new_const("/org/local/PipewireDBus"),
             ShortString::new_const("org.local.PipewireDBus"),
         )
-    }
-
-    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        .into()
+    })
+    .try_process(&|mut body, _data| {
         let attributes = body.try_next()?.context("expected 1 value")?;
         value_is!(attributes, Value::Array(attributes));
 
@@ -93,8 +88,10 @@ impl OneshotResource for Resource {
         let muted = muted.context("no Muted")?;
 
         Ok((volume, muted))
-    }
-}
+    })
+    .kind(DBusConnectionKind::Session);
+
+struct Resource;
 
 impl SubscriptionResource for Resource {
     type Output = (Option<u32>, Option<bool>);

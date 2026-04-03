@@ -1,35 +1,32 @@
 use crate::{
     dbus::{
-        OneshotResource, OutgoingMessage,
-        decoder::{Body, IncomingMessage, MessageType},
+        OneshotMethodCall,
+        decoder::{IncomingMessage, MessageType},
         messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
     },
     ffi::ShortString,
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context as _, Result, ensure};
-pub(crate) use get_layout::GetLayout;
+pub(crate) use get_layout::GET_LAYOUT;
 
 mod get_layout;
 
-pub(crate) struct LayoutUpdatedSubscription;
+pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: OneshotMethodCall<
+    (ShortString, ShortString),
+    (),
+    (),
+> = OneshotMethodCall::builder()
+    .send(&|(address, path), _data| {
+        AddMatch::from_rule(layout_updated_match_rule(address, path)).into()
+    })
+    .try_process(&|_, _data| Ok(()))
+    .kind(DBusConnectionKind::Session);
 
 pub(crate) fn layout_updated_match_rule(address: ShortString, path: ShortString) -> String {
     format!(
         "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='LayoutUpdated',path='{path}'"
     )
-}
-
-impl OneshotResource for LayoutUpdatedSubscription {
-    type Input = (ShortString, ShortString);
-    type Output = ();
-
-    fn request(&self, (address, path): (ShortString, ShortString)) -> impl Into<OutgoingMessage> {
-        AddMatch::from_rule(layout_updated_match_rule(address, path))
-    }
-
-    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
-        Ok(())
-    }
 }
 
 pub(crate) fn parse_layout_updated_signal(
@@ -52,7 +49,16 @@ pub(crate) fn parse_layout_updated_signal(
     Ok(())
 }
 
-pub(crate) struct ItemsPropertiesUpdatedSubscription;
+pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: OneshotMethodCall<
+    (ShortString, ShortString),
+    (),
+    (),
+> = OneshotMethodCall::builder()
+    .send(&|(address, path), _data| {
+        AddMatch::from_rule(items_properties_updated_match_rule(address, path)).into()
+    })
+    .try_process(&|_body, _data| Ok(()))
+    .kind(DBusConnectionKind::Session);
 
 pub(crate) fn items_properties_updated_match_rule(
     address: ShortString,
@@ -61,19 +67,6 @@ pub(crate) fn items_properties_updated_match_rule(
     format!(
         "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='ItemsPropertiesUpdated',path='{path}'"
     )
-}
-
-impl OneshotResource for ItemsPropertiesUpdatedSubscription {
-    type Input = (ShortString, ShortString);
-    type Output = ();
-
-    fn request(&self, (address, path): (ShortString, ShortString)) -> impl Into<OutgoingMessage> {
-        AddMatch::from_rule(items_properties_updated_match_rule(address, path))
-    }
-
-    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
-        Ok(())
-    }
 }
 
 pub(crate) fn parse_items_properties_updated_signal(

@@ -7,14 +7,6 @@ use crate::{
 };
 use anyhow::{Result, bail};
 
-pub(crate) trait OneshotResource {
-    type Input;
-    type Output;
-
-    fn request(&self, input: Self::Input) -> impl Into<OutgoingMessage>;
-    fn try_recv(&self, body: Body<'_>) -> Result<Self::Output>;
-}
-
 #[derive(Debug, Clone, Copy)]
 enum OneshotState {
     None,
@@ -22,38 +14,58 @@ enum OneshotState {
     ReplyReceived,
 }
 
-pub(crate) struct Oneshot<T>
+pub(crate) struct OneshotMethodCall<In, Out, Data>
 where
-    T: OneshotResource,
+    In: 'static,
+    Out: 'static,
+    Data: Copy + Default + 'static,
 {
-    resource: T,
-    state: OneshotState,
+    send: &'static dyn Fn(In, Data) -> OutgoingMessage,
+    try_process: &'static dyn Fn(Body<'_>, Data) -> Result<Out>,
     kind: DBusConnectionKind,
+    state: OneshotState,
+    data: Option<Data>,
 }
 
-impl<T> Oneshot<T>
+impl<In, Out, Data> OneshotMethodCall<In, Out, Data>
 where
-    T: OneshotResource,
+    Data: Copy + Default,
 {
-    pub(crate) fn new(resource: T, kind: DBusConnectionKind) -> Self {
+    pub(crate) const fn new_without_data(
+        send: &'static dyn Fn(In, Data) -> OutgoingMessage,
+        try_process: &'static dyn Fn(Body<'_>, Data) -> Result<Out>,
+        kind: DBusConnectionKind,
+    ) -> Self {
         Self {
-            state: OneshotState::None,
-            resource,
+            send,
+            try_process,
             kind,
+            state: OneshotState::None,
+            data: None,
         }
     }
 
-    pub(crate) fn send(&mut self, input: T::Input) {
+    pub(crate) fn with_data(self, data: Data) -> Self {
+        Self {
+            send: self.send,
+            try_process: self.try_process,
+            kind: self.kind,
+            state: self.state,
+            data: Some(data),
+        }
+    }
+
+    pub(crate) fn send(&mut self, input: In) {
         if !matches!(self.state, OneshotState::None) {
             return;
         };
 
-        let message = self.resource.request(input).into();
+        let message: OutgoingMessage = (self.send)(input, self.data.unwrap_or_default());
         let reply_serial = DBusQueue::push_back(self.kind, message);
         self.state = OneshotState::WaitingForReply(reply_serial);
     }
 
-    pub(crate) fn try_rev(&mut self, message: IncomingMessage<'_>) -> Result<Option<T::Output>> {
+    pub(crate) fn try_recv(&mut self, message: IncomingMessage<'_>) -> Result<Option<Out>> {
         let OneshotState::WaitingForReply(reply_serial) = self.state else {
             return Ok(None);
         };
@@ -68,7 +80,7 @@ where
             }
             MessageType::MethodReturn => {
                 if let Some(body) = message.body {
-                    Ok(self.resource.try_recv(body).ok())
+                    Ok((self.try_process)(body, self.data.unwrap_or_default()).ok())
                 } else {
                     Ok(None)
                 }
@@ -78,17 +90,88 @@ where
     }
 
     pub(crate) fn reset(&mut self) {
-        self.state = OneshotState::None;
+        self.state = OneshotState::None
+    }
+
+    pub(crate) const fn builder() -> OneshotMethodCallBuilder<In, Out, Data, NeedsSend> {
+        OneshotMethodCallBuilder::<In, Out, Data, NeedsSend>::new()
     }
 }
 
-impl<T> core::fmt::Debug for Oneshot<T>
+impl<In, Out, Data> std::fmt::Debug for OneshotMethodCall<In, Out, Data>
 where
-    T: OneshotResource,
+    Data: Copy + Default,
 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("OneshotHandler")
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OneshotMethodCall")
             .field("state", &self.state)
             .finish()
+    }
+}
+
+pub(crate) trait State {}
+pub(crate) struct NeedsSend;
+impl State for NeedsSend {}
+pub(crate) struct NeedsTryProcess;
+impl State for NeedsTryProcess {}
+pub(crate) struct NeedsConnectionKind;
+impl State for NeedsConnectionKind {}
+
+pub(crate) struct OneshotMethodCallBuilder<In, Out, Data, S>
+where
+    In: 'static,
+    Out: 'static,
+    Data: Default + Copy + 'static,
+    S: State,
+{
+    send: &'static dyn Fn(In, Data) -> OutgoingMessage,
+    try_process: &'static dyn Fn(Body<'_>, Data) -> Result<Out>,
+    _state: S,
+}
+
+impl<In, Out, Data> OneshotMethodCallBuilder<In, Out, Data, NeedsSend>
+where
+    Data: Default + Copy,
+{
+    const fn new() -> Self {
+        Self {
+            send: &|_: In, _: Data| todo!(),
+            try_process: &|_: Body<'_>, _: Data| todo!(),
+            _state: NeedsSend,
+        }
+    }
+
+    pub(crate) const fn send(
+        self,
+        send: &'static dyn Fn(In, Data) -> OutgoingMessage,
+    ) -> OneshotMethodCallBuilder<In, Out, Data, NeedsTryProcess> {
+        OneshotMethodCallBuilder {
+            send,
+            try_process: &|_: Body<'_>, _: Data| todo!(),
+            _state: NeedsTryProcess,
+        }
+    }
+}
+impl<In, Out, Data> OneshotMethodCallBuilder<In, Out, Data, NeedsTryProcess>
+where
+    Data: Default + Copy,
+{
+    pub(crate) const fn try_process(
+        self,
+        try_process: &'static dyn Fn(Body<'_>, Data) -> Result<Out>,
+    ) -> OneshotMethodCallBuilder<In, Out, Data, NeedsConnectionKind> {
+        OneshotMethodCallBuilder {
+            send: self.send,
+            try_process,
+            _state: NeedsConnectionKind,
+        }
+    }
+}
+impl<In, Out, Data> OneshotMethodCallBuilder<In, Out, Data, NeedsConnectionKind>
+where
+    Data: Default + Copy,
+{
+    pub(crate) const fn kind(self, kind: DBusConnectionKind) -> OneshotMethodCall<In, Out, Data> {
+        OneshotMethodCall::new_without_data(self.send, self.try_process, kind)
     }
 }

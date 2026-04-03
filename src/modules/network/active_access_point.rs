@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
+        OneshotMethodCall, Subscription, SubscriptionResource,
         decoder::{Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context as _, Result, bail};
 
 pub(crate) struct ActiveAccessPoint {
-    oneshot: Oneshot<Resource>,
+    oneshot: OneshotMethodCall<ShortString, ShortString, ()>,
     subscription: Subscription<Resource>,
 }
 
@@ -32,7 +32,7 @@ impl From<ShortString> for ActiveAccessPointEvent {
 impl ActiveAccessPoint {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource::default(), DBusConnectionKind::System),
+            oneshot: GET,
             subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
         }
     }
@@ -54,38 +54,35 @@ impl ActiveAccessPoint {
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<ActiveAccessPointEvent> {
-        None.or_else(|| self.oneshot.try_rev(message).ok().flatten())
+        None.or_else(|| self.oneshot.try_recv(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(ActiveAccessPointEvent::from)
     }
 }
 
-#[derive(Default)]
-struct Resource {
-    path: Option<ShortString>,
-}
-
-impl OneshotResource for Resource {
-    type Input = ShortString;
-    type Output = ShortString;
-
-    fn request(&self, path: ShortString) -> impl Into<OutgoingMessage> {
+const GET: OneshotMethodCall<ShortString, ShortString, ()> = OneshotMethodCall::builder()
+    .send(&|path, _| {
         GetProperty::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
             ShortString::new_const("org.freedesktop.NetworkManager.Device.Wireless"),
             ShortString::new_const("ActiveAccessPoint"),
         )
-    }
-
-    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        .into()
+    })
+    .try_process(&|mut body, _| {
         let active_access_point = body.try_next()?.context("no ActiveAccessPoint in Body")?;
         value_is!(active_access_point, Value::Variant(active_access_point));
         let active_access_point = active_access_point.materialize()?;
         value_is!(active_access_point, Value::ObjectPath(active_access_point));
 
         Ok(ShortString::from(active_access_point))
-    }
+    })
+    .kind(DBusConnectionKind::System);
+
+#[derive(Default)]
+struct Resource {
+    path: Option<ShortString>,
 }
 
 impl SubscriptionResource for Resource {

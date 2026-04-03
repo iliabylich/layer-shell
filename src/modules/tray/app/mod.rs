@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Oneshot, OutgoingMessage, Subscription, decoder::IncomingMessage,
+        OneshotMethodCall, OutgoingMessage, Subscription, decoder::IncomingMessage,
         messages::org_freedesktop_dbus::RemoveMatch, types::Value,
     },
     ffi::ShortString,
@@ -9,12 +9,12 @@ use crate::{
     utils::report_and_exit,
 };
 use dbusmenu::{
-    GetLayout, ItemsPropertiesUpdatedSubscription, LayoutUpdatedSubscription,
+    GET_LAYOUT, SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED, SUBSCRIBE_TO_LAYOUT_UPDATED,
     items_properties_updated_match_rule, layout_updated_match_rule,
     parse_items_properties_updated_signal, parse_layout_updated_signal,
 };
 use ksni::{
-    AllProps, AllPropsSubscription, AllPropsUpdate, GetAllPropsOneshot, NewIconSubscription,
+    AllPropsSubscription, AllPropsUpdate, GET_MENU_AND_ICON, SUBSCRIBE_TO_NEW_ICON,
     new_icon_match_rule, parse_new_icon_signal,
 };
 
@@ -24,14 +24,14 @@ mod ksni;
 pub(crate) struct App {
     service: Service,
 
-    all_props_request: Oneshot<GetAllPropsOneshot>,
-    new_icon_subscription: Oneshot<NewIconSubscription>,
+    get_menu_and_icon: OneshotMethodCall<ShortString, (ShortString, TrayIcon), ()>,
+    subscribe_to_new_icon: OneshotMethodCall<ShortString, (), ()>,
     all_props_subscription: Subscription<AllPropsSubscription>,
-    layout_updated_subscription: Oneshot<LayoutUpdatedSubscription>,
-    items_properties_updated_subscription: Oneshot<ItemsPropertiesUpdatedSubscription>,
+    subscribe_to_layout_updated: OneshotMethodCall<(ShortString, ShortString), (), ()>,
+    subscribe_to_items_properties_updated: OneshotMethodCall<(ShortString, ShortString), (), ()>,
 
     menu: ShortString,
-    get_layout: Oneshot<GetLayout>,
+    get_layout: OneshotMethodCall<(ShortString, ShortString), Vec<TrayItem>, ShortString>,
 
     state: State,
 }
@@ -54,38 +54,30 @@ impl App {
     pub(crate) fn new(service: Service) -> Self {
         Self {
             service,
-            all_props_request: Oneshot::new(GetAllPropsOneshot, DBusConnectionKind::Session),
-            new_icon_subscription: Oneshot::new(NewIconSubscription, DBusConnectionKind::Session),
+            get_menu_and_icon: GET_MENU_AND_ICON,
+            subscribe_to_new_icon: SUBSCRIBE_TO_NEW_ICON,
             all_props_subscription: Subscription::new(
                 AllPropsSubscription,
                 DBusConnectionKind::Session,
             ),
-            layout_updated_subscription: Oneshot::new(
-                LayoutUpdatedSubscription,
-                DBusConnectionKind::Session,
-            ),
-            items_properties_updated_subscription: Oneshot::new(
-                ItemsPropertiesUpdatedSubscription,
-                DBusConnectionKind::Session,
-            ),
+            subscribe_to_layout_updated: SUBSCRIBE_TO_LAYOUT_UPDATED,
+            subscribe_to_items_properties_updated: SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED,
 
             menu: ShortString::new_const(""),
-            get_layout: Oneshot::new(GetLayout::new(service.name()), DBusConnectionKind::Session),
+            get_layout: GET_LAYOUT.with_data(service.name()),
 
             state: State::Nothing,
         }
     }
 
     fn schedule_request_props(&mut self) {
-        self.all_props_request.reset();
-        self.all_props_request = Oneshot::new(GetAllPropsOneshot, DBusConnectionKind::Session);
-        self.all_props_request.send(self.service.name());
+        self.get_menu_and_icon.reset();
+        self.get_menu_and_icon.send(self.service.name());
     }
 
     pub(crate) fn init(&mut self) {
-        self.new_icon_subscription = Oneshot::new(NewIconSubscription, DBusConnectionKind::Session);
-        self.new_icon_subscription.send(self.service.name());
-        self.all_props_request.send(self.service.name());
+        self.subscribe_to_new_icon.send(self.service.name());
+        self.get_menu_and_icon.send(self.service.name());
         self.all_props_subscription.start(
             ShortString::new_const("org.freedesktop.DBus"),
             ShortString::new_const("/StatusNotifierItem"),
@@ -94,8 +86,8 @@ impl App {
 
     pub(crate) fn reset(&mut self) {
         self.unsubscribe_matches();
-        self.new_icon_subscription.reset();
-        self.all_props_request.reset();
+        self.subscribe_to_new_icon.reset();
+        self.get_menu_and_icon.reset();
         self.all_props_subscription.reset();
         self.get_layout.reset();
     }
@@ -118,12 +110,8 @@ impl App {
     }
 
     fn schedule_get_layout(&mut self) {
-        let mut get_layout = Oneshot::new(
-            GetLayout::new(self.service.name()),
-            DBusConnectionKind::Session,
-        );
-        get_layout.send((self.service.name(), self.menu));
-        self.get_layout = get_layout;
+        self.get_layout.reset();
+        self.get_layout.send((self.service.name(), self.menu));
     }
 
     fn on_menu_received(&mut self, menu: ShortString) {
@@ -133,9 +121,9 @@ impl App {
 
         self.menu = menu;
         self.schedule_get_layout();
-        self.layout_updated_subscription
+        self.subscribe_to_layout_updated
             .send((self.service.name(), self.menu));
-        self.items_properties_updated_subscription
+        self.subscribe_to_items_properties_updated
             .send((self.service.name(), self.menu));
     }
 
@@ -178,16 +166,14 @@ impl App {
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<TrayEvent> {
-        if let Some(AllProps { menu, icon }) =
-            self.all_props_request.try_rev(message).ok().flatten()
-        {
+        if let Some((menu, icon)) = self.get_menu_and_icon.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Received requested props for {:?}", self.service);
 
             self.on_menu_received(menu);
             return self.on_icon_received(icon);
         }
 
-        if let Some(()) = self.new_icon_subscription.try_rev(message).ok().flatten() {
+        if let Some(()) = self.subscribe_to_new_icon.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Subscribed to NewIcon");
             return None;
         }
@@ -199,14 +185,14 @@ impl App {
             }
         }
 
-        if let Some(layout) = self.get_layout.try_rev(message).ok().flatten() {
+        if let Some(layout) = self.get_layout.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Got layout");
             return self.on_layout_receieved(layout);
         }
 
         if self
-            .layout_updated_subscription
-            .try_rev(message)
+            .subscribe_to_layout_updated
+            .try_recv(message)
             .ok()
             .flatten()
             .is_some()
@@ -216,8 +202,8 @@ impl App {
         }
 
         if self
-            .items_properties_updated_subscription
-            .try_rev(message)
+            .subscribe_to_items_properties_updated
+            .try_recv(message)
             .ok()
             .flatten()
             .is_some()

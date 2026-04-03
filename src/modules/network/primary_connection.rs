@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
+        OneshotMethodCall, Subscription, SubscriptionResource,
         decoder::{Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 
 pub(crate) struct PrimaryConnection {
-    oneshot: Oneshot<Resource>,
+    oneshot: OneshotMethodCall<(), ShortString, ()>,
     subscription: Subscription<Resource>,
 }
 
@@ -32,7 +32,7 @@ impl From<ShortString> for PrimaryConnectionEvent {
 impl PrimaryConnection {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource, DBusConnectionKind::System),
+            oneshot: GET,
             subscription: Subscription::new(Resource, DBusConnectionKind::System),
         }
     }
@@ -49,34 +49,32 @@ impl PrimaryConnection {
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<PrimaryConnectionEvent> {
-        None.or_else(|| self.oneshot.try_rev(message).ok().flatten())
+        None.or_else(|| self.oneshot.try_recv(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(PrimaryConnectionEvent::from)
     }
 }
 
-struct Resource;
-impl OneshotResource for Resource {
-    type Input = ();
-    type Output = ShortString;
-
-    fn request(&self, _input: Self::Input) -> impl Into<OutgoingMessage> {
+const GET: OneshotMethodCall<(), ShortString, ()> = OneshotMethodCall::builder()
+    .send(&|_input, _data| {
         GetProperty::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             ShortString::new_const("/org/freedesktop/NetworkManager"),
             ShortString::new_const("org.freedesktop.NetworkManager"),
             ShortString::new_const("PrimaryConnection"),
         )
-    }
-
-    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        .into()
+    })
+    .try_process(&|mut body, _data| {
         let path = body.try_next()?.context("empty Body")?;
         value_is!(path, Value::Variant(path));
         let path = path.materialize()?;
         value_is!(path, Value::ObjectPath(path));
         Ok(ShortString::from(path))
-    }
-}
+    })
+    .kind(DBusConnectionKind::System);
+
+struct Resource;
 
 impl SubscriptionResource for Resource {
     type Output = ShortString;

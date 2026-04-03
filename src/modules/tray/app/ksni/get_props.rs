@@ -1,43 +1,32 @@
 use super::{AllPropsUpdate, parse};
 use crate::{
     dbus::{
-        OneshotResource, OutgoingMessage,
-        decoder::{Body, Value},
+        OneshotMethodCall,
+        decoder::Value,
         messages::{org_freedesktop_dbus::GetAllProperties, value_is},
     },
     ffi::ShortString,
     modules::TrayIcon,
+    sansio::DBusConnectionKind,
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, bail};
 
-pub(crate) struct GetAllPropsOneshot;
-
-#[derive(Debug)]
-pub(crate) struct AllProps {
-    pub(crate) menu: ShortString,
-    pub(crate) icon: TrayIcon,
-}
-
-impl OneshotResource for GetAllPropsOneshot {
-    type Input = ShortString;
-    type Output = AllProps;
-
-    fn request(&self, destination: ShortString) -> impl Into<OutgoingMessage> {
+pub(crate) const GET_MENU_AND_ICON: OneshotMethodCall<ShortString, (ShortString, TrayIcon), ()> = OneshotMethodCall::builder()
+    .send(&|destination, _data| {
         GetAllProperties::new(
             destination,
             ShortString::new_const("/StatusNotifierItem"),
             ShortString::new_const("org.kde.StatusNotifierItem"),
-        )
-    }
-
-    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        ).into()
+    })
+    .try_process(&|mut body, _data| {
         let array = body.try_next()?.context("no array")?;
         value_is!(array, Value::Array(array));
         match parse(array)? {
             AllPropsUpdate {
                 menu: Some(menu),
                 icon: Some(icon),
-            } => Ok(AllProps { menu, icon }),
+            } => Ok((menu, icon)),
 
             other => {
                 log::error!(
@@ -46,5 +35,4 @@ impl OneshotResource for GetAllPropsOneshot {
                 bail!("DBus internal error")
             }
         }
-    }
-}
+    }).kind(DBusConnectionKind::Session);

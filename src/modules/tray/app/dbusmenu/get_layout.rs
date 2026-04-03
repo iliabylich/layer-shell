@@ -1,36 +1,21 @@
 use crate::{
     dbus::{
-        OneshotResource, OutgoingMessage,
-        decoder::{ArrayValue, Body, Value},
+        OneshotMethodCall, OutgoingMessage,
+        decoder::{ArrayValue, Value},
         messages::value_is,
     },
     ffi::ShortString,
     modules::{TrayItem, tray::uuid::UUID},
+    sansio::DBusConnectionKind,
 };
 use anyhow::{Context, Result};
 
-pub(crate) struct GetLayout {
-    service: ShortString,
-    menu: String,
-}
-
-impl GetLayout {
-    pub(crate) fn new(service: ShortString) -> Self {
-        Self {
-            service,
-            menu: String::new(),
-        }
-    }
-}
-
-impl OneshotResource for GetLayout {
-    type Input = (ShortString, ShortString);
-    type Output = Vec<TrayItem>;
-
-    fn request(
-        &self,
-        (destination, path): (ShortString, ShortString),
-    ) -> impl Into<OutgoingMessage> {
+pub(crate) const GET_LAYOUT: OneshotMethodCall<
+    (ShortString, ShortString),
+    Vec<TrayItem>,
+    ShortString,
+> = OneshotMethodCall::builder()
+    .send(&|(destination, path), _service| {
         use crate::dbus::types::{CompleteType, Value};
 
         let body = vec![
@@ -63,9 +48,8 @@ impl OneshotResource for GetLayout {
             unix_fds: None,
             body,
         }
-    }
-
-    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+    })
+    .try_process(&|mut body, service| {
         let _ = body.try_next()?.context("no root item id")?;
         let root = body.try_next()?.context("no root")?;
         value_is!(root, Value::Struct(root));
@@ -77,11 +61,79 @@ impl OneshotResource for GetLayout {
 
         value_is!(top_level_items, Value::Array(top_level_items));
 
-        parse_items(self.service, &self.menu, top_level_items)
-    }
-}
+        parse_items(service, top_level_items)
+    })
+    .kind(DBusConnectionKind::Session);
 
-fn parse_items(service: ShortString, menu: &str, items: ArrayValue<'_>) -> Result<Vec<TrayItem>> {
+// pub(crate) struct GetLayout {
+//     service: ShortString,
+// }
+
+// impl GetLayout {
+//     pub(crate) fn new(service: ShortString) -> Self {
+//         Self { service }
+//     }
+// }
+
+// impl OneshotResource for GetLayout {
+//     type Input = (ShortString, ShortString);
+//     type Output = Vec<TrayItem>;
+
+//     fn request(
+//         &self,
+//         (destination, path): (ShortString, ShortString),
+//     ) -> impl Into<OutgoingMessage> {
+//         use crate::dbus::types::{CompleteType, Value};
+
+//         let body = vec![
+//             Value::Int32(0),
+//             Value::Int32(1),
+//             Value::Array(
+//                 CompleteType::String,
+//                 vec![
+//                     Value::ShortString(ShortString::new_const("type")),
+//                     Value::ShortString(ShortString::new_const("label")),
+//                     Value::ShortString(ShortString::new_const("enabled")),
+//                     Value::ShortString(ShortString::new_const("visible")),
+//                     Value::ShortString(ShortString::new_const("icon-name")),
+//                     Value::ShortString(ShortString::new_const("icon-data")),
+//                     Value::ShortString(ShortString::new_const("shortcut")),
+//                     Value::ShortString(ShortString::new_const("toggle-type")),
+//                     Value::ShortString(ShortString::new_const("toggle-state")),
+//                     Value::ShortString(ShortString::new_const("children-display")),
+//                 ],
+//             ),
+//         ];
+
+//         OutgoingMessage::MethodCall {
+//             destination: Some(destination),
+//             path,
+//             interface: Some(ShortString::new_const("com.canonical.dbusmenu")),
+//             serial: 0,
+//             member: ShortString::new_const("GetLayout"),
+//             sender: None,
+//             unix_fds: None,
+//             body,
+//         }
+//     }
+
+//     fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+//         let _ = body.try_next()?.context("no root item id")?;
+//         let root = body.try_next()?.context("no root")?;
+//         value_is!(root, Value::Struct(root));
+
+//         let mut iter = root.iter()?;
+//         let _ = iter.try_next()?.context("expected 3 items")?;
+//         let _ = iter.try_next()?.context("expected 3 items")?;
+//         let top_level_items = iter.try_next()?.context("expected 3 items")?;
+
+//         value_is!(top_level_items, Value::Array(top_level_items));
+
+//         parse_items(self.service, top_level_items)
+//     }
+// }
+
+fn parse_items(service: ShortString, items: ArrayValue<'_>) -> Result<Vec<TrayItem>> {
     let mut out = vec![];
     let mut batch = vec![];
     let mut iter = items.iter();
@@ -89,7 +141,7 @@ fn parse_items(service: ShortString, menu: &str, items: ArrayValue<'_>) -> Resul
     while let Some(item) = iter.try_next()? {
         value_is!(item, Value::Variant(item));
         let item = item.materialize()?;
-        let item = parse_item(service, menu, item)?;
+        let item = parse_item(service, item)?;
         match item {
             ItemOrSeparator::Skip => continue,
             ItemOrSeparator::Item(item) => batch.push(item),
@@ -116,7 +168,7 @@ fn parse_items(service: ShortString, menu: &str, items: ArrayValue<'_>) -> Resul
     Ok(out)
 }
 
-fn parse_item(service: ShortString, menu: &str, item: Value<'_>) -> Result<ItemOrSeparator> {
+fn parse_item(service: ShortString, item: Value<'_>) -> Result<ItemOrSeparator> {
     value_is!(item, Value::Struct(fields));
 
     let mut fields_iter = fields.iter()?;
@@ -184,7 +236,7 @@ fn parse_item(service: ShortString, menu: &str, item: Value<'_>) -> Result<ItemO
 
     let children_values = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(children_values, Value::Array(children_values));
-    let children = parse_items(service, menu, children_values)?;
+    let children = parse_items(service, children_values)?;
 
     if label.len() > 100 {
         label = &label[..100];

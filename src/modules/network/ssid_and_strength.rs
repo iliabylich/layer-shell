@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        Oneshot, OneshotResource, OutgoingMessage, Subscription, SubscriptionResource,
+        OneshotMethodCall, Subscription, SubscriptionResource,
         decoder::{Body, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context as _, Result};
 
 pub(crate) struct SsidAndStrength {
-    oneshot: Oneshot<Resource>,
+    oneshot: OneshotMethodCall<ShortString, SsidAndStrengthEvent, ()>,
     subscription: Subscription<Resource>,
 }
 
@@ -23,7 +23,7 @@ pub(crate) struct SsidAndStrengthEvent {
 impl SsidAndStrength {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: Oneshot::new(Resource::default(), DBusConnectionKind::System),
+            oneshot: GET,
             subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
         }
     }
@@ -45,40 +45,21 @@ impl SsidAndStrength {
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<SsidAndStrengthEvent> {
-        None.or_else(|| self.oneshot.try_rev(message).ok().flatten())
+        None.or_else(|| self.oneshot.try_recv(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
     }
 }
 
-fn parse_ssid(ssid: Value<'_>) -> Result<ShortString> {
-    value_is!(ssid, Value::Array(ssid));
-    let mut iter = ssid.iter();
-    let mut bytes = vec![];
-    while let Some(byte) = iter.try_next()? {
-        value_is!(byte, Value::Byte(byte));
-        bytes.push(byte);
-    }
-    let ssid = String::from_utf8_lossy(&bytes).to_string();
-    Ok(ShortString::from(ssid.as_str()))
-}
-
-#[derive(Default)]
-struct Resource {
-    path: Option<ShortString>,
-}
-impl OneshotResource for Resource {
-    type Input = ShortString;
-    type Output = SsidAndStrengthEvent;
-
-    fn request(&self, path: ShortString) -> impl Into<OutgoingMessage> {
+const GET: OneshotMethodCall<ShortString, SsidAndStrengthEvent, ()> = OneshotMethodCall::builder()
+    .send(&|path, _data| {
         GetAllProperties::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
             ShortString::new_const("org.freedesktop.NetworkManager.AccessPoint"),
         )
-    }
-
-    fn try_recv(&self, mut body: Body<'_>) -> Result<Self::Output> {
+        .into()
+    })
+    .try_process(&|mut body, _data| {
         let properties = body.try_next()?.context("no Properties in Body")?;
         value_is!(properties, Value::Array(properties));
         let mut iter = properties.iter();
@@ -112,7 +93,24 @@ impl OneshotResource for Resource {
             ssid: Some(ssid),
             strength: Some(strength),
         })
+    })
+    .kind(DBusConnectionKind::System);
+
+fn parse_ssid(ssid: Value<'_>) -> Result<ShortString> {
+    value_is!(ssid, Value::Array(ssid));
+    let mut iter = ssid.iter();
+    let mut bytes = vec![];
+    while let Some(byte) = iter.try_next()? {
+        value_is!(byte, Value::Byte(byte));
+        bytes.push(byte);
     }
+    let ssid = String::from_utf8_lossy(&bytes).to_string();
+    Ok(ShortString::from(ssid.as_str()))
+}
+
+#[derive(Default)]
+struct Resource {
+    path: Option<ShortString>,
 }
 
 impl SubscriptionResource for Resource {

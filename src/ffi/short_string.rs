@@ -26,6 +26,12 @@ impl From<&str> for ShortString {
     }
 }
 
+impl Default for ShortString {
+    fn default() -> Self {
+        Self::from("")
+    }
+}
+
 impl ShortString {
     pub(crate) const fn new_const(s: &str) -> Self {
         assert!(s.len() < MAX_LEN, "too long for ShortString");

@@ -1,7 +1,7 @@
 use crate::{
     dbus::{
-        Oneshot, OneshotResource, OutgoingMessage,
-        decoder::{Body, IncomingMessage, MessageType, Value},
+        OneshotMethodCall, OutgoingMessage,
+        decoder::{IncomingMessage, MessageType, Value},
         messages::{interface_is, member_is, path_is, value_is},
     },
     ffi::ShortString,
@@ -10,13 +10,13 @@ use crate::{
 use anyhow::{Context, Result, bail, ensure};
 
 pub(crate) struct NameLostOrNameOwnerChanged {
-    name_changed: Oneshot<NameOwnerChangedResource>,
+    name_changed: OneshotMethodCall<(), (), ()>,
 }
 
 impl NameLostOrNameOwnerChanged {
     pub(crate) fn new() -> Self {
         Self {
-            name_changed: Oneshot::new(NameOwnerChangedResource, DBusConnectionKind::Session),
+            name_changed: SUBSCRIBE,
         }
     }
 
@@ -30,14 +30,8 @@ impl NameLostOrNameOwnerChanged {
     }
 }
 
-struct NameOwnerChangedResource;
-
-impl OneshotResource for NameOwnerChangedResource {
-    type Input = ();
-
-    type Output = ();
-
-    fn request(&self, _: Self::Input) -> impl Into<OutgoingMessage> {
+const SUBSCRIBE: OneshotMethodCall<(), (), ()> = OneshotMethodCall::builder()
+    .send(&|_input, _data| {
         use crate::dbus::types::Value;
         OutgoingMessage::MethodCall {
             serial: 0,
@@ -51,12 +45,8 @@ impl OneshotResource for NameOwnerChangedResource {
                 "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',path='/org/freedesktop/DBus'".to_string(),
             )],
         }
-    }
-
-    fn try_recv(&self, _body: Body<'_>) -> Result<Self::Output> {
-        unreachable!()
-    }
-}
+    }).try_process(&|_body, _data| unreachable!())
+    .kind(DBusConnectionKind::Session);
 
 fn parse_name_owner_changed<'a>(message: IncomingMessage<'a>) -> Result<&'a str> {
     ensure!(message.message_type == MessageType::Signal);
