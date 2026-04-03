@@ -1,41 +1,54 @@
 use crate::{
     dbus::{
-        SubscriptionResource,
-        decoder::{ArrayValue, Body, Value},
-        messages::{interface_is, path_is, value_is},
+        MethodCall, Subscription,
+        decoder::{ArrayValue, Value},
+        messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
     ffi::ShortString,
     modules::{TrayIcon, TrayIconPixmap},
+    sansio::DBusConnectionKind,
 };
-use anyhow::{Context as _, Result};
+use anyhow::{Context, Result, bail};
 
-pub(crate) struct AllPropsSubscription;
+pub(crate) const GET_MENU_AND_ICON: MethodCall<ShortString, (ShortString, TrayIcon), ()> = MethodCall::builder()
+    .send(&|destination, _data| {
+        GetAllProperties::new(
+            destination,
+            ShortString::new_const("/StatusNotifierItem"),
+            ShortString::new_const("org.kde.StatusNotifierItem"),
+        ).into()
+    })
+    .try_process(&|mut body, _data| {
+        let array = body.try_next()?.context("no array")?;
+        value_is!(array, Value::Array(array));
+        match parse(array)? {
+            (Some(menu), Some(icon)) => Ok((menu, icon)),
 
-impl SubscriptionResource for AllPropsSubscription {
-    type Output = AllPropsUpdate;
+            other => {
+                log::error!(
+                    "initial GetAllProps request for tray app failed, some data is missing: {other:?}"
+                );
+                bail!("DBus internal error")
+            }
+        }
+    }).kind(DBusConnectionKind::Session);
 
-    fn set_path(&mut self, _path: ShortString) {}
+pub(crate) const MENU_AND_ICON_SUBSCRIPTION: Subscription<(Option<ShortString>, Option<TrayIcon>)> =
+    Subscription::builder()
+        .try_process(&|mut body, path, _subscribed_to| {
+            path_is!(path, "/StatusNotifierItem");
 
-    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
-        path_is!(path, "/StatusNotifierItem");
+            let interface = body.try_next()?.context("no interface")?;
+            value_is!(interface, Value::String(interface));
+            interface_is!(interface, "org.kde.StatusNotifierItem");
 
-        let interface = body.try_next()?.context("no interface")?;
-        value_is!(interface, Value::String(interface));
-        interface_is!(interface, "org.kde.StatusNotifierItem");
+            let items = body.try_next()?.context("no items")?;
+            value_is!(items, Value::Array(items));
+            parse(items)
+        })
+        .kind(DBusConnectionKind::Session);
 
-        let items = body.try_next()?.context("no items")?;
-        value_is!(items, Value::Array(items));
-        parse(items)
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct AllPropsUpdate {
-    pub(crate) menu: Option<ShortString>,
-    pub(crate) icon: Option<TrayIcon>,
-}
-
-pub(crate) fn parse(attributes: ArrayValue<'_>) -> Result<AllPropsUpdate> {
+fn parse(attributes: ArrayValue<'_>) -> Result<(Option<ShortString>, Option<TrayIcon>)> {
     let mut menu = None;
     let mut icon_name = None;
     let mut icon_pixmap = None;
@@ -112,8 +125,5 @@ pub(crate) fn parse(attributes: ArrayValue<'_>) -> Result<AllPropsUpdate> {
         })
         .or_else(|| icon_pixmap.map(TrayIcon::Pixmap));
 
-    Ok(AllPropsUpdate {
-        menu: menu.map(ShortString::from),
-        icon,
-    })
+    Ok((menu.map(ShortString::from), icon))
 }

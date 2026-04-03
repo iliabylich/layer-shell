@@ -1,17 +1,17 @@
 use crate::{
     dbus::{
-        OneshotMethodCall, Subscription, SubscriptionResource,
-        decoder::{Body, IncomingMessage, Value},
+        MethodCall, Subscription,
+        decoder::{IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
     },
     ffi::ShortString,
     sansio::DBusConnectionKind,
 };
-use anyhow::{Context, Result};
+use anyhow::Context as _;
 
 pub(crate) struct TxRx {
-    oneshot: OneshotMethodCall<ShortString, (), ()>,
-    subscription: Subscription<Resource>,
+    oneshot: MethodCall<ShortString, (), ()>,
+    subscription: Subscription<TxRxEvent>,
 }
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl TxRx {
     pub(crate) fn new() -> Self {
         Self {
             oneshot: CONFIGURE,
-            subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
+            subscription: SUBSCRIPTION,
         }
     }
 
@@ -46,7 +46,7 @@ impl TxRx {
     }
 }
 
-const CONFIGURE: OneshotMethodCall<ShortString, (), ()> = OneshotMethodCall::builder()
+const CONFIGURE: MethodCall<ShortString, (), ()> = MethodCall::builder()
     .send(&|path, _data| {
         use crate::dbus::types::Value;
 
@@ -62,16 +62,9 @@ const CONFIGURE: OneshotMethodCall<ShortString, (), ()> = OneshotMethodCall::bui
     .try_process(&|_body, _data| unreachable!())
     .kind(DBusConnectionKind::System);
 
-#[derive(Default)]
-struct Resource {
-    path: Option<ShortString>,
-}
-
-impl SubscriptionResource for Resource {
-    type Output = TxRxEvent;
-
-    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
-        path_is!(path, self.path.context("no path")?);
+const SUBSCRIPTION: Subscription<TxRxEvent> = Subscription::builder()
+    .try_process(&|mut body, path, subscribed_to| {
+        path_is!(path, subscribed_to);
 
         let interface = body.try_next()?.context("no Interface in Body")?;
         value_is!(interface, Value::String(interface));
@@ -103,9 +96,5 @@ impl SubscriptionResource for Resource {
         }
 
         Ok(TxRxEvent { tx, rx })
-    }
-
-    fn set_path(&mut self, path: ShortString) {
-        self.path = Some(path)
-    }
-}
+    })
+    .kind(DBusConnectionKind::System);

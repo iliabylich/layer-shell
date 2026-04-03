@@ -1,7 +1,7 @@
 use crate::{
     dbus::{
-        OneshotMethodCall, Subscription, SubscriptionResource,
-        decoder::{Body, IncomingMessage, Value},
+        MethodCall, Subscription,
+        decoder::{ArrayValue, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
     ffi::ShortString,
@@ -10,8 +10,8 @@ use crate::{
 use anyhow::{Context as _, Result};
 
 pub(crate) struct SsidAndStrength {
-    oneshot: OneshotMethodCall<ShortString, SsidAndStrengthEvent, ()>,
-    subscription: Subscription<Resource>,
+    oneshot: MethodCall<ShortString, SsidAndStrengthEvent, ()>,
+    subscription: Subscription<SsidAndStrengthEvent>,
 }
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl SsidAndStrength {
     pub(crate) fn new() -> Self {
         Self {
             oneshot: GET,
-            subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
+            subscription: SUBSCRIPTION,
         }
     }
 
@@ -50,7 +50,7 @@ impl SsidAndStrength {
     }
 }
 
-const GET: OneshotMethodCall<ShortString, SsidAndStrengthEvent, ()> = OneshotMethodCall::builder()
+const GET: MethodCall<ShortString, SsidAndStrengthEvent, ()> = MethodCall::builder()
     .send(&|path, _data| {
         GetAllProperties::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
@@ -62,32 +62,10 @@ const GET: OneshotMethodCall<ShortString, SsidAndStrengthEvent, ()> = OneshotMet
     .try_process(&|mut body, _data| {
         let properties = body.try_next()?.context("no Properties in Body")?;
         value_is!(properties, Value::Array(properties));
-        let mut iter = properties.iter();
-        let mut ssid = None;
-        let mut strength = None;
-        while let Some(property) = iter.try_next()? {
-            value_is!(property, Value::DictEntry(property));
-            let (key, value) = property.key_value()?;
-            value_is!(key, Value::String(key));
-            value_is!(value, Value::Variant(value));
-            match key {
-                "Ssid" => {
-                    let value = value.materialize()?;
-                    ssid = Some(value)
-                }
-                "Strength" => {
-                    let value = value.materialize()?;
-                    strength = Some(value)
-                }
-                _ => {}
-            }
-        }
+        let (ssid, strength) = parse_properties(properties)?;
 
         let ssid = ssid.context("no Ssid")?;
-        let ssid = parse_ssid(ssid)?;
-
         let strength = strength.context("no Strength")?;
-        value_is!(strength, Value::Byte(strength));
 
         Ok(SsidAndStrengthEvent {
             ssid: Some(ssid),
@@ -95,6 +73,46 @@ const GET: OneshotMethodCall<ShortString, SsidAndStrengthEvent, ()> = OneshotMet
         })
     })
     .kind(DBusConnectionKind::System);
+
+const SUBSCRIPTION: Subscription<SsidAndStrengthEvent> = Subscription::builder()
+    .try_process(&|mut body, path, subscribed_to| {
+        path_is!(path, subscribed_to);
+
+        let interface = body.try_next()?.context("no Interface in Body")?;
+        value_is!(interface, Value::String(interface));
+        interface_is!(interface, "org.freedesktop.NetworkManager.AccessPoint");
+
+        let properties = body.try_next()?.context("no Properties in Body")?;
+        value_is!(properties, Value::Array(properties));
+        let (ssid, strength) = parse_properties(properties)?;
+
+        Ok(SsidAndStrengthEvent { ssid, strength })
+    })
+    .kind(DBusConnectionKind::System);
+
+fn parse_properties(properties: ArrayValue<'_>) -> Result<(Option<ShortString>, Option<u8>)> {
+    let mut iter = properties.iter();
+    let mut ssid = None;
+    let mut strength = None;
+    while let Some(attribute) = iter.try_next()? {
+        value_is!(attribute, Value::DictEntry(attribute));
+        let (key, value) = attribute.key_value()?;
+        value_is!(key, Value::String(key));
+        value_is!(value, Value::Variant(value));
+
+        if key == "Ssid" {
+            let value = value.materialize()?;
+            let value = parse_ssid(value)?;
+            ssid = Some(value);
+        } else if key == "Strength" {
+            let value = value.materialize()?;
+            value_is!(value, Value::Byte(value));
+            strength = Some(value);
+        }
+    }
+
+    Ok((ssid, strength))
+}
 
 fn parse_ssid(ssid: Value<'_>) -> Result<ShortString> {
     value_is!(ssid, Value::Array(ssid));
@@ -106,49 +124,4 @@ fn parse_ssid(ssid: Value<'_>) -> Result<ShortString> {
     }
     let ssid = String::from_utf8_lossy(&bytes).to_string();
     Ok(ShortString::from(ssid.as_str()))
-}
-
-#[derive(Default)]
-struct Resource {
-    path: Option<ShortString>,
-}
-
-impl SubscriptionResource for Resource {
-    type Output = SsidAndStrengthEvent;
-
-    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
-        path_is!(path, self.path.context("no path")?);
-
-        let interface = body.try_next()?.context("no Interface in Body")?;
-        value_is!(interface, Value::String(interface));
-        interface_is!(interface, "org.freedesktop.NetworkManager.AccessPoint");
-
-        let attributes = body.try_next()?.context("no Attributes in Body")?;
-        value_is!(attributes, Value::Array(attributes));
-        let mut iter = attributes.iter();
-        let mut ssid = None;
-        let mut strength = None;
-        while let Some(attribute) = iter.try_next()? {
-            value_is!(attribute, Value::DictEntry(attribute));
-            let (key, value) = attribute.key_value()?;
-            value_is!(key, Value::String(key));
-            value_is!(value, Value::Variant(value));
-
-            if key == "Ssid" {
-                let value = value.materialize()?;
-                let value = parse_ssid(value)?;
-                ssid = Some(value);
-            } else if key == "Strength" {
-                let value = value.materialize()?;
-                value_is!(value, Value::Byte(value));
-                strength = Some(value);
-            }
-        }
-
-        Ok(SsidAndStrengthEvent { ssid, strength })
-    }
-
-    fn set_path(&mut self, path: ShortString) {
-        self.path = Some(path)
-    }
 }

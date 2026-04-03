@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        OneshotMethodCall,
+        MethodCall,
         decoder::{IncomingMessage, MessageType},
         messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
     },
@@ -9,11 +9,10 @@ use crate::{
 };
 use anyhow::{Context as _, Result, ensure};
 
-pub(crate) const SUBSCRIBE_TO_NEW_ICON: OneshotMethodCall<ShortString, (), ()> =
-    OneshotMethodCall::builder()
-        .send(&|address, _data| AddMatch::from_rule(new_icon_match_rule(address)).into())
-        .try_process(&|_body, _data| Ok(()))
-        .kind(DBusConnectionKind::Session);
+pub(crate) const SUBSCRIBE_TO_NEW_ICON: MethodCall<ShortString, (), ()> = MethodCall::builder()
+    .send(&|address, _data| AddMatch::from_rule(new_icon_match_rule(address)).into())
+    .try_process(&|_body, _data| Ok(()))
+    .kind(DBusConnectionKind::Session);
 
 pub(crate) fn new_icon_match_rule(address: ShortString) -> String {
     format!(

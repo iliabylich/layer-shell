@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        OneshotMethodCall, OutgoingMessage,
+        MethodCall, OutgoingMessage,
         decoder::{IncomingMessage, MessageType, Value},
         messages::{interface_is, member_is, path_is, value_is},
     },
@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context, Result, bail, ensure};
 
 pub(crate) struct NameLostOrNameOwnerChanged {
-    name_changed: OneshotMethodCall<(), (), ()>,
+    name_changed: MethodCall<(), (), ()>,
 }
 
 impl NameLostOrNameOwnerChanged {
@@ -30,7 +30,7 @@ impl NameLostOrNameOwnerChanged {
     }
 }
 
-const SUBSCRIBE: OneshotMethodCall<(), (), ()> = OneshotMethodCall::builder()
+const SUBSCRIBE: MethodCall<(), (), ()> = MethodCall::builder()
     .send(&|_input, _data| {
         use crate::dbus::types::Value;
         OutgoingMessage::MethodCall {

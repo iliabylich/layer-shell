@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        OneshotMethodCall, OutgoingMessage,
+        MethodCall, OutgoingMessage,
         decoder::{ArrayValue, Value},
         messages::value_is,
     },
@@ -10,11 +10,11 @@ use crate::{
 };
 use anyhow::{Context, Result};
 
-pub(crate) const GET_LAYOUT: OneshotMethodCall<
+pub(crate) const GET_LAYOUT: MethodCall<
     (ShortString, ShortString),
     Vec<TrayItem>,
     ShortString,
-> = OneshotMethodCall::builder()
+> = MethodCall::builder()
     .send(&|(destination, path), _service| {
         use crate::dbus::types::{CompleteType, Value};
 

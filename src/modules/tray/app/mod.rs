@@ -1,11 +1,11 @@
 use crate::{
     dbus::{
-        OneshotMethodCall, OutgoingMessage, Subscription, decoder::IncomingMessage,
+        MethodCall, OutgoingMessage, Subscription, decoder::IncomingMessage,
         messages::org_freedesktop_dbus::RemoveMatch, types::Value,
     },
     ffi::ShortString,
     modules::{TrayIcon, TrayItem, tray::service::Service},
-    sansio::{DBusConnectionKind, SessionDBusQueue},
+    sansio::SessionDBusQueue,
     utils::report_and_exit,
 };
 use dbusmenu::{
@@ -14,8 +14,8 @@ use dbusmenu::{
     parse_items_properties_updated_signal, parse_layout_updated_signal,
 };
 use ksni::{
-    AllPropsSubscription, AllPropsUpdate, GET_MENU_AND_ICON, SUBSCRIBE_TO_NEW_ICON,
-    new_icon_match_rule, parse_new_icon_signal,
+    GET_MENU_AND_ICON, MENU_AND_ICON_SUBSCRIPTION, SUBSCRIBE_TO_NEW_ICON, new_icon_match_rule,
+    parse_new_icon_signal,
 };
 
 mod dbusmenu;
@@ -24,14 +24,14 @@ mod ksni;
 pub(crate) struct App {
     service: Service,
 
-    get_menu_and_icon: OneshotMethodCall<ShortString, (ShortString, TrayIcon), ()>,
-    subscribe_to_new_icon: OneshotMethodCall<ShortString, (), ()>,
-    all_props_subscription: Subscription<AllPropsSubscription>,
-    subscribe_to_layout_updated: OneshotMethodCall<(ShortString, ShortString), (), ()>,
-    subscribe_to_items_properties_updated: OneshotMethodCall<(ShortString, ShortString), (), ()>,
+    get_menu_and_icon: MethodCall<ShortString, (ShortString, TrayIcon), ()>,
+    subscribe_to_new_icon: MethodCall<ShortString, (), ()>,
+    menu_and_icon_subscription: Subscription<(Option<ShortString>, Option<TrayIcon>)>,
+    subscribe_to_layout_updated: MethodCall<(ShortString, ShortString), (), ()>,
+    subscribe_to_items_properties_updated: MethodCall<(ShortString, ShortString), (), ()>,
 
     menu: ShortString,
-    get_layout: OneshotMethodCall<(ShortString, ShortString), Vec<TrayItem>, ShortString>,
+    get_layout: MethodCall<(ShortString, ShortString), Vec<TrayItem>, ShortString>,
 
     state: State,
 }
@@ -56,10 +56,7 @@ impl App {
             service,
             get_menu_and_icon: GET_MENU_AND_ICON,
             subscribe_to_new_icon: SUBSCRIBE_TO_NEW_ICON,
-            all_props_subscription: Subscription::new(
-                AllPropsSubscription,
-                DBusConnectionKind::Session,
-            ),
+            menu_and_icon_subscription: MENU_AND_ICON_SUBSCRIPTION,
             subscribe_to_layout_updated: SUBSCRIBE_TO_LAYOUT_UPDATED,
             subscribe_to_items_properties_updated: SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED,
 
@@ -78,7 +75,7 @@ impl App {
     pub(crate) fn init(&mut self) {
         self.subscribe_to_new_icon.send(self.service.name());
         self.get_menu_and_icon.send(self.service.name());
-        self.all_props_subscription.start(
+        self.menu_and_icon_subscription.start(
             ShortString::new_const("org.freedesktop.DBus"),
             ShortString::new_const("/StatusNotifierItem"),
         );
@@ -88,7 +85,7 @@ impl App {
         self.unsubscribe_matches();
         self.subscribe_to_new_icon.reset();
         self.get_menu_and_icon.reset();
-        self.all_props_subscription.reset();
+        self.menu_and_icon_subscription.reset();
         self.get_layout.reset();
     }
 
@@ -178,7 +175,7 @@ impl App {
             return None;
         }
 
-        if let Some(AllPropsUpdate { icon, .. }) = self.all_props_subscription.process(message) {
+        if let Some((_, icon)) = self.menu_and_icon_subscription.process(message) {
             log::info!(target: "Tray", "Received updated props for {:?}", self.service);
             if let Some(icon) = icon {
                 return self.on_icon_received(icon);

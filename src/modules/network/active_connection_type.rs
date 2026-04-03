@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        OneshotMethodCall,
+        MethodCall,
         decoder::{IncomingMessage, Value},
         messages::{org_freedesktop_dbus::GetProperty, value_is},
     },
@@ -11,7 +11,7 @@ use anyhow::Context;
 
 pub(crate) struct ActiveConnectionType {
     path: Option<ShortString>,
-    oneshot: OneshotMethodCall<ShortString, bool, ()>,
+    oneshot: MethodCall<ShortString, bool, ()>,
 }
 
 impl ActiveConnectionType {
@@ -40,7 +40,7 @@ impl ActiveConnectionType {
     }
 }
 
-const GET: OneshotMethodCall<ShortString, bool, ()> = OneshotMethodCall::builder()
+const GET: MethodCall<ShortString, bool, ()> = MethodCall::builder()
     .send(&|path, _data| {
         GetProperty::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),

@@ -1,17 +1,17 @@
 use crate::{
     dbus::{
-        OneshotMethodCall, Subscription, SubscriptionResource,
-        decoder::{Body, IncomingMessage, Value},
+        MethodCall, Subscription,
+        decoder::{IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
     ffi::ShortString,
     sansio::DBusConnectionKind,
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context as _, bail};
 
 pub(crate) struct PrimaryDevice {
-    oneshot: OneshotMethodCall<ShortString, ShortString, ()>,
-    subscription: Subscription<Resource>,
+    get: MethodCall<ShortString, ShortString, ()>,
+    subscription: Subscription<ShortString>,
 }
 
 #[derive(Debug)]
@@ -32,14 +32,14 @@ impl From<ShortString> for PrimaryDeviceEvent {
 impl PrimaryDevice {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: GET,
-            subscription: Subscription::new(Resource::default(), DBusConnectionKind::System),
+            get: GET,
+            subscription: SUBSCRIPTION,
         }
     }
 
     pub(crate) fn reset(&mut self) {
         self.subscription.reset();
-        self.oneshot.reset();
+        self.get.reset();
     }
 
     pub(crate) fn init(&mut self, path: ShortString) {
@@ -47,20 +47,20 @@ impl PrimaryDevice {
             ShortString::new_const("org.freedesktop.NetworkManager"),
             path,
         );
-        self.oneshot.send(path);
+        self.get.send(path);
     }
 
     pub(crate) fn on_message(
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<PrimaryDeviceEvent> {
-        None.or_else(|| self.oneshot.try_recv(message).ok().flatten())
+        None.or_else(|| self.get.try_recv(message).ok().flatten())
             .or_else(|| self.subscription.process(message))
             .map(PrimaryDeviceEvent::from)
     }
 }
 
-const GET: OneshotMethodCall<ShortString, ShortString, ()> = OneshotMethodCall::builder()
+const GET: MethodCall<ShortString, ShortString, ()> = MethodCall::builder()
     .send(&|path, _data| {
         GetProperty::new(
             ShortString::new_const("org.freedesktop.NetworkManager"),
@@ -83,16 +83,9 @@ const GET: OneshotMethodCall<ShortString, ShortString, ()> = OneshotMethodCall::
     })
     .kind(DBusConnectionKind::System);
 
-#[derive(Default)]
-struct Resource {
-    path: Option<ShortString>,
-}
-
-impl SubscriptionResource for Resource {
-    type Output = ShortString;
-
-    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
-        path_is!(path, self.path.context("no path")?);
+const SUBSCRIPTION: Subscription<ShortString> = Subscription::builder()
+    .try_process(&|mut body, path, subscribed_to| {
+        path_is!(path, subscribed_to);
 
         let interface = body.try_next()?.context("no Interface in Body")?;
         value_is!(interface, Value::String(interface));
@@ -122,9 +115,5 @@ impl SubscriptionResource for Resource {
         }
 
         bail!("unrelated")
-    }
-
-    fn set_path(&mut self, path: ShortString) {
-        self.path = Some(path)
-    }
-}
+    })
+    .kind(DBusConnectionKind::System);

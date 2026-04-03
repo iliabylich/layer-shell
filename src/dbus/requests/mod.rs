@@ -1,5 +1,5 @@
-mod oneshot;
-pub(crate) use oneshot::OneshotMethodCall;
+mod method_call;
+pub(crate) use method_call::MethodCall;
 
 mod subscription;
-pub(crate) use subscription::{Subscription, SubscriptionResource};
+pub(crate) use subscription::Subscription;

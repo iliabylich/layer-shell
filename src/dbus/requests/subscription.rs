@@ -10,38 +10,28 @@ use crate::{
     ffi::ShortString,
     sansio::{DBusConnectionKind, DBusQueue},
 };
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result, bail, ensure};
+use core::marker::PhantomData;
 
-pub(crate) trait SubscriptionResource {
-    type Output: core::fmt::Debug;
-
-    fn set_path(&mut self, path: ShortString);
-    fn try_process(&self, path: ShortString, body: Body<'_>) -> Result<Self::Output>;
+#[derive(Default, Clone, Copy)]
+enum SubscriptionState {
+    #[default]
+    None,
+    Subscribed(ShortString),
 }
 
-pub(crate) struct Subscription<S>
+pub(crate) struct Subscription<T>
 where
-    S: SubscriptionResource,
+    T: 'static,
 {
-    path: Option<ShortString>,
-    resource: S,
+    try_process: &'static dyn Fn(Body<'_>, ShortString, ShortString) -> Result<T>,
+    state: SubscriptionState,
     kind: DBusConnectionKind,
 }
 
-impl<S> Subscription<S>
-where
-    S: SubscriptionResource,
-{
-    pub(crate) fn new(resource: S, kind: DBusConnectionKind) -> Self {
-        Self {
-            path: None,
-            resource,
-            kind,
-        }
-    }
-
+impl<T> Subscription<T> {
     fn unsubscribe(&mut self) {
-        let Some(path) = self.path.take() else {
+        let SubscriptionState::Subscribed(path) = core::mem::take(&mut self.state) else {
             return;
         };
 
@@ -52,8 +42,7 @@ where
     fn subscribe(&mut self, sender: ShortString, path: ShortString) {
         let message: OutgoingMessage = AddMatch::new(sender, path).into();
         DBusQueue::push_back(self.kind, message);
-        self.path = Some(path);
-        self.resource.set_path(path);
+        self.state = SubscriptionState::Subscribed(path);
     }
 
     pub(crate) fn start(&mut self, sender: ShortString, path: ShortString) {
@@ -65,7 +54,7 @@ where
         self.unsubscribe()
     }
 
-    fn try_process(&self, message: IncomingMessage<'_>) -> Result<S::Output> {
+    fn try_process(&self, message: IncomingMessage<'_>) -> Result<T> {
         ensure!(message.message_type == MessageType::Signal);
 
         let interface = message.interface.context("no Interface")?;
@@ -73,21 +62,52 @@ where
         let path = message.path.context("no Path")?;
         let body = message.body.context("no Body")?;
 
-        self.resource.try_process(ShortString::from(path), body)
+        let SubscriptionState::Subscribed(subscribed_to) = self.state else {
+            bail!("not subscribed");
+        };
+
+        (self.try_process)(body, ShortString::from(path), subscribed_to)
     }
 
-    pub(crate) fn process(&self, message: IncomingMessage<'_>) -> Option<S::Output> {
+    pub(crate) fn process(&self, message: IncomingMessage<'_>) -> Option<T> {
         self.try_process(message).ok()
+    }
+
+    pub(crate) const fn builder() -> SubscriptionBuilder<T, NeedsTryProcess> {
+        SubscriptionBuilder {
+            try_process: &|_, _, _| todo!(),
+            _state: PhantomData,
+        }
     }
 }
 
-impl<S> core::fmt::Debug for Subscription<S>
+pub(crate) struct NeedsTryProcess;
+pub(crate) struct NeedsConnectionKind;
+
+pub(crate) struct SubscriptionBuilder<T, S>
 where
-    S: SubscriptionResource,
+    T: 'static,
 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Subscription")
-            .field("path", &self.path)
-            .finish()
+    try_process: &'static dyn Fn(Body<'_>, ShortString, ShortString) -> Result<T>,
+    _state: PhantomData<S>,
+}
+impl<T> SubscriptionBuilder<T, NeedsTryProcess> {
+    pub(crate) const fn try_process(
+        self,
+        try_process: &'static dyn Fn(Body<'_>, ShortString, ShortString) -> Result<T>,
+    ) -> SubscriptionBuilder<T, NeedsConnectionKind> {
+        SubscriptionBuilder {
+            try_process,
+            _state: PhantomData,
+        }
+    }
+}
+impl<T> SubscriptionBuilder<T, NeedsConnectionKind> {
+    pub(crate) const fn kind(self, kind: DBusConnectionKind) -> Subscription<T> {
+        Subscription {
+            try_process: self.try_process,
+            state: SubscriptionState::None,
+            kind,
+        }
     }
 }

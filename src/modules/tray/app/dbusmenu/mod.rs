@@ -1,6 +1,6 @@
 use crate::{
     dbus::{
-        OneshotMethodCall,
+        MethodCall,
         decoder::{IncomingMessage, MessageType},
         messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
     },
@@ -12,16 +12,13 @@ pub(crate) use get_layout::GET_LAYOUT;
 
 mod get_layout;
 
-pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: OneshotMethodCall<
-    (ShortString, ShortString),
-    (),
-    (),
-> = OneshotMethodCall::builder()
-    .send(&|(address, path), _data| {
-        AddMatch::from_rule(layout_updated_match_rule(address, path)).into()
-    })
-    .try_process(&|_, _data| Ok(()))
-    .kind(DBusConnectionKind::Session);
+pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: MethodCall<(ShortString, ShortString), (), ()> =
+    MethodCall::builder()
+        .send(&|(address, path), _data| {
+            AddMatch::from_rule(layout_updated_match_rule(address, path)).into()
+        })
+        .try_process(&|_, _data| Ok(()))
+        .kind(DBusConnectionKind::Session);
 
 pub(crate) fn layout_updated_match_rule(address: ShortString, path: ShortString) -> String {
     format!(
@@ -49,11 +46,11 @@ pub(crate) fn parse_layout_updated_signal(
     Ok(())
 }
 
-pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: OneshotMethodCall<
+pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: MethodCall<
     (ShortString, ShortString),
     (),
     (),
-> = OneshotMethodCall::builder()
+> = MethodCall::builder()
     .send(&|(address, path), _data| {
         AddMatch::from_rule(items_properties_updated_match_rule(address, path)).into()
     })

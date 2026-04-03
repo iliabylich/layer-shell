@@ -1,8 +1,8 @@
 use crate::{
     Event,
     dbus::{
-        OneshotMethodCall, Subscription, SubscriptionResource,
-        decoder::{ArrayValue, Body, IncomingMessage, Value},
+        MethodCall, Subscription,
+        decoder::{ArrayValue, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
     event_queue::EventQueue,
@@ -12,8 +12,8 @@ use crate::{
 use anyhow::{Context as _, Result};
 
 pub(crate) struct Sound {
-    oneshot: OneshotMethodCall<(), (u32, bool), ()>,
-    subscription: Subscription<Resource>,
+    oneshot: MethodCall<(), (u32, bool), ()>,
+    subscription: Subscription<(Option<u32>, Option<bool>)>,
     healthy: bool,
 }
 
@@ -21,7 +21,7 @@ impl Sound {
     pub(crate) fn new() -> Self {
         Self {
             oneshot: GET,
-            subscription: Subscription::new(Resource, DBusConnectionKind::Session),
+            subscription: SUBSCRIPTION,
             healthy: true,
         }
     }
@@ -70,7 +70,7 @@ impl Sound {
     }
 }
 
-const GET: OneshotMethodCall<(), (u32, bool), ()> = OneshotMethodCall::builder()
+const GET: MethodCall<(), (u32, bool), ()> = MethodCall::builder()
     .send(&|_input, _data| {
         GetAllProperties::new(
             ShortString::new_const("org.local.PipewireDBus"),
@@ -91,12 +91,8 @@ const GET: OneshotMethodCall<(), (u32, bool), ()> = OneshotMethodCall::builder()
     })
     .kind(DBusConnectionKind::Session);
 
-struct Resource;
-
-impl SubscriptionResource for Resource {
-    type Output = (Option<u32>, Option<bool>);
-
-    fn try_process(&self, path: ShortString, mut body: Body<'_>) -> Result<Self::Output> {
+const SUBSCRIPTION: Subscription<(Option<u32>, Option<bool>)> = Subscription::builder()
+    .try_process(&|mut body, path, _subscribed_to| {
         path_is!(path, "/org/local/PipewireDBus");
 
         let interface = body.try_next()?.context("no interface in Body")?;
@@ -107,10 +103,8 @@ impl SubscriptionResource for Resource {
         value_is!(attributes, Value::Array(attributes));
 
         parse(attributes)
-    }
-
-    fn set_path(&mut self, _: ShortString) {}
-}
+    })
+    .kind(DBusConnectionKind::Session);
 
 fn parse(attributes: ArrayValue) -> Result<(Option<u32>, Option<bool>)> {
     let mut volume = None;
@@ -126,8 +120,11 @@ fn parse(attributes: ArrayValue) -> Result<(Option<u32>, Option<bool>)> {
 
         if key == "Volume" {
             let value = value.materialize()?;
-            value_is!(value, Value::UInt32(value));
-            volume = Some(normalize_volume(value));
+            value_is!(value, Value::UInt32(mut value));
+            if value == 99 {
+                value = 100;
+            }
+            volume = Some(value);
         }
 
         if key == "Muted" {
@@ -138,8 +135,4 @@ fn parse(attributes: ArrayValue) -> Result<(Option<u32>, Option<bool>)> {
     }
 
     Ok((volume, muted))
-}
-
-fn normalize_volume(volume: u32) -> u32 {
-    if volume == 99 { 100 } else { volume }
 }

@@ -18,7 +18,7 @@ impl WriterResource for DispatchResource {
     fn command(&self) -> ShortString {
         let mut buf = [0; 128];
         let mut writer = ArrayWriter::new(&mut buf);
-        write!(&mut writer, "dispatch {}", self.cmd).unwrap_or_else(|err: std::fmt::Error| {
+        write!(&mut writer, "dispatch {}", self.cmd).unwrap_or_else(|err: core::fmt::Error| {
             report_and_exit!("failed to write command to buffer: {err:?}")
         });
         ShortString::from(
