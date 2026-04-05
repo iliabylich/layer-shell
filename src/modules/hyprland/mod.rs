@@ -4,7 +4,7 @@ pub(crate) use writer::HyprlandWriter;
 
 pub use state::HyprlandWorkspace;
 
-use crate::unix_socket::new_unix_socket;
+use crate::{sansio::UnixSocketReader, unix_socket::new_unix_socket};
 use state::HyprlandState;
 
 mod queue;
@@ -16,16 +16,19 @@ mod writer;
 pub(crate) struct Hyprland;
 
 impl Hyprland {
-    pub(crate) fn connect() -> (
-        Option<HyprlandReader>,
-        Option<HyprlandWriter>,
-        HyprlandQueue,
-    ) {
+    pub(crate) fn connect() -> (HyprlandReader, HyprlandWriter, HyprlandQueue) {
+        let state = HyprlandState::empty();
+        let queue = HyprlandQueue::new();
+
         let xdg_runtime_dir = match std::env::var("XDG_RUNTIME_DIR") {
             Ok(var) => var,
             Err(err) => {
                 log::error!("{err:?}");
-                return (None, None, HyprlandQueue::dummy());
+                return (
+                    HyprlandReader::new(UnixSocketReader::dummy(), state.copy()),
+                    HyprlandWriter::dummy(state, queue),
+                    HyprlandQueue::dummy(),
+                );
             }
         };
 
@@ -33,7 +36,11 @@ impl Hyprland {
             Ok(var) => var,
             Err(err) => {
                 log::error!("{err:?}");
-                return (None, None, HyprlandQueue::dummy());
+                return (
+                    HyprlandReader::new(UnixSocketReader::dummy(), state.copy()),
+                    HyprlandWriter::dummy(state, queue),
+                    HyprlandQueue::dummy(),
+                );
             }
         };
 
@@ -46,13 +53,9 @@ impl Hyprland {
             format!("{xdg_runtime_dir}/hypr/{hyprland_instance_signature}/.socket.sock").as_bytes(),
         );
 
-        let state = HyprlandState::empty();
-
-        let queue = HyprlandQueue::new();
-
         (
-            Some(HyprlandReader::new(reader_addr, state.copy())),
-            Some(HyprlandWriter::new(writer_addr, state.copy(), queue.copy())),
+            HyprlandReader::new(UnixSocketReader::new(reader_addr), state.copy()),
+            HyprlandWriter::new(writer_addr, state.copy(), queue.copy()),
             queue,
         )
     }

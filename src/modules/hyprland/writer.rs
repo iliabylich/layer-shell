@@ -12,6 +12,7 @@ pub(crate) struct HyprlandWriter {
     queue: HyprlandQueue,
     addr: sockaddr_un,
     state: HyprlandState,
+    dead: bool,
 }
 
 impl HyprlandWriter {
@@ -21,9 +22,20 @@ impl HyprlandWriter {
             queue,
             addr,
             state,
+            dead: false,
         };
         this.pop_from_queue_into_current();
         this
+    }
+
+    pub(crate) fn dummy(state: HyprlandState, queue: HyprlandQueue) -> Self {
+        Self {
+            current: None,
+            queue,
+            addr: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
+            state,
+            dead: true,
+        }
     }
 
     fn pop_from_queue_into_current(&mut self) {
@@ -42,6 +54,10 @@ impl HyprlandWriter {
     }
 
     pub(crate) fn wants(&mut self) -> Wants {
+        if self.dead {
+            return Wants::Nothing;
+        }
+
         self.pop_from_queue_into_current();
 
         let Some((socket_writer, _)) = &mut self.current else {
@@ -51,7 +67,7 @@ impl HyprlandWriter {
         socket_writer.wants()
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         let Some((socket_writer, resource)) = &mut self.current else {
             return Ok(());
         };
@@ -75,5 +91,17 @@ impl HyprlandWriter {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
+        if self.dead {
+            return;
+        }
+
+        if let Err(err) = self.try_satisfy(satisfy, res) {
+            log::error!("HyprlandReader has crashed: {satisfy:?} {res} {err:?}");
+            self.current = None;
+            self.dead = true;
+        }
     }
 }

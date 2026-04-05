@@ -6,7 +6,6 @@ use crate::{
     utils::StringRef,
 };
 use anyhow::{Context as _, Result};
-use libc::sockaddr_un;
 
 pub(crate) struct HyprlandReader {
     socket_reader: UnixSocketReader,
@@ -14,9 +13,9 @@ pub(crate) struct HyprlandReader {
 }
 
 impl HyprlandReader {
-    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState) -> Self {
+    pub(crate) fn new(socket_reader: UnixSocketReader, state: HyprlandState) -> Self {
         Self {
-            socket_reader: UnixSocketReader::new(addr),
+            socket_reader,
             state,
         }
     }
@@ -29,8 +28,8 @@ impl HyprlandReader {
         self.socket_reader.wants()
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
-        let Some((buf, len)) = self.socket_reader.satisfy(satisfy, res)? else {
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
+        let Some((buf, len)) = self.socket_reader.satisfy(satisfy, res) else {
             return Ok(());
         };
 
@@ -44,6 +43,13 @@ impl HyprlandReader {
             }
         }
         Ok(())
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
+        if let Err(err) = self.try_satisfy(satisfy, res) {
+            log::error!("HyprlandReader has crashed: {satisfy:?} {res} {err:?}");
+            self.socket_reader.stop();
+        }
     }
 }
 

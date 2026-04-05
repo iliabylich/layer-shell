@@ -1,5 +1,4 @@
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail, ensure};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
 #[derive(Debug, Clone, Copy)]
@@ -10,6 +9,8 @@ enum State {
     WaitingForConnect,
     CanRead,
     WaitingForRead,
+
+    Dead,
 }
 
 pub(crate) struct UnixSocketReader {
@@ -23,6 +24,15 @@ impl UnixSocketReader {
     pub(crate) fn new(addr: sockaddr_un) -> Self {
         Self {
             addr,
+            fd: -1,
+            buf: [0; _],
+            state: State::CanSocket,
+        }
+    }
+
+    pub(crate) fn dummy() -> Self {
+        Self {
+            addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
             fd: -1,
             buf: [0; _],
             state: State::CanSocket,
@@ -59,40 +69,59 @@ impl UnixSocketReader {
                 }
             }
             State::WaitingForRead => Wants::Nothing,
+
+            State::Dead => Wants::Nothing,
         }
     }
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<([u8; 1_024], usize)>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<([u8; 1_024], usize)> {
         match (self.state, satisfy) {
+            (State::Dead, _) => None,
+
             (State::WaitingForSocket, Satisfy::Socket) => {
-                ensure!(res >= 0, "UnixSocketReader::Socket failed: {res}");
+                if res < 0 {
+                    log::error!("UnixSocketReader::Socket failed: {res}");
+                    self.state = State::Dead;
+                    return None;
+                }
+
                 self.fd = res;
                 self.state = State::CanConnect;
-                Ok(None)
+                None
             }
 
             (State::WaitingForConnect, Satisfy::Connect) => {
-                ensure!(res >= 0, "UnixSocketReader::Connect failed: {res}");
+                if res < 0 {
+                    log::error!("UnixSocketReader::Connect failed: {res}");
+                    self.state = State::Dead;
+                    return None;
+                }
                 self.state = State::CanRead;
-                Ok(None)
+                None
             }
 
             (State::WaitingForRead, Satisfy::Read) => {
-                ensure!(res > 0, "UnixSocketReader::Read failed: {res}");
+                if res <= 0 {
+                    log::error!("UnixSocketReader::Read failed: {res}");
+                    self.state = State::Dead;
+                    return None;
+                }
                 let len = res as usize;
                 let buf = self.buf;
                 self.buf = [0; _];
                 self.state = State::CanRead;
-                Ok(Some((buf, len)))
+                Some((buf, len))
             }
 
             (state, satisfy) => {
-                bail!("malformed UnixSocketReader state: {state:?} vs {satisfy:?}")
+                log::error!("malformed UnixSocketReader state: {state:?} vs {satisfy:?}");
+                self.state = State::Dead;
+                None
             }
         }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        self.state = State::Dead;
     }
 }

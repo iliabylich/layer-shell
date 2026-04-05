@@ -43,8 +43,8 @@ struct IO {
     tray: Tray,
     system_dbus: SystemDBus,
     network: Network,
-    hyprland_reader: Option<HyprlandReader>,
-    hyprland_writer: Option<HyprlandWriter>,
+    hyprland_reader: HyprlandReader,
+    hyprland_writer: HyprlandWriter,
     hyprland_queue: HyprlandQueue,
 
     location: Option<Location>,
@@ -121,8 +121,8 @@ impl IO {
         schedule!(self.timer);
 
         schedule_opt!(self.location);
-        schedule_opt!(self.hyprland_reader);
-        schedule_opt!(self.hyprland_writer);
+        schedule!(self.hyprland_reader);
+        schedule!(self.hyprland_writer);
         schedule_opt!(self.cpu);
         schedule_opt!(self.memory);
 
@@ -143,7 +143,7 @@ impl IO {
         match req {
             ControlRequest::CapsLockToggled => {
                 self.hyprland_queue.enqueue_get_caps_lock();
-                schedule_opt!(self.hyprland_writer);
+                schedule!(self.hyprland_writer);
             }
             ControlRequest::Exit => EventQueue::push_back(Event::Exit),
             ControlRequest::ReloadStyles => EventQueue::push_back(Event::ReloadStyles),
@@ -212,12 +212,12 @@ impl IO {
                 }
 
                 ModuleId::HyprlandReader => {
-                    satisfy_opt!(self.hyprland_reader);
-                    schedule_opt!(self.hyprland_reader);
+                    satisfy!(self.hyprland_reader);
+                    schedule!(self.hyprland_reader);
                 }
                 ModuleId::HyprlandWriter => {
-                    satisfy_opt!(self.hyprland_writer);
-                    schedule_opt!(self.hyprland_writer);
+                    satisfy!(self.hyprland_writer);
+                    schedule!(self.hyprland_writer);
                 }
 
                 ModuleId::SessionDBus => {
@@ -304,7 +304,7 @@ impl IO {
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
                 self.hyprland_queue.enqueue_dispatch(format!($($arg)*), );
-                schedule_opt!(self.hyprland_writer);
+                schedule!(self.hyprland_writer);
             }};
         }
         match cmd {
