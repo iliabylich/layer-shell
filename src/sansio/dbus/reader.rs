@@ -30,6 +30,7 @@ enum State {
     WaitingForBody,
     CanDiscardBody,
     WaitingForDiscardBody,
+    Dead,
 }
 
 const BUF_SIZE: usize = 500_000;
@@ -90,11 +91,23 @@ impl DBusReader {
                 }
             }
             State::WaitingForDiscardBody => Wants::Nothing,
+
+            State::Dead => Wants::Nothing,
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
         match (self.state, satisfy) {
+            (State::Dead, _) => Ok(None),
+            (_, Satisfy::Crash) => {
+                log::error!(
+                    "Module DBusReader({:?}) received Satisfy::Crash, stopping...",
+                    self.kind
+                );
+                self.state = State::Dead;
+                Ok(None)
+            }
+
             (State::WaitingForHeader, Satisfy::Read) => {
                 if res == 0 {
                     return Ok(None);
@@ -167,6 +180,17 @@ impl DBusReader {
 
             (state, satisfy) => {
                 bail!("malformed DBusReader state: {state:?} vs {satisfy:?}")
+            }
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<&'static [u8]> {
+        match self.try_satisfy(satisfy, res) {
+            Ok(buf) => buf,
+            Err(err) => {
+                log::error!("Module DBusReader has crashed, stopping: {err:?}");
+                self.state = State::Dead;
+                None
             }
         }
     }

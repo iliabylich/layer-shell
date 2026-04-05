@@ -1,5 +1,4 @@
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail, ensure};
 use libc::{AT_FDCWD, O_RDONLY};
 use std::ffi::CStr;
 
@@ -17,6 +16,7 @@ enum State {
     WaitingForTimer,
     CanRead,
     WaitingForRead,
+    Dead,
 }
 
 impl FileReader {
@@ -53,28 +53,49 @@ impl FileReader {
                 }
             }
             State::WaitingForRead => Wants::Nothing,
+
+            State::Dead => Wants::Nothing,
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<&[u8]> {
         match (self.state, satisfy) {
+            (State::Dead, _) => None,
+            (_, Satisfy::Crash) => {
+                log::error!("Module FileReader received Satisfy::Crash, stopping...");
+                self.state = State::Dead;
+                None
+            }
+
             (State::WaitingForOpen, Satisfy::OpenAt) => {
-                ensure!(res >= 0, "FileReader::Open failed: {res}");
+                if res < 0 {
+                    log::error!("FileReader::Open failed: {res}");
+                    self.state = State::Dead;
+                    return None;
+                }
+
                 self.fd = res;
                 self.state = State::CanRead;
-                Ok(None)
+                None
             }
 
             (State::WaitingForRead, Satisfy::Read) => {
-                ensure!(res > 0, "FileReader::Read failed: {res}");
+                if res <= 0 {
+                    log::error!("FileReader::Read failed: {res}");
+                    self.state = State::Dead;
+                    return None;
+                }
+
                 let bytes_read = res as usize;
                 let out = &self.buf[..bytes_read];
                 self.state = State::WaitingForTimer;
-                Ok(Some(out))
+                Some(out)
             }
 
             (state, satisfy) => {
-                bail!("malformed FileReader state: {state:?} vs {satisfy:?}")
+                log::error!("malformed FileReader state: {state:?} vs {satisfy:?}");
+                self.state = State::Dead;
+                None
             }
         }
     }

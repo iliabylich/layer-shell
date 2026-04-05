@@ -11,14 +11,12 @@ const HOST: &str = "myip.ibylich.dev";
 
 pub(crate) struct Location {
     https: Https,
-    dead: bool,
 }
 
 impl Location {
     pub(crate) fn new() -> Self {
         Self {
             https: Https::new(HttpsRequest::get(HOST, "/")),
-            dead: false,
         }
     }
 
@@ -27,10 +25,6 @@ impl Location {
     }
 
     pub(crate) fn wants(&mut self) -> Wants {
-        if self.dead {
-            return Wants::Nothing;
-        }
-
         self.https.wants()
     }
 
@@ -43,15 +37,11 @@ impl Location {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<(f64, f64)> {
-        if self.dead {
-            return None;
-        }
-
         match self.try_satisfy(satisfy, res) {
             Ok(location) => location,
             Err(err) => {
                 log::error!("Location module crashed: {satisfy:?} {res} {err:?}");
-                self.dead = true;
+                let _ = self.https.satisfy(Satisfy::Crash, 0);
                 None
             }
         }

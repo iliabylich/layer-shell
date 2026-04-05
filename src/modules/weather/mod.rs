@@ -83,13 +83,13 @@ impl Weather {
     }
 
     pub(crate) fn tick(&mut self, tick: u64) {
-        if tick.is_multiple_of(10) {
-            if let Some((lat, lng)) = self.latlng() {
-                *self = Self::Ready {
-                    lat,
-                    lng,
-                    https: Https::new(HttpsRequest::get(HOST, path(lat, lng))),
-                }
+        if tick.is_multiple_of(10)
+            && let Some((lat, lng)) = self.latlng()
+        {
+            *self = Self::Ready {
+                lat,
+                lng,
+                https: Https::new(HttpsRequest::get(HOST, path(lat, lng))),
             }
         }
     }

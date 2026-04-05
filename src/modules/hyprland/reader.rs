@@ -44,7 +44,7 @@ impl HyprlandReader {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
         if let Err(err) = self.try_satisfy(satisfy, res) {
             log::error!("HyprlandReader has crashed: {satisfy:?} {res} {err:?}");
-            self.socket_reader.stop();
+            self.socket_reader.satisfy(Satisfy::Crash, 0);
         }
     }
 }

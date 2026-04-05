@@ -11,7 +11,8 @@ pub(crate) struct DBusWriter {
 #[derive(Debug, Clone, Copy)]
 enum State {
     CanWrite,
-    Waiting,
+    WaitingForWrite,
+    Dead,
 }
 
 impl DBusWriter {
@@ -37,37 +38,61 @@ impl DBusWriter {
                     return Wants::Nothing;
                 };
 
-                self.state = State::Waiting;
+                self.state = State::WaitingForWrite;
                 Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
                 }
             }
-            State::Waiting => Wants::Nothing,
+            State::WaitingForWrite => Wants::Nothing,
+            State::Dead => Wants::Nothing,
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
-        ensure!(
-            satisfy == Satisfy::Write,
-            "DBusWriter got unexpected satisfy: {satisfy:?}"
-        );
-        ensure!(res >= 0, "DBusWriter::Write failed: {res}");
-        let Some(message) = self.current.take() else {
-            bail!("malformed DBusWriter state: received Write, but there's no current message");
-        };
-        let bytes_written = res as usize;
-        ensure!(
-            bytes_written == message.len(),
-            "written is wrong: {bytes_written} vs {}",
-            message.len()
-        );
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
+        match (self.state, satisfy) {
+            (State::Dead, _) => Ok(()),
+            (_, Satisfy::Crash) => {
+                log::error!(
+                    "Module DBusReader({:?}) received Satisfy::Crash, stopping...",
+                    self.kind
+                );
+                self.state = State::Dead;
+                Ok(())
+            }
 
-        if let Some(next) = DBusQueue::pop_front(self.kind) {
-            self.current = Some(next);
+            (State::WaitingForWrite, Satisfy::Write) => {
+                ensure!(res >= 0, "DBusWriter::Write failed: {res}");
+                let Some(message) = self.current.take() else {
+                    bail!(
+                        "malformed DBusWriter state: received Write, but there's no current message"
+                    );
+                };
+                let bytes_written = res as usize;
+                ensure!(
+                    bytes_written == message.len(),
+                    "written is wrong: {bytes_written} vs {}",
+                    message.len()
+                );
+
+                if let Some(next) = DBusQueue::pop_front(self.kind) {
+                    self.current = Some(next);
+                }
+                self.state = State::CanWrite;
+                Ok(())
+            }
+
+            (state, satisfy) => {
+                bail!("malformed DBusWriter state: {state:?} vs {satisfy:?}")
+            }
         }
-        self.state = State::CanWrite;
-        Ok(())
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
+        if let Err(err) = self.try_satisfy(satisfy, res) {
+            log::error!("Module DBusReader has crashed, stopping: {err:?}");
+            self.state = State::Dead;
+        }
     }
 }

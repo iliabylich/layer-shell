@@ -1,4 +1,4 @@
-use crate::sansio::{Satisfy, Wants};
+use crate::sansio::{DBusConnectionKind, Satisfy, Wants};
 use anyhow::{Result, bail, ensure};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
@@ -21,6 +21,7 @@ enum State {
     CanWriteBegin,
     WaitingForWriteBegin,
     Done,
+    Dead,
 }
 
 pub(crate) struct DBusConnector {
@@ -28,15 +29,27 @@ pub(crate) struct DBusConnector {
     state: State,
     addr: sockaddr_un,
     buf: [u8; 100],
+    kind: DBusConnectionKind,
 }
 
 impl DBusConnector {
-    pub(crate) fn new(addr: sockaddr_un) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, kind: DBusConnectionKind) -> Self {
         Self {
             fd: -1,
             state: State::CanSocket,
             addr,
             buf: [0; _],
+            kind,
+        }
+    }
+
+    pub(crate) fn dummy(kind: DBusConnectionKind) -> Self {
+        Self {
+            fd: -1,
+            state: State::Dead,
+            addr: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
+            buf: [0; _],
+            kind,
         }
     }
 
@@ -126,11 +139,22 @@ impl DBusConnector {
             State::WaitingForWriteBegin => Wants::Nothing,
 
             State::Done => Wants::Nothing,
+            State::Dead => Wants::Nothing,
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<i32>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<i32>> {
         match (self.state, satisfy) {
+            (State::Dead, _) => Ok(None),
+            (_, Satisfy::Crash) => {
+                log::error!(
+                    "Module DBusConnector({:?}) received Satisfy::Crash, stopping...",
+                    self.kind
+                );
+                self.state = State::Dead;
+                Ok(None)
+            }
+
             (State::WaitingForSocket, Satisfy::Socket) => {
                 ensure!(res >= 0, "DBusConnector::Socket failed: {res}");
                 self.fd = res;
@@ -192,6 +216,17 @@ impl DBusConnector {
 
             (state, satisfy) => {
                 bail!("malformed DBusConnector state: {state:?} vs {satisfy:?}")
+            }
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<i32> {
+        match self.try_satisfy(satisfy, res) {
+            Ok(fd) => fd,
+            Err(err) => {
+                log::error!("Module DBusConnector has crashed, stopping: {err:?}");
+                self.state = State::Dead;
+                None
             }
         }
     }

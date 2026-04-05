@@ -51,7 +51,7 @@ impl SessionDBus {
             Ok(message) => Some(message),
             Err(err) => {
                 log::error!("DBus(session) got malformed message: {err:?}");
-                self.conn.stop();
+                self.conn.satisfy(Satisfy::Crash, 0);
                 None
             }
         }
