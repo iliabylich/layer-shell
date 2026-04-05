@@ -34,10 +34,8 @@ impl SsidAndStrength {
     }
 
     pub(crate) fn init(&mut self, path: StringRef) {
-        self.subscription.start(
-            StringRef::new("org.freedesktop.NetworkManager"),
-            path.clone(),
-        );
+        self.subscription
+            .start("org.freedesktop.NetworkManager", path.clone());
         self.oneshot.send(path);
     }
 
@@ -52,12 +50,11 @@ impl SsidAndStrength {
 
 const GET: MethodCall<StringRef, SsidAndStrengthEvent, ()> = MethodCall::builder()
     .send(&|path, _data| {
-        GetAllProperties::new(
-            StringRef::new("org.freedesktop.NetworkManager"),
+        GetAllProperties::build(
+            "org.freedesktop.NetworkManager",
             path,
-            StringRef::new("org.freedesktop.NetworkManager.AccessPoint"),
+            "org.freedesktop.NetworkManager.AccessPoint",
         )
-        .into()
     })
     .try_process(&|mut body, _data| {
         let properties = body.try_next()?.context("no Properties in Body")?;

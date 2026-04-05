@@ -43,10 +43,8 @@ impl ActiveAccessPoint {
     }
 
     pub(crate) fn init(&mut self, path: StringRef) {
-        self.subscription.start(
-            StringRef::new("org.freedesktop.NetworkManager"),
-            path.clone(),
-        );
+        self.subscription
+            .start("org.freedesktop.NetworkManager", path.clone());
         self.get.send(path);
     }
 
@@ -62,13 +60,12 @@ impl ActiveAccessPoint {
 
 const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
     .send(&|path, _| {
-        GetProperty::new(
-            StringRef::new("org.freedesktop.NetworkManager"),
+        GetProperty::build(
+            "org.freedesktop.NetworkManager",
             path,
-            StringRef::new("org.freedesktop.NetworkManager.Device.Wireless"),
-            StringRef::new("ActiveAccessPoint"),
+            "org.freedesktop.NetworkManager.Device.Wireless",
+            "ActiveAccessPoint",
         )
-        .into()
     })
     .try_process(&|mut body, _| {
         let active_access_point = body.try_next()?.context("no ActiveAccessPoint in Body")?;

@@ -165,6 +165,12 @@ impl Default for StringRef {
     }
 }
 
+impl From<&str> for StringRef {
+    fn from(value: &str) -> Self {
+        Self::new(value)
+    }
+}
+
 impl Clone for StringRef {
     fn clone(&self) -> Self {
         self.slot().addref();

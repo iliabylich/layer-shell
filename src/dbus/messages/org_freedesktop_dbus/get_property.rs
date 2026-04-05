@@ -4,42 +4,26 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct GetProperty {
-    destination: StringRef,
-    path: StringRef,
-    interface: StringRef,
-    property: StringRef,
-}
+pub(crate) struct GetProperty;
 
 impl GetProperty {
-    pub(crate) const fn new(
-        destination: StringRef,
-        path: StringRef,
-        interface: StringRef,
-        property: StringRef,
-    ) -> Self {
-        Self {
-            destination,
-            path,
-            interface,
-            property,
-        }
-    }
-}
-
-impl From<GetProperty> for OutgoingMessage {
-    fn from(value: GetProperty) -> Self {
+    pub(crate) fn build(
+        destination: impl Into<StringRef>,
+        path: impl Into<StringRef>,
+        interface: impl Into<StringRef>,
+        property: impl Into<StringRef>,
+    ) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: value.path,
+            path: path.into(),
             member: StringRef::new("Get"),
             interface: Some(StringRef::new("org.freedesktop.DBus.Properties")),
-            destination: Some(value.destination),
+            destination: Some(destination.into()),
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::StringRef(value.interface),
-                Value::StringRef(value.property),
+                Value::StringRef(interface.into()),
+                Value::StringRef(property.into()),
             ],
         }
     }

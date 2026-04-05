@@ -7,7 +7,6 @@ use crate::{
     },
     event_queue::EventQueue,
     sansio::DBusConnectionKind,
-    utils::StringRef,
 };
 use anyhow::{Context as _, Result};
 
@@ -34,10 +33,8 @@ impl Sound {
         match self.oneshot.try_recv(message) {
             Ok(Some((volume, muted))) => {
                 EventQueue::push_back(Event::InitialSound { volume, muted });
-                self.subscription.start(
-                    StringRef::new("org.local.PipewireDBus"),
-                    StringRef::new("/org/local/PipewireDBus"),
-                );
+                self.subscription
+                    .start("org.local.PipewireDBus", "/org/local/PipewireDBus");
 
                 return;
             }
@@ -72,12 +69,11 @@ impl Sound {
 
 const GET: MethodCall<(), (u32, bool), ()> = MethodCall::builder()
     .send(&|_input, _data| {
-        GetAllProperties::new(
-            StringRef::new("org.local.PipewireDBus"),
-            StringRef::new("/org/local/PipewireDBus"),
-            StringRef::new("org.local.PipewireDBus"),
+        GetAllProperties::build(
+            "org.local.PipewireDBus",
+            "/org/local/PipewireDBus",
+            "org.local.PipewireDBus",
         )
-        .into()
     })
     .try_process(&|mut body, _data| {
         let attributes = body.try_next()?.context("expected 1 value")?;

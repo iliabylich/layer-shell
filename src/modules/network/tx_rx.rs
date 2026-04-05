@@ -36,7 +36,7 @@ impl TxRx {
     pub(crate) fn init(&mut self, path: StringRef) {
         self.oneshot.send(path.clone());
         self.subscription
-            .start(StringRef::new("org.freedesktop.NetworkManager"), path);
+            .start("org.freedesktop.NetworkManager", path);
     }
 
     pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {
@@ -48,14 +48,13 @@ const CONFIGURE: MethodCall<StringRef, (), ()> = MethodCall::builder()
     .send(&|path, _data| {
         use crate::dbus::types::Value;
 
-        SetProperty::new(
-            StringRef::new("org.freedesktop.NetworkManager"),
+        SetProperty::build(
+            "org.freedesktop.NetworkManager",
             path,
-            StringRef::new("org.freedesktop.NetworkManager.Device.Statistics"),
-            StringRef::new("RefreshRateMs"),
+            "org.freedesktop.NetworkManager.Device.Statistics",
+            "RefreshRateMs",
             Value::UInt32(1000),
         )
-        .into()
     })
     .try_process(&|_body, _data| unreachable!())
     .kind(DBusConnectionKind::System);

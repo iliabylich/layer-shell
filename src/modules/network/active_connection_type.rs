@@ -39,13 +39,12 @@ impl ActiveConnectionType {
 
 const GET: MethodCall<StringRef, bool, ()> = MethodCall::builder()
     .send(&|path, _data| {
-        GetProperty::new(
-            StringRef::new("org.freedesktop.NetworkManager"),
+        GetProperty::build(
+            "org.freedesktop.NetworkManager",
             path,
-            StringRef::new("org.freedesktop.NetworkManager.Connection.Active"),
-            StringRef::new("Type"),
+            "org.freedesktop.NetworkManager.Connection.Active",
+            "Type",
         )
-        .into()
     })
     .try_process(&|mut body, _data| {
         let type_ = body.try_next()?.context("no Type in Body")?;

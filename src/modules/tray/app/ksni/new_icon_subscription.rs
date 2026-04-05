@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context as _, Result, ensure};
 
 pub(crate) const SUBSCRIBE_TO_NEW_ICON: MethodCall<StringRef, (), ()> = MethodCall::builder()
-    .send(&|address, _data| AddMatch::from_rule(new_icon_match_rule(address)).into())
+    .send(&|address, _data| AddMatch::build_from_rule(new_icon_match_rule(address)))
     .try_process(&|_body, _data| Ok(()))
     .kind(DBusConnectionKind::Session);
 

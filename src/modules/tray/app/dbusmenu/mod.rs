@@ -15,7 +15,7 @@ mod get_layout;
 pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: MethodCall<(StringRef, StringRef), (), ()> =
     MethodCall::builder()
         .send(&|(address, path), _data| {
-            AddMatch::from_rule(layout_updated_match_rule(address, path)).into()
+            AddMatch::build_from_rule(layout_updated_match_rule(address, path))
         })
         .try_process(&|_, _data| Ok(()))
         .kind(DBusConnectionKind::Session);
@@ -49,7 +49,7 @@ pub(crate) fn parse_layout_updated_signal(
 pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: MethodCall<(StringRef, StringRef), (), ()> =
     MethodCall::builder()
         .send(&|(address, path), _data| {
-            AddMatch::from_rule(items_properties_updated_match_rule(address, path)).into()
+            AddMatch::build_from_rule(items_properties_updated_match_rule(address, path))
         })
         .try_process(&|_body, _data| Ok(()))
         .kind(DBusConnectionKind::Session);

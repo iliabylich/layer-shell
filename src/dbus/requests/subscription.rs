@@ -1,6 +1,5 @@
 use crate::{
     dbus::{
-        OutgoingMessage,
         decoder::{Body, IncomingMessage, MessageType},
         messages::{
             interface_is,
@@ -35,19 +34,19 @@ impl<T> Subscription<T> {
             return;
         };
 
-        let message: OutgoingMessage = RemoveMatch::new(path).into();
+        let message = RemoveMatch::build(path);
         DBusQueue::push_back(self.kind, message);
     }
 
     fn subscribe(&mut self, sender: StringRef, path: StringRef) {
-        let message: OutgoingMessage = AddMatch::new(sender, path.clone()).into();
+        let message = AddMatch::build(sender, path.clone());
         DBusQueue::push_back(self.kind, message);
         self.state = SubscriptionState::Subscribed(path);
     }
 
-    pub(crate) fn start(&mut self, sender: StringRef, path: StringRef) {
+    pub(crate) fn start(&mut self, sender: impl Into<StringRef>, path: impl Into<StringRef>) {
         self.unsubscribe();
-        self.subscribe(sender, path);
+        self.subscribe(sender.into(), path.into());
     }
 
     pub(crate) fn reset(&mut self) {

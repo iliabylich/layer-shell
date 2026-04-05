@@ -3,19 +3,10 @@ use crate::{
     utils::StringRef,
 };
 
-#[derive(Debug)]
-pub(crate) struct RequestName {
-    name: StringRef,
-}
+pub(crate) struct RequestName;
 
 impl RequestName {
-    pub(crate) const fn new(name: StringRef) -> Self {
-        Self { name }
-    }
-}
-
-impl From<RequestName> for OutgoingMessage {
-    fn from(value: RequestName) -> OutgoingMessage {
+    pub(crate) fn build(name: impl Into<StringRef>) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: StringRef::new("/org/freedesktop/DBus"),
@@ -24,7 +15,7 @@ impl From<RequestName> for OutgoingMessage {
             destination: Some(StringRef::new("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::StringRef(value.name), Value::UInt32(7)],
+            body: vec![Value::StringRef(name.into()), Value::UInt32(7)],
         }
     }
 }

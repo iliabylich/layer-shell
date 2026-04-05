@@ -22,7 +22,7 @@ impl Control {
     }
 
     pub(crate) fn init(&mut self) {
-        let message = RequestName::new(StringRef::new("org.me.LayerShellControl"));
+        let message = RequestName::build("org.me.LayerShellControl");
         SessionDBusQueue::push_back(message);
     }
 

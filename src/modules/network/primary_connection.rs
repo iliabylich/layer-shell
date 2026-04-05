@@ -40,8 +40,8 @@ impl PrimaryConnection {
     pub(crate) fn init(&mut self) {
         self.get.send(());
         self.subscription.start(
-            StringRef::new("org.freedesktop.NetworkManager"),
-            StringRef::new("/org/freedesktop/NetworkManager"),
+            "org.freedesktop.NetworkManager",
+            "/org/freedesktop/NetworkManager",
         );
     }
 
@@ -57,13 +57,12 @@ impl PrimaryConnection {
 
 const GET: MethodCall<(), StringRef, ()> = MethodCall::builder()
     .send(&|_input, _data| {
-        GetProperty::new(
-            StringRef::new("org.freedesktop.NetworkManager"),
-            StringRef::new("/org/freedesktop/NetworkManager"),
-            StringRef::new("org.freedesktop.NetworkManager"),
-            StringRef::new("PrimaryConnection"),
+        GetProperty::build(
+            "org.freedesktop.NetworkManager",
+            "/org/freedesktop/NetworkManager",
+            "org.freedesktop.NetworkManager",
+            "PrimaryConnection",
         )
-        .into()
     })
     .try_process(&|mut body, _data| {
         let path = body.try_next()?.context("empty Body")?;

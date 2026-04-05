@@ -12,11 +12,11 @@ use anyhow::{Context, Result, bail};
 
 pub(crate) const GET_MENU_AND_ICON: MethodCall<StringRef, (StringRef, TrayIcon), ()> = MethodCall::builder()
     .send(&|destination, _data| {
-        GetAllProperties::new(
+        GetAllProperties::build(
             destination,
-            StringRef::new("/StatusNotifierItem"),
-            StringRef::new("org.kde.StatusNotifierItem"),
-        ).into()
+            "/StatusNotifierItem",
+            "org.kde.StatusNotifierItem",
+        )
     })
     .try_process(&|mut body, _data| {
         let array = body.try_next()?.context("no array")?;

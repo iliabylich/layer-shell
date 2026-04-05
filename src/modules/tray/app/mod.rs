@@ -77,10 +77,8 @@ impl App {
     pub(crate) fn init(&mut self) {
         self.subscribe_to_new_icon.send(self.service.name());
         self.get_menu_and_icon.send(self.service.name());
-        self.menu_and_icon_subscription.start(
-            StringRef::new("org.freedesktop.DBus"),
-            StringRef::new("/StatusNotifierItem"),
-        );
+        self.menu_and_icon_subscription
+            .start("org.freedesktop.DBus", "/StatusNotifierItem");
     }
 
     pub(crate) fn reset(&mut self) {
@@ -92,7 +90,7 @@ impl App {
     }
 
     fn remove_match(&self, rule: String) {
-        let message: OutgoingMessage = RemoveMatch::from_rule(rule).into();
+        let message = RemoveMatch::build_from_rule(rule);
         SessionDBusQueue::push_back(message);
     }
 

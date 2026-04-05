@@ -28,7 +28,7 @@ impl StatusNotifierWatcher {
     }
 
     pub(crate) fn request(&mut self) {
-        let message = RequestName::new(StringRef::new("org.kde.StatusNotifierWatcher"));
+        let message = RequestName::build("org.kde.StatusNotifierWatcher");
         self.reply_serial = Some(SessionDBusQueue::push_back(message));
     }
 

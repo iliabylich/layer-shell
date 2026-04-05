@@ -3,26 +3,16 @@ use crate::{
     utils::StringRef,
 };
 
-pub(crate) struct RemoveMatch {
-    rule: String,
-}
+pub(crate) struct RemoveMatch;
 
 impl RemoveMatch {
-    pub(crate) fn new(path: StringRef) -> Self {
-        Self {
-            rule: format!(
-                "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{path}'"
-            ),
-        }
+    pub(crate) fn build(path: StringRef) -> OutgoingMessage {
+        Self::build_from_rule(format!(
+            "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{path}'"
+        ))
     }
 
-    pub(crate) fn from_rule(rule: String) -> Self {
-        Self { rule }
-    }
-}
-
-impl From<RemoveMatch> for OutgoingMessage {
-    fn from(value: RemoveMatch) -> Self {
+    pub(crate) fn build_from_rule(rule: String) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: StringRef::new("/org/freedesktop/DBus"),
@@ -31,7 +21,7 @@ impl From<RemoveMatch> for OutgoingMessage {
             destination: Some(StringRef::new("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::LongString(value.rule)],
+            body: vec![Value::LongString(rule)],
         }
     }
 }

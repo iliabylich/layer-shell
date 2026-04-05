@@ -15,26 +15,6 @@ pub(crate) const GET_LAYOUT: MethodCall<(StringRef, StringRef), Vec<TrayItem>, S
         .send(&|(destination, path), _service| {
             use crate::dbus::types::{CompleteType, Value};
 
-            let body = vec![
-                Value::Int32(0),
-                Value::Int32(1),
-                Value::Array(
-                    CompleteType::String,
-                    vec![
-                        Value::StringRef(StringRef::new("type")),
-                        Value::StringRef(StringRef::new("label")),
-                        Value::StringRef(StringRef::new("enabled")),
-                        Value::StringRef(StringRef::new("visible")),
-                        Value::StringRef(StringRef::new("icon-name")),
-                        Value::StringRef(StringRef::new("icon-data")),
-                        Value::StringRef(StringRef::new("shortcut")),
-                        Value::StringRef(StringRef::new("toggle-type")),
-                        Value::StringRef(StringRef::new("toggle-state")),
-                        Value::StringRef(StringRef::new("children-display")),
-                    ],
-                ),
-            ];
-
             OutgoingMessage::MethodCall {
                 destination: Some(destination),
                 path,
@@ -43,7 +23,25 @@ pub(crate) const GET_LAYOUT: MethodCall<(StringRef, StringRef), Vec<TrayItem>, S
                 member: StringRef::new("GetLayout"),
                 sender: None,
                 unix_fds: None,
-                body,
+                body: vec![
+                    Value::Int32(0),
+                    Value::Int32(1),
+                    Value::Array(
+                        CompleteType::String,
+                        vec![
+                            Value::StringRef(StringRef::new("type")),
+                            Value::StringRef(StringRef::new("label")),
+                            Value::StringRef(StringRef::new("enabled")),
+                            Value::StringRef(StringRef::new("visible")),
+                            Value::StringRef(StringRef::new("icon-name")),
+                            Value::StringRef(StringRef::new("icon-data")),
+                            Value::StringRef(StringRef::new("shortcut")),
+                            Value::StringRef(StringRef::new("toggle-type")),
+                            Value::StringRef(StringRef::new("toggle-state")),
+                            Value::StringRef(StringRef::new("children-display")),
+                        ],
+                    ),
+                ],
             }
         })
         .try_process(&|mut body, service| {

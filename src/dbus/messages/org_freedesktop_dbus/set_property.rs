@@ -3,46 +3,28 @@ use crate::{
     utils::StringRef,
 };
 
-pub(crate) struct SetProperty {
-    destination: StringRef,
-    path: StringRef,
-    interface: StringRef,
-    property: StringRef,
-    value: Value,
-}
+pub(crate) struct SetProperty;
 
 impl SetProperty {
-    pub(crate) const fn new(
-        destination: StringRef,
-        path: StringRef,
-        interface: StringRef,
-        property: StringRef,
+    pub(crate) fn build(
+        destination: impl Into<StringRef>,
+        path: impl Into<StringRef>,
+        interface: impl Into<StringRef>,
+        property: impl Into<StringRef>,
         value: Value,
-    ) -> Self {
-        Self {
-            destination,
-            path,
-            interface,
-            property,
-            value,
-        }
-    }
-}
-
-impl From<SetProperty> for OutgoingMessage {
-    fn from(message: SetProperty) -> Self {
+    ) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: message.path,
+            path: path.into(),
             member: StringRef::new("Set"),
             interface: Some(StringRef::new("org.freedesktop.DBus.Properties")),
-            destination: Some(message.destination),
+            destination: Some(destination.into()),
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::StringRef(message.interface),
-                Value::StringRef(message.property),
-                Value::Variant(Box::new(message.value)),
+                Value::StringRef(interface.into()),
+                Value::StringRef(property.into()),
+                Value::Variant(Box::new(value)),
             ],
         }
     }

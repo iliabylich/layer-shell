@@ -43,10 +43,8 @@ impl PrimaryDevice {
     }
 
     pub(crate) fn init(&mut self, path: StringRef) {
-        self.subscription.start(
-            StringRef::new("org.freedesktop.NetworkManager"),
-            path.clone(),
-        );
+        self.subscription
+            .start("org.freedesktop.NetworkManager", path.clone());
         self.get.send(path);
     }
 
@@ -62,13 +60,12 @@ impl PrimaryDevice {
 
 const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
     .send(&|path, _data| {
-        GetProperty::new(
-            StringRef::new("org.freedesktop.NetworkManager"),
+        GetProperty::build(
+            "org.freedesktop.NetworkManager",
             path,
-            StringRef::new("org.freedesktop.NetworkManager.Connection.Active"),
-            StringRef::new("Devices"),
+            "org.freedesktop.NetworkManager.Connection.Active",
+            "Devices",
         )
-        .into()
     })
     .try_process(&|mut body, _data| {
         let devices = body.try_next()?.context("no Devices in Body")?;

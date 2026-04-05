@@ -2,8 +2,8 @@ use crate::{dbus::types::OutgoingMessage, utils::StringRef};
 
 pub(crate) struct Hello;
 
-impl From<Hello> for OutgoingMessage {
-    fn from(_: Hello) -> OutgoingMessage {
+impl Hello {
+    pub(crate) fn build() -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: StringRef::new("/org/freedesktop/DBus"),

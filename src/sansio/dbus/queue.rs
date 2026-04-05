@@ -10,7 +10,7 @@ static mut SYSTEM_DBUS_QUEUE: Queue = Queue::empty();
 
 impl SystemDBusQueue {
     pub(crate) fn init() -> u32 {
-        Self::push_back(Hello)
+        Self::push_back(Hello::build())
     }
 
     pub(crate) fn push_back(message: impl Into<OutgoingMessage>) -> u32 {
@@ -34,7 +34,7 @@ static mut SESSION_DBUS_QUEUE: Queue = Queue::empty();
 
 impl SessionDBusQueue {
     pub(crate) fn init() -> u32 {
-        Self::push_back(Hello)
+        Self::push_back(Hello::build())
     }
 
     pub(crate) fn push_back(message: impl Into<OutgoingMessage>) -> u32 {
