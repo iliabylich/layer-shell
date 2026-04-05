@@ -98,10 +98,7 @@ pub struct StringRef {
 
 impl StringRef {
     pub(crate) fn new(s: &str) -> Self {
-        #[expect(static_mut_refs)]
-        unsafe {
-            STRING_POOL._alloc(s)
-        }
+        unsafe { STRING_POOL._alloc(s) }
     }
 
     #[expect(clippy::mut_from_ref)]

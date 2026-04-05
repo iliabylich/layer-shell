@@ -14,17 +14,11 @@ impl SystemDBusQueue {
     }
 
     pub(crate) fn push_back(message: impl Into<OutgoingMessage>) -> u32 {
-        #[expect(static_mut_refs)]
-        unsafe {
-            SYSTEM_DBUS_QUEUE.push_back(message)
-        }
+        unsafe { SYSTEM_DBUS_QUEUE.push_back(message) }
     }
 
     pub(crate) fn pop_front() -> Option<Vec<u8>> {
-        #[expect(static_mut_refs)]
-        unsafe {
-            SYSTEM_DBUS_QUEUE.pop_front()
-        }
+        unsafe { SYSTEM_DBUS_QUEUE.pop_front() }
     }
 }
 
@@ -38,17 +32,11 @@ impl SessionDBusQueue {
     }
 
     pub(crate) fn push_back(message: impl Into<OutgoingMessage>) -> u32 {
-        #[expect(static_mut_refs)]
-        unsafe {
-            SESSION_DBUS_QUEUE.push_back(message)
-        }
+        unsafe { SESSION_DBUS_QUEUE.push_back(message) }
     }
 
     pub(crate) fn pop_front() -> Option<Vec<u8>> {
-        #[expect(static_mut_refs)]
-        unsafe {
-            SESSION_DBUS_QUEUE.pop_front()
-        }
+        unsafe { SESSION_DBUS_QUEUE.pop_front() }
     }
 }
 

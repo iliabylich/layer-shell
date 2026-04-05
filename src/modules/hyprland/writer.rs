@@ -9,38 +9,32 @@ use libc::sockaddr_un;
 
 pub(crate) struct HyprlandWriter {
     current: Option<(UnixSocketOneshotWriter, Box<dyn WriterResource>)>,
-    queue: HyprlandQueue,
     addr: sockaddr_un,
-    state: HyprlandState,
     dead: bool,
 }
 
 impl HyprlandWriter {
-    pub(crate) fn new(addr: sockaddr_un, state: HyprlandState, queue: HyprlandQueue) -> Self {
+    pub(crate) fn new(addr: sockaddr_un) -> Self {
         let mut this = Self {
             current: None,
-            queue,
             addr,
-            state,
             dead: false,
         };
         this.pop_from_queue_into_current();
         this
     }
 
-    pub(crate) fn dummy(state: HyprlandState, queue: HyprlandQueue) -> Self {
+    pub(crate) fn dummy() -> Self {
         Self {
             current: None,
-            queue,
             addr: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-            state,
             dead: true,
         }
     }
 
     fn pop_from_queue_into_current(&mut self) {
         if self.current.is_none()
-            && let Some(resource) = self.queue.pop_front()
+            && let Some(resource) = HyprlandQueue::pop_front()
         {
             self.current = Some((
                 UnixSocketOneshotWriter::new(self.addr, resource.command()),
@@ -86,7 +80,7 @@ impl HyprlandWriter {
             return Ok(());
         };
 
-        if let Some(event) = self.state.apply(diff) {
+        if let Some(event) = HyprlandState::apply(diff) {
             EventQueue::push_back(event);
         }
 

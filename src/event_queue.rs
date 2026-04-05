@@ -7,16 +7,10 @@ static mut EVENT_QUEUE: VecDeque<Event> = VecDeque::new();
 
 impl EventQueue {
     pub(crate) fn push_back(event: Event) {
-        unsafe {
-            #[expect(static_mut_refs)]
-            EVENT_QUEUE.push_back(event);
-        }
+        unsafe { EVENT_QUEUE.push_back(event) }
     }
 
     pub(crate) fn pop_front() -> Option<Event> {
-        unsafe {
-            #[expect(static_mut_refs)]
-            EVENT_QUEUE.pop_front()
-        }
+        unsafe { EVENT_QUEUE.pop_front() }
     }
 }

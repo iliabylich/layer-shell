@@ -9,15 +9,11 @@ use anyhow::{Context as _, Result};
 
 pub(crate) struct HyprlandReader {
     socket_reader: UnixSocketReader,
-    state: HyprlandState,
 }
 
 impl HyprlandReader {
-    pub(crate) fn new(socket_reader: UnixSocketReader, state: HyprlandState) -> Self {
-        Self {
-            socket_reader,
-            state,
-        }
+    pub(crate) fn new(socket_reader: UnixSocketReader) -> Self {
+        Self { socket_reader }
     }
 
     pub(crate) const fn module_id(&self) -> ModuleId {
@@ -38,7 +34,7 @@ impl HyprlandReader {
             let Some(diff) = try_parse(line).context("parse error")? else {
                 continue;
             };
-            if let Some(event) = self.state.apply(diff) {
+            if let Some(event) = HyprlandState::apply(diff) {
                 EventQueue::push_back(event);
             }
         }

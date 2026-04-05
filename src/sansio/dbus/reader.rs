@@ -35,7 +35,6 @@ enum State {
 const BUF_SIZE: usize = 500_000;
 static mut BUFFERS: Option<Vec<Box<[u8; BUF_SIZE]>>> = None;
 fn buffer(kind: DBusConnectionKind) -> &'static mut [u8; BUF_SIZE] {
-    #[expect(static_mut_refs)]
     unsafe {
         if BUFFERS.is_none() {
             BUFFERS = Some(vec![Box::new([0; BUF_SIZE]), Box::new([0; BUF_SIZE])]);

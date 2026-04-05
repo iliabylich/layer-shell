@@ -5,7 +5,6 @@ pub(crate) use writer::HyprlandWriter;
 pub use state::HyprlandWorkspace;
 
 use crate::{sansio::UnixSocketReader, unix_socket::new_unix_socket};
-use state::HyprlandState;
 
 mod queue;
 mod reader;
@@ -16,18 +15,18 @@ mod writer;
 pub(crate) struct Hyprland;
 
 impl Hyprland {
-    pub(crate) fn connect() -> (HyprlandReader, HyprlandWriter, HyprlandQueue) {
-        let state = HyprlandState::empty();
-        let queue = HyprlandQueue::new();
+    pub(crate) fn connect() -> (HyprlandReader, HyprlandWriter) {
+        HyprlandQueue::init();
 
         let xdg_runtime_dir = match std::env::var("XDG_RUNTIME_DIR") {
             Ok(var) => var,
             Err(err) => {
                 log::error!("{err:?}");
+                HyprlandQueue::make_dummy();
+
                 return (
-                    HyprlandReader::new(UnixSocketReader::dummy(), state.copy()),
-                    HyprlandWriter::dummy(state, queue),
-                    HyprlandQueue::dummy(),
+                    HyprlandReader::new(UnixSocketReader::dummy()),
+                    HyprlandWriter::dummy(),
                 );
             }
         };
@@ -36,10 +35,11 @@ impl Hyprland {
             Ok(var) => var,
             Err(err) => {
                 log::error!("{err:?}");
+                HyprlandQueue::make_dummy();
+
                 return (
-                    HyprlandReader::new(UnixSocketReader::dummy(), state.copy()),
-                    HyprlandWriter::dummy(state, queue),
-                    HyprlandQueue::dummy(),
+                    HyprlandReader::new(UnixSocketReader::dummy()),
+                    HyprlandWriter::dummy(),
                 );
             }
         };
@@ -54,9 +54,8 @@ impl Hyprland {
         );
 
         (
-            HyprlandReader::new(UnixSocketReader::new(reader_addr), state.copy()),
-            HyprlandWriter::new(writer_addr, state.copy(), queue.copy()),
-            queue,
+            HyprlandReader::new(UnixSocketReader::new(reader_addr)),
+            HyprlandWriter::new(writer_addr),
         )
     }
 }

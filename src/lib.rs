@@ -1,3 +1,5 @@
+#![expect(static_mut_refs)]
+
 mod command;
 mod config;
 mod dbus;
@@ -45,7 +47,6 @@ struct IO {
     network: Network,
     hyprland_reader: HyprlandReader,
     hyprland_writer: HyprlandWriter,
-    hyprland_queue: HyprlandQueue,
 
     location: Option<Location>,
     weather: Option<Weather>,
@@ -83,7 +84,7 @@ impl IO {
         let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
-        let (hyprland_reader, hyprland_writer, hyprland_queue) = Hyprland::connect();
+        let (hyprland_reader, hyprland_writer) = Hyprland::connect();
 
         let mut this = Self {
             config,
@@ -100,7 +101,6 @@ impl IO {
             network: Network::new(),
             hyprland_reader,
             hyprland_writer,
-            hyprland_queue,
 
             location: Some(Location::new()),
             weather: None,
@@ -142,7 +142,7 @@ impl IO {
     fn on_control_req(&mut self, req: ControlRequest) {
         match req {
             ControlRequest::CapsLockToggled => {
-                self.hyprland_queue.enqueue_get_caps_lock();
+                HyprlandQueue::enqueue_get_caps_lock();
                 schedule!(self.hyprland_writer);
             }
             ControlRequest::Exit => EventQueue::push_back(Event::Exit),
@@ -303,7 +303,7 @@ impl IO {
 
         macro_rules! hyprctl {
             ($($arg:tt)*) => {{
-                self.hyprland_queue.enqueue_dispatch(format!($($arg)*), );
+                HyprlandQueue::enqueue_dispatch(format!($($arg)*), );
                 schedule!(self.hyprland_writer);
             }};
         }

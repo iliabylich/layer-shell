@@ -1,10 +1,13 @@
 use crate::{event::Event, utils::StringRef};
-use core::cell::RefCell;
-use std::{collections::HashSet, rc::Rc};
+use std::collections::HashSet;
 
 pub(crate) struct HyprlandState {
-    inner: Rc<RefCell<Inner>>,
+    workspace_ids: Option<HashSet<u64>>,
+    active_workspace_id: Option<u64>,
+    lang: Option<StringRef>,
 }
+
+static mut STATE: HyprlandState = HyprlandState::empty();
 
 pub(crate) enum HyprlandDiff {
     SetWorkspaceIds(HashSet<u64>),
@@ -18,32 +21,7 @@ pub(crate) enum HyprlandDiff {
 }
 
 impl HyprlandState {
-    pub(crate) fn empty() -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(Inner::empty())),
-        }
-    }
-
-    pub(crate) fn apply(&self, diff: HyprlandDiff) -> Option<Event> {
-        let mut inner = self.inner.borrow_mut();
-        inner.apply(diff)
-    }
-
-    pub(crate) fn copy(&self) -> Self {
-        Self {
-            inner: Rc::clone(&self.inner),
-        }
-    }
-}
-
-struct Inner {
-    workspace_ids: Option<HashSet<u64>>,
-    active_workspace_id: Option<u64>,
-    lang: Option<StringRef>,
-}
-
-impl Inner {
-    fn empty() -> Self {
+    const fn empty() -> Self {
         Self {
             workspace_ids: None,
             active_workspace_id: None,
@@ -51,36 +29,37 @@ impl Inner {
         }
     }
 
-    fn apply(&mut self, diff: HyprlandDiff) -> Option<Event> {
+    pub(crate) fn apply(diff: HyprlandDiff) -> Option<Event> {
         enum Changed {
             Workspaces,
             Language,
         }
+        let state = unsafe { &mut STATE };
         let changed;
 
         match diff {
             HyprlandDiff::SetWorkspaceIds(workspace_ids) => {
-                self.workspace_ids = Some(workspace_ids);
+                state.workspace_ids = Some(workspace_ids);
                 changed = Changed::Workspaces;
             }
             HyprlandDiff::AddWorkspaceId(workspace_id) => {
-                if let Some(workspace_ids) = &mut self.workspace_ids {
+                if let Some(workspace_ids) = &mut state.workspace_ids {
                     workspace_ids.insert(workspace_id);
                 }
                 changed = Changed::Workspaces;
             }
             HyprlandDiff::RemoveWorkspaceId(workspace_id) => {
-                if let Some(workspace_ids) = &mut self.workspace_ids {
+                if let Some(workspace_ids) = &mut state.workspace_ids {
                     workspace_ids.remove(&workspace_id);
                 }
                 changed = Changed::Workspaces;
             }
             HyprlandDiff::SetActiveWorkspaceId(active_workspace_id) => {
-                self.active_workspace_id = Some(active_workspace_id);
+                state.active_workspace_id = Some(active_workspace_id);
                 changed = Changed::Workspaces;
             }
             HyprlandDiff::SetLanguage(lang) => {
-                self.lang = Some(lang);
+                state.lang = Some(lang);
                 changed = Changed::Language;
             }
             HyprlandDiff::SetCapsLockEnabled(enabled) => {
@@ -90,8 +69,9 @@ impl Inner {
 
         match changed {
             Changed::Workspaces => {
-                let (active_workspace_id, workspace_ids) =
-                    self.active_workspace_id.zip(self.workspace_ids.as_ref())?;
+                let (active_workspace_id, workspace_ids) = state
+                    .active_workspace_id
+                    .zip(state.workspace_ids.as_ref())?;
                 let workspaces = (1..=10)
                     .map(|id| HyprlandWorkspace {
                         visible: id <= 5 || workspace_ids.contains(&id),
@@ -103,7 +83,7 @@ impl Inner {
             }
 
             Changed::Language => Some(Event::Language {
-                lang: self.lang.as_ref()?.clone(),
+                lang: state.lang.as_ref()?.clone(),
             }),
         }
     }
