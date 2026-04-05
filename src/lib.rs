@@ -50,8 +50,8 @@ struct IO {
 
     location: Option<Location>,
     weather: Option<Weather>,
-    cpu: Option<CPU>,
-    memory: Option<Memory>,
+    cpu: CPU,
+    memory: Memory,
 
     on_event: extern "C" fn(event: *const Event),
     running: bool,
@@ -104,8 +104,8 @@ impl IO {
 
             location: Some(Location::new()),
             weather: None,
-            cpu: Some(CPU::new()),
-            memory: Some(Memory::new()),
+            cpu: CPU::new(),
+            memory: Memory::new(),
 
             on_event,
             running: true,
@@ -123,8 +123,8 @@ impl IO {
         schedule_opt!(self.location);
         schedule!(self.hyprland_reader);
         schedule!(self.hyprland_writer);
-        schedule_opt!(self.cpu);
-        schedule_opt!(self.memory);
+        schedule!(self.cpu);
+        schedule!(self.memory);
 
         SessionDBusQueue::init();
         self.sound.init();
@@ -246,12 +246,12 @@ impl IO {
                 }
 
                 ModuleId::CPU => {
-                    satisfy_opt!(self.cpu);
-                    schedule_opt!(self.cpu);
+                    satisfy!(self.cpu);
+                    schedule!(self.cpu);
                 }
                 ModuleId::Memory => {
-                    satisfy_opt!(self.memory);
-                    schedule_opt!(self.memory);
+                    satisfy!(self.memory);
+                    schedule!(self.memory);
                 }
                 ModuleId::Timer => {
                     let tick = self.timer.satisfy(satisfy, res);
@@ -264,15 +264,11 @@ impl IO {
                         schedule!(weather);
                     }
 
-                    if let Some(cpu) = &mut self.cpu {
-                        cpu.tick(tick);
-                        schedule!(cpu);
-                    }
+                    self.cpu.tick(tick);
+                    schedule!(self.cpu);
 
-                    if let Some(memory) = &mut self.memory {
-                        memory.tick(tick);
-                        schedule!(memory);
-                    }
+                    self.memory.tick(tick);
+                    schedule!(self.memory);
 
                     self.sound.tick(tick);
                     schedule!(self.session_dbus);

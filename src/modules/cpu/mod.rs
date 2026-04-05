@@ -15,6 +15,7 @@ mod store;
 pub(crate) struct CPU {
     reader: FileReader,
     store: Store,
+    dead: bool,
 }
 
 impl CPU {
@@ -22,6 +23,7 @@ impl CPU {
         Self {
             reader: FileReader::new(c"/proc/stat"),
             store: Store::new(),
+            dead: false,
         }
     }
 
@@ -30,10 +32,14 @@ impl CPU {
     }
 
     pub(crate) fn wants(&mut self) -> Wants {
+        if self.dead {
+            return Wants::Nothing;
+        }
+
         self.reader.wants()
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         let Some(buf) = self.reader.satisfy(satisfy, res)? else {
             return Ok(());
         };
@@ -48,7 +54,22 @@ impl CPU {
         Ok(())
     }
 
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
+        if self.dead {
+            return;
+        }
+
+        if let Err(err) = self.try_satisfy(satisfy, res) {
+            log::error!("CPU module crashed: {satisfy:?} {res} {err:?}");
+            self.dead = true;
+        }
+    }
+
     pub(crate) fn tick(&mut self, _tick: u64) {
+        if self.dead {
+            return;
+        }
+
         self.reader.tick();
     }
 }
