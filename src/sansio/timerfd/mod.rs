@@ -9,6 +9,12 @@ pub(crate) struct TimerFd {
     fd: i32,
     buf: [u8; 8],
     ticks: u64,
+    state: State,
+}
+
+enum State {
+    CanRead,
+    WaitingForRead,
 }
 
 impl TimerFd {
@@ -17,14 +23,21 @@ impl TimerFd {
             fd: create_timer(),
             buf: [0; _],
             ticks: 0,
+            state: State::CanRead,
         }
     }
 
     pub(crate) fn wants(&mut self) -> Wants {
-        Wants::Read {
-            fd: self.fd,
-            buf: self.buf.as_mut_ptr(),
-            len: self.buf.len(),
+        match self.state {
+            State::CanRead => {
+                self.state = State::WaitingForRead;
+                Wants::Read {
+                    fd: self.fd,
+                    buf: self.buf.as_mut_ptr(),
+                    len: self.buf.len(),
+                }
+            }
+            State::WaitingForRead => Wants::Nothing,
         }
     }
 
@@ -36,6 +49,7 @@ impl TimerFd {
 
                 let ticks = self.ticks;
                 self.ticks = self.ticks.saturating_add(expirations);
+                self.state = State::CanRead;
 
                 Ok(ticks)
             }

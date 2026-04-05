@@ -63,6 +63,10 @@ macro_rules! schedule {
     ($module:expr) => {{
         let wants = $module.wants();
         let module_id = $module.module_id();
+        let wants_next = $module.wants();
+        if !matches!(wants_next, Wants::Nothing) {
+            report_and_exit!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
+        }
         schedule_wanted(wants, module_id)
     }};
 }

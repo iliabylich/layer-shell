@@ -38,10 +38,15 @@ pub(crate) struct TlsOverTcp {
 #[derive(Debug)]
 enum State {
     CanSocket,
+    WaitingForSocket,
     CanConnect,
+    WaitingForConnect,
     CanRead,
+    WaitingForRead,
     CanWrite,
+    WaitingForWrite,
     CanClose,
+    WaitingForClose,
     Done,
 }
 
@@ -214,17 +219,28 @@ impl TlsOverTcp {
     }
 
     pub(crate) fn wants(&mut self) -> Wants {
-        match &mut self.state {
-            State::CanSocket => Wants::Socket {
-                domain: libc::AF_INET,
-                r#type: libc::SOCK_STREAM,
-            },
-            State::CanConnect => Wants::Connect {
-                fd: self.fd,
-                addr: (&self.addr as *const libc::sockaddr_in).cast(),
-                addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
-            },
+        match self.state {
+            State::CanSocket => {
+                self.state = State::WaitingForSocket;
+                Wants::Socket {
+                    domain: libc::AF_INET,
+                    r#type: libc::SOCK_STREAM,
+                }
+            }
+            State::WaitingForSocket => Wants::Nothing,
+
+            State::CanConnect => {
+                self.state = State::WaitingForConnect;
+                Wants::Connect {
+                    fd: self.fd,
+                    addr: (&self.addr as *const libc::sockaddr_in).cast(),
+                    addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
+                }
+            }
+            State::WaitingForConnect => Wants::Nothing,
+
             State::CanRead => {
+                self.state = State::WaitingForRead;
                 let buf = &mut self.incoming_tls[self.incoming_end..];
                 Wants::Read {
                     fd: self.fd,
@@ -232,7 +248,10 @@ impl TlsOverTcp {
                     len: buf.len(),
                 }
             }
+            State::WaitingForRead => Wants::Nothing,
+
             State::CanWrite => {
+                self.state = State::WaitingForWrite;
                 let buf = &self.outgoing_tls[self.outgoing_start..self.outgoing_end];
                 Wants::Write {
                     fd: self.fd,
@@ -240,27 +259,34 @@ impl TlsOverTcp {
                     len: buf.len(),
                 }
             }
-            State::CanClose => Wants::Close { fd: self.fd },
+            State::WaitingForWrite => Wants::Nothing,
+
+            State::CanClose => {
+                self.state = State::WaitingForClose;
+                Wants::Close { fd: self.fd }
+            }
+            State::WaitingForClose => Wants::Nothing,
+
             State::Done => Wants::Nothing,
         }
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Vec<u8>>> {
         match (&mut self.state, satisfy) {
-            (State::CanSocket, Satisfy::Socket) => {
+            (State::WaitingForSocket, Satisfy::Socket) => {
                 ensure!(res >= 0, "TlsOverTcp::Socket failed: {res}");
                 self.fd = res;
                 self.state = State::CanConnect;
                 Ok(None)
             }
 
-            (State::CanConnect, Satisfy::Connect) => {
+            (State::WaitingForConnect, Satisfy::Connect) => {
                 ensure!(res >= 0, "TlsOverTcp::Connect failed: {res}");
                 self.process_tls()?;
                 Ok(None)
             }
 
-            (State::CanWrite, Satisfy::Write) => {
+            (State::WaitingForWrite, Satisfy::Write) => {
                 ensure!(res >= 0, "TlsOverTcp::Write failed: {res}");
                 let bytes_written = res as usize;
                 self.done_writing(bytes_written);
@@ -268,7 +294,7 @@ impl TlsOverTcp {
                 Ok(None)
             }
 
-            (State::CanRead, Satisfy::Read) => {
+            (State::WaitingForRead, Satisfy::Read) => {
                 ensure!(res >= 0, "TlsOverTcp::Read failed: {res}");
                 let bytes_read = res as usize;
                 self.done_reading(bytes_read);
@@ -276,7 +302,7 @@ impl TlsOverTcp {
                 Ok(None)
             }
 
-            (State::CanClose, Satisfy::Close) => {
+            (State::WaitingForClose, Satisfy::Close) => {
                 ensure!(res >= 0, "TlsOverTcp::Close failed: {res}");
                 self.state = State::Done;
                 Ok(Some(core::mem::take(&mut self.response)))

@@ -18,10 +18,15 @@ pub(crate) struct UnixSocketOneshotWriter {
 #[derive(Debug, Clone, Copy)]
 enum State {
     CanSocket,
+    WaitingForSocket,
     CanConnect,
+    WaitingForConnect,
     CanWrite,
+    WaitingForWrite,
     CanRead,
+    WaitingForRead,
     CanClose,
+    WaitingForClose,
     Done,
 }
 
@@ -46,16 +51,27 @@ impl UnixSocketOneshotWriter {
 
     pub(crate) fn wants(&mut self) -> Wants {
         match self.state {
-            State::CanSocket => Wants::Socket {
-                domain: AF_UNIX,
-                r#type: SOCK_STREAM,
-            },
-            State::CanConnect => Wants::Connect {
-                fd: self.fd,
-                addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-                addrlen: core::mem::size_of::<sockaddr_un>() as u32,
-            },
+            State::CanSocket => {
+                self.state = State::WaitingForSocket;
+                Wants::Socket {
+                    domain: AF_UNIX,
+                    r#type: SOCK_STREAM,
+                }
+            }
+            State::WaitingForSocket => Wants::Nothing,
+
+            State::CanConnect => {
+                self.state = State::WaitingForConnect;
+                Wants::Connect {
+                    fd: self.fd,
+                    addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
+                    addrlen: core::mem::size_of::<sockaddr_un>() as u32,
+                }
+            }
+            State::WaitingForConnect => Wants::Nothing,
+
             State::CanWrite => {
+                self.state = State::WaitingForWrite;
                 let buf = &self.buf[..self.write_buflen];
                 Wants::Write {
                     fd: self.fd,
@@ -63,45 +79,57 @@ impl UnixSocketOneshotWriter {
                     len: buf.len(),
                 }
             }
-            State::CanRead => Wants::Read {
-                fd: self.fd,
-                buf: self.buf.as_mut_ptr(),
-                len: self.buf.len(),
-            },
-            State::CanClose => Wants::Close { fd: self.fd },
+            State::WaitingForWrite => Wants::Nothing,
+
+            State::CanRead => {
+                self.state = State::WaitingForRead;
+                Wants::Read {
+                    fd: self.fd,
+                    buf: self.buf.as_mut_ptr(),
+                    len: self.buf.len(),
+                }
+            }
+            State::WaitingForRead => Wants::Nothing,
+
+            State::CanClose => {
+                self.state = State::WaitingForClose;
+                Wants::Close { fd: self.fd }
+            }
+            State::WaitingForClose => Wants::Nothing,
+
             State::Done => Wants::Nothing,
         }
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
         match (self.state, satisfy) {
-            (State::CanSocket, Satisfy::Socket) => {
+            (State::WaitingForSocket, Satisfy::Socket) => {
                 ensure!(res >= 0, "UnixSocketOneshotWriter::Socket failed: {res}");
                 self.fd = res;
                 self.state = State::CanConnect;
                 Ok(None)
             }
 
-            (State::CanConnect, Satisfy::Connect) => {
+            (State::WaitingForConnect, Satisfy::Connect) => {
                 ensure!(res >= 0, "UnixSocketOneshotWriter::Connect failed: {res}");
                 self.state = State::CanWrite;
                 Ok(None)
             }
 
-            (State::CanWrite, Satisfy::Write) => {
+            (State::WaitingForWrite, Satisfy::Write) => {
                 ensure!(res > 0, "UnixSocketOneshotWriter::Write failed: {res}");
                 self.state = State::CanRead;
                 Ok(None)
             }
 
-            (State::CanRead, Satisfy::Read) => {
+            (State::WaitingForRead, Satisfy::Read) => {
                 ensure!(res > 0, "UnixSocketOneshotWriter::Read failed: {res}");
                 self.bytes_read = res as usize;
                 self.state = State::CanClose;
                 Ok(None)
             }
 
-            (State::CanClose, Satisfy::Close) => {
+            (State::WaitingForClose, Satisfy::Close) => {
                 ensure!(res >= 0, "UnixSocketOneshotWriter::Close failed: {res}");
                 self.state = State::Done;
                 Ok(Some(&self.buf[..self.bytes_read]))
