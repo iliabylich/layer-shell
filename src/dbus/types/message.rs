@@ -1,35 +1,34 @@
 use crate::{
     dbus::types::{MessageType, Value},
-    ffi::ShortString,
+    utils::StringRef,
 };
 
 #[derive(Debug, PartialEq)]
-#[expect(clippy::large_enum_variant)]
 pub(crate) enum OutgoingMessage {
     MethodCall {
-        destination: Option<ShortString>,
-        path: ShortString,
-        interface: Option<ShortString>,
+        destination: Option<StringRef>,
+        path: StringRef,
+        interface: Option<StringRef>,
         serial: u32,
-        member: ShortString,
-        sender: Option<ShortString>,
+        member: StringRef,
+        sender: Option<StringRef>,
         unix_fds: Option<u32>,
         body: Vec<Value>,
     },
     MethodReturn {
         serial: u32,
         reply_serial: u32,
-        destination: Option<ShortString>,
-        sender: Option<ShortString>,
+        destination: Option<StringRef>,
+        sender: Option<StringRef>,
         unix_fds: Option<u32>,
         body: Vec<Value>,
     },
     Error {
         serial: u32,
-        error_name: ShortString,
+        error_name: StringRef,
         reply_serial: u32,
-        destination: Option<ShortString>,
-        sender: Option<ShortString>,
+        destination: Option<StringRef>,
+        sender: Option<StringRef>,
         unix_fds: Option<u32>,
         body: Vec<Value>,
     },
@@ -60,33 +59,30 @@ impl OutgoingMessage {
         }
     }
 
-    pub(crate) fn path(&self) -> Option<ShortString> {
+    pub(crate) fn path(&self) -> Option<StringRef> {
         match self {
-            Self::MethodCall { path, .. } => Some(*path),
+            Self::MethodCall { path, .. } => Some(path.clone()),
             _ => None,
         }
     }
 
-    pub(crate) fn member(&self) -> Option<ShortString> {
+    pub(crate) fn member(&self) -> Option<StringRef> {
         match self {
-            Self::MethodCall { member, .. } => Some(*member),
+            Self::MethodCall { member, .. } => Some(member.clone()),
             _ => None,
         }
     }
 
-    pub(crate) fn interface(&self) -> Option<ShortString> {
+    pub(crate) fn interface(&self) -> Option<StringRef> {
         match self {
-            Self::MethodCall {
-                interface: Some(interface),
-                ..
-            } => Some(*interface),
+            Self::MethodCall { interface, .. } => interface.clone(),
             _ => None,
         }
     }
 
-    pub(crate) fn error_name(&self) -> Option<ShortString> {
+    pub(crate) fn error_name(&self) -> Option<StringRef> {
         match self {
-            Self::Error { error_name, .. } => Some(*error_name),
+            Self::Error { error_name, .. } => Some(error_name.clone()),
             _ => None,
         }
     }
@@ -100,19 +96,19 @@ impl OutgoingMessage {
         }
     }
 
-    pub(crate) fn destination(&self) -> Option<ShortString> {
+    pub(crate) fn destination(&self) -> Option<StringRef> {
         match self {
             Self::MethodCall { destination, .. }
             | Self::MethodReturn { destination, .. }
-            | Self::Error { destination, .. } => *destination,
+            | Self::Error { destination, .. } => destination.clone(),
         }
     }
 
-    pub(crate) fn sender(&self) -> Option<ShortString> {
+    pub(crate) fn sender(&self) -> Option<StringRef> {
         match self {
             Self::MethodCall { sender, .. }
             | Self::MethodReturn { sender, .. }
-            | Self::Error { sender, .. } => Some(*sender.as_ref()?),
+            | Self::Error { sender, .. } => sender.clone(),
         }
     }
 
@@ -136,7 +132,7 @@ impl OutgoingMessage {
         OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial,
-            destination: Some(ShortString::from(destination)),
+            destination: Some(StringRef::new(destination)),
             sender: None,
             unix_fds: None,
             body: vec![],
@@ -146,12 +142,12 @@ impl OutgoingMessage {
     pub(crate) fn new_err_no_method(reply_serial: u32, destination: &str) -> Self {
         OutgoingMessage::Error {
             serial: 0,
-            error_name: ShortString::new_const("org.freedesktop.DBus.Error.UnknownMethod"),
+            error_name: StringRef::new("org.freedesktop.DBus.Error.UnknownMethod"),
             reply_serial,
-            destination: Some(ShortString::from(destination)),
+            destination: Some(StringRef::new(destination)),
             sender: None,
             unix_fds: None,
-            body: vec![Value::ShortString(ShortString::new_const("Unknown method"))],
+            body: vec![Value::StringRef(StringRef::new("Unknown method"))],
         }
     }
 }

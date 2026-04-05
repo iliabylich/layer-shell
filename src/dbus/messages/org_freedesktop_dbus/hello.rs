@@ -1,4 +1,4 @@
-use crate::{dbus::types::OutgoingMessage, ffi::ShortString};
+use crate::{dbus::types::OutgoingMessage, utils::StringRef};
 
 pub(crate) struct Hello;
 
@@ -6,10 +6,10 @@ impl From<Hello> for OutgoingMessage {
     fn from(_: Hello) -> OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: ShortString::new_const("/org/freedesktop/DBus"),
-            member: ShortString::new_const("Hello"),
-            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
-            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
+            path: StringRef::new("/org/freedesktop/DBus"),
+            member: StringRef::new("Hello"),
+            interface: Some(StringRef::new("org.freedesktop.DBus")),
+            destination: Some(StringRef::new("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![],

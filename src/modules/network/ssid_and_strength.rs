@@ -4,19 +4,19 @@ use crate::{
         decoder::{ArrayValue, IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result};
 
 pub(crate) struct SsidAndStrength {
-    oneshot: MethodCall<ShortString, SsidAndStrengthEvent, ()>,
+    oneshot: MethodCall<StringRef, SsidAndStrengthEvent, ()>,
     subscription: Subscription<SsidAndStrengthEvent>,
 }
 
 #[derive(Debug)]
 pub(crate) struct SsidAndStrengthEvent {
-    pub(crate) ssid: Option<ShortString>,
+    pub(crate) ssid: Option<StringRef>,
     pub(crate) strength: Option<u8>,
 }
 
@@ -33,10 +33,10 @@ impl SsidAndStrength {
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: ShortString) {
+    pub(crate) fn init(&mut self, path: StringRef) {
         self.subscription.start(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
-            path,
+            StringRef::new("org.freedesktop.NetworkManager"),
+            path.clone(),
         );
         self.oneshot.send(path);
     }
@@ -50,12 +50,12 @@ impl SsidAndStrength {
     }
 }
 
-const GET: MethodCall<ShortString, SsidAndStrengthEvent, ()> = MethodCall::builder()
+const GET: MethodCall<StringRef, SsidAndStrengthEvent, ()> = MethodCall::builder()
     .send(&|path, _data| {
         GetAllProperties::new(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
+            StringRef::new("org.freedesktop.NetworkManager"),
             path,
-            ShortString::new_const("org.freedesktop.NetworkManager.AccessPoint"),
+            StringRef::new("org.freedesktop.NetworkManager.AccessPoint"),
         )
         .into()
     })
@@ -90,7 +90,7 @@ const SUBSCRIPTION: Subscription<SsidAndStrengthEvent> = Subscription::builder()
     })
     .kind(DBusConnectionKind::System);
 
-fn parse_properties(properties: ArrayValue<'_>) -> Result<(Option<ShortString>, Option<u8>)> {
+fn parse_properties(properties: ArrayValue<'_>) -> Result<(Option<StringRef>, Option<u8>)> {
     let mut iter = properties.iter();
     let mut ssid = None;
     let mut strength = None;
@@ -114,7 +114,7 @@ fn parse_properties(properties: ArrayValue<'_>) -> Result<(Option<ShortString>, 
     Ok((ssid, strength))
 }
 
-fn parse_ssid(ssid: Value<'_>) -> Result<ShortString> {
+fn parse_ssid(ssid: Value<'_>) -> Result<StringRef> {
     value_is!(ssid, Value::Array(ssid));
     let mut iter = ssid.iter();
     let mut bytes = vec![];
@@ -123,5 +123,5 @@ fn parse_ssid(ssid: Value<'_>) -> Result<ShortString> {
         bytes.push(byte);
     }
     let ssid = String::from_utf8_lossy(&bytes).to_string();
-    Ok(ShortString::from(ssid.as_str()))
+    Ok(StringRef::new(ssid.as_str()))
 }

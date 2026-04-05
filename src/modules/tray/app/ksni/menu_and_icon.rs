@@ -4,18 +4,18 @@ use crate::{
         decoder::{ArrayValue, Value},
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
-    ffi::ShortString,
     modules::{TrayIcon, TrayIconPixmap},
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context, Result, bail};
 
-pub(crate) const GET_MENU_AND_ICON: MethodCall<ShortString, (ShortString, TrayIcon), ()> = MethodCall::builder()
+pub(crate) const GET_MENU_AND_ICON: MethodCall<StringRef, (StringRef, TrayIcon), ()> = MethodCall::builder()
     .send(&|destination, _data| {
         GetAllProperties::new(
             destination,
-            ShortString::new_const("/StatusNotifierItem"),
-            ShortString::new_const("org.kde.StatusNotifierItem"),
+            StringRef::new("/StatusNotifierItem"),
+            StringRef::new("org.kde.StatusNotifierItem"),
         ).into()
     })
     .try_process(&|mut body, _data| {
@@ -33,7 +33,7 @@ pub(crate) const GET_MENU_AND_ICON: MethodCall<ShortString, (ShortString, TrayIc
         }
     }).kind(DBusConnectionKind::Session);
 
-pub(crate) const MENU_AND_ICON_SUBSCRIPTION: Subscription<(Option<ShortString>, Option<TrayIcon>)> =
+pub(crate) const MENU_AND_ICON_SUBSCRIPTION: Subscription<(Option<StringRef>, Option<TrayIcon>)> =
     Subscription::builder()
         .try_process(&|mut body, path, _subscribed_to| {
             path_is!(path, "/StatusNotifierItem");
@@ -48,7 +48,7 @@ pub(crate) const MENU_AND_ICON_SUBSCRIPTION: Subscription<(Option<ShortString>, 
         })
         .kind(DBusConnectionKind::Session);
 
-fn parse(attributes: ArrayValue<'_>) -> Result<(Option<ShortString>, Option<TrayIcon>)> {
+fn parse(attributes: ArrayValue<'_>) -> Result<(Option<StringRef>, Option<TrayIcon>)> {
     let mut menu = None;
     let mut icon_name = None;
     let mut icon_pixmap = None;
@@ -125,5 +125,5 @@ fn parse(attributes: ArrayValue<'_>) -> Result<(Option<ShortString>, Option<Tray
         })
         .or_else(|| icon_pixmap.map(TrayIcon::Pixmap));
 
-    Ok((menu.map(ShortString::from), icon))
+    Ok((menu.map(StringRef::new), icon))
 }

@@ -1,4 +1,4 @@
-use crate::{event::Event, ffi::ShortString};
+use crate::{event::Event, utils::StringRef};
 use core::cell::RefCell;
 use std::{collections::HashSet, rc::Rc};
 
@@ -12,7 +12,7 @@ pub(crate) enum HyprlandDiff {
     RemoveWorkspaceId(u64),
 
     SetActiveWorkspaceId(u64),
-    SetLanguage(ShortString),
+    SetLanguage(StringRef),
 
     SetCapsLockEnabled(bool),
 }
@@ -39,7 +39,7 @@ impl HyprlandState {
 struct Inner {
     workspace_ids: Option<HashSet<u64>>,
     active_workspace_id: Option<u64>,
-    lang: Option<ShortString>,
+    lang: Option<StringRef>,
 }
 
 impl Inner {
@@ -102,10 +102,9 @@ impl Inner {
                 Some(Event::Workspaces { workspaces })
             }
 
-            Changed::Language => {
-                let lang = self.lang?;
-                Some(Event::Language { lang })
-            }
+            Changed::Language => Some(Event::Language {
+                lang: self.lang.as_ref()?.clone(),
+            }),
         }
     }
 }

@@ -4,13 +4,13 @@ use crate::{
         decoder::{IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::SetProperty, path_is, value_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::Context as _;
 
 pub(crate) struct TxRx {
-    oneshot: MethodCall<ShortString, (), ()>,
+    oneshot: MethodCall<StringRef, (), ()>,
     subscription: Subscription<TxRxEvent>,
 }
 
@@ -33,12 +33,10 @@ impl TxRx {
         self.subscription.reset();
     }
 
-    pub(crate) fn init(&mut self, path: ShortString) {
-        self.oneshot.send(path);
-        self.subscription.start(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
-            path,
-        );
+    pub(crate) fn init(&mut self, path: StringRef) {
+        self.oneshot.send(path.clone());
+        self.subscription
+            .start(StringRef::new("org.freedesktop.NetworkManager"), path);
     }
 
     pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {
@@ -46,15 +44,15 @@ impl TxRx {
     }
 }
 
-const CONFIGURE: MethodCall<ShortString, (), ()> = MethodCall::builder()
+const CONFIGURE: MethodCall<StringRef, (), ()> = MethodCall::builder()
     .send(&|path, _data| {
         use crate::dbus::types::Value;
 
         SetProperty::new(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
+            StringRef::new("org.freedesktop.NetworkManager"),
             path,
-            ShortString::new_const("org.freedesktop.NetworkManager.Device.Statistics"),
-            ShortString::new_const("RefreshRateMs"),
+            StringRef::new("org.freedesktop.NetworkManager.Device.Statistics"),
+            StringRef::new("RefreshRateMs"),
             Value::UInt32(1000),
         )
         .into()

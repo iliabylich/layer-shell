@@ -51,28 +51,26 @@ static void event_received(const IO_Event *event) {
     css_reload();
     break;
   case IO_Event_TrayAppAdded:
-    char *service = (char *)(&event->tray_app_added.service);
-    io_model_tray_add_app(model, service, event->tray_app_added.icon,
+    io_model_tray_add_app(model, event->tray_app_added.service,
+                          event->tray_app_added.icon,
                           event->tray_app_added.items);
     break;
   case IO_Event_TrayAppRemoved:
-    service = (char *)(&event->tray_app_added.service);
-    io_model_tray_remove_app(model, service);
+    io_model_tray_remove_app(model, event->tray_app_added.service);
     break;
   case IO_Event_TrayAppIconUpdated:
-    service = (char *)(&event->tray_app_added.service);
-    io_model_tray_set_icon(model, service, event->tray_app_icon_updated.icon);
+    io_model_tray_set_icon(model, event->tray_app_added.service,
+                           event->tray_app_icon_updated.icon);
     break;
   case IO_Event_TrayAppMenuUpdated:
-    service = (char *)(&event->tray_app_added.service);
-    io_model_tray_set_menu(model, service, event->tray_app_menu_updated.items);
+    io_model_tray_set_menu(model, event->tray_app_added.service,
+                           event->tray_app_menu_updated.items);
     break;
   case IO_Event_Weather:
     SET("weather", "data", (gpointer)&event->weather);
     break;
   case IO_Event_Language:
-    char *lang = (char *)(&event->language.lang);
-    SET("language", "text", lang);
+    SET("language", "text", event->language.lang);
     break;
   case IO_Event_CpuUsage:
     SET("cpu", "data", (gpointer)&event->cpu_usage.usage_per_core);
@@ -82,8 +80,7 @@ static void event_received(const IO_Event *event) {
     SET("memory", "total", event->memory.total);
     break;
   case IO_Event_NetworkSsid:
-    char *ssid = (char *)(&event->network_ssid.ssid);
-    SET("network", "ssid", ssid);
+    SET("network", "ssid", event->network_ssid.ssid);
     break;
   case IO_Event_NetworkStrength:
     SET("network", "strength", event->network_strength.strength);
@@ -149,9 +146,7 @@ static void create_widgets() {
   model = io_model_new();
   top_bar = top_bar_new(app, model);
 
-  char *label = (char *)(&config->terminal.label);
-  fprintf(stderr, "label = %s\n", label);
-  top_bar_set_terminal_label(TOP_BAR(top_bar), label);
+  top_bar_set_terminal_label(TOP_BAR(top_bar), config->terminal.label);
 
 #define CONNECT(obj, signal, callback, data)                                   \
   g_signal_connect(obj, signal, G_CALLBACK(callback), data)

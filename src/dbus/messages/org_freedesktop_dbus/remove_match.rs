@@ -1,6 +1,6 @@
 use crate::{
     dbus::types::{OutgoingMessage, Value},
-    ffi::ShortString,
+    utils::StringRef,
 };
 
 pub(crate) struct RemoveMatch {
@@ -8,7 +8,7 @@ pub(crate) struct RemoveMatch {
 }
 
 impl RemoveMatch {
-    pub(crate) fn new(path: ShortString) -> Self {
+    pub(crate) fn new(path: StringRef) -> Self {
         Self {
             rule: format!(
                 "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='{path}'"
@@ -25,10 +25,10 @@ impl From<RemoveMatch> for OutgoingMessage {
     fn from(value: RemoveMatch) -> Self {
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: ShortString::new_const("/org/freedesktop/DBus"),
-            member: ShortString::new_const("RemoveMatch"),
-            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
-            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
+            path: StringRef::new("/org/freedesktop/DBus"),
+            member: StringRef::new("RemoveMatch"),
+            interface: Some(StringRef::new("org.freedesktop.DBus")),
+            destination: Some(StringRef::new("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![Value::LongString(value.rule)],

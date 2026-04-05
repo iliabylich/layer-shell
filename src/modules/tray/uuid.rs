@@ -1,17 +1,16 @@
+use crate::utils::StringRef;
 use anyhow::{Context as _, Result};
-
-use crate::ffi::ShortString;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct UUID;
 
 impl UUID {
-    pub(crate) fn encode(service: ShortString, id: i32) -> ShortString {
+    pub(crate) fn encode(service: StringRef, id: i32) -> StringRef {
         let uuid = format!("{}**{}", service, id);
-        ShortString::from(uuid.as_str())
+        StringRef::new(uuid.as_str())
     }
 
-    pub(crate) fn decode(uuid: ShortString) -> Result<(ShortString, i32)> {
+    pub(crate) fn decode(uuid: StringRef) -> Result<(StringRef, i32)> {
         let uuid = uuid.as_str();
 
         let (service, rest) = uuid
@@ -22,6 +21,6 @@ impl UUID {
             .parse::<i32>()
             .with_context(|| format!("ID (the last part) is not a i32 in {:?}", uuid))?;
 
-        Ok((ShortString::from(service), id))
+        Ok((StringRef::new(service), id))
     }
 }

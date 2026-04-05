@@ -1,4 +1,4 @@
-use crate::{ffi::ShortString, utils::report_and_exit};
+use crate::utils::{StringRef, report_and_exit};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -52,7 +52,7 @@ pub struct IOConfig {
 }
 #[repr(C)]
 pub struct IOTerminal {
-    pub label: ShortString,
+    pub label: StringRef,
     pub command: *mut *mut core::ffi::c_char,
 }
 
@@ -68,7 +68,7 @@ impl From<&Config> for IOConfig {
 impl From<&Terminal> for IOTerminal {
     fn from(terminal: &Terminal) -> Self {
         Self {
-            label: terminal.label.as_str().into(),
+            label: StringRef::new(&terminal.label),
             command: vec_of_string_to_null_terminated_c_array(&terminal.command),
         }
     }

@@ -3,9 +3,9 @@ use crate::{
         MethodCall, OutgoingMessage, Subscription, decoder::IncomingMessage,
         messages::org_freedesktop_dbus::RemoveMatch, types::Value,
     },
-    ffi::ShortString,
     modules::{TrayIcon, TrayItem, tray::service::Service},
     sansio::SessionDBusQueue,
+    utils::StringRef,
     utils::report_and_exit,
 };
 use dbusmenu::{
@@ -24,14 +24,14 @@ mod ksni;
 pub(crate) struct App {
     service: Service,
 
-    get_menu_and_icon: MethodCall<ShortString, (ShortString, TrayIcon), ()>,
-    subscribe_to_new_icon: MethodCall<ShortString, (), ()>,
-    menu_and_icon_subscription: Subscription<(Option<ShortString>, Option<TrayIcon>)>,
-    subscribe_to_layout_updated: MethodCall<(ShortString, ShortString), (), ()>,
-    subscribe_to_items_properties_updated: MethodCall<(ShortString, ShortString), (), ()>,
+    get_menu_and_icon: MethodCall<StringRef, (StringRef, TrayIcon), ()>,
+    subscribe_to_new_icon: MethodCall<StringRef, (), ()>,
+    menu_and_icon_subscription: Subscription<(Option<StringRef>, Option<TrayIcon>)>,
+    subscribe_to_layout_updated: MethodCall<(StringRef, StringRef), (), ()>,
+    subscribe_to_items_properties_updated: MethodCall<(StringRef, StringRef), (), ()>,
 
-    menu: ShortString,
-    get_layout: MethodCall<(ShortString, ShortString), Vec<TrayItem>, ShortString>,
+    menu: StringRef,
+    get_layout: MethodCall<(StringRef, StringRef), Vec<TrayItem>, StringRef>,
 
     state: State,
 }
@@ -52,6 +52,8 @@ pub(crate) enum TrayEvent {
 
 impl App {
     pub(crate) fn new(service: Service) -> Self {
+        let service_name = service.name();
+
         Self {
             service,
             get_menu_and_icon: GET_MENU_AND_ICON,
@@ -60,8 +62,8 @@ impl App {
             subscribe_to_layout_updated: SUBSCRIBE_TO_LAYOUT_UPDATED,
             subscribe_to_items_properties_updated: SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED,
 
-            menu: ShortString::new_const(""),
-            get_layout: GET_LAYOUT.with_data(service.name()),
+            menu: StringRef::new(""),
+            get_layout: GET_LAYOUT.with_data(service_name),
 
             state: State::Nothing,
         }
@@ -76,8 +78,8 @@ impl App {
         self.subscribe_to_new_icon.send(self.service.name());
         self.get_menu_and_icon.send(self.service.name());
         self.menu_and_icon_subscription.start(
-            ShortString::new_const("org.freedesktop.DBus"),
-            ShortString::new_const("/StatusNotifierItem"),
+            StringRef::new("org.freedesktop.DBus"),
+            StringRef::new("/StatusNotifierItem"),
         );
     }
 
@@ -98,20 +100,24 @@ impl App {
         self.remove_match(new_icon_match_rule(self.service.name()));
 
         if self.menu != "" {
-            self.remove_match(layout_updated_match_rule(self.service.name(), self.menu));
+            self.remove_match(layout_updated_match_rule(
+                self.service.name(),
+                self.menu.clone(),
+            ));
             self.remove_match(items_properties_updated_match_rule(
                 self.service.name(),
-                self.menu,
+                self.menu.clone(),
             ));
         }
     }
 
     fn schedule_get_layout(&mut self) {
         self.get_layout.reset();
-        self.get_layout.send((self.service.name(), self.menu));
+        self.get_layout
+            .send((self.service.name(), self.menu.clone()));
     }
 
-    fn on_menu_received(&mut self, menu: ShortString) {
+    fn on_menu_received(&mut self, menu: StringRef) {
         if self.menu != "" {
             return;
         }
@@ -119,9 +125,9 @@ impl App {
         self.menu = menu;
         self.schedule_get_layout();
         self.subscribe_to_layout_updated
-            .send((self.service.name(), self.menu));
+            .send((self.service.name(), self.menu.clone()));
         self.subscribe_to_items_properties_updated
-            .send((self.service.name(), self.menu));
+            .send((self.service.name(), self.menu.clone()));
     }
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
@@ -215,13 +221,19 @@ impl App {
             return None;
         }
 
-        if parse_layout_updated_signal(message, self.service.raw_address(), self.menu).is_ok() {
+        if parse_layout_updated_signal(message, self.service.raw_address(), self.menu.clone())
+            .is_ok()
+        {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
             self.schedule_get_layout();
             return None;
         }
-        if parse_items_properties_updated_signal(message, self.service.raw_address(), self.menu)
-            .is_ok()
+        if parse_items_properties_updated_signal(
+            message,
+            self.service.raw_address(),
+            self.menu.clone(),
+        )
+        .is_ok()
         {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
             self.schedule_get_layout();
@@ -238,15 +250,15 @@ impl App {
 
         let message = OutgoingMessage::MethodCall {
             destination: Some(self.service.name()),
-            path: self.menu,
-            interface: Some(ShortString::new_const("com.canonical.dbusmenu")),
+            path: self.menu.clone(),
+            interface: Some(StringRef::new("com.canonical.dbusmenu")),
             serial: 0,
-            member: ShortString::new_const("Event"),
+            member: StringRef::new("Event"),
             sender: None,
             unix_fds: None,
             body: vec![
                 Value::Int32(id),
-                Value::ShortString(ShortString::new_const("clicked")),
+                Value::StringRef(StringRef::new("clicked")),
                 Value::Variant(Box::new(Value::Int32(0))),
                 Value::UInt32(timestamp),
             ],

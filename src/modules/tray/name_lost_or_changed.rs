@@ -4,8 +4,8 @@ use crate::{
         decoder::{IncomingMessage, MessageType, Value},
         messages::{interface_is, member_is, path_is, value_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context, Result, bail, ensure};
 
@@ -24,9 +24,9 @@ impl NameLostOrNameOwnerChanged {
         self.name_changed.send(())
     }
 
-    pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<ShortString> {
+    pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<StringRef> {
         let address = parse_name_owner_changed(message).ok()?;
-        Some(ShortString::from(address))
+        Some(StringRef::new(address))
     }
 }
 
@@ -35,10 +35,10 @@ const SUBSCRIBE: MethodCall<(), (), ()> = MethodCall::builder()
         use crate::dbus::types::Value;
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: ShortString::new_const("/org/freedesktop/DBus"),
-            member: ShortString::new_const("AddMatch"),
-            interface: Some(ShortString::new_const("org.freedesktop.DBus")),
-            destination: Some(ShortString::new_const("org.freedesktop.DBus")),
+            path: StringRef::new("/org/freedesktop/DBus"),
+            member: StringRef::new("AddMatch"),
+            interface: Some(StringRef::new("org.freedesktop.DBus")),
+            destination: Some(StringRef::new("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
             body: vec![Value::LongString(

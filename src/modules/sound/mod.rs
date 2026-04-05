@@ -6,8 +6,8 @@ use crate::{
         messages::{interface_is, org_freedesktop_dbus::GetAllProperties, path_is, value_is},
     },
     event_queue::EventQueue,
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result};
 
@@ -35,8 +35,8 @@ impl Sound {
             Ok(Some((volume, muted))) => {
                 EventQueue::push_back(Event::InitialSound { volume, muted });
                 self.subscription.start(
-                    ShortString::new_const("org.local.PipewireDBus"),
-                    ShortString::new_const("/org/local/PipewireDBus"),
+                    StringRef::new("org.local.PipewireDBus"),
+                    StringRef::new("/org/local/PipewireDBus"),
                 );
 
                 return;
@@ -73,9 +73,9 @@ impl Sound {
 const GET: MethodCall<(), (u32, bool), ()> = MethodCall::builder()
     .send(&|_input, _data| {
         GetAllProperties::new(
-            ShortString::new_const("org.local.PipewireDBus"),
-            ShortString::new_const("/org/local/PipewireDBus"),
-            ShortString::new_const("org.local.PipewireDBus"),
+            StringRef::new("org.local.PipewireDBus"),
+            StringRef::new("/org/local/PipewireDBus"),
+            StringRef::new("org.local.PipewireDBus"),
         )
         .into()
     })

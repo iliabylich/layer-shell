@@ -1,4 +1,4 @@
-use crate::{dbus::types::signature::CompleteType, ffi::ShortString};
+use crate::{dbus::types::signature::CompleteType, utils::StringRef};
 
 #[derive(Debug, PartialEq, Clone)]
 #[expect(dead_code)]
@@ -14,9 +14,9 @@ pub(crate) enum Value {
     Double(f64),
     UnixFD(u32),
 
-    ShortString(ShortString),
+    StringRef(StringRef),
     LongString(String),
-    ObjectPath(ShortString),
+    ObjectPath(StringRef),
     Signature(Vec<u8>),
     Struct(Vec<Value>),
     Array(CompleteType, Vec<Value>),
@@ -37,7 +37,7 @@ impl Value {
             Self::UInt64(_) => CompleteType::UInt64,
             Self::Double(_) => CompleteType::Double,
             Self::UnixFD(_) => CompleteType::UnixFD,
-            Self::ShortString(_) => CompleteType::String,
+            Self::StringRef(_) => CompleteType::String,
             Self::LongString(_) => CompleteType::String,
             Self::ObjectPath(_) => CompleteType::ObjectPath,
             Self::Signature(_) => CompleteType::Signature,

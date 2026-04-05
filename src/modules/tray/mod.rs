@@ -1,6 +1,6 @@
 use crate::{
-    Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, ffi::ShortString,
-    modules::tray::app::TrayEvent,
+    Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, modules::tray::app::TrayEvent,
+    utils::StringRef,
 };
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
@@ -43,7 +43,7 @@ impl Tray {
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
         if let Some(service) = self.status_notifier_watcher.on_message(message) {
             log::info!(target: "Tray", "Added {service:?}");
-            let mut tray_app = App::new(service);
+            let mut tray_app = App::new(service.clone());
             tray_app.init();
             self.registry.insert(service, tray_app);
             return;
@@ -65,7 +65,9 @@ impl Tray {
 
             log::info!(target: "Tray", "Removed {service}");
             tray_app.reset();
-            EventQueue::push_back(Event::TrayAppRemoved { service })
+            EventQueue::push_back(Event::TrayAppRemoved {
+                service: StringRef::new(service.as_str()),
+            })
         }
 
         for (service, app) in &mut self.registry {
@@ -74,13 +76,16 @@ impl Tray {
 
                 let event = match event {
                     TrayEvent::Initialized(icon, layout) => Event::TrayAppAdded {
-                        service,
+                        service: StringRef::new(service.as_str()),
                         items: layout.into(),
                         icon,
                     },
-                    TrayEvent::IconUpdated(icon) => Event::TrayAppIconUpdated { service, icon },
+                    TrayEvent::IconUpdated(icon) => Event::TrayAppIconUpdated {
+                        service: StringRef::new(service.as_str()),
+                        icon,
+                    },
                     TrayEvent::MenuUpdated(layout) => Event::TrayAppMenuUpdated {
-                        service,
+                        service: StringRef::new(service.as_str()),
                         items: layout.into(),
                     },
                 };
@@ -89,8 +94,8 @@ impl Tray {
         }
     }
 
-    pub(crate) fn trigger(&self, uuid: ShortString) {
-        let Ok((service, id)) = UUID::decode(uuid) else {
+    pub(crate) fn trigger(&self, uuid: StringRef) {
+        let Ok((service, id)) = UUID::decode(uuid.clone()) else {
             log::error!("malformed UUID: {uuid:?}");
             return;
         };

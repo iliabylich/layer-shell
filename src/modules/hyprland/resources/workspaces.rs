@@ -1,6 +1,6 @@
 use crate::{
-    ffi::ShortString,
     modules::hyprland::{resources::WriterResource, state::HyprlandDiff},
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
@@ -8,8 +8,8 @@ use serde::Deserialize;
 pub(crate) struct WorkspacesResource;
 
 impl WriterResource for WorkspacesResource {
-    fn command(&self) -> ShortString {
-        ShortString::from("[[BATCH]]j/workspaces")
+    fn command(&self) -> StringRef {
+        StringRef::new("[[BATCH]]j/workspaces")
     }
 
     fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {

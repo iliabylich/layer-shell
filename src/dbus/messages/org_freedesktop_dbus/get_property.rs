@@ -1,22 +1,22 @@
 use crate::{
     dbus::types::{OutgoingMessage, Value},
-    ffi::ShortString,
+    utils::StringRef,
 };
 
 #[derive(Debug)]
 pub(crate) struct GetProperty {
-    destination: ShortString,
-    path: ShortString,
-    interface: ShortString,
-    property: ShortString,
+    destination: StringRef,
+    path: StringRef,
+    interface: StringRef,
+    property: StringRef,
 }
 
 impl GetProperty {
     pub(crate) const fn new(
-        destination: ShortString,
-        path: ShortString,
-        interface: ShortString,
-        property: ShortString,
+        destination: StringRef,
+        path: StringRef,
+        interface: StringRef,
+        property: StringRef,
     ) -> Self {
         Self {
             destination,
@@ -32,14 +32,14 @@ impl From<GetProperty> for OutgoingMessage {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: value.path,
-            member: ShortString::new_const("Get"),
-            interface: Some(ShortString::new_const("org.freedesktop.DBus.Properties")),
+            member: StringRef::new("Get"),
+            interface: Some(StringRef::new("org.freedesktop.DBus.Properties")),
             destination: Some(value.destination),
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::ShortString(value.interface),
-                Value::ShortString(value.property),
+                Value::StringRef(value.interface),
+                Value::StringRef(value.property),
             ],
         }
     }

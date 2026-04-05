@@ -4,14 +4,14 @@ use crate::{
         decoder::{IncomingMessage, Value},
         messages::{org_freedesktop_dbus::GetProperty, value_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::Context;
 
 pub(crate) struct ActiveConnectionType {
-    path: Option<ShortString>,
-    oneshot: MethodCall<ShortString, bool, ()>,
+    path: Option<StringRef>,
+    oneshot: MethodCall<StringRef, bool, ()>,
 }
 
 impl ActiveConnectionType {
@@ -22,8 +22,8 @@ impl ActiveConnectionType {
         }
     }
 
-    pub(crate) fn request(&mut self, path: ShortString) {
-        self.oneshot.send(path);
+    pub(crate) fn request(&mut self, path: StringRef) {
+        self.oneshot.send(path.clone());
         self.path = Some(path);
     }
 
@@ -31,22 +31,19 @@ impl ActiveConnectionType {
         self.oneshot.reset();
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        message: IncomingMessage<'_>,
-    ) -> Option<(bool, ShortString)> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<(bool, StringRef)> {
         let is_wireless = self.oneshot.try_recv(message).ok().flatten()?;
-        Some((is_wireless, self.path?))
+        Some((is_wireless, self.path.clone()?))
     }
 }
 
-const GET: MethodCall<ShortString, bool, ()> = MethodCall::builder()
+const GET: MethodCall<StringRef, bool, ()> = MethodCall::builder()
     .send(&|path, _data| {
         GetProperty::new(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
+            StringRef::new("org.freedesktop.NetworkManager"),
             path,
-            ShortString::new_const("org.freedesktop.NetworkManager.Connection.Active"),
-            ShortString::new_const("Type"),
+            StringRef::new("org.freedesktop.NetworkManager.Connection.Active"),
+            StringRef::new("Type"),
         )
         .into()
     })

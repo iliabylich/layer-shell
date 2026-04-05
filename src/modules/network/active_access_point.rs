@@ -4,23 +4,23 @@ use crate::{
         decoder::{IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context as _, bail};
 
 pub(crate) struct ActiveAccessPoint {
-    get: MethodCall<ShortString, ShortString, ()>,
-    subscription: Subscription<ShortString>,
+    get: MethodCall<StringRef, StringRef, ()>,
+    subscription: Subscription<StringRef>,
 }
 
 #[derive(Debug)]
 pub(crate) enum ActiveAccessPointEvent {
-    Connected(ShortString),
+    Connected(StringRef),
     Disconnected,
 }
-impl From<ShortString> for ActiveAccessPointEvent {
-    fn from(path: ShortString) -> Self {
+impl From<StringRef> for ActiveAccessPointEvent {
+    fn from(path: StringRef) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
@@ -42,10 +42,10 @@ impl ActiveAccessPoint {
         self.get.reset();
     }
 
-    pub(crate) fn init(&mut self, path: ShortString) {
+    pub(crate) fn init(&mut self, path: StringRef) {
         self.subscription.start(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
-            path,
+            StringRef::new("org.freedesktop.NetworkManager"),
+            path.clone(),
         );
         self.get.send(path);
     }
@@ -60,13 +60,13 @@ impl ActiveAccessPoint {
     }
 }
 
-const GET: MethodCall<ShortString, ShortString, ()> = MethodCall::builder()
+const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
     .send(&|path, _| {
         GetProperty::new(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
+            StringRef::new("org.freedesktop.NetworkManager"),
             path,
-            ShortString::new_const("org.freedesktop.NetworkManager.Device.Wireless"),
-            ShortString::new_const("ActiveAccessPoint"),
+            StringRef::new("org.freedesktop.NetworkManager.Device.Wireless"),
+            StringRef::new("ActiveAccessPoint"),
         )
         .into()
     })
@@ -76,11 +76,11 @@ const GET: MethodCall<ShortString, ShortString, ()> = MethodCall::builder()
         let active_access_point = active_access_point.materialize()?;
         value_is!(active_access_point, Value::ObjectPath(active_access_point));
 
-        Ok(ShortString::from(active_access_point))
+        Ok(StringRef::new(active_access_point))
     })
     .kind(DBusConnectionKind::System);
 
-const SUBSCRIPTION: Subscription<ShortString> = Subscription::builder()
+const SUBSCRIPTION: Subscription<StringRef> = Subscription::builder()
     .try_process(&|mut body, path, subscribed_to| {
         path_is!(path, subscribed_to);
 
@@ -100,7 +100,7 @@ const SUBSCRIPTION: Subscription<ShortString> = Subscription::builder()
             if key == "ActiveAccessPoint" {
                 let value = value.materialize()?;
                 value_is!(value, Value::ObjectPath(value));
-                return Ok(ShortString::from(value));
+                return Ok(StringRef::new(value));
             }
         }
 

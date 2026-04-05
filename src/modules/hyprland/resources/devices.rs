@@ -1,14 +1,14 @@
 use crate::{
-    ffi::ShortString,
     modules::hyprland::{resources::WriterResource, state::HyprlandDiff},
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 
 pub(crate) struct DevicesResource;
 impl WriterResource for DevicesResource {
-    fn command(&self) -> ShortString {
-        ShortString::from("[[BATCH]]j/devices")
+    fn command(&self) -> StringRef {
+        StringRef::new("[[BATCH]]j/devices")
     }
 
     fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>> {
@@ -31,7 +31,7 @@ impl WriterResource for DevicesResource {
             .context("expected at least one hyprland device")?
             .active_keymap;
 
-        Ok(Some(HyprlandDiff::SetLanguage(ShortString::from(
+        Ok(Some(HyprlandDiff::SetLanguage(StringRef::new(
             active_keymap.as_str(),
         ))))
     }

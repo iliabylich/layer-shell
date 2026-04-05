@@ -4,23 +4,23 @@ use crate::{
         decoder::{IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context as _, bail};
 
 pub(crate) struct PrimaryConnection {
-    get: MethodCall<(), ShortString, ()>,
-    subscription: Subscription<ShortString>,
+    get: MethodCall<(), StringRef, ()>,
+    subscription: Subscription<StringRef>,
 }
 
 pub(crate) enum PrimaryConnectionEvent {
-    Connected(ShortString),
+    Connected(StringRef),
     Disconnected,
 }
 
-impl From<ShortString> for PrimaryConnectionEvent {
-    fn from(path: ShortString) -> Self {
+impl From<StringRef> for PrimaryConnectionEvent {
+    fn from(path: StringRef) -> Self {
         if path == "/" {
             PrimaryConnectionEvent::Disconnected
         } else {
@@ -40,8 +40,8 @@ impl PrimaryConnection {
     pub(crate) fn init(&mut self) {
         self.get.send(());
         self.subscription.start(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
-            ShortString::new_const("/org/freedesktop/NetworkManager"),
+            StringRef::new("org.freedesktop.NetworkManager"),
+            StringRef::new("/org/freedesktop/NetworkManager"),
         );
     }
 
@@ -55,13 +55,13 @@ impl PrimaryConnection {
     }
 }
 
-const GET: MethodCall<(), ShortString, ()> = MethodCall::builder()
+const GET: MethodCall<(), StringRef, ()> = MethodCall::builder()
     .send(&|_input, _data| {
         GetProperty::new(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
-            ShortString::new_const("/org/freedesktop/NetworkManager"),
-            ShortString::new_const("org.freedesktop.NetworkManager"),
-            ShortString::new_const("PrimaryConnection"),
+            StringRef::new("org.freedesktop.NetworkManager"),
+            StringRef::new("/org/freedesktop/NetworkManager"),
+            StringRef::new("org.freedesktop.NetworkManager"),
+            StringRef::new("PrimaryConnection"),
         )
         .into()
     })
@@ -70,11 +70,11 @@ const GET: MethodCall<(), ShortString, ()> = MethodCall::builder()
         value_is!(path, Value::Variant(path));
         let path = path.materialize()?;
         value_is!(path, Value::ObjectPath(path));
-        Ok(ShortString::from(path))
+        Ok(StringRef::new(path))
     })
     .kind(DBusConnectionKind::System);
 
-const SUBSCRIPTION: Subscription<ShortString> = Subscription::builder()
+const SUBSCRIPTION: Subscription<StringRef> = Subscription::builder()
     .try_process(&|mut body, path, _subscribed_to| {
         path_is!(path, "/org/freedesktop/NetworkManager");
 
@@ -95,7 +95,7 @@ const SUBSCRIPTION: Subscription<ShortString> = Subscription::builder()
             if key == "PrimaryConnection" {
                 let value = value.materialize()?;
                 value_is!(value, Value::ObjectPath(value));
-                return Ok(ShortString::from(value));
+                return Ok(StringRef::new(value));
             }
         }
 

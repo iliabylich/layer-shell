@@ -4,15 +4,15 @@ use crate::{
         decoder::{IncomingMessage, MessageType},
         messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result, ensure};
 pub(crate) use get_layout::GET_LAYOUT;
 
 mod get_layout;
 
-pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: MethodCall<(ShortString, ShortString), (), ()> =
+pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: MethodCall<(StringRef, StringRef), (), ()> =
     MethodCall::builder()
         .send(&|(address, path), _data| {
             AddMatch::from_rule(layout_updated_match_rule(address, path)).into()
@@ -20,7 +20,7 @@ pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: MethodCall<(ShortString, ShortStri
         .try_process(&|_, _data| Ok(()))
         .kind(DBusConnectionKind::Session);
 
-pub(crate) fn layout_updated_match_rule(address: ShortString, path: ShortString) -> String {
+pub(crate) fn layout_updated_match_rule(address: StringRef, path: StringRef) -> String {
     format!(
         "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='LayoutUpdated',path='{path}'"
     )
@@ -28,8 +28,8 @@ pub(crate) fn layout_updated_match_rule(address: ShortString, path: ShortString)
 
 pub(crate) fn parse_layout_updated_signal(
     message: IncomingMessage<'_>,
-    address: ShortString,
-    expected_path: ShortString,
+    address: StringRef,
+    expected_path: StringRef,
 ) -> Result<()> {
     ensure!(message.message_type == MessageType::Signal);
 
@@ -46,21 +46,15 @@ pub(crate) fn parse_layout_updated_signal(
     Ok(())
 }
 
-pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: MethodCall<
-    (ShortString, ShortString),
-    (),
-    (),
-> = MethodCall::builder()
-    .send(&|(address, path), _data| {
-        AddMatch::from_rule(items_properties_updated_match_rule(address, path)).into()
-    })
-    .try_process(&|_body, _data| Ok(()))
-    .kind(DBusConnectionKind::Session);
+pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: MethodCall<(StringRef, StringRef), (), ()> =
+    MethodCall::builder()
+        .send(&|(address, path), _data| {
+            AddMatch::from_rule(items_properties_updated_match_rule(address, path)).into()
+        })
+        .try_process(&|_body, _data| Ok(()))
+        .kind(DBusConnectionKind::Session);
 
-pub(crate) fn items_properties_updated_match_rule(
-    address: ShortString,
-    path: ShortString,
-) -> String {
+pub(crate) fn items_properties_updated_match_rule(address: StringRef, path: StringRef) -> String {
     format!(
         "type='signal',sender='{address}',interface='com.canonical.dbusmenu',member='ItemsPropertiesUpdated',path='{path}'"
     )
@@ -68,8 +62,8 @@ pub(crate) fn items_properties_updated_match_rule(
 
 pub(crate) fn parse_items_properties_updated_signal(
     message: IncomingMessage<'_>,
-    address: ShortString,
-    expected_path: ShortString,
+    address: StringRef,
+    expected_path: StringRef,
 ) -> Result<()> {
     ensure!(message.message_type == MessageType::Signal);
 

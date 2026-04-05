@@ -4,16 +4,16 @@ use crate::{
         decoder::{IncomingMessage, MessageType},
         types::{OutgoingMessage, Value},
     },
-    ffi::ShortString,
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result, ensure};
 
 #[derive(Debug)]
 pub(crate) struct IntrospectRequest {
     pub(crate) serial: u32,
-    pub(crate) destination: ShortString,
-    pub(crate) path: ShortString,
-    pub(crate) sender: ShortString,
+    pub(crate) destination: StringRef,
+    pub(crate) path: StringRef,
+    pub(crate) sender: StringRef,
 }
 
 impl TryFrom<IncomingMessage<'_>> for IntrospectRequest {
@@ -36,21 +36,21 @@ impl TryFrom<IncomingMessage<'_>> for IntrospectRequest {
 
         Ok(Self {
             serial,
-            destination: ShortString::from(destination),
-            path: ShortString::from(path),
-            sender: ShortString::from(sender),
+            destination: StringRef::new(destination),
+            path: StringRef::new(path),
+            sender: StringRef::new(sender),
         })
     }
 }
 
 pub(crate) struct IntrospectResponse {
     reply_serial: u32,
-    destination: ShortString,
+    destination: StringRef,
     xml: String,
 }
 
 impl IntrospectResponse {
-    pub(crate) fn new(reply_serial: u32, destination: ShortString, xml: String) -> Self {
+    pub(crate) fn new(reply_serial: u32, destination: StringRef, xml: String) -> Self {
         Self {
             reply_serial,
             destination,

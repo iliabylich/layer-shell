@@ -4,23 +4,23 @@ use crate::{
         decoder::{IncomingMessage, Value},
         messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
     },
-    ffi::ShortString,
     sansio::DBusConnectionKind,
+    utils::StringRef,
 };
 use anyhow::{Context as _, bail};
 
 pub(crate) struct PrimaryDevice {
-    get: MethodCall<ShortString, ShortString, ()>,
-    subscription: Subscription<ShortString>,
+    get: MethodCall<StringRef, StringRef, ()>,
+    subscription: Subscription<StringRef>,
 }
 
 #[derive(Debug)]
 pub(crate) enum PrimaryDeviceEvent {
-    Connected(ShortString),
+    Connected(StringRef),
     Disconnected,
 }
-impl From<ShortString> for PrimaryDeviceEvent {
-    fn from(path: ShortString) -> Self {
+impl From<StringRef> for PrimaryDeviceEvent {
+    fn from(path: StringRef) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
@@ -42,10 +42,10 @@ impl PrimaryDevice {
         self.get.reset();
     }
 
-    pub(crate) fn init(&mut self, path: ShortString) {
+    pub(crate) fn init(&mut self, path: StringRef) {
         self.subscription.start(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
-            path,
+            StringRef::new("org.freedesktop.NetworkManager"),
+            path.clone(),
         );
         self.get.send(path);
     }
@@ -60,13 +60,13 @@ impl PrimaryDevice {
     }
 }
 
-const GET: MethodCall<ShortString, ShortString, ()> = MethodCall::builder()
+const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
     .send(&|path, _data| {
         GetProperty::new(
-            ShortString::new_const("org.freedesktop.NetworkManager"),
+            StringRef::new("org.freedesktop.NetworkManager"),
             path,
-            ShortString::new_const("org.freedesktop.NetworkManager.Connection.Active"),
-            ShortString::new_const("Devices"),
+            StringRef::new("org.freedesktop.NetworkManager.Connection.Active"),
+            StringRef::new("Devices"),
         )
         .into()
     })
@@ -79,11 +79,11 @@ const GET: MethodCall<ShortString, ShortString, ()> = MethodCall::builder()
         let device = iter.try_next()?.context("expected at least one device")?;
         value_is!(device, Value::ObjectPath(device));
 
-        Ok(ShortString::from(device))
+        Ok(StringRef::new(device))
     })
     .kind(DBusConnectionKind::System);
 
-const SUBSCRIPTION: Subscription<ShortString> = Subscription::builder()
+const SUBSCRIPTION: Subscription<StringRef> = Subscription::builder()
     .try_process(&|mut body, path, subscribed_to| {
         path_is!(path, subscribed_to);
 
@@ -110,7 +110,7 @@ const SUBSCRIPTION: Subscription<ShortString> = Subscription::builder()
                 let mut iter = devices.iter();
                 let device = iter.try_next()?.context("expected at least one device")?;
                 value_is!(device, Value::ObjectPath(device));
-                return Ok(ShortString::from(device));
+                return Ok(StringRef::new(device));
             }
         }
 

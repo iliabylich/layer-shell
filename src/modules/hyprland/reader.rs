@@ -1,9 +1,9 @@
 use crate::{
     event_queue::EventQueue,
-    ffi::ShortString,
     modules::hyprland::state::{HyprlandDiff, HyprlandState},
     sansio::{Satisfy, UnixSocketReader, Wants},
     user_data::ModuleId,
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result};
 use libc::sockaddr_un;
@@ -68,7 +68,7 @@ fn try_parse(line: &str) -> Result<Option<HyprlandDiff>> {
         "createworkspace" => HyprlandDiff::AddWorkspaceId(num_payload()?),
         "destroyworkspace" => HyprlandDiff::RemoveWorkspaceId(num_payload()?),
         "workspace" => HyprlandDiff::SetActiveWorkspaceId(num_payload()?),
-        "activelayout" => HyprlandDiff::SetLanguage(ShortString::from(last_substring()?)),
+        "activelayout" => HyprlandDiff::SetLanguage(StringRef::new(last_substring()?)),
         _ => return Ok(None),
     };
 

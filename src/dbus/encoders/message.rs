@@ -27,7 +27,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Interface,
-                    &Value::ShortString(interface),
+                    &Value::StringRef(interface),
                 );
             }
             if let Some(member) = message.member() {
@@ -35,7 +35,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Member,
-                    &Value::ShortString(member),
+                    &Value::StringRef(member),
                 );
             }
             if let Some(error_name) = message.error_name() {
@@ -43,7 +43,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::ErrorName,
-                    &Value::ShortString(error_name),
+                    &Value::StringRef(error_name),
                 );
             }
             if let Some(reply_serial) = message.reply_serial() {
@@ -59,7 +59,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Destination,
-                    &Value::ShortString(destination),
+                    &Value::StringRef(destination),
                 );
             }
             if let Some(sender) = message.sender() {
@@ -67,7 +67,7 @@ impl MessageEncoder {
                 ValueEncoder::encode_header(
                     &mut buf,
                     HeaderFieldName::Sender,
-                    &Value::ShortString(sender),
+                    &Value::StringRef(sender),
                 );
             }
             if let Some(unix_fds) = message.unix_fds() {

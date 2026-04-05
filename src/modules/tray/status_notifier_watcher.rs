@@ -6,11 +6,11 @@ use crate::{
             destination_is, interface_is, org_freedesktop_dbus::RequestName, path_is, value_is,
         },
     },
-    ffi::ShortString,
     modules::tray::{
         service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
     },
     sansio::SessionDBusQueue,
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result, ensure};
 
@@ -28,7 +28,7 @@ impl StatusNotifierWatcher {
     }
 
     pub(crate) fn request(&mut self) {
-        let message = RequestName::new(ShortString::new_const("org.kde.StatusNotifierWatcher"));
+        let message = RequestName::new(StringRef::new("org.kde.StatusNotifierWatcher"));
         self.reply_serial = Some(SessionDBusQueue::push_back(message));
     }
 
@@ -51,8 +51,8 @@ impl StatusNotifierWatcher {
                 KSNIRequest::NewItem { address } => {
                     self.reply_ok(serial, sender);
                     return Some(Service::new(
-                        ShortString::from(sender),
-                        ShortString::from(address),
+                        StringRef::new(sender),
+                        StringRef::new(address),
                     ));
                 }
                 KSNIRequest::Other => {

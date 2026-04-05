@@ -7,24 +7,24 @@ use crate::{
             org_freedesktop_dbus::{AddMatch, RemoveMatch},
         },
     },
-    ffi::ShortString,
     sansio::{DBusConnectionKind, DBusQueue},
+    utils::StringRef,
 };
 use anyhow::{Context as _, Result, bail, ensure};
 use core::marker::PhantomData;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 enum SubscriptionState {
     #[default]
     None,
-    Subscribed(ShortString),
+    Subscribed(StringRef),
 }
 
 pub(crate) struct Subscription<T>
 where
     T: 'static,
 {
-    try_process: &'static dyn Fn(Body<'_>, ShortString, ShortString) -> Result<T>,
+    try_process: &'static dyn Fn(Body<'_>, StringRef, StringRef) -> Result<T>,
     state: SubscriptionState,
     kind: DBusConnectionKind,
 }
@@ -39,13 +39,13 @@ impl<T> Subscription<T> {
         DBusQueue::push_back(self.kind, message);
     }
 
-    fn subscribe(&mut self, sender: ShortString, path: ShortString) {
-        let message: OutgoingMessage = AddMatch::new(sender, path).into();
+    fn subscribe(&mut self, sender: StringRef, path: StringRef) {
+        let message: OutgoingMessage = AddMatch::new(sender, path.clone()).into();
         DBusQueue::push_back(self.kind, message);
         self.state = SubscriptionState::Subscribed(path);
     }
 
-    pub(crate) fn start(&mut self, sender: ShortString, path: ShortString) {
+    pub(crate) fn start(&mut self, sender: StringRef, path: StringRef) {
         self.unsubscribe();
         self.subscribe(sender, path);
     }
@@ -62,11 +62,11 @@ impl<T> Subscription<T> {
         let path = message.path.context("no Path")?;
         let body = message.body.context("no Body")?;
 
-        let SubscriptionState::Subscribed(subscribed_to) = self.state else {
+        let SubscriptionState::Subscribed(subscribed_to) = self.state.clone() else {
             bail!("not subscribed");
         };
 
-        (self.try_process)(body, ShortString::from(path), subscribed_to)
+        (self.try_process)(body, StringRef::new(path), subscribed_to)
     }
 
     pub(crate) fn process(&self, message: IncomingMessage<'_>) -> Option<T> {
@@ -88,13 +88,13 @@ pub(crate) struct SubscriptionBuilder<T, S>
 where
     T: 'static,
 {
-    try_process: &'static dyn Fn(Body<'_>, ShortString, ShortString) -> Result<T>,
+    try_process: &'static dyn Fn(Body<'_>, StringRef, StringRef) -> Result<T>,
     _state: PhantomData<S>,
 }
 impl<T> SubscriptionBuilder<T, NeedsTryProcess> {
     pub(crate) const fn try_process(
         self,
-        try_process: &'static dyn Fn(Body<'_>, ShortString, ShortString) -> Result<T>,
+        try_process: &'static dyn Fn(Body<'_>, StringRef, StringRef) -> Result<T>,
     ) -> SubscriptionBuilder<T, NeedsConnectionKind> {
         SubscriptionBuilder {
             try_process,

@@ -1,7 +1,6 @@
 use crate::{
-    ffi::ShortString,
     sansio::{Satisfy, Wants},
-    utils::{ArrayWriter, report_and_exit},
+    utils::{ArrayWriter, StringRef, report_and_exit},
 };
 use anyhow::{Result, bail, ensure};
 use core::fmt::Write;
@@ -27,7 +26,7 @@ enum State {
 }
 
 impl UnixSocketOneshotWriter {
-    pub(crate) fn new(addr: sockaddr_un, data: ShortString) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, data: StringRef) -> Self {
         let mut buf = [0; 4_096];
         let mut writer = ArrayWriter::new(&mut buf);
         write!(&mut writer, "{}", data).unwrap_or_else(|err: core::fmt::Error| {

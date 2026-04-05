@@ -4,8 +4,8 @@ use crate::{
         decoder::IncomingMessage,
         types::{CompleteType, Value},
     },
-    ffi::ShortString,
     sansio::SessionDBusQueue,
+    utils::StringRef,
 };
 
 pub(crate) struct StatusNotifierWatcherIntrospection {
@@ -23,7 +23,7 @@ impl StatusNotifierWatcherIntrospection {
         let message = OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial: serial,
-            destination: Some(ShortString::from(destination)),
+            destination: Some(StringRef::new(destination)),
             sender: None,
             unix_fds: None,
             body,
@@ -66,19 +66,17 @@ impl StatusNotifierWatcherIntrospection {
                             ),
                             vec![
                                 Value::DictEntry(
-                                    Box::new(Value::ShortString(ShortString::from(
-                                        "ProtocolVersion",
-                                    ))),
+                                    Box::new(Value::StringRef(StringRef::new("ProtocolVersion"))),
                                     Box::new(Value::Variant(Box::new(Value::Int32(42)))),
                                 ),
                                 Value::DictEntry(
-                                    Box::new(Value::ShortString(ShortString::from(
+                                    Box::new(Value::StringRef(StringRef::new(
                                         "IsStatusNotifierHostRegistered",
                                     ))),
                                     Box::new(Value::Variant(Box::new(Value::Bool(true)))),
                                 ),
                                 Value::DictEntry(
-                                    Box::new(Value::ShortString(ShortString::from(
+                                    Box::new(Value::StringRef(StringRef::new(
                                         "RegisteredStatusNotifierItems",
                                     ))),
                                     Box::new(Value::Variant(Box::new(Value::Array(

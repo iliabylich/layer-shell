@@ -1,4 +1,4 @@
-use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue};
+use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, utils::StringRef};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -54,7 +54,7 @@ impl Network {
     fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
-                self.active_access_point.init(path);
+                self.active_access_point.init(path.clone());
                 self.speed.reset();
                 self.tx_rx.init(path);
             }
@@ -91,7 +91,9 @@ impl Network {
 
     fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
         if let Some(ssid) = e.ssid {
-            let event = Event::NetworkSsid { ssid };
+            let event = Event::NetworkSsid {
+                ssid: StringRef::new(ssid.as_str()),
+            };
             EventQueue::push_back(event)
         }
 

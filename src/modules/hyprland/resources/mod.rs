@@ -1,4 +1,4 @@
-use crate::{ffi::ShortString, modules::hyprland::state::HyprlandDiff};
+use crate::{modules::hyprland::state::HyprlandDiff, utils::StringRef};
 use anyhow::Result;
 
 mod active_workspace;
@@ -14,6 +14,6 @@ pub(crate) use dispatch::DispatchResource;
 pub(crate) use workspaces::WorkspacesResource;
 
 pub(crate) trait WriterResource {
-    fn command(&self) -> ShortString;
+    fn command(&self) -> StringRef;
     fn parse(&self, json: &str) -> Result<Option<HyprlandDiff>>;
 }

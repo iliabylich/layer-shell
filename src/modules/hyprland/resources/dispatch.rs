@@ -1,7 +1,6 @@
 use crate::{
-    ffi::ShortString,
     modules::hyprland::{resources::WriterResource, state::HyprlandDiff},
-    utils::{ArrayWriter, report_and_exit},
+    utils::{ArrayWriter, StringRef, report_and_exit},
 };
 use anyhow::Result;
 use core::fmt::Write;
@@ -15,15 +14,15 @@ impl DispatchResource {
     }
 }
 impl WriterResource for DispatchResource {
-    fn command(&self) -> ShortString {
+    fn command(&self) -> StringRef {
         let mut buf = [0; 128];
         let mut writer = ArrayWriter::new(&mut buf);
         write!(&mut writer, "dispatch {}", self.cmd).unwrap_or_else(|err: core::fmt::Error| {
             report_and_exit!("failed to write command to buffer: {err:?}")
         });
-        ShortString::from(
+        StringRef::new(
             writer.as_str().unwrap_or_else(|err| {
-                report_and_exit!("command is too long for ShortString: {err:?}")
+                report_and_exit!("command is too long for StringRef: {err:?}")
             }),
         )
     }

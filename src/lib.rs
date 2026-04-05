@@ -19,7 +19,6 @@ pub use ffi::FFIArray;
 
 use crate::{
     event_queue::EventQueue,
-    ffi::ShortString,
     liburing::IoUring,
     modules::{
         CPU, Clock, Control, ControlRequest, Hyprland, HyprlandQueue, HyprlandReader,
@@ -28,7 +27,7 @@ use crate::{
     sansio::{Satisfy, SessionDBusQueue, SystemDBusQueue, Wants},
     timer::Timer,
     user_data::{ModuleId, UserData},
-    utils::{Logger, report_and_exit},
+    utils::{Logger, StringRef, report_and_exit},
 };
 
 struct IO {
@@ -435,7 +434,7 @@ pub extern "C" fn io_trigger_tray(uuid: *const core::ffi::c_char) {
         .unwrap_or_else(|err| report_and_exit!("{:?}", err));
 
     process_command(Command::TriggerTray {
-        uuid: ShortString::from(uuid),
+        uuid: StringRef::new(uuid),
     });
 }
 #[unsafe(no_mangle)]

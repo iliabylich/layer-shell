@@ -1,6 +1,7 @@
 use crate::{
-    ffi::{FFIArray, ShortString},
+    ffi::FFIArray,
     modules::{HyprlandWorkspace, TrayIcon, TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour},
+    utils::StringRef,
 };
 
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub enum Event {
         workspaces: FFIArray<HyprlandWorkspace>,
     },
     Language {
-        lang: ShortString,
+        lang: StringRef,
     },
     Weather {
         temperature: f32,
@@ -30,7 +31,7 @@ pub enum Event {
         daily_forecast: FFIArray<WeatherOnDay>,
     },
     NetworkSsid {
-        ssid: ShortString,
+        ssid: StringRef,
     },
     NetworkStrength {
         strength: u8,
@@ -42,20 +43,20 @@ pub enum Event {
         bytes_per_sec: u64,
     },
     TrayAppAdded {
-        service: ShortString,
+        service: StringRef,
         items: FFIArray<TrayItem>,
         icon: TrayIcon,
     },
     TrayAppIconUpdated {
-        service: ShortString,
+        service: StringRef,
         icon: TrayIcon,
     },
     TrayAppMenuUpdated {
-        service: ShortString,
+        service: StringRef,
         items: FFIArray<TrayItem>,
     },
     TrayAppRemoved {
-        service: ShortString,
+        service: StringRef,
     },
     ToggleSessionScreen,
     ReloadStyles,

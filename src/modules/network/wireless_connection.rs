@@ -1,10 +1,10 @@
 use crate::{
     dbus::decoder::IncomingMessage,
-    ffi::ShortString,
     modules::network::{
         active_connection_type::ActiveConnectionType,
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
     },
+    utils::StringRef,
 };
 
 #[derive(Default)]
@@ -22,7 +22,7 @@ pub(crate) struct WirelessConnection {
 }
 
 pub(crate) enum WirelessConnectionEvent {
-    Connected(ShortString),
+    Connected(StringRef),
     Disconnected,
 }
 
@@ -60,7 +60,7 @@ impl WirelessConnection {
     fn on_active_connection_type_received(
         &mut self,
         is_wireless: bool,
-        path: ShortString,
+        path: StringRef,
     ) -> Option<WirelessConnectionEvent> {
         if is_wireless {
             self.state = State::ConnectedAndHavePathAndType;
