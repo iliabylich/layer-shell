@@ -48,8 +48,8 @@ struct IO {
     hyprland_reader: HyprlandReader,
     hyprland_writer: HyprlandWriter,
 
-    location: Option<Location>,
-    weather: Option<Weather>,
+    location: Location,
+    weather: Weather,
     cpu: CPU,
     memory: Memory,
 
@@ -70,13 +70,6 @@ macro_rules! schedule {
         }
         schedule_wanted(wants, module_id)
     }};
-}
-macro_rules! schedule_opt {
-    ($module:expr) => {
-        if let Some(module) = &mut $module {
-            schedule!(module)
-        }
-    };
 }
 
 impl IO {
@@ -102,8 +95,8 @@ impl IO {
             hyprland_reader,
             hyprland_writer,
 
-            location: Some(Location::new()),
-            weather: None,
+            location: Location::new(),
+            weather: Weather::new(),
             cpu: CPU::new(),
             memory: Memory::new(),
 
@@ -120,7 +113,7 @@ impl IO {
     fn init(&mut self) {
         schedule!(self.timer);
 
-        schedule_opt!(self.location);
+        schedule!(self.location);
         schedule!(self.hyprland_reader);
         schedule!(self.hyprland_writer);
         schedule!(self.cpu);
@@ -170,45 +163,20 @@ impl IO {
                     $module.satisfy(satisfy, res)
                 };
             }
-            macro_rules! satisfy_opt {
-                ($module:expr) => {
-                    if let Some(module) = &mut $module {
-                        match satisfy!(module) {
-                            Ok(value) => value,
-                            Err(err) => {
-                                log::error!("Module {:?} has crashed: {err:?}", module.module_id());
-                                $module = None;
-                                Default::default()
-                            }
-                        }
-                    } else {
-                        Default::default()
-                    }
-                };
-            }
 
             match module_id {
                 ModuleId::GeoLocation => {
-                    if let Some(location) = &mut self.location {
-                        let latlng = location.satisfy(satisfy, res);
-
-                        if let Err(err) = latlng {
-                            log::error!("Module {:?} has crashed: {err:?}", ModuleId::GeoLocation);
-                            self.location = Some(Location::new());
-                            schedule_opt!(self.location);
-                        } else if let Ok(Some((lat, lng))) = latlng {
-                            self.weather = Some(Weather::new(lat, lng));
-                            schedule_opt!(self.weather);
-                            self.location = None;
-                        } else {
-                            schedule_opt!(self.location);
-                        }
+                    if let Some((lat, lng)) = satisfy!(self.location) {
+                        self.weather.setup(lat, lng);
+                        schedule!(self.weather);
+                    } else {
+                        schedule!(self.location);
                     }
                 }
 
                 ModuleId::Weather => {
-                    satisfy_opt!(self.weather);
-                    schedule_opt!(self.weather);
+                    satisfy!(self.weather);
+                    schedule!(self.weather);
                 }
 
                 ModuleId::HyprlandReader => {
@@ -259,10 +227,8 @@ impl IO {
 
                     self.clock.tick();
 
-                    if let Some(weather) = &mut self.weather {
-                        weather.tick(tick);
-                        schedule!(weather);
-                    }
+                    self.weather.tick(tick);
+                    schedule!(self.weather);
 
                     self.cpu.tick(tick);
                     schedule!(self.cpu);
