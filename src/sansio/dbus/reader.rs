@@ -1,4 +1,4 @@
-use crate::sansio::{Satisfy, Wants};
+use crate::sansio::{DBusConnectionKind, Satisfy, Wants};
 use anyhow::{Context as _, Result, bail, ensure};
 
 #[repr(C, packed)]
@@ -19,7 +19,7 @@ pub(crate) struct DBusReader {
     message_len: usize,
     discard_remaining: usize,
     state: State,
-    buf: Box<[u8; BUF_SIZE]>,
+    kind: DBusConnectionKind,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -33,16 +33,27 @@ enum State {
 }
 
 const BUF_SIZE: usize = 500_000;
+static mut BUFFERS: Option<Vec<Box<[u8; BUF_SIZE]>>> = None;
+fn buffer(kind: DBusConnectionKind) -> &'static mut [u8; BUF_SIZE] {
+    #[expect(static_mut_refs)]
+    unsafe {
+        if BUFFERS.is_none() {
+            BUFFERS = Some(vec![Box::new([0; BUF_SIZE]), Box::new([0; BUF_SIZE])]);
+        }
+
+        BUFFERS.as_mut().unwrap_unchecked()[kind as usize].as_mut()
+    }
+}
 
 impl DBusReader {
-    pub(crate) fn new(fd: i32) -> Self {
+    pub(crate) fn new(fd: i32, kind: DBusConnectionKind) -> Self {
         Self {
             fd,
             bytes_read: 0,
             message_len: 0,
             discard_remaining: 0,
             state: State::CanReadHeader,
-            buf: Box::new([0; BUF_SIZE]),
+            kind,
         }
     }
 
@@ -53,14 +64,14 @@ impl DBusReader {
 
                 Wants::Read {
                     fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
+                    buf: buffer(self.kind).as_mut_ptr(),
                     len: HEADER_LEN,
                 }
             }
             State::WaitingForHeader => Wants::Nothing,
 
             State::CanReadBody => {
-                let buf = &mut self.buf[self.bytes_read..self.message_len];
+                let buf = &mut buffer(self.kind)[self.bytes_read..self.message_len];
                 self.state = State::WaitingForBody;
                 Wants::Read {
                     fd: self.fd,
@@ -75,7 +86,7 @@ impl DBusReader {
                 self.state = State::WaitingForDiscardBody;
                 Wants::Read {
                     fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
+                    buf: buffer(self.kind).as_mut_ptr(),
                     len,
                 }
             }
@@ -83,7 +94,7 @@ impl DBusReader {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
         match (self.state, satisfy) {
             (State::WaitingForHeader, Satisfy::Read) => {
                 if res == 0 {
@@ -94,7 +105,7 @@ impl DBusReader {
                 ensure!(bytes_read == HEADER_LEN);
                 self.bytes_read += bytes_read;
 
-                let header = unsafe { &*self.buf.as_ptr().cast::<Header>() };
+                let header = unsafe { &*buffer(self.kind).as_ptr().cast::<Header>() };
 
                 let header_fields_len = (header.header_fields_len as usize).next_multiple_of(8);
                 let message_len = HEADER_LEN
@@ -147,7 +158,7 @@ impl DBusReader {
                     self.message_len = 0;
                     self.state = State::CanReadHeader;
 
-                    return Ok(Some(&self.buf[..message_len]));
+                    return Ok(Some(&buffer(self.kind)[..message_len]));
                 } else {
                     self.state = State::CanReadBody;
                 }

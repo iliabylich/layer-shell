@@ -37,11 +37,11 @@ struct IO {
     timer: Timer,
     clock: Clock,
 
-    session_dbus: Option<SessionDBus>,
+    session_dbus: SessionDBus,
     sound: Sound,
     control: Control,
     tray: Tray,
-    system_dbus: Option<SystemDBus>,
+    system_dbus: SystemDBus,
     network: Network,
     hyprland_reader: Option<HyprlandReader>,
     hyprland_writer: Option<HyprlandWriter>,
@@ -92,11 +92,11 @@ impl IO {
             timer: Timer::new(),
             clock: Clock::new(),
 
-            session_dbus: Some(SessionDBus::new()),
+            session_dbus: SessionDBus::new(),
             sound: Sound::new(),
             control: Control::new(),
             tray: Tray::new(),
-            system_dbus: Some(SystemDBus::new()),
+            system_dbus: SystemDBus::new(),
             network: Network::new(),
             hyprland_reader,
             hyprland_writer,
@@ -130,11 +130,11 @@ impl IO {
         self.sound.init();
         self.control.init();
         self.tray.init();
-        schedule_opt!(self.session_dbus);
+        schedule!(self.session_dbus);
 
         SystemDBusQueue::init();
         self.network.init();
-        schedule_opt!(self.system_dbus);
+        schedule!(self.system_dbus);
 
         IoUring::submit_if_dirty();
     }
@@ -221,7 +221,7 @@ impl IO {
                 }
 
                 ModuleId::SessionDBus => {
-                    let message = satisfy_opt!(self.session_dbus);
+                    let message = satisfy!(self.session_dbus);
 
                     if let Some(message) = message {
                         self.sound.on_message(message);
@@ -232,17 +232,17 @@ impl IO {
                         }
                     }
 
-                    schedule_opt!(self.session_dbus);
+                    schedule!(self.session_dbus);
                 }
 
                 ModuleId::SystemDBus => {
-                    let message = satisfy_opt!(self.system_dbus);
+                    let message = satisfy!(self.system_dbus);
 
                     if let Some(message) = message {
                         self.network.on_message(message);
                     }
 
-                    schedule_opt!(self.system_dbus);
+                    schedule!(self.system_dbus);
                 }
 
                 ModuleId::CPU => {
@@ -275,7 +275,7 @@ impl IO {
                     }
 
                     self.sound.tick(tick);
-                    schedule_opt!(self.session_dbus);
+                    schedule!(self.session_dbus);
                 }
             }
 
@@ -338,7 +338,7 @@ impl IO {
 
             Command::TriggerTray { uuid } => {
                 self.tray.trigger(uuid);
-                schedule_opt!(self.session_dbus);
+                schedule!(self.session_dbus);
             }
         }
 

@@ -1,5 +1,4 @@
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail};
 use connector::DBusConnector;
 use libc::sockaddr_un;
 use reader::DBusReader;
@@ -18,9 +17,10 @@ pub(crate) struct DBusConnection {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[repr(usize)]
 pub(crate) enum DBusConnectionKind {
-    System,
-    Session,
+    System = 0,
+    Session = 1,
 }
 
 enum State {
@@ -29,12 +29,20 @@ enum State {
         reader: DBusReader,
         writer: DBusWriter,
     },
+    Dead,
 }
 
 impl DBusConnection {
     pub(crate) fn new(addr: sockaddr_un, kind: DBusConnectionKind) -> Self {
         Self {
             state: State::Connecting(DBusConnector::new(addr)),
+            kind,
+        }
+    }
+
+    pub(crate) fn dummy(kind: DBusConnectionKind) -> Self {
+        Self {
+            state: State::Dead,
             kind,
         }
     }
@@ -66,41 +74,59 @@ impl DBusConnection {
                 (Wants::Nothing, write) => write,
                 other => unreachable!("DBus reader/write never want {other:?}"),
             },
+            State::Dead => Wants::Nothing,
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
-        if let State::Connecting(connector) = &mut self.state {
-            if let Some(fd) = connector.satisfy(satisfy, res)? {
-                self.state = State::Ready {
-                    reader: DBusReader::new(fd),
-                    writer: DBusWriter::new(fd, self.kind),
-                };
-            }
-            return Ok(None);
-        }
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<&'static [u8]> {
+        match &mut self.state {
+            State::Connecting(connector) => match connector.satisfy(satisfy, res) {
+                Ok(Some(fd)) => {
+                    self.state = State::Ready {
+                        reader: DBusReader::new(fd, self.kind),
+                        writer: DBusWriter::new(fd, self.kind),
+                    };
+                }
+                Ok(None) => {}
+                Err(err) => {
+                    log::error!("DBus {:?} crashed: {err:?}", self.kind);
+                    self.stop();
+                }
+            },
 
-        if let State::Ready { reader, writer } = &mut self.state
-            && matches!(satisfy, Satisfy::Read | Satisfy::Write)
-        {
-            match satisfy {
-                Satisfy::Read => {
-                    if let Some(buf) = reader.satisfy(satisfy, res)? {
-                        return Ok(Some(buf));
-                    } else {
-                        return Ok(None);
+            State::Ready { reader, writer } => match satisfy {
+                Satisfy::Read => match reader.satisfy(satisfy, res) {
+                    Ok(Some(buf)) => return Some(buf),
+                    Ok(None) => {}
+                    Err(err) => {
+                        log::error!("DBus {:?} crashed: {err:?}", self.kind);
+                        self.stop();
+                    }
+                },
+
+                Satisfy::Write => {
+                    if let Err(err) = writer.satisfy(satisfy, res) {
+                        log::error!("DBus {:?} crashed: {err:?}", self.kind);
+                        self.stop();
                     }
                 }
 
-                Satisfy::Write => {
-                    writer.satisfy(satisfy, res)?;
-                    return Ok(None);
+                _ => {
+                    log::error!(
+                        "DBus {:?} in r/w mode received unexpected satisfy: {satisfy:?}",
+                        self.kind
+                    );
+                    self.stop();
                 }
+            },
 
-                _ => unreachable!(),
-            }
+            State::Dead => {}
         }
 
-        bail!("malformed DBusReader state: reader/writer can't handle {satisfy:?}")
+        None
+    }
+
+    pub(crate) fn stop(&mut self) {
+        self.state = State::Dead;
     }
 }

@@ -3,7 +3,6 @@ use crate::{
     sansio::{DBusConnection, DBusConnectionKind, Satisfy, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
-    utils::report_and_exit,
 };
 use anyhow::{Context, Result};
 
@@ -21,7 +20,15 @@ impl SessionDBus {
             Ok(path.to_string())
         }
 
-        let socket_path = socket_path().unwrap_or_else(|err| report_and_exit!("{err:?}"));
+        let socket_path = match socket_path() {
+            Ok(path) => path,
+            Err(err) => {
+                log::error!("Failed to connect to session DBus: {err:?}");
+                return Self {
+                    conn: DBusConnection::dummy(DBusConnectionKind::Session),
+                };
+            }
+        };
         let addr = new_unix_socket(socket_path.as_bytes());
 
         Self {
@@ -37,16 +44,16 @@ impl SessionDBus {
         self.conn.wants()
     }
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<IncomingMessage<'_>>> {
-        let Some(buf) = self.conn.satisfy(satisfy, res)? else {
-            return Ok(None);
-        };
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<IncomingMessage<'_>> {
+        let buf = self.conn.satisfy(satisfy, res)?;
 
-        let message = IncomingMessage::new(buf)?;
-        Ok(Some(message))
+        match IncomingMessage::new(buf) {
+            Ok(message) => Some(message),
+            Err(err) => {
+                log::error!("DBus(session) got malformed message: {err:?}");
+                self.conn.stop();
+                None
+            }
+        }
     }
 }

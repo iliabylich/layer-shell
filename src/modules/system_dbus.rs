@@ -4,7 +4,7 @@ use crate::{
     unix_socket::new_unix_socket,
     user_data::ModuleId,
 };
-use anyhow::{Context, Result};
+use anyhow::Context;
 
 pub(crate) struct SystemDBus {
     conn: DBusConnection,
@@ -39,16 +39,16 @@ impl SystemDBus {
         self.conn.wants()
     }
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<IncomingMessage<'_>>> {
-        let Some(buf) = self.conn.satisfy(satisfy, res)? else {
-            return Ok(None);
-        };
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<IncomingMessage<'_>> {
+        let buf = self.conn.satisfy(satisfy, res)?;
 
-        let message = IncomingMessage::new(buf)?;
-        Ok(Some(message))
+        match IncomingMessage::new(buf) {
+            Ok(message) => Some(message),
+            Err(err) => {
+                log::error!("DBus(system) got malformed message: {err:?}");
+                self.conn.stop();
+                None
+            }
+        }
     }
 }
