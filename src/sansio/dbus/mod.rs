@@ -94,22 +94,27 @@ impl DBusConnection {
 
                 Satisfy::Write => writer.satisfy(satisfy, res),
 
-                Satisfy::Crash => {
-                    reader.satisfy(satisfy, res);
-                    writer.satisfy(satisfy, res);
-                }
-
                 _ => {
                     log::error!(
                         "DBus {:?} in r/w mode received unexpected satisfy: {satisfy:?}",
                         self.kind
                     );
-                    reader.satisfy(Satisfy::Crash, 0);
-                    writer.satisfy(Satisfy::Crash, 0);
+                    reader.stop();
+                    writer.stop();
                 }
             },
         }
 
         None
+    }
+
+    pub(crate) fn stop(&mut self) {
+        match &mut self.state {
+            State::Connecting(connector) => connector.stop(),
+            State::Ready { reader, writer } => {
+                reader.stop();
+                writer.stop();
+            }
+        }
     }
 }

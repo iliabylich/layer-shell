@@ -78,11 +78,6 @@ impl UnixSocketReader {
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<([u8; 1_024], usize)>> {
         match (self.state, satisfy) {
             (State::Dead, _) => Ok(None),
-            (_, Satisfy::Crash) => {
-                log::error!("Module UnixSocketReader received Satisfy::Crash, stopping...");
-                self.state = State::Dead;
-                Ok(None)
-            }
 
             (State::WaitingForSocket, Satisfy::Socket) => {
                 ensure!(res >= 0, "UnixSocketReader::Socket failed: {res}");
@@ -117,9 +112,14 @@ impl UnixSocketReader {
             Ok(buf) => buf,
             Err(err) => {
                 log::error!("Module UnixSocketReader has crashed: {satisfy:?} {res} {err:?}");
-                self.state = State::Dead;
+                self.stop();
                 None
             }
         }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        log::error!("Stopping UnixSocketReader");
+        self.state = State::Dead;
     }
 }

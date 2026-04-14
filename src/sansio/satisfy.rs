@@ -9,9 +9,8 @@ pub(crate) enum Satisfy {
     Read,
     Close,
     OpenAt,
-    Crash,
 }
-const MAX: Satisfy = Satisfy::Crash;
+const MAX: Satisfy = Satisfy::OpenAt;
 
 impl From<Satisfy> for u8 {
     fn from(value: Satisfy) -> Self {

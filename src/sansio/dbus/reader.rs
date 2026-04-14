@@ -99,14 +99,6 @@ impl DBusReader {
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
         match (self.state, satisfy) {
             (State::Dead, _) => Ok(None),
-            (_, Satisfy::Crash) => {
-                log::error!(
-                    "Module DBusReader({:?}) received Satisfy::Crash, stopping...",
-                    self.kind
-                );
-                self.state = State::Dead;
-                Ok(None)
-            }
 
             (State::WaitingForHeader, Satisfy::Read) => {
                 if res == 0 {
@@ -188,10 +180,15 @@ impl DBusReader {
         match self.try_satisfy(satisfy, res) {
             Ok(buf) => buf,
             Err(err) => {
-                log::error!("Module DBusReader has crashed, stopping: {err:?}");
-                self.state = State::Dead;
+                log::error!("Module DBusReader has crashed: {err:?}");
+                self.stop();
                 None
             }
         }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        log::error!("Stopping DBusReader({:?})", self.kind);
+        self.state = State::Dead;
     }
 }

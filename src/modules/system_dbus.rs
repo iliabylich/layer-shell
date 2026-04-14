@@ -46,7 +46,7 @@ impl SystemDBus {
             Ok(message) => Some(message),
             Err(err) => {
                 log::error!("DBus(system) got malformed message: {err:?}");
-                self.conn.satisfy(Satisfy::Crash, 0);
+                self.conn.stop();
                 None
             }
         }

@@ -146,14 +146,6 @@ impl DBusConnector {
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<i32>> {
         match (self.state, satisfy) {
             (State::Dead, _) => Ok(None),
-            (_, Satisfy::Crash) => {
-                log::error!(
-                    "Module DBusConnector({:?}) received Satisfy::Crash, stopping...",
-                    self.kind
-                );
-                self.state = State::Dead;
-                Ok(None)
-            }
 
             (State::WaitingForSocket, Satisfy::Socket) => {
                 ensure!(res >= 0, "DBusConnector::Socket failed: {res}");
@@ -225,9 +217,14 @@ impl DBusConnector {
             Ok(fd) => fd,
             Err(err) => {
                 log::error!("Module DBusConnector has crashed, stopping: {err:?}");
-                self.state = State::Dead;
+                self.stop();
                 None
             }
         }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        log::error!("Stopping DBusConnector({:?})", self.kind);
+        self.state = State::Dead;
     }
 }

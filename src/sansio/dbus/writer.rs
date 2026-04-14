@@ -53,14 +53,6 @@ impl DBusWriter {
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         match (self.state, satisfy) {
             (State::Dead, _) => Ok(()),
-            (_, Satisfy::Crash) => {
-                log::error!(
-                    "Module DBusReader({:?}) received Satisfy::Crash, stopping...",
-                    self.kind
-                );
-                self.state = State::Dead;
-                Ok(())
-            }
 
             (State::WaitingForWrite, Satisfy::Write) => {
                 ensure!(res >= 0, "DBusWriter::Write failed: {res}");
@@ -91,8 +83,13 @@ impl DBusWriter {
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
         if let Err(err) = self.try_satisfy(satisfy, res) {
-            log::error!("Module DBusReader has crashed, stopping: {err:?}");
-            self.state = State::Dead;
+            log::error!("Module DBusWriter has crashed: {err:?}");
+            self.stop();
         }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        log::error!("Stopping DBusWriter({:?})", self.kind);
+        self.state = State::Dead;
     }
 }

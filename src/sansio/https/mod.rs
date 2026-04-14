@@ -43,10 +43,6 @@ impl Https {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<HttpsResponse>> {
         match (&mut self.state, satisfy) {
             (State::Dead, _) => {}
-            (state, Satisfy::Crash) => {
-                log::error!("Module HTTPS received Satisfy::Crash, stopping...");
-                *state = State::Dead;
-            }
 
             (State::Dns(dns), _) => {
                 if let Some(mut addr) = dns.satisfy(satisfy, res)? {
@@ -68,5 +64,10 @@ impl Https {
         }
 
         Ok(None)
+    }
+
+    pub(crate) fn stop(&mut self) {
+        log::error!("Stopping HTTPS");
+        self.state = State::Dead;
     }
 }
