@@ -41,9 +41,9 @@ impl Weather {
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self {
-            Weather::WaitingForLocation => None,
             Weather::Ready { https, .. } => https.wants(),
-            Weather::Dead { .. } => None,
+
+            Weather::WaitingForLocation | Weather::Dead { .. } => None,
         }
     }
 

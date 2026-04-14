@@ -13,19 +13,20 @@ const TYPE_A: u16 = 1;
 const CLASS_IN: u16 = 1;
 const MAX_DNS_PACKET: usize = 512;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum State {
-    CanSocket,
-    WaitingForSocket,
-    CanConnect,
-    WaitingForConnect,
-    CanWrite,
-    WaitingForWrite,
-    CanRead,
-    WaitingFoRead,
-    CanClose,
-    WaitingForClose,
+    ReadyTo(Action),
+    WaitingFor(Action),
     Done,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Action {
+    Socket,
+    Connect,
+    Write,
+    Read,
+    Close,
 }
 
 pub(crate) struct Dns {
@@ -41,7 +42,7 @@ pub(crate) struct Dns {
 impl Dns {
     pub(crate) fn new(domain: &'static [u8]) -> Self {
         Self {
-            state: State::CanSocket,
+            state: State::ReadyTo(Action::Socket),
             fd: -1,
             addr: libc::sockaddr_in {
                 sin_family: libc::AF_INET as u16,
@@ -59,57 +60,44 @@ impl Dns {
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.state {
-            State::CanSocket => {
-                self.state = State::WaitingForSocket;
+        let State::ReadyTo(action) = self.state else {
+            return None;
+        };
 
-                Some(Wants::Socket {
-                    domain: libc::AF_INET,
-                    r#type: libc::SOCK_DGRAM,
-                })
-            }
-            State::WaitingForSocket => None,
+        let wants = match action {
+            Action::Socket => Wants::Socket {
+                domain: libc::AF_INET,
+                r#type: libc::SOCK_DGRAM,
+            },
 
-            State::CanConnect => {
-                self.state = State::WaitingForConnect;
-                Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&self.addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-                    addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
-                })
-            }
-            State::WaitingForConnect => None,
+            Action::Connect => Wants::Connect {
+                fd: self.fd,
+                addr: (&self.addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+                addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
+            },
 
-            State::CanWrite => {
-                self.state = State::WaitingForWrite;
+            Action::Write => {
                 let buf = &self.buf[self.pos..self.len];
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingForWrite => None,
 
-            State::CanRead => {
-                self.state = State::WaitingFoRead;
+            Action::Read => {
                 let buf = &mut self.buf[self.len..];
-                Some(Wants::Read {
+                Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingFoRead => None,
 
-            State::CanClose => {
-                self.state = State::WaitingForClose;
-                Some(Wants::Close { fd: self.fd })
-            }
-            State::WaitingForClose => None,
-
-            State::Done => None,
-        }
+            Action::Close => Wants::Close { fd: self.fd },
+        };
+        self.state = State::WaitingFor(action);
+        Some(wants)
     }
 
     pub(crate) fn satisfy(
@@ -117,35 +105,40 @@ impl Dns {
         satisfy: Satisfy,
         res: i32,
     ) -> Result<Option<libc::sockaddr_in>> {
-        match (&mut self.state, satisfy) {
-            (State::WaitingForSocket, Satisfy::Socket) => {
+        let action = match self.state {
+            State::WaitingFor(action) => action,
+            state => bail!("malformed DNS state: {state:?} vs {satisfy:?}"),
+        };
+
+        match (action, satisfy) {
+            (Action::Socket, Satisfy::Socket) => {
                 ensure!(res >= 0, "DNS::Socket failed: {res}");
                 self.fd = res;
-                self.state = State::CanConnect;
+                self.state = State::ReadyTo(Action::Connect);
                 Ok(None)
             }
 
-            (State::WaitingForConnect, Satisfy::Connect) => {
+            (Action::Connect, Satisfy::Connect) => {
                 ensure!(res >= 0, "DNS::Connect failed: {res}");
 
                 let mut buf = [0_u8; MAX_DNS_PACKET];
                 let len = Request::write(&mut buf, self.domain, TYPE_A);
 
-                self.state = State::CanWrite;
+                self.state = State::ReadyTo(Action::Write);
                 self.buf = buf;
                 self.len = len;
                 self.pos = 0;
                 Ok(None)
             }
 
-            (State::WaitingForWrite, Satisfy::Write) => {
+            (Action::Write, Satisfy::Write) => {
                 ensure!(res >= 0, "DNS::Write failed: {res}");
                 let bytes_written = res as usize;
 
                 self.pos += bytes_written;
                 ensure!(self.pos <= self.len);
                 if self.pos == self.len {
-                    self.state = State::CanRead;
+                    self.state = State::ReadyTo(Action::Read);
                     self.buf = [0; _];
                     self.len = 0;
                 }
@@ -153,18 +146,18 @@ impl Dns {
                 Ok(None)
             }
 
-            (State::WaitingFoRead, Satisfy::Read) => {
+            (Action::Read, Satisfy::Read) => {
                 ensure!(res >= 0, "DNS::Read failed: {res}");
                 let bytes_read = res as usize;
 
                 self.len += bytes_read;
                 ensure!(self.len < MAX_DNS_PACKET);
 
-                self.state = State::CanClose;
+                self.state = State::ReadyTo(Action::Close);
                 Ok(None)
             }
 
-            (State::WaitingForClose, Satisfy::Close) => {
+            (Action::Close, Satisfy::Close) => {
                 ensure!(res >= 0, "DNS::Close failed: {res}");
 
                 let reply = Response::read(&self.buf[..self.len])?;

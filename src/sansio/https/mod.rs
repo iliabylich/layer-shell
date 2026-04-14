@@ -35,8 +35,8 @@ impl Https {
         match &mut self.state {
             State::Dns(dns) => dns.wants(),
             State::TlsOverTcp(tls_over_tcp) => tls_over_tcp.wants(),
-            State::Done => None,
-            State::Dead => None,
+
+            State::Done | State::Dead => None,
         }
     }
 

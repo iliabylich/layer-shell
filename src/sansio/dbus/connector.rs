@@ -4,24 +4,22 @@ use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
 #[derive(Debug, Clone, Copy)]
 enum State {
-    CanSocket,
-    WaitingForSocket,
-    CanConnect,
-    WaitingForConnect,
-    CanWriteZero,
-    WaitingForWriteZero,
-    CanWriteAuthExternal,
-    WaitingForWriteAuthExternal,
-    CanReadData,
-    WaitingForReadData,
-    CanWriteData,
-    WaitingForWriteData,
-    CanReadGUID,
-    WaitingForReadGUID,
-    CanWriteBegin,
-    WaitingForWriteBegin,
+    ReadyTo(Action),
+    WaitingFor(Action),
     Done,
     Dead,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Action {
+    Socket,
+    Connect,
+    WriteZero,
+    WriteAuthExternal,
+    ReadData,
+    WriteData,
+    ReadGUID,
+    WriteBegin,
 }
 
 pub(crate) struct DBusConnector {
@@ -36,7 +34,7 @@ impl DBusConnector {
     pub(crate) fn new(addr: sockaddr_un, kind: DBusConnectionKind) -> Self {
         Self {
             fd: -1,
-            state: State::CanSocket,
+            state: State::ReadyTo(Action::Socket),
             addr,
             buf: [0; _],
             kind,
@@ -54,151 +52,134 @@ impl DBusConnector {
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.state {
-            State::CanSocket => {
-                self.state = State::WaitingForSocket;
-                Some(Wants::Socket {
-                    domain: AF_UNIX,
-                    r#type: SOCK_STREAM,
-                })
-            }
-            State::WaitingForSocket => None,
+        let State::ReadyTo(action) = self.state else {
+            return None;
+        };
 
-            State::CanConnect => {
-                self.state = State::WaitingForConnect;
-                Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-                    addrlen: core::mem::size_of::<sockaddr_un>() as u32,
-                })
-            }
-            State::WaitingForConnect => None,
+        let wants = match action {
+            Action::Socket => Wants::Socket {
+                domain: AF_UNIX,
+                r#type: SOCK_STREAM,
+            },
 
-            State::CanWriteZero => {
-                self.state = State::WaitingForWriteZero;
+            Action::Connect => Wants::Connect {
+                fd: self.fd,
+                addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
+                addrlen: core::mem::size_of::<sockaddr_un>() as u32,
+            },
+
+            Action::WriteZero => {
                 let buf = b"\0";
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingForWriteZero => None,
 
-            State::CanWriteAuthExternal => {
-                self.state = State::WaitingForWriteAuthExternal;
+            Action::WriteAuthExternal => {
                 let buf = b"AUTH EXTERNAL\r\n";
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingForWriteAuthExternal => None,
 
-            State::CanReadData => {
-                self.state = State::WaitingForReadData;
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
-                })
-            }
-            State::WaitingForReadData => None,
+            Action::ReadData => Wants::Read {
+                fd: self.fd,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
+            },
 
-            State::CanWriteData => {
-                self.state = State::WaitingForWriteData;
+            Action::WriteData => {
                 let buf = b"DATA\r\n";
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingForWriteData => None,
 
-            State::CanReadGUID => {
-                self.state = State::WaitingForReadGUID;
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
-                })
-            }
-            State::WaitingForReadGUID => None,
+            Action::ReadGUID => Wants::Read {
+                fd: self.fd,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
+            },
 
-            State::CanWriteBegin => {
-                self.state = State::WaitingForWriteBegin;
+            Action::WriteBegin => {
                 let buf = b"BEGIN\r\n";
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingForWriteBegin => None,
-
-            State::Done => None,
-            State::Dead => None,
-        }
+        };
+        self.state = State::WaitingFor(action);
+        Some(wants)
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<i32>> {
-        match (self.state, satisfy) {
-            (State::Dead, _) => Ok(None),
+        let action = match self.state {
+            State::WaitingFor(action) => action,
+            State::Dead => return Ok(None),
+            state => bail!("malformed DBusConnector state: {state:?} vs {satisfy:?}"),
+        };
 
-            (State::WaitingForSocket, Satisfy::Socket) => {
+        match (action, satisfy) {
+            (Action::Socket, Satisfy::Socket) => {
                 ensure!(res >= 0, "DBusConnector::Socket failed: {res}");
                 self.fd = res;
-                self.state = State::CanConnect;
+                self.state = State::ReadyTo(Action::Connect);
                 Ok(None)
             }
 
-            (State::WaitingForConnect, Satisfy::Connect) => {
+            (Action::Connect, Satisfy::Connect) => {
                 ensure!(res >= 0, "DBusConnector::Connect failed: {res}");
-                self.state = State::CanWriteZero;
+                self.state = State::ReadyTo(Action::WriteZero);
                 Ok(None)
             }
 
-            (State::WaitingForWriteZero, Satisfy::Write) => {
+            (Action::WriteZero, Satisfy::Write) => {
                 ensure!(res >= 0, "DBusConnector::Write failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"\0".len());
-                self.state = State::CanWriteAuthExternal;
+                self.state = State::ReadyTo(Action::WriteAuthExternal);
                 Ok(None)
             }
 
-            (State::WaitingForWriteAuthExternal, Satisfy::Write) => {
+            (Action::WriteAuthExternal, Satisfy::Write) => {
                 ensure!(res >= 0, "DBusConnector::WriteAuthExternal failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"AUTH EXTERNAL\r\n".len());
-                self.state = State::CanReadData;
+                self.state = State::ReadyTo(Action::ReadData);
                 Ok(None)
             }
 
-            (State::WaitingForReadData, Satisfy::Read) => {
+            (Action::ReadData, Satisfy::Read) => {
                 ensure!(res >= 0, "DBusConnector::ReadData failed: {res}");
                 let bytes_read = res as usize;
                 ensure!(&self.buf[..bytes_read] == b"DATA\r\n");
-                self.state = State::CanWriteData;
+                self.state = State::ReadyTo(Action::WriteData);
                 Ok(None)
             }
 
-            (State::WaitingForWriteData, Satisfy::Write) => {
+            (Action::WriteData, Satisfy::Write) => {
                 ensure!(res >= 0, "DBusConnector::WriteData failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"DATA\r\n".len());
-                self.state = State::CanReadGUID;
+                self.state = State::ReadyTo(Action::ReadGUID);
                 Ok(None)
             }
 
-            (State::WaitingForReadGUID, Satisfy::Read) => {
+            (Action::ReadGUID, Satisfy::Read) => {
                 ensure!(res > 0, "DBusConnector::ReadGUID failed: {res}");
-                self.state = State::CanWriteBegin;
+                self.state = State::ReadyTo(Action::WriteBegin);
                 Ok(None)
             }
 
-            (State::WaitingForWriteBegin, Satisfy::Write) => {
+            (Action::WriteBegin, Satisfy::Write) => {
                 ensure!(res >= 0, "DBusConnector::WriteBegin failed: {res}");
                 let bytes_written = res as usize;
                 ensure!(bytes_written == b"BEGIN\r\n".len());

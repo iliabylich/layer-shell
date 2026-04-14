@@ -4,14 +4,17 @@ use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
 #[derive(Debug, Clone, Copy)]
 enum State {
-    CanSocket,
-    WaitingForSocket,
-    CanConnect,
-    WaitingForConnect,
-    CanRead,
-    WaitingForRead,
+    ReadyTo(Action),
+    WaitingFor(Action),
 
     Dead,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Action {
+    Socket,
+    Connect,
+    Read,
 }
 
 pub(crate) struct UnixSocketReader {
@@ -27,7 +30,7 @@ impl UnixSocketReader {
             addr,
             fd: -1,
             buf: [0; _],
-            state: State::CanSocket,
+            state: State::ReadyTo(Action::Socket),
         }
     }
 
@@ -36,73 +39,69 @@ impl UnixSocketReader {
             addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
             fd: -1,
             buf: [0; _],
-            state: State::CanSocket,
+            state: State::ReadyTo(Action::Socket),
         }
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.state {
-            State::CanSocket => {
-                self.state = State::WaitingForSocket;
-                Some(Wants::Socket {
-                    domain: AF_UNIX,
-                    r#type: SOCK_STREAM,
-                })
-            }
-            State::WaitingForSocket => None,
+        let State::ReadyTo(action) = self.state else {
+            return None;
+        };
 
-            State::CanConnect => {
-                self.state = State::WaitingForConnect;
-                Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-                    addrlen: core::mem::size_of::<sockaddr_un>() as u32,
-                })
-            }
-            State::WaitingForConnect => None,
+        let wants = match action {
+            Action::Socket => Wants::Socket {
+                domain: AF_UNIX,
+                r#type: SOCK_STREAM,
+            },
 
-            State::CanRead => {
-                self.state = State::WaitingForRead;
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
-                })
-            }
-            State::WaitingForRead => None,
+            Action::Connect => Wants::Connect {
+                fd: self.fd,
+                addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
+                addrlen: core::mem::size_of::<sockaddr_un>() as u32,
+            },
 
-            State::Dead => None,
-        }
+            Action::Read => Wants::Read {
+                fd: self.fd,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
+            },
+        };
+        self.state = State::WaitingFor(action);
+        Some(wants)
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<([u8; 1_024], usize)>> {
-        match (self.state, satisfy) {
-            (State::Dead, _) => Ok(None),
+        let waiting_for = match self.state {
+            State::WaitingFor(waiting_for) => waiting_for,
+            State::Dead => return Ok(None),
+            state => bail!("malformed UnixSocketReader state: {state:?} vs {satisfy:?}"),
+        };
 
-            (State::WaitingForSocket, Satisfy::Socket) => {
+        match (waiting_for, satisfy) {
+            (Action::Socket, Satisfy::Socket) => {
                 ensure!(res >= 0, "UnixSocketReader::Socket failed: {res}");
                 self.fd = res;
-                self.state = State::CanConnect;
+                self.state = State::ReadyTo(Action::Connect);
                 Ok(None)
             }
 
-            (State::WaitingForConnect, Satisfy::Connect) => {
+            (Action::Connect, Satisfy::Connect) => {
                 ensure!(res >= 0, "UnixSocketReader::Connect failed: {res}");
-                self.state = State::CanRead;
+                self.state = State::ReadyTo(Action::Read);
                 Ok(None)
             }
 
-            (State::WaitingForRead, Satisfy::Read) => {
+            (Action::Read, Satisfy::Read) => {
                 ensure!(res > 0, "UnixSocketReader::Read failed: {res}");
                 let len = res as usize;
                 let buf = self.buf;
                 self.buf = [0; _];
-                self.state = State::CanRead;
+                self.state = State::ReadyTo(Action::Read);
                 Ok(Some((buf, len)))
             }
 
-            (state, satisfy) => {
-                bail!("malformed UnixSocketReader state: {state:?} vs {satisfy:?}");
+            (action, satisfy) => {
+                bail!("malformed UnixSocketReader state: waiting for {action:?} vs {satisfy:?}");
             }
         }
     }

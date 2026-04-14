@@ -10,7 +10,7 @@ pub(crate) struct DBusWriter {
 
 #[derive(Debug, Clone, Copy)]
 enum State {
-    CanWrite,
+    ReadyToWrite,
     WaitingForWrite,
     Dead,
 }
@@ -23,13 +23,13 @@ impl DBusWriter {
             fd,
             current,
             kind,
-            state: State::CanWrite,
+            state: State::ReadyToWrite,
         }
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
-            State::CanWrite => {
+            State::ReadyToWrite => {
                 if self.current.is_none() {
                     self.current = DBusQueue::pop_front(self.kind);
                 }
@@ -43,8 +43,8 @@ impl DBusWriter {
                     len: buf.len(),
                 })
             }
-            State::WaitingForWrite => None,
-            State::Dead => None,
+
+            State::WaitingForWrite | State::Dead => None,
         }
     }
 
@@ -69,7 +69,7 @@ impl DBusWriter {
                 if let Some(next) = DBusQueue::pop_front(self.kind) {
                     self.current = Some(next);
                 }
-                self.state = State::CanWrite;
+                self.state = State::ReadyToWrite;
                 Ok(())
             }
 

@@ -13,7 +13,7 @@ pub(crate) struct TimerFd {
 }
 
 enum State {
-    CanRead,
+    ReadyToRead,
     WaitingForRead,
 }
 
@@ -23,13 +23,13 @@ impl TimerFd {
             fd: create_timer(),
             buf: [0; _],
             ticks: 0,
-            state: State::CanRead,
+            state: State::ReadyToRead,
         }
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
-            State::CanRead => {
+            State::ReadyToRead => {
                 self.state = State::WaitingForRead;
                 Some(Wants::Read {
                     fd: self.fd,
@@ -49,7 +49,7 @@ impl TimerFd {
 
                 let ticks = self.ticks;
                 self.ticks = self.ticks.saturating_add(expirations);
-                self.state = State::CanRead;
+                self.state = State::ReadyToRead;
 
                 Ok(ticks)
             }

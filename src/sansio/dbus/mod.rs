@@ -4,9 +4,11 @@ use libc::sockaddr_un;
 use reader::DBusReader;
 use writer::DBusWriter;
 
+pub(crate) use kind::DBusConnectionKind;
 pub(crate) use queue::{DBusQueue, SessionDBusQueue, SystemDBusQueue};
 
 mod connector;
+mod kind;
 mod queue;
 mod reader;
 mod writer;
@@ -14,13 +16,6 @@ mod writer;
 pub(crate) struct DBusConnection {
     state: State,
     kind: DBusConnectionKind,
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(usize)]
-pub(crate) enum DBusConnectionKind {
-    System = 0,
-    Session = 1,
 }
 
 enum State {

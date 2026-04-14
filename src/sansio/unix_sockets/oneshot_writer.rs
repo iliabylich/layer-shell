@@ -17,17 +17,18 @@ pub(crate) struct UnixSocketOneshotWriter {
 
 #[derive(Debug, Clone, Copy)]
 enum State {
-    CanSocket,
-    WaitingForSocket,
-    CanConnect,
-    WaitingForConnect,
-    CanWrite,
-    WaitingForWrite,
-    CanRead,
-    WaitingForRead,
-    CanClose,
-    WaitingForClose,
+    ReadyTo(Action),
+    WaitingFor(Action),
     Done,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Action {
+    Socket,
+    Connect,
+    Write,
+    Read,
+    Close,
 }
 
 impl UnixSocketOneshotWriter {
@@ -45,91 +46,82 @@ impl UnixSocketOneshotWriter {
             write_buflen,
             bytes_read: 0,
             fd: -1,
-            state: State::CanSocket,
+            state: State::ReadyTo(Action::Socket),
         }
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.state {
-            State::CanSocket => {
-                self.state = State::WaitingForSocket;
-                Some(Wants::Socket {
-                    domain: AF_UNIX,
-                    r#type: SOCK_STREAM,
-                })
-            }
-            State::WaitingForSocket => None,
+        let State::ReadyTo(action) = self.state else {
+            return None;
+        };
 
-            State::CanConnect => {
-                self.state = State::WaitingForConnect;
-                Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
-                    addrlen: core::mem::size_of::<sockaddr_un>() as u32,
-                })
-            }
-            State::WaitingForConnect => None,
+        let wants = match action {
+            Action::Socket => Wants::Socket {
+                domain: AF_UNIX,
+                r#type: SOCK_STREAM,
+            },
 
-            State::CanWrite => {
-                self.state = State::WaitingForWrite;
+            Action::Connect => Wants::Connect {
+                fd: self.fd,
+                addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
+                addrlen: core::mem::size_of::<sockaddr_un>() as u32,
+            },
+
+            Action::Write => {
                 let buf = &self.buf[..self.write_buflen];
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingForWrite => None,
 
-            State::CanRead => {
-                self.state = State::WaitingForRead;
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
-                })
-            }
-            State::WaitingForRead => None,
+            Action::Read => Wants::Read {
+                fd: self.fd,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
+            },
 
-            State::CanClose => {
-                self.state = State::WaitingForClose;
-                Some(Wants::Close { fd: self.fd })
-            }
-            State::WaitingForClose => None,
-
-            State::Done => None,
-        }
+            Action::Close => Wants::Close { fd: self.fd },
+        };
+        self.state = State::WaitingFor(action);
+        Some(wants)
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
-        match (self.state, satisfy) {
-            (State::WaitingForSocket, Satisfy::Socket) => {
+        let action = match self.state {
+            State::WaitingFor(action) => action,
+            state => bail!("malformed UnixSocketOneshotWriter state: {state:?} vs {satisfy:?}"),
+        };
+
+        match (action, satisfy) {
+            (Action::Socket, Satisfy::Socket) => {
                 ensure!(res >= 0, "UnixSocketOneshotWriter::Socket failed: {res}");
                 self.fd = res;
-                self.state = State::CanConnect;
+                self.state = State::ReadyTo(Action::Connect);
                 Ok(None)
             }
 
-            (State::WaitingForConnect, Satisfy::Connect) => {
+            (Action::Connect, Satisfy::Connect) => {
                 ensure!(res >= 0, "UnixSocketOneshotWriter::Connect failed: {res}");
-                self.state = State::CanWrite;
+                self.state = State::ReadyTo(Action::Write);
                 Ok(None)
             }
 
-            (State::WaitingForWrite, Satisfy::Write) => {
+            (Action::Write, Satisfy::Write) => {
                 ensure!(res > 0, "UnixSocketOneshotWriter::Write failed: {res}");
-                self.state = State::CanRead;
+                self.state = State::ReadyTo(Action::Read);
                 Ok(None)
             }
 
-            (State::WaitingForRead, Satisfy::Read) => {
+            (Action::Read, Satisfy::Read) => {
                 ensure!(res > 0, "UnixSocketOneshotWriter::Read failed: {res}");
                 self.bytes_read = res as usize;
-                self.state = State::CanClose;
+                self.state = State::ReadyTo(Action::Close);
                 Ok(None)
             }
 
-            (State::WaitingForClose, Satisfy::Close) => {
+            (Action::Close, Satisfy::Close) => {
                 ensure!(res >= 0, "UnixSocketOneshotWriter::Close failed: {res}");
                 self.state = State::Done;
                 Ok(Some(&self.buf[..self.bytes_read]))

@@ -24,29 +24,16 @@ pub(crate) struct DBusReader {
 
 #[derive(Debug, Clone, Copy)]
 enum State {
-    CanReadHeader,
-    WaitingForHeader,
-    CanReadBody,
-    WaitingForBody,
-    CanDiscardBody,
-    WaitingForDiscardBody,
+    ReadyTo(Action),
+    WaitingFor(Action),
     Dead,
 }
 
-const BUF_SIZE: usize = 500_000;
-static mut BUFFERS: Option<Vec<[u8; BUF_SIZE]>> = None;
-fn buffer(kind: DBusConnectionKind) -> &'static mut [u8; BUF_SIZE] {
-    unsafe {
-        if BUFFERS.is_none() {
-            BUFFERS = Some(vec![[0; BUF_SIZE], [0; BUF_SIZE]]);
-        }
-
-        BUFFERS
-            .as_mut()
-            .unwrap_unchecked()
-            .get_mut(kind as usize)
-            .unwrap_unchecked()
-    }
+#[derive(Debug, Clone, Copy)]
+enum Action {
+    ReadHeader,
+    ReadBody,
+    Discard,
 }
 
 impl DBusReader {
@@ -56,55 +43,56 @@ impl DBusReader {
             bytes_read: 0,
             message_len: 0,
             discard_remaining: 0,
-            state: State::CanReadHeader,
+            state: State::ReadyTo(Action::ReadHeader),
             kind,
         }
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.state {
-            State::CanReadHeader => {
-                self.state = State::WaitingForHeader;
+        let State::ReadyTo(action) = self.state else {
+            return None;
+        };
 
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: buffer(self.kind).as_mut_ptr(),
-                    len: HEADER_LEN,
-                })
-            }
-            State::WaitingForHeader => None,
+        let wants = match action {
+            Action::ReadHeader => Wants::Read {
+                fd: self.fd,
+                buf: self.kind.read_buffer().as_mut_ptr(),
+                len: HEADER_LEN,
+            },
 
-            State::CanReadBody => {
-                let buf = &mut buffer(self.kind)[self.bytes_read..self.message_len];
-                self.state = State::WaitingForBody;
-                Some(Wants::Read {
+            Action::ReadBody => {
+                let buf = &mut self.kind.read_buffer()[self.bytes_read..self.message_len];
+                Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                })
+                }
             }
-            State::WaitingForBody => None,
 
-            State::CanDiscardBody => {
-                let len = self.discard_remaining.min(BUF_SIZE);
-                self.state = State::WaitingForDiscardBody;
-                Some(Wants::Read {
+            Action::Discard => {
+                let len = self
+                    .discard_remaining
+                    .min(DBusConnectionKind::READ_BUF_SIZE);
+                Wants::Read {
                     fd: self.fd,
-                    buf: buffer(self.kind).as_mut_ptr(),
+                    buf: self.kind.read_buffer().as_mut_ptr(),
                     len,
-                })
+                }
             }
-            State::WaitingForDiscardBody => None,
-
-            State::Dead => None,
-        }
+        };
+        self.state = State::WaitingFor(action);
+        Some(wants)
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
-        match (self.state, satisfy) {
-            (State::Dead, _) => Ok(None),
+        let action = match self.state {
+            State::WaitingFor(action) => action,
+            State::Dead => return Ok(None),
+            state => bail!("malformed DBusReader state: {state:?} vs {satisfy:?}"),
+        };
 
-            (State::WaitingForHeader, Satisfy::Read) => {
+        match (action, satisfy) {
+            (Action::ReadHeader, Satisfy::Read) => {
                 if res == 0 {
                     return Ok(None);
                 }
@@ -113,31 +101,30 @@ impl DBusReader {
                 ensure!(bytes_read == HEADER_LEN);
                 self.bytes_read += bytes_read;
 
-                let header = unsafe { &*buffer(self.kind).as_ptr().cast::<Header>() };
+                let header = unsafe { &*self.kind.read_buffer().as_ptr().cast::<Header>() };
 
                 let header_fields_len = (header.header_fields_len as usize).next_multiple_of(8);
                 let message_len = HEADER_LEN
                     .checked_add(header_fields_len)
                     .and_then(|len| len.checked_add(header.body_len as usize))
                     .context("dbus message length overflow")?;
-                if message_len <= BUF_SIZE {
+                if message_len <= DBusConnectionKind::READ_BUF_SIZE {
                     self.message_len = message_len;
-                    self.state = State::CanReadBody;
+                    self.state = State::ReadyTo(Action::ReadBody);
                 } else {
                     self.discard_remaining = message_len - HEADER_LEN;
-                    self.state = State::CanDiscardBody;
+                    self.state = State::ReadyTo(Action::Discard);
                 }
 
                 Ok(None)
             }
 
-            (State::WaitingForDiscardBody, Satisfy::Read) => {
+            (Action::Discard, Satisfy::Read) => {
                 ensure!(res > 0, "DBusReader::DiscardBody failed: {res}");
                 let bytes_read = res as usize;
                 ensure!(
                     bytes_read <= self.discard_remaining,
-                    "dbus discard read overflow: {} > {}",
-                    bytes_read,
+                    "dbus discard read overflow: {bytes_read} > {}",
                     self.discard_remaining
                 );
 
@@ -146,15 +133,15 @@ impl DBusReader {
                     self.bytes_read = 0;
                     self.message_len = 0;
                     self.discard_remaining = 0;
-                    self.state = State::CanReadHeader;
+                    self.state = State::ReadyTo(Action::ReadHeader);
                 } else {
-                    self.state = State::CanDiscardBody;
+                    self.state = State::ReadyTo(Action::Discard);
                 }
 
                 Ok(None)
             }
 
-            (State::WaitingForBody, Satisfy::Read) => {
+            (Action::ReadBody, Satisfy::Read) => {
                 ensure!(res > 0, "DBusReader::ReadBody failed: {res}");
                 let bytes_read = res as usize;
                 self.bytes_read += bytes_read;
@@ -164,18 +151,18 @@ impl DBusReader {
 
                     self.bytes_read = 0;
                     self.message_len = 0;
-                    self.state = State::CanReadHeader;
+                    self.state = State::ReadyTo(Action::ReadHeader);
 
-                    return Ok(Some(&buffer(self.kind)[..message_len]));
+                    return Ok(Some(&self.kind.read_buffer()[..message_len]));
                 } else {
-                    self.state = State::CanReadBody;
+                    self.state = State::ReadyTo(Action::ReadBody);
                 }
 
                 Ok(None)
             }
 
-            (state, satisfy) => {
-                bail!("malformed DBusReader state: {state:?} vs {satisfy:?}")
+            (_, _) => {
+                bail!("malformed DBusReader state: {action:?} vs {satisfy:?}")
             }
         }
     }
