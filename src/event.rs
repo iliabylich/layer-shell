@@ -1,6 +1,9 @@
 use crate::{
     ffi::FFIArray,
-    modules::{HyprlandWorkspace, TrayIcon, TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour},
+    modules::{
+        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, HyprlandWorkspace, TrayIcon,
+        TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour,
+    },
     utils::StringRef,
 };
 
@@ -27,8 +30,8 @@ pub enum Event {
     Weather {
         temperature: f32,
         code: WeatherCode,
-        hourly_forecast: FFIArray<WeatherOnHour>,
-        daily_forecast: FFIArray<WeatherOnDay>,
+        hourly_forecast: [WeatherOnHour; HOURLY_WEATHER_FORECAST_LENGTH],
+        daily_forecast: [WeatherOnDay; DAILY_WEATHER_FORECAST_LENGTH],
     },
     NetworkSsid {
         ssid: StringRef,

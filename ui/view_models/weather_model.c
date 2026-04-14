@@ -32,15 +32,15 @@ static void weather_model_set_weather(WeatherModel *self,
   g_object_notify_by_pspec(G_OBJECT(self), properties[PROP_TEXT]);
 
   g_list_store_remove_all(self->hourly_forecast);
-  for (size_t i = 0; i < weather.hourly_forecast.len; i++) {
-    WeatherHourItem *item = weather_hour_item_new(weather.hourly_forecast.ptr[i]);
+  for (size_t i = 0; i < IO_HOURLY_WEATHER_FORECAST_LENGTH; i++) {
+    WeatherHourItem *item = weather_hour_item_new(weather.hourly_forecast[i]);
     g_list_store_append(self->hourly_forecast, item);
     g_object_unref(item);
   }
 
   g_list_store_remove_all(self->daily_forecast);
-  for (size_t i = 0; i < weather.daily_forecast.len; i++) {
-    WeatherDayItem *item = weather_day_item_new(weather.daily_forecast.ptr[i]);
+  for (size_t i = 0; i < IO_DAILY_WEATHER_FORECAST_LENGTH; i++) {
+    WeatherDayItem *item = weather_day_item_new(weather.daily_forecast[i]);
     g_list_store_append(self->daily_forecast, item);
     g_object_unref(item);
   }
@@ -66,8 +66,7 @@ static void weather_model_get_property(GObject *object, guint property_id,
 }
 
 static void weather_model_set_property(GObject *object, guint property_id,
-                                       const GValue *value,
-                                       GParamSpec *pspec) {
+                                       const GValue *value, GParamSpec *pspec) {
   WeatherModel *self = WEATHER_MODEL(object);
   switch (property_id) {
   case PROP_DATA: {
@@ -104,12 +103,10 @@ static void weather_model_class_init(WeatherModelClass *klass) {
 
   properties[PROP_TEXT] =
       g_param_spec_string("text", NULL, NULL, "--", G_PARAM_READABLE);
-  properties[PROP_HOURLY_FORECAST] =
-      g_param_spec_object("hourly-forecast", NULL, NULL,
-                          G_TYPE_LIST_MODEL, G_PARAM_READABLE);
-  properties[PROP_DAILY_FORECAST] =
-      g_param_spec_object("daily-forecast", NULL, NULL,
-                          G_TYPE_LIST_MODEL, G_PARAM_READABLE);
+  properties[PROP_HOURLY_FORECAST] = g_param_spec_object(
+      "hourly-forecast", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
+  properties[PROP_DAILY_FORECAST] = g_param_spec_object(
+      "daily-forecast", NULL, NULL, G_TYPE_LIST_MODEL, G_PARAM_READABLE);
   properties[PROP_DATA] =
       g_param_spec_pointer("data", NULL, NULL, G_PARAM_WRITABLE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);

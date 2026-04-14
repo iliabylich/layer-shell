@@ -7,7 +7,9 @@ use crate::{
 };
 use anyhow::Result;
 pub use weather_code::WeatherCode;
-pub use weather_response::{WeatherOnDay, WeatherOnHour};
+pub use weather_response::{
+    DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherOnDay, WeatherOnHour,
+};
 
 mod weather_code;
 mod weather_response;

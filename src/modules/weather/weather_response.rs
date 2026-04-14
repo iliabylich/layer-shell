@@ -1,5 +1,5 @@
 use super::WeatherCode;
-use crate::{Event, FFIArray, sansio::HttpsResponse};
+use crate::{Event, sansio::HttpsResponse};
 use anyhow::{Context as _, Result, ensure};
 use chrono::TimeZone;
 use serde::Deserialize;
@@ -58,7 +58,12 @@ impl TryFrom<WeatherResponse> for Event {
     }
 }
 
-fn map_hourly_forecase(response: HourlyWeatherResponse) -> Result<FFIArray<WeatherOnHour>> {
+pub const HOURLY_WEATHER_FORECAST_LENGTH: usize = 10;
+pub const DAILY_WEATHER_FORECAST_LENGTH: usize = 6;
+
+fn map_hourly_forecase(
+    response: HourlyWeatherResponse,
+) -> Result<[WeatherOnHour; HOURLY_WEATHER_FORECAST_LENGTH]> {
     let HourlyWeatherResponse {
         time,
         temperature_2m,
@@ -82,11 +87,17 @@ fn map_hourly_forecase(response: HourlyWeatherResponse) -> Result<FFIArray<Weath
         }
     }
 
-    ensure!(forecast.len() == 10, "bug");
-    Ok(forecast.into())
+    forecast.try_into().map_err(|v: Vec<WeatherOnHour>| {
+        anyhow::anyhow!(
+            "wrong size: {} vs {HOURLY_WEATHER_FORECAST_LENGTH}",
+            v.len()
+        )
+    })
 }
 
-fn map_daily_forecase(response: DailyWeatherResponse) -> Result<FFIArray<WeatherOnDay>> {
+fn map_daily_forecase(
+    response: DailyWeatherResponse,
+) -> Result<[WeatherOnDay; DAILY_WEATHER_FORECAST_LENGTH]> {
     let DailyWeatherResponse {
         time,
         temperature_2m_min,
@@ -122,8 +133,9 @@ fn map_daily_forecase(response: DailyWeatherResponse) -> Result<FFIArray<Weather
         }
     }
 
-    ensure!(forecast.len() == 6, "bug");
-    Ok(forecast.into())
+    forecast.try_into().map_err(|v: Vec<WeatherOnDay>| {
+        anyhow::anyhow!("wrong size: {} vs {DAILY_WEATHER_FORECAST_LENGTH}", v.len())
+    })
 }
 
 #[repr(C)]

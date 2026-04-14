@@ -26,4 +26,7 @@ pub(crate) use weather::Weather;
 
 pub use hyprland::HyprlandWorkspace;
 pub use tray::{TrayIcon, TrayIconPixmap, TrayItem};
-pub use weather::{WeatherCode, WeatherOnDay, WeatherOnHour};
+pub use weather::{
+    DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherCode, WeatherOnDay,
+    WeatherOnHour,
+};
