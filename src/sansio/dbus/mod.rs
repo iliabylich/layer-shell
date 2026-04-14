@@ -46,34 +46,34 @@ impl DBusConnection {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
             State::Connecting(connector) => connector.wants(),
             State::Ready { reader, writer } => match (reader.wants(), writer.wants()) {
                 (
-                    Wants::Read {
+                    Some(Wants::Read {
                         fd,
                         buf: readbuf,
                         len: readlen,
-                    },
-                    Wants::Write {
+                    }),
+                    Some(Wants::Write {
                         buf: writebuf,
                         len: writelen,
                         ..
-                    },
-                ) => Wants::ReadWrite {
+                    }),
+                ) => Some(Wants::ReadWrite {
                     fd,
                     readbuf,
                     readlen,
                     writebuf,
                     writelen,
-                },
+                }),
 
-                (read, Wants::Nothing) => read,
-                (Wants::Nothing, write) => write,
+                (read, None) => read,
+                (None, write) => write,
                 other => {
                     log::error!("bug: DBus reader/write never want {other:?}");
-                    Wants::Nothing
+                    None
                 }
             },
         }

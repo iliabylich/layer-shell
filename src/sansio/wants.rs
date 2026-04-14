@@ -35,6 +35,4 @@ pub(crate) enum Wants {
     Close {
         fd: i32,
     },
-
-    Nothing,
 }

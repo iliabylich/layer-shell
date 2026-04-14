@@ -49,55 +49,55 @@ impl UnixSocketOneshotWriter {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
-                Wants::Socket {
+                Some(Wants::Socket {
                     domain: AF_UNIX,
                     r#type: SOCK_STREAM,
-                }
+                })
             }
-            State::WaitingForSocket => Wants::Nothing,
+            State::WaitingForSocket => None,
 
             State::CanConnect => {
                 self.state = State::WaitingForConnect;
-                Wants::Connect {
+                Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
                     addrlen: core::mem::size_of::<sockaddr_un>() as u32,
-                }
+                })
             }
-            State::WaitingForConnect => Wants::Nothing,
+            State::WaitingForConnect => None,
 
             State::CanWrite => {
                 self.state = State::WaitingForWrite;
                 let buf = &self.buf[..self.write_buflen];
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForWrite => Wants::Nothing,
+            State::WaitingForWrite => None,
 
             State::CanRead => {
                 self.state = State::WaitingForRead;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
-                }
+                })
             }
-            State::WaitingForRead => Wants::Nothing,
+            State::WaitingForRead => None,
 
             State::CanClose => {
                 self.state = State::WaitingForClose;
-                Wants::Close { fd: self.fd }
+                Some(Wants::Close { fd: self.fd })
             }
-            State::WaitingForClose => Wants::Nothing,
+            State::WaitingForClose => None,
 
-            State::Done => Wants::Nothing,
+            State::Done => None,
         }
     }
 

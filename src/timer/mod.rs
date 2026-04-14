@@ -19,7 +19,7 @@ impl Timer {
         ModuleId::Timer
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         self.timerfd.wants()
     }
 

@@ -26,8 +26,10 @@ enum State {
 pub(crate) enum FileReaderKind {
     CPU,
     Memory,
+
+    MAX,
 }
-const FILES_COUNT: usize = FileReaderKind::Memory as usize + 1;
+const FILES_COUNT: usize = FileReaderKind::MAX as usize;
 
 const BUF_SIZE: usize = 1_024;
 static mut BUFFERS: Option<Vec<[u8; BUF_SIZE]>> = None;
@@ -60,32 +62,32 @@ impl FileReader {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanOpen => {
                 self.state = State::WaitingForOpen;
-                Wants::OpenAt {
+                Some(Wants::OpenAt {
                     dfd: AT_FDCWD,
                     path: self.path.as_ptr(),
                     flags: O_RDONLY,
                     mode: 0,
-                }
+                })
             }
-            State::WaitingForOpen => Wants::Nothing,
+            State::WaitingForOpen => None,
 
-            State::WaitingForTimer => Wants::Nothing,
+            State::WaitingForTimer => None,
 
             State::CanRead => {
                 self.state = State::WaitingForRead;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: buffer(self.kind).as_mut_ptr(),
                     len: buffer(self.kind).len(),
-                }
+                })
             }
-            State::WaitingForRead => Wants::Nothing,
+            State::WaitingForRead => None,
 
-            State::Dead => Wants::Nothing,
+            State::Dead => None,
         }
     }
 

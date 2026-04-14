@@ -31,12 +31,12 @@ impl Https {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
             State::Dns(dns) => dns.wants(),
             State::TlsOverTcp(tls_over_tcp) => tls_over_tcp.wants(),
-            State::Done => Wants::Nothing,
-            State::Dead => Wants::Nothing,
+            State::Done => None,
+            State::Dead => None,
         }
     }
 

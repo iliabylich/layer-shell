@@ -27,17 +27,17 @@ impl TimerFd {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanRead => {
                 self.state = State::WaitingForRead;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
-                }
+                })
             }
-            State::WaitingForRead => Wants::Nothing,
+            State::WaitingForRead => None,
         }
     }
 

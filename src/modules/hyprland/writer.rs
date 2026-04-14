@@ -47,15 +47,15 @@ impl HyprlandWriter {
         ModuleId::HyprlandWriter
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         if self.dead {
-            return Wants::Nothing;
+            return None;
         }
 
         self.pop_from_queue_into_current();
 
         let Some((socket_writer, _)) = &mut self.current else {
-            return Wants::Nothing;
+            return None;
         };
 
         socket_writer.wants()

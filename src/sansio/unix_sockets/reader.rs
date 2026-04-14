@@ -40,38 +40,38 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
-                Wants::Socket {
+                Some(Wants::Socket {
                     domain: AF_UNIX,
                     r#type: SOCK_STREAM,
-                }
+                })
             }
-            State::WaitingForSocket => Wants::Nothing,
+            State::WaitingForSocket => None,
 
             State::CanConnect => {
                 self.state = State::WaitingForConnect;
-                Wants::Connect {
+                Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
                     addrlen: core::mem::size_of::<sockaddr_un>() as u32,
-                }
+                })
             }
-            State::WaitingForConnect => Wants::Nothing,
+            State::WaitingForConnect => None,
 
             State::CanRead => {
                 self.state = State::WaitingForRead;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
-                }
+                })
             }
-            State::WaitingForRead => Wants::Nothing,
+            State::WaitingForRead => None,
 
-            State::Dead => Wants::Nothing,
+            State::Dead => None,
         }
     }
 

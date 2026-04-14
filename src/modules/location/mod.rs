@@ -24,7 +24,7 @@ impl Location {
         ModuleId::GeoLocation
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         self.https.wants()
     }
 

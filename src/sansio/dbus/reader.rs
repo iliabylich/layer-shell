@@ -61,42 +61,42 @@ impl DBusReader {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanReadHeader => {
                 self.state = State::WaitingForHeader;
 
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: buffer(self.kind).as_mut_ptr(),
                     len: HEADER_LEN,
-                }
+                })
             }
-            State::WaitingForHeader => Wants::Nothing,
+            State::WaitingForHeader => None,
 
             State::CanReadBody => {
                 let buf = &mut buffer(self.kind)[self.bytes_read..self.message_len];
                 self.state = State::WaitingForBody;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForBody => Wants::Nothing,
+            State::WaitingForBody => None,
 
             State::CanDiscardBody => {
                 let len = self.discard_remaining.min(BUF_SIZE);
                 self.state = State::WaitingForDiscardBody;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: buffer(self.kind).as_mut_ptr(),
                     len,
-                }
+                })
             }
-            State::WaitingForDiscardBody => Wants::Nothing,
+            State::WaitingForDiscardBody => None,
 
-            State::Dead => Wants::Nothing,
+            State::Dead => None,
         }
     }
 

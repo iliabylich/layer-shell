@@ -35,7 +35,7 @@ impl SystemDBus {
         ModuleId::SystemDBus
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         self.conn.wants()
     }
 

@@ -218,56 +218,56 @@ impl TlsOverTcp {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
-                Wants::Socket {
+                Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_STREAM,
-                }
+                })
             }
-            State::WaitingForSocket => Wants::Nothing,
+            State::WaitingForSocket => None,
 
             State::CanConnect => {
                 self.state = State::WaitingForConnect;
-                Wants::Connect {
+                Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&self.addr as *const libc::sockaddr_in).cast(),
                     addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
-                }
+                })
             }
-            State::WaitingForConnect => Wants::Nothing,
+            State::WaitingForConnect => None,
 
             State::CanRead => {
                 self.state = State::WaitingForRead;
                 let buf = &mut self.incoming_tls[self.incoming_end..];
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForRead => Wants::Nothing,
+            State::WaitingForRead => None,
 
             State::CanWrite => {
                 self.state = State::WaitingForWrite;
                 let buf = &self.outgoing_tls[self.outgoing_start..self.outgoing_end];
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForWrite => Wants::Nothing,
+            State::WaitingForWrite => None,
 
             State::CanClose => {
                 self.state = State::WaitingForClose;
-                Wants::Close { fd: self.fd }
+                Some(Wants::Close { fd: self.fd })
             }
-            State::WaitingForClose => Wants::Nothing,
+            State::WaitingForClose => None,
 
-            State::Done => Wants::Nothing,
+            State::Done => None,
         }
     }
 

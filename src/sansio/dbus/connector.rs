@@ -53,93 +53,93 @@ impl DBusConnector {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
-                Wants::Socket {
+                Some(Wants::Socket {
                     domain: AF_UNIX,
                     r#type: SOCK_STREAM,
-                }
+                })
             }
-            State::WaitingForSocket => Wants::Nothing,
+            State::WaitingForSocket => None,
 
             State::CanConnect => {
                 self.state = State::WaitingForConnect;
-                Wants::Connect {
+                Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&self.addr as *const sockaddr_un).cast::<sockaddr>(),
                     addrlen: core::mem::size_of::<sockaddr_un>() as u32,
-                }
+                })
             }
-            State::WaitingForConnect => Wants::Nothing,
+            State::WaitingForConnect => None,
 
             State::CanWriteZero => {
                 self.state = State::WaitingForWriteZero;
                 let buf = b"\0";
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForWriteZero => Wants::Nothing,
+            State::WaitingForWriteZero => None,
 
             State::CanWriteAuthExternal => {
                 self.state = State::WaitingForWriteAuthExternal;
                 let buf = b"AUTH EXTERNAL\r\n";
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForWriteAuthExternal => Wants::Nothing,
+            State::WaitingForWriteAuthExternal => None,
 
             State::CanReadData => {
                 self.state = State::WaitingForReadData;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
-                }
+                })
             }
-            State::WaitingForReadData => Wants::Nothing,
+            State::WaitingForReadData => None,
 
             State::CanWriteData => {
                 self.state = State::WaitingForWriteData;
                 let buf = b"DATA\r\n";
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForWriteData => Wants::Nothing,
+            State::WaitingForWriteData => None,
 
             State::CanReadGUID => {
                 self.state = State::WaitingForReadGUID;
-                Wants::Read {
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
-                }
+                })
             }
-            State::WaitingForReadGUID => Wants::Nothing,
+            State::WaitingForReadGUID => None,
 
             State::CanWriteBegin => {
                 self.state = State::WaitingForWriteBegin;
                 let buf = b"BEGIN\r\n";
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForWriteBegin => Wants::Nothing,
+            State::WaitingForWriteBegin => None,
 
-            State::Done => Wants::Nothing,
-            State::Dead => Wants::Nothing,
+            State::Done => None,
+            State::Dead => None,
         }
     }
 

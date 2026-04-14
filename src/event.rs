@@ -10,6 +10,7 @@ use crate::{
 #[derive(Debug)]
 #[repr(C)]
 #[must_use]
+#[expect(clippy::large_enum_variant)]
 pub enum Event {
     Memory {
         used: f64,

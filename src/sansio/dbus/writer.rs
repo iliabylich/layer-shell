@@ -27,26 +27,24 @@ impl DBusWriter {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::CanWrite => {
                 if self.current.is_none() {
                     self.current = DBusQueue::pop_front(self.kind);
                 }
 
-                let Some(buf) = self.current.as_mut() else {
-                    return Wants::Nothing;
-                };
+                let buf = self.current.as_mut()?;
 
                 self.state = State::WaitingForWrite;
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
-            State::WaitingForWrite => Wants::Nothing,
-            State::Dead => Wants::Nothing,
+            State::WaitingForWrite => None,
+            State::Dead => None,
         }
     }
 

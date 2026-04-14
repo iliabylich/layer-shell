@@ -20,7 +20,7 @@ impl HyprlandReader {
         ModuleId::HyprlandReader
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         self.socket_reader.wants()
     }
 

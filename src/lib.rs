@@ -62,13 +62,13 @@ static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
 
 macro_rules! schedule {
     ($module:expr) => {{
-        let wants = $module.wants();
-        let module_id = $module.module_id();
-        let wants_next = $module.wants();
-        if !matches!(wants_next, Wants::Nothing) {
-            report_and_exit!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
+        if let Some(wants) = $module.wants() {
+            let module_id = $module.module_id();
+            if let Some(wants_next) = $module.wants() {
+                report_and_exit!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
+            }
+            schedule_wanted(wants, module_id)
         }
-        schedule_wanted(wants, module_id)
     }};
 }
 
@@ -472,6 +472,5 @@ fn schedule_wanted(wants: Wants, module_id: ModuleId) {
             sqe.prep_close(fd);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Close));
         }
-        Wants::Nothing => {}
     }
 }
