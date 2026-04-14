@@ -41,7 +41,7 @@ impl Location {
             Ok(location) => location,
             Err(err) => {
                 log::error!("Location module crashed: {satisfy:?} {res} {err:?}");
-                let _ = self.https.stop();
+                self.https.stop();
                 None
             }
         }

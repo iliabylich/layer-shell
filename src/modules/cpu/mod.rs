@@ -1,7 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    sansio::{FileReader, Satisfy, Wants},
+    sansio::{FileReader, FileReaderKind, Satisfy, Wants},
     user_data::ModuleId,
 };
 use anyhow::{Context as _, Result};
@@ -20,7 +20,7 @@ pub(crate) struct CPU {
 impl CPU {
     pub(crate) fn new() -> Self {
         Self {
-            reader: FileReader::new(c"/proc/stat"),
+            reader: FileReader::new(c"/proc/stat", FileReaderKind::CPU),
             store: Store::new(),
         }
     }

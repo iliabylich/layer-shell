@@ -12,7 +12,7 @@ pub(crate) use dbus::{
     DBusConnection, DBusConnectionKind, DBusQueue, SessionDBusQueue, SystemDBusQueue,
 };
 pub(crate) use dns::Dns;
-pub(crate) use file_reader::FileReader;
+pub(crate) use file_reader::{FileReader, FileReaderKind};
 pub(crate) use https::{Https, HttpsRequest, HttpsResponse};
 pub(crate) use satisfy::Satisfy;
 pub(crate) use timerfd::TimerFd;

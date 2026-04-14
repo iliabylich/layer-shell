@@ -7,6 +7,7 @@ pub(crate) struct FileReader {
     path: &'static CStr,
     fd: i32,
     state: State,
+    kind: FileReaderKind,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -19,24 +20,43 @@ enum State {
     Dead,
 }
 
+#[repr(u8)]
+#[derive(Clone, Copy, Debug)]
+#[expect(clippy::upper_case_acronyms)]
+pub(crate) enum FileReaderKind {
+    CPU,
+    Memory,
+}
+const FILES_COUNT: usize = FileReaderKind::Memory as usize + 1;
+
 const BUF_SIZE: usize = 1_024;
-static mut BUFFER: Option<Box<[u8; BUF_SIZE]>> = None;
-fn buffer() -> &'static mut [u8; BUF_SIZE] {
+static mut BUFFERS: Option<Vec<[u8; BUF_SIZE]>> = None;
+fn buffer(kind: FileReaderKind) -> &'static mut [u8; BUF_SIZE] {
     unsafe {
-        if BUFFER.is_none() {
-            BUFFER = Some(Box::new([0; BUF_SIZE]));
+        if BUFFERS.is_none() {
+            let mut buffers = Vec::with_capacity(FILES_COUNT);
+
+            for _ in 0..FILES_COUNT {
+                buffers.push([0; BUF_SIZE])
+            }
+            BUFFERS = Some(buffers);
         }
 
-        BUFFER.as_mut().unwrap_unchecked()
+        BUFFERS
+            .as_mut()
+            .unwrap_unchecked()
+            .get_mut(kind as usize)
+            .unwrap_unchecked()
     }
 }
 
 impl FileReader {
-    pub(crate) fn new(path: &'static CStr) -> Self {
+    pub(crate) fn new(path: &'static CStr, kind: FileReaderKind) -> Self {
         Self {
             path,
             fd: -1,
             state: State::CanOpen,
+            kind,
         }
     }
 
@@ -59,8 +79,8 @@ impl FileReader {
                 self.state = State::WaitingForRead;
                 Wants::Read {
                     fd: self.fd,
-                    buf: buffer().as_mut_ptr(),
-                    len: buffer().len(),
+                    buf: buffer(self.kind).as_mut_ptr(),
+                    len: buffer(self.kind).len(),
                 }
             }
             State::WaitingForRead => Wants::Nothing,
@@ -83,7 +103,7 @@ impl FileReader {
             (State::WaitingForRead, Satisfy::Read) => {
                 ensure!(res > 0, "FileReader::Read failed: {res}");
                 let bytes_read = res as usize;
-                let out = &buffer()[..bytes_read];
+                let out = &buffer(self.kind)[..bytes_read];
                 self.state = State::WaitingForTimer;
                 Ok(Some(out))
             }
@@ -112,7 +132,7 @@ impl FileReader {
     }
 
     pub(crate) fn stop(&mut self) {
-        log::error!("Stopping FileReader");
+        log::error!("Stopping FileReader({:?})", self.kind);
         self.state = State::Dead;
     }
 }

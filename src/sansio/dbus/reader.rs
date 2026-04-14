@@ -34,14 +34,18 @@ enum State {
 }
 
 const BUF_SIZE: usize = 500_000;
-static mut BUFFERS: Option<Vec<Box<[u8; BUF_SIZE]>>> = None;
+static mut BUFFERS: Option<Vec<[u8; BUF_SIZE]>> = None;
 fn buffer(kind: DBusConnectionKind) -> &'static mut [u8; BUF_SIZE] {
     unsafe {
         if BUFFERS.is_none() {
-            BUFFERS = Some(vec![Box::new([0; BUF_SIZE]), Box::new([0; BUF_SIZE])]);
+            BUFFERS = Some(vec![[0; BUF_SIZE], [0; BUF_SIZE]]);
         }
 
-        BUFFERS.as_mut().unwrap_unchecked()[kind as usize].as_mut()
+        BUFFERS
+            .as_mut()
+            .unwrap_unchecked()
+            .get_mut(kind as usize)
+            .unwrap_unchecked()
     }
 }
 
