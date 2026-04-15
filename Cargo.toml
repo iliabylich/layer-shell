@@ -32,6 +32,7 @@ serde = { version = "1", default-features = false, features = [
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 toml = "1.1"
+mini-sansio-dbus = "1.0"
 
 [build-dependencies]
 cc = "1"

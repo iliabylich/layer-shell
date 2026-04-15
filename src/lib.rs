@@ -2,7 +2,6 @@
 
 mod command;
 mod config;
-mod dbus;
 mod event;
 mod event_queue;
 mod ffi;
@@ -26,7 +25,7 @@ use crate::{
         CPU, Clock, Control, ControlRequest, Hyprland, HyprlandQueue, HyprlandReader,
         HyprlandWriter, Location, Memory, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
     },
-    sansio::{Satisfy, SessionDBusQueue, SystemDBusQueue, Wants},
+    sansio::{Satisfy, Wants},
     timer::Timer,
     user_data::{ModuleId, UserData},
     utils::{Logger, StringRef, report_and_exit},
@@ -119,13 +118,11 @@ impl IO {
         schedule!(self.cpu);
         schedule!(self.memory);
 
-        SessionDBusQueue::init();
         self.sound.init();
         self.control.init();
         self.tray.init();
         schedule!(self.session_dbus);
 
-        SystemDBusQueue::init();
         self.network.init();
         schedule!(self.system_dbus);
 

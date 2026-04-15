@@ -1,13 +1,9 @@
-use crate::{
-    dbus::{
-        MethodCall, OutgoingMessage,
-        decoder::{IncomingMessage, MessageType, Value},
-        messages::{interface_is, member_is, path_is, value_is},
-    },
-    sansio::DBusConnectionKind,
-    utils::StringRef,
-};
+use crate::{modules::SessionDBus, utils::StringRef};
 use anyhow::{Context, Result, bail, ensure};
+use mini_sansio_dbus::{
+    IncomingMessage, IncomingValue, MessageType, MethodCall, OutgoingMessage, OutgoingValue,
+    interface_is, member_is, path_is, value_is,
+};
 
 pub(crate) struct NameLostOrNameOwnerChanged {
     name_changed: MethodCall<(), (), ()>,
@@ -21,7 +17,7 @@ impl NameLostOrNameOwnerChanged {
     }
 
     pub(crate) fn init(&mut self) {
-        self.name_changed.send(())
+        self.name_changed.send((), SessionDBus::queue())
     }
 
     pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<StringRef> {
@@ -32,21 +28,19 @@ impl NameLostOrNameOwnerChanged {
 
 const SUBSCRIBE: MethodCall<(), (), ()> = MethodCall::builder()
     .send(&|_input, _data| {
-        use crate::dbus::types::Value;
         OutgoingMessage::MethodCall {
             serial: 0,
-            path: StringRef::new("/org/freedesktop/DBus"),
-            member: StringRef::new("AddMatch"),
-            interface: Some(StringRef::new("org.freedesktop.DBus")),
-            destination: Some(StringRef::new("org.freedesktop.DBus")),
+            path: String::from("/org/freedesktop/DBus"),
+            member: String::from("AddMatch"),
+            interface: Some(String::from("org.freedesktop.DBus")),
+            destination: Some(String::from("org.freedesktop.DBus")),
             sender: None,
             unix_fds: None,
-            body: vec![Value::LongString(
+            body: vec![OutgoingValue::String(
                 "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',path='/org/freedesktop/DBus'".to_string(),
             )],
         }
-    }).try_process(&|_body, _data| unreachable!())
-    .kind(DBusConnectionKind::Session);
+    }).try_process(&|_body, _data| unreachable!());
 
 fn parse_name_owner_changed<'a>(message: IncomingMessage<'a>) -> Result<&'a str> {
     ensure!(message.message_type == MessageType::Signal);
@@ -64,9 +58,9 @@ fn parse_name_owner_changed<'a>(message: IncomingMessage<'a>) -> Result<&'a str>
     let from = body.try_next()?.context("no from")?;
     let to = body.try_next()?.context("no to")?;
 
-    value_is!(alias, Value::String(alias));
-    value_is!(from, Value::String(_));
-    value_is!(to, Value::String(to));
+    value_is!(alias, IncomingValue::String(alias));
+    value_is!(from, IncomingValue::String(_));
+    value_is!(to, IncomingValue::String(to));
 
     if to.is_empty() {
         Ok(alias)

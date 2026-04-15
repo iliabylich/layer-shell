@@ -1,12 +1,6 @@
 use crate::{
-    dbus::{
-        MethodCall, OutgoingMessage, Subscription, decoder::IncomingMessage,
-        messages::org_freedesktop_dbus::RemoveMatch, types::Value,
-    },
-    modules::{TrayIcon, TrayItem, tray::service::Service},
-    sansio::SessionDBusQueue,
-    utils::StringRef,
-    utils::report_and_exit,
+    modules::{SessionDBus, TrayIcon, TrayItem, tray::service::Service},
+    utils::{StringRef, report_and_exit},
 };
 use dbusmenu::{
     GET_LAYOUT, SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED, SUBSCRIBE_TO_LAYOUT_UPDATED,
@@ -16,6 +10,10 @@ use dbusmenu::{
 use ksni::{
     GET_MENU_AND_ICON, MENU_AND_ICON_SUBSCRIPTION, SUBSCRIBE_TO_NEW_ICON, new_icon_match_rule,
     parse_new_icon_signal,
+};
+use mini_sansio_dbus::{
+    IncomingMessage, MethodCall, OutgoingMessage, OutgoingValue, Subscription,
+    messages::org_freedesktop_dbus::RemoveMatch,
 };
 
 mod dbusmenu;
@@ -71,27 +69,33 @@ impl App {
 
     fn schedule_request_props(&mut self) {
         self.get_menu_and_icon.reset();
-        self.get_menu_and_icon.send(self.service.name());
+        self.get_menu_and_icon
+            .send(self.service.name(), SessionDBus::queue());
     }
 
     pub(crate) fn init(&mut self) {
-        self.subscribe_to_new_icon.send(self.service.name());
-        self.get_menu_and_icon.send(self.service.name());
-        self.menu_and_icon_subscription
-            .start("org.freedesktop.DBus", "/StatusNotifierItem");
+        self.subscribe_to_new_icon
+            .send(self.service.name(), SessionDBus::queue());
+        self.get_menu_and_icon
+            .send(self.service.name(), SessionDBus::queue());
+        self.menu_and_icon_subscription.start(
+            "org.freedesktop.DBus",
+            "/StatusNotifierItem",
+            SessionDBus::queue(),
+        );
     }
 
     pub(crate) fn reset(&mut self) {
         self.unsubscribe_matches();
         self.subscribe_to_new_icon.reset();
         self.get_menu_and_icon.reset();
-        self.menu_and_icon_subscription.reset();
+        self.menu_and_icon_subscription.reset(SessionDBus::queue());
         self.get_layout.reset();
     }
 
     fn remove_match(&self, rule: String) {
         let message = RemoveMatch::build_from_rule(rule);
-        SessionDBusQueue::push_back(message);
+        SessionDBus::queue().push_back(message);
     }
 
     fn unsubscribe_matches(&self) {
@@ -111,8 +115,10 @@ impl App {
 
     fn schedule_get_layout(&mut self) {
         self.get_layout.reset();
-        self.get_layout
-            .send((self.service.name(), self.menu.clone()));
+        self.get_layout.send(
+            (self.service.name(), self.menu.clone()),
+            SessionDBus::queue(),
+        );
     }
 
     fn on_menu_received(&mut self, menu: StringRef) {
@@ -122,10 +128,14 @@ impl App {
 
         self.menu = menu;
         self.schedule_get_layout();
-        self.subscribe_to_layout_updated
-            .send((self.service.name(), self.menu.clone()));
-        self.subscribe_to_items_properties_updated
-            .send((self.service.name(), self.menu.clone()));
+        self.subscribe_to_layout_updated.send(
+            (self.service.name(), self.menu.clone()),
+            SessionDBus::queue(),
+        );
+        self.subscribe_to_items_properties_updated.send(
+            (self.service.name(), self.menu.clone()),
+            SessionDBus::queue(),
+        );
     }
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
@@ -247,21 +257,21 @@ impl App {
         });
 
         let message = OutgoingMessage::MethodCall {
-            destination: Some(self.service.name()),
-            path: self.menu.clone(),
-            interface: Some(StringRef::new("com.canonical.dbusmenu")),
+            destination: Some(self.service.name().to_string()),
+            path: self.menu.to_string(),
+            interface: Some(String::from("com.canonical.dbusmenu")),
             serial: 0,
-            member: StringRef::new("Event"),
+            member: String::from("Event"),
             sender: None,
             unix_fds: None,
             body: vec![
-                Value::Int32(id),
-                Value::StringRef(StringRef::new("clicked")),
-                Value::Variant(Box::new(Value::Int32(0))),
-                Value::UInt32(timestamp),
+                OutgoingValue::Int32(id),
+                OutgoingValue::String(String::from("clicked")),
+                OutgoingValue::Variant(Box::new(OutgoingValue::Int32(0))),
+                OutgoingValue::UInt32(timestamp),
             ],
         };
 
-        SessionDBusQueue::push_back(message);
+        SessionDBus::queue().push_back(message);
     }
 }

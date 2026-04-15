@@ -113,10 +113,6 @@ impl StringRef {
     pub(crate) fn as_str(&self) -> &str {
         self.slot().as_str()
     }
-
-    pub(crate) fn len(&self) -> usize {
-        self.as_str().len()
-    }
 }
 
 impl core::fmt::Debug for StringRef {

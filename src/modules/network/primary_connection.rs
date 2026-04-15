@@ -1,13 +1,9 @@
-use crate::{
-    dbus::{
-        MethodCall, Subscription,
-        decoder::{IncomingMessage, Value},
-        messages::{interface_is, org_freedesktop_dbus::GetProperty, path_is, value_is},
-    },
-    sansio::DBusConnectionKind,
-    utils::StringRef,
+use crate::{modules::SystemDBus, utils::StringRef};
+use anyhow::Context as _;
+use mini_sansio_dbus::{
+    IncomingMessage, IncomingValue, MethodCall, Subscription, interface_is,
+    messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
 };
-use anyhow::{Context as _, bail};
 
 pub(crate) struct PrimaryConnection {
     get: MethodCall<(), StringRef, ()>,
@@ -38,10 +34,11 @@ impl PrimaryConnection {
     }
 
     pub(crate) fn init(&mut self) {
-        self.get.send(());
+        self.get.send((), SystemDBus::queue());
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
+            SystemDBus::queue(),
         );
     }
 
@@ -66,38 +63,36 @@ const GET: MethodCall<(), StringRef, ()> = MethodCall::builder()
     })
     .try_process(&|mut body, _data| {
         let path = body.try_next()?.context("empty Body")?;
-        value_is!(path, Value::Variant(path));
+        value_is!(path, IncomingValue::Variant(path));
         let path = path.materialize()?;
-        value_is!(path, Value::ObjectPath(path));
+        value_is!(path, IncomingValue::ObjectPath(path));
         Ok(StringRef::new(path))
-    })
-    .kind(DBusConnectionKind::System);
+    });
 
-const SUBSCRIPTION: Subscription<StringRef> = Subscription::builder()
-    .try_process(&|mut body, path, _subscribed_to| {
+const SUBSCRIPTION: Subscription<StringRef> =
+    Subscription::new(&|mut body, path, _subscribed_to| {
         path_is!(path, "/org/freedesktop/NetworkManager");
 
         let interface = body.try_next()?.context("empty Body")?;
-        value_is!(interface, Value::String(interface));
+        value_is!(interface, IncomingValue::String(interface));
         interface_is!(interface, "org.freedesktop.NetworkManager");
 
         let items = body.try_next()?.context("no items in Body")?;
-        value_is!(items, Value::Array(items));
+        value_is!(items, IncomingValue::Array(items));
         let mut iter = items.iter();
 
         while let Some(item) = iter.try_next()? {
-            value_is!(item, Value::DictEntry(dict_entry));
+            value_is!(item, IncomingValue::DictEntry(dict_entry));
             let (key, value) = dict_entry.key_value()?;
-            value_is!(key, Value::String(key));
-            value_is!(value, Value::Variant(value));
+            value_is!(key, IncomingValue::String(key));
+            value_is!(value, IncomingValue::Variant(value));
 
             if key == "PrimaryConnection" {
                 let value = value.materialize()?;
-                value_is!(value, Value::ObjectPath(value));
+                value_is!(value, IncomingValue::ObjectPath(value));
                 return Ok(StringRef::new(value));
             }
         }
 
-        bail!("unrelated")
-    })
-    .kind(DBusConnectionKind::System);
+        Err(anyhow::anyhow!("unrelated").into())
+    });

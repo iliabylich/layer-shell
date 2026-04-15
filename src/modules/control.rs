@@ -1,18 +1,13 @@
-use crate::{
-    dbus::{
-        OutgoingMessage,
-        decoder::{IncomingMessage, MessageType},
-        messages::{
-            destination_is, interface_is,
-            introspect::{IntrospectRequest, IntrospectResponse},
-            org_freedesktop_dbus::RequestName,
-            path_is,
-        },
-    },
-    sansio::SessionDBusQueue,
-    utils::StringRef,
-};
+use crate::{modules::SessionDBus, utils::StringRef};
 use anyhow::{Context, Result, bail, ensure};
+use mini_sansio_dbus::{
+    IncomingMessage, MessageType, OutgoingMessage, destination_is, interface_is,
+    messages::{
+        introspect::{IntrospectRequest, IntrospectResponse},
+        org_freedesktop_dbus::RequestName,
+    },
+    path_is,
+};
 
 pub(crate) struct Control;
 
@@ -23,24 +18,25 @@ impl Control {
 
     pub(crate) fn init(&mut self) {
         let message = RequestName::build("org.me.LayerShellControl");
-        SessionDBusQueue::push_back(message);
+        SessionDBus::queue().push_back(message);
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
-            let reply = IntrospectResponse::new(serial, sender, INTROSPECTION.to_string());
-            SessionDBusQueue::push_back(reply);
+            let reply =
+                IntrospectResponse::build(serial, sender.as_str(), INTROSPECTION.to_string());
+            SessionDBus::queue().push_back(reply);
             return None;
         }
 
         if let Ok((member, sender, serial)) = try_parse_control_req(message) {
             if let Ok(control_req) = ControlRequest::try_parse(member) {
                 let reply = OutgoingMessage::new_method_return_no_body(serial, sender);
-                SessionDBusQueue::push_back(reply);
+                SessionDBus::queue().push_back(reply);
                 return Some(control_req);
             } else {
                 let reply = OutgoingMessage::new_err_no_method(serial, sender);
-                SessionDBusQueue::push_back(reply);
+                SessionDBus::queue().push_back(reply);
                 return None;
             }
         }
@@ -71,7 +67,7 @@ fn try_parse_introspect_req(message: IncomingMessage) -> Result<(StringRef, u32)
 
     destination_is!(destination, "org.me.LayerShellControl");
     path_is!(path, "/");
-    Ok((sender, serial))
+    Ok((StringRef::new(&sender), serial))
 }
 
 fn try_parse_control_req<'a>(message: IncomingMessage<'a>) -> Result<(&'a str, &'a str, u32)> {

@@ -1,5 +1,6 @@
-use crate::{Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, utils::StringRef};
+use crate::{Event, event_queue::EventQueue, utils::StringRef};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
+use mini_sansio_dbus::IncomingMessage;
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
 use ssid_and_strength::{SsidAndStrength, SsidAndStrengthEvent};

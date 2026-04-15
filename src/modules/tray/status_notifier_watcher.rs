@@ -1,18 +1,18 @@
 use crate::{
-    dbus::{
-        OutgoingMessage,
-        decoder::{IncomingMessage, MessageType, Value},
-        messages::{
-            destination_is, interface_is, org_freedesktop_dbus::RequestName, path_is, value_is,
+    modules::{
+        SessionDBus,
+        tray::{
+            service::Service,
+            status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
         },
     },
-    modules::tray::{
-        service::Service, status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
-    },
-    sansio::SessionDBusQueue,
     utils::StringRef,
 };
 use anyhow::{Context as _, Result, ensure};
+use mini_sansio_dbus::{
+    IncomingMessage, IncomingValue, MessageType, OutgoingMessage, destination_is, interface_is,
+    messages::org_freedesktop_dbus::RequestName, path_is, value_is,
+};
 
 pub(crate) struct StatusNotifierWatcher {
     reply_serial: Option<u32>,
@@ -29,12 +29,12 @@ impl StatusNotifierWatcher {
 
     pub(crate) fn request(&mut self) {
         let message = RequestName::build("org.kde.StatusNotifierWatcher");
-        self.reply_serial = Some(SessionDBusQueue::push_back(message));
+        self.reply_serial = Some(SessionDBus::queue().push_back(message));
     }
 
     fn reply_ok(&self, serial: u32, destination: &str) {
         let reply = OutgoingMessage::new_method_return_no_body(serial, destination);
-        SessionDBusQueue::push_back(reply);
+        SessionDBus::queue().push_back(reply);
     }
 
     pub(crate) fn init(&mut self) {
@@ -90,7 +90,7 @@ impl<'a> KSNIRequest<'a> {
         let req = match member {
             "RegisterStatusNotifierItem" => {
                 let address = body.try_next()?.context("no Address")?;
-                value_is!(address, Value::String(address));
+                value_is!(address, IncomingValue::String(address));
 
                 Self::NewItem { address }
             }

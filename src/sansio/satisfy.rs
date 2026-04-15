@@ -27,3 +27,15 @@ impl From<u8> for Satisfy {
         unsafe { core::mem::transmute::<u8, Self>(value) }
     }
 }
+
+impl From<Satisfy> for mini_sansio_dbus::Satisfy {
+    fn from(satisfy: Satisfy) -> Self {
+        match satisfy {
+            Satisfy::Socket => mini_sansio_dbus::Satisfy::Socket,
+            Satisfy::Connect => mini_sansio_dbus::Satisfy::Connect,
+            Satisfy::Write => mini_sansio_dbus::Satisfy::Write,
+            Satisfy::Read => mini_sansio_dbus::Satisfy::Read,
+            _ => unreachable!(),
+        }
+    }
+}

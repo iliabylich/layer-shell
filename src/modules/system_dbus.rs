@@ -1,34 +1,34 @@
 use crate::{
-    dbus::decoder::IncomingMessage,
-    sansio::{DBusConnection, DBusConnectionKind, Satisfy, Wants},
-    unix_socket::new_unix_socket,
+    sansio::{Satisfy, Wants},
     user_data::ModuleId,
 };
-use anyhow::Context;
+use mini_sansio_dbus::{DBusConnection, DBusQueue, IncomingMessage};
 
 pub(crate) struct SystemDBus {
     conn: DBusConnection,
 }
 
+static mut READBUF: Vec<u8> = vec![];
+fn readbuf() -> &'static mut Vec<u8> {
+    unsafe { &mut READBUF }
+}
+
+static mut QUEUE: Option<DBusQueue> = None;
+fn queue() -> &'static mut DBusQueue {
+    unsafe { QUEUE.as_mut().unwrap() }
+}
+
 impl SystemDBus {
     pub(crate) fn new() -> Self {
-        fn socket_path() -> String {
-            std::env::var("DBUS_SYSTEM_BUS_ADDRESS")
-                .context("no DBUS_SYSTEM_BUS_ADDRESS")
-                .and_then(|address| {
-                    address
-                        .split_once("=")
-                        .map(|(_, path)| path.to_string())
-                        .context("malformed DBUS_SYSTEM_BUS_ADDRESS")
-                })
-                .unwrap_or_else(|_| String::from("/var/run/dbus/system_bus_socket"))
-        }
-
-        let addr = new_unix_socket(socket_path().as_bytes());
+        unsafe { QUEUE = Some(DBusQueue::new()) }
 
         Self {
-            conn: DBusConnection::new(addr, DBusConnectionKind::System),
+            conn: DBusConnection::new_system(),
         }
+    }
+
+    pub(crate) fn queue() -> &'static mut DBusQueue {
+        queue()
     }
 
     pub(crate) const fn module_id(&self) -> ModuleId {
@@ -36,16 +36,20 @@ impl SystemDBus {
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.conn.wants()
+        self.conn.wants(queue(), readbuf()).map(Wants::from)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<IncomingMessage<'_>> {
-        let buf = self.conn.satisfy(satisfy, res)?;
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+    ) -> Option<IncomingMessage<'static>> {
+        let result = self.conn.satisfy(satisfy.into(), res, readbuf(), queue());
 
-        match IncomingMessage::new(buf) {
-            Ok(message) => Some(message),
+        match result {
+            Ok(message) => message,
             Err(err) => {
-                log::error!("DBus(system) got malformed message: {err:?}");
+                log::error!("SystemDBus has crashed: {err:?}");
                 self.conn.stop();
                 None
             }

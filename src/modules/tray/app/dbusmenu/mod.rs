@@ -1,14 +1,10 @@
-use crate::{
-    dbus::{
-        MethodCall,
-        decoder::{IncomingMessage, MessageType},
-        messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
-    },
-    sansio::DBusConnectionKind,
-    utils::StringRef,
-};
+use crate::utils::StringRef;
 use anyhow::{Context as _, Result, ensure};
 pub(crate) use get_layout::GET_LAYOUT;
+use mini_sansio_dbus::{
+    IncomingMessage, MessageType, MethodCall, interface_is, member_is,
+    messages::org_freedesktop_dbus::AddMatch, path_is, sender_is,
+};
 
 mod get_layout;
 
@@ -17,8 +13,7 @@ pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: MethodCall<(StringRef, StringRef),
         .send(&|(address, path), _data| {
             AddMatch::build_from_rule(layout_updated_match_rule(address, path))
         })
-        .try_process(&|_, _data| Ok(()))
-        .kind(DBusConnectionKind::Session);
+        .try_process(&|_, _data| Ok(()));
 
 pub(crate) fn layout_updated_match_rule(address: StringRef, path: StringRef) -> String {
     format!(
@@ -51,8 +46,7 @@ pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: MethodCall<(StringRef, St
         .send(&|(address, path), _data| {
             AddMatch::build_from_rule(items_properties_updated_match_rule(address, path))
         })
-        .try_process(&|_body, _data| Ok(()))
-        .kind(DBusConnectionKind::Session);
+        .try_process(&|_body, _data| Ok(()));
 
 pub(crate) fn items_properties_updated_match_rule(address: StringRef, path: StringRef) -> String {
     format!(

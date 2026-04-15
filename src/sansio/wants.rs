@@ -36,3 +36,29 @@ pub(crate) enum Wants {
         fd: i32,
     },
 }
+
+impl From<mini_sansio_dbus::Wants> for Wants {
+    fn from(wants: mini_sansio_dbus::Wants) -> Self {
+        match wants {
+            mini_sansio_dbus::Wants::Socket { domain, r#type } => Wants::Socket { domain, r#type },
+            mini_sansio_dbus::Wants::Connect { fd, addr, addrlen } => {
+                Wants::Connect { fd, addr, addrlen }
+            }
+            mini_sansio_dbus::Wants::Read { fd, buf, len } => Wants::Read { fd, buf, len },
+            mini_sansio_dbus::Wants::Write { fd, buf, len } => Wants::Write { fd, buf, len },
+            mini_sansio_dbus::Wants::ReadWrite {
+                fd,
+                readbuf,
+                readlen,
+                writebuf,
+                writelen,
+            } => Wants::ReadWrite {
+                fd,
+                readbuf,
+                readlen,
+                writebuf,
+                writelen,
+            },
+        }
+    }
+}

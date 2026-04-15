@@ -1,5 +1,6 @@
+use mini_sansio_dbus::IncomingMessage;
+
 use crate::{
-    dbus::decoder::IncomingMessage,
     modules::network::{
         active_connection_type::ActiveConnectionType,
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},

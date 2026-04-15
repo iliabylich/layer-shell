@@ -1,39 +1,34 @@
 use crate::{
-    dbus::decoder::IncomingMessage,
-    sansio::{DBusConnection, DBusConnectionKind, Satisfy, Wants},
-    unix_socket::new_unix_socket,
+    sansio::{Satisfy, Wants},
     user_data::ModuleId,
 };
-use anyhow::{Context, Result};
+use mini_sansio_dbus::{DBusConnection, DBusQueue, IncomingMessage};
 
 pub(crate) struct SessionDBus {
     conn: DBusConnection,
 }
 
+static mut READBUF: Vec<u8> = vec![];
+fn readbuf() -> &'static mut Vec<u8> {
+    unsafe { &mut READBUF }
+}
+
+static mut QUEUE: Option<DBusQueue> = None;
+fn queue() -> &'static mut DBusQueue {
+    unsafe { QUEUE.as_mut().unwrap() }
+}
+
 impl SessionDBus {
     pub(crate) fn new() -> Self {
-        fn socket_path() -> Result<String> {
-            let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
-            let (_, path) = address
-                .split_once("=")
-                .context("malformed DBUS_SESSION_BUS_ADDRESS")?;
-            Ok(path.to_string())
-        }
-
-        let socket_path = match socket_path() {
-            Ok(path) => path,
-            Err(err) => {
-                log::error!("Failed to connect to session DBus: {err:?}");
-                return Self {
-                    conn: DBusConnection::dummy(DBusConnectionKind::Session),
-                };
-            }
-        };
-        let addr = new_unix_socket(socket_path.as_bytes());
+        unsafe { QUEUE = Some(DBusQueue::new()) }
 
         Self {
-            conn: DBusConnection::new(addr, DBusConnectionKind::Session),
+            conn: DBusConnection::new_session().unwrap_or_else(|_| DBusConnection::dummy()),
         }
+    }
+
+    pub(crate) fn queue() -> &'static mut DBusQueue {
+        queue()
     }
 
     pub(crate) const fn module_id(&self) -> ModuleId {
@@ -41,16 +36,20 @@ impl SessionDBus {
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.conn.wants()
+        self.conn.wants(queue(), readbuf()).map(Wants::from)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<IncomingMessage<'_>> {
-        let buf = self.conn.satisfy(satisfy, res)?;
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+    ) -> Option<IncomingMessage<'static>> {
+        let result = self.conn.satisfy(satisfy.into(), res, readbuf(), queue());
 
-        match IncomingMessage::new(buf) {
-            Ok(message) => Some(message),
+        match result {
+            Ok(message) => message,
             Err(err) => {
-                log::error!("DBus(session) got malformed message: {err:?}");
+                log::error!("SessionDBus has crashed: {err:?}");
                 self.conn.stop();
                 None
             }

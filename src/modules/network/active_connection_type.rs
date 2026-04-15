@@ -1,13 +1,9 @@
-use crate::{
-    dbus::{
-        MethodCall,
-        decoder::{IncomingMessage, Value},
-        messages::{org_freedesktop_dbus::GetProperty, value_is},
-    },
-    sansio::DBusConnectionKind,
-    utils::StringRef,
-};
+use crate::{modules::SystemDBus, utils::StringRef};
 use anyhow::Context;
+use mini_sansio_dbus::{
+    IncomingBody, IncomingMessage, IncomingValue, MethodCall,
+    messages::org_freedesktop_dbus::GetProperty, value_is,
+};
 
 pub(crate) struct ActiveConnectionType {
     path: Option<StringRef>,
@@ -23,7 +19,7 @@ impl ActiveConnectionType {
     }
 
     pub(crate) fn request(&mut self, path: StringRef) {
-        self.oneshot.send(path.clone());
+        self.oneshot.send(path.clone(), SystemDBus::queue());
         self.path = Some(path);
     }
 
@@ -38,20 +34,19 @@ impl ActiveConnectionType {
 }
 
 const GET: MethodCall<StringRef, bool, ()> = MethodCall::builder()
-    .send(&|path, _data| {
+    .send(&|path: StringRef, _data| {
         GetProperty::build(
             "org.freedesktop.NetworkManager",
-            path,
+            path.as_str(),
             "org.freedesktop.NetworkManager.Connection.Active",
             "Type",
         )
     })
-    .try_process(&|mut body, _data| {
+    .try_process(&|mut body: IncomingBody<'_>, _data| {
         let type_ = body.try_next()?.context("no Type in Body")?;
-        value_is!(type_, Value::Variant(type_));
+        value_is!(type_, IncomingValue::Variant(type_));
         let type_ = type_.materialize()?;
-        value_is!(type_, Value::String(type_));
+        value_is!(type_, IncomingValue::String(type_));
 
         Ok(type_.contains("wireless"))
-    })
-    .kind(DBusConnectionKind::System);
+    });

@@ -1,10 +1,8 @@
-use crate::{
-    Event, dbus::decoder::IncomingMessage, event_queue::EventQueue, modules::tray::app::TrayEvent,
-    utils::StringRef,
-};
+use crate::{Event, event_queue::EventQueue, modules::tray::app::TrayEvent, utils::StringRef};
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
 pub use item::TrayItem;
+use mini_sansio_dbus::IncomingMessage;
 use name_lost_or_changed::NameLostOrNameOwnerChanged;
 use service::Service;
 use status_notifier_watcher::StatusNotifierWatcher;

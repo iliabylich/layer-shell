@@ -1,11 +1,7 @@
-use crate::{
-    dbus::{
-        IntrospectibleObjectAt, IntrospectibleObjectAtRequest, OutgoingMessage,
-        decoder::IncomingMessage,
-        types::{CompleteType, Value},
-    },
-    sansio::SessionDBusQueue,
-    utils::StringRef,
+use crate::modules::SessionDBus;
+use mini_sansio_dbus::{
+    IncomingMessage, IntrospectibleObjectAt, IntrospectibleObjectAtRequest, OutgoingCompleteType,
+    OutgoingMessage, OutgoingValue,
 };
 
 pub(crate) struct StatusNotifierWatcherIntrospection {
@@ -19,21 +15,21 @@ impl StatusNotifierWatcherIntrospection {
         }
     }
 
-    fn reply_ok(&self, serial: u32, destination: &str, body: Vec<Value>) {
+    fn reply_ok(&self, serial: u32, destination: &str, body: Vec<OutgoingValue>) {
         let message = OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial: serial,
-            destination: Some(StringRef::new(destination)),
+            destination: Some(String::from(destination)),
             sender: None,
             unix_fds: None,
             body,
         };
-        SessionDBusQueue::push_back(message);
+        SessionDBus::queue().push_back(message);
     }
 
     fn reply_err(&self, serial: u32, destination: &str) {
         let reply = OutgoingMessage::new_err_no_method(serial, destination);
-        SessionDBusQueue::push_back(reply);
+        SessionDBus::queue().push_back(reply);
     }
 
     pub(crate) fn process_message(&mut self, message: IncomingMessage<'_>) -> bool {
@@ -46,12 +42,12 @@ impl StatusNotifierWatcherIntrospection {
                 "/" => self.reply_ok(
                     serial,
                     sender,
-                    vec![Value::LongString(root_introspection_xml())],
+                    vec![OutgoingValue::String(root_introspection_xml())],
                 ),
                 "/StatusNotifierWatcher" => self.reply_ok(
                     serial,
                     sender,
-                    vec![Value::LongString(ksni_introspection_xml())],
+                    vec![OutgoingValue::String(ksni_introspection_xml())],
                 ),
                 _ => self.reply_err(serial, sender),
             },
@@ -59,30 +55,35 @@ impl StatusNotifierWatcherIntrospection {
             IntrospectibleObjectAtRequest::GetAllProperties { path, interface } => {
                 match (path, interface) {
                     ("/StatusNotifierWatcher", "org.kde.StatusNotifierWatcher") => {
-                        let body = vec![Value::Array(
-                            CompleteType::DictEntry(
-                                Box::new(CompleteType::String),
-                                Box::new(CompleteType::Variant),
+                        let body = vec![OutgoingValue::Array(
+                            OutgoingCompleteType::DictEntry(
+                                Box::new(OutgoingCompleteType::String),
+                                Box::new(OutgoingCompleteType::Variant),
                             ),
                             vec![
-                                Value::DictEntry(
-                                    Box::new(Value::StringRef(StringRef::new("ProtocolVersion"))),
-                                    Box::new(Value::Variant(Box::new(Value::Int32(42)))),
+                                OutgoingValue::DictEntry(
+                                    Box::new(OutgoingValue::String(String::from(
+                                        "ProtocolVersion",
+                                    ))),
+                                    Box::new(OutgoingValue::Variant(Box::new(
+                                        OutgoingValue::Int32(42),
+                                    ))),
                                 ),
-                                Value::DictEntry(
-                                    Box::new(Value::StringRef(StringRef::new(
+                                OutgoingValue::DictEntry(
+                                    Box::new(OutgoingValue::String(String::from(
                                         "IsStatusNotifierHostRegistered",
                                     ))),
-                                    Box::new(Value::Variant(Box::new(Value::Bool(true)))),
+                                    Box::new(OutgoingValue::Variant(Box::new(
+                                        OutgoingValue::Bool(true),
+                                    ))),
                                 ),
-                                Value::DictEntry(
-                                    Box::new(Value::StringRef(StringRef::new(
+                                OutgoingValue::DictEntry(
+                                    Box::new(OutgoingValue::String(String::from(
                                         "RegisteredStatusNotifierItems",
                                     ))),
-                                    Box::new(Value::Variant(Box::new(Value::Array(
-                                        CompleteType::String,
-                                        vec![],
-                                    )))),
+                                    Box::new(OutgoingValue::Variant(Box::new(
+                                        OutgoingValue::Array(OutgoingCompleteType::String, vec![]),
+                                    ))),
                                 ),
                             ],
                         )];
@@ -103,19 +104,22 @@ impl StatusNotifierWatcherIntrospection {
                         "/StatusNotifierWatcher",
                         "org.kde.StatusNotifierWatcher",
                         "ProtocolVersion",
-                    ) => Value::Variant(Box::new(Value::Int32(42))),
+                    ) => OutgoingValue::Variant(Box::new(OutgoingValue::Int32(42))),
 
                     (
                         "/StatusNotifierWatcher",
                         "org.kde.StatusNotifierWatcher",
                         "IsStatusNotifierHostRegistered",
-                    ) => Value::Variant(Box::new(Value::Bool(true))),
+                    ) => OutgoingValue::Variant(Box::new(OutgoingValue::Bool(true))),
 
                     (
                         "/StatusNotifierWatcher",
                         "org.kde.StatusNotifierWatcher",
                         "RegisteredStatusNotifierItems",
-                    ) => Value::Variant(Box::new(Value::Array(CompleteType::String, vec![]))),
+                    ) => OutgoingValue::Variant(Box::new(OutgoingValue::Array(
+                        OutgoingCompleteType::String,
+                        vec![],
+                    ))),
 
                     _ => {
                         self.reply_err(serial, sender);

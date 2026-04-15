@@ -1,18 +1,13 @@
-use crate::{
-    dbus::{
-        MethodCall,
-        decoder::{IncomingMessage, MessageType},
-        messages::{interface_is, member_is, org_freedesktop_dbus::AddMatch, path_is, sender_is},
-    },
-    sansio::DBusConnectionKind,
-    utils::StringRef,
-};
+use crate::utils::StringRef;
 use anyhow::{Context as _, Result, ensure};
+use mini_sansio_dbus::{
+    IncomingMessage, MessageType, MethodCall, interface_is, member_is,
+    messages::org_freedesktop_dbus::AddMatch, path_is, sender_is,
+};
 
 pub(crate) const SUBSCRIBE_TO_NEW_ICON: MethodCall<StringRef, (), ()> = MethodCall::builder()
     .send(&|address, _data| AddMatch::build_from_rule(new_icon_match_rule(address)))
-    .try_process(&|_body, _data| Ok(()))
-    .kind(DBusConnectionKind::Session);
+    .try_process(&|_body, _data| Ok(()));
 
 pub(crate) fn new_icon_match_rule(address: StringRef) -> String {
     format!(
