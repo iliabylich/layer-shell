@@ -91,7 +91,7 @@ fn parse(attributes: IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Optio
                 let bytes = iter.try_next()?.context("no bytes")?;
                 value_is!(bytes, IncomingValue::Array(bytes));
 
-                let bytes = {
+                let mut bytes = {
                     let mut out = vec![];
                     let mut iter = bytes.iter();
                     while let Some(byte) = iter.try_next()? {
@@ -100,6 +100,21 @@ fn parse(attributes: IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Optio
                     }
                     out
                 };
+
+                // argb -> rgba
+                for i in 0..width * height {
+                    let base = i as usize * 4;
+
+                    let a = bytes[base];
+                    let r = bytes[base + 1];
+                    let g = bytes[base + 2];
+                    let b = bytes[base + 3];
+
+                    bytes[base] = r;
+                    bytes[base + 1] = g;
+                    bytes[base + 2] = b;
+                    bytes[base + 3] = a;
+                }
 
                 icon_pixmap = Some(TrayIconPixmap {
                     width,
