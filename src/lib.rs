@@ -22,8 +22,8 @@ use crate::{
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
-        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, SessionDBus,
-        Sound, SystemDBus, Tray, Weather,
+        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, Niri,
+        SessionDBus, Sound, SystemDBus, Tray, Weather,
     },
     sansio::{Satisfy, Wants},
     timer::Timer,
@@ -50,6 +50,7 @@ struct IO {
     cpu: CPU,
     memory: Memory,
     caps_lock: CapsLock,
+    niri: Niri,
 
     on_event: extern "C" fn(event: *const Event),
     running: bool,
@@ -94,6 +95,7 @@ impl IO {
             cpu: CPU::new(),
             memory: Memory::new(),
             caps_lock: CapsLock::new(),
+            niri: Niri::new(),
 
             on_event,
             running: true,
@@ -112,6 +114,7 @@ impl IO {
         schedule!(self.cpu);
         schedule!(self.memory);
         schedule!(self.caps_lock);
+        schedule!(self.niri);
 
         self.sound.init();
         self.control.init();
@@ -126,9 +129,6 @@ impl IO {
 
     fn on_control_req(&mut self, req: ControlRequest) {
         match req {
-            ControlRequest::CapsLockToggled => {
-                todo!()
-            }
             ControlRequest::Exit => EventQueue::push_back(Event::Exit),
             ControlRequest::ReloadStyles => EventQueue::push_back(Event::ReloadStyles),
             ControlRequest::ToggleSessionScreen => {
@@ -173,6 +173,11 @@ impl IO {
                 ModuleId::CapsLock => {
                     satisfy!(self.caps_lock);
                     schedule!(self.caps_lock);
+                }
+
+                ModuleId::Niri => {
+                    satisfy!(self.niri);
+                    schedule!(self.niri);
                 }
 
                 ModuleId::SessionDBus => {
@@ -261,8 +266,7 @@ impl IO {
                 spawn(&self.config.shutdown);
             }
             Command::Logout => {
-                // hyprctl!("exit")
-                todo!()
+                spawn(&self.config.logout);
             }
             Command::SpawnWiFiEditor => {
                 spawn(&self.config.edit_wifi);

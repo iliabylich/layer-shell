@@ -8,6 +8,7 @@ pub(crate) struct Config {
     pub(crate) lock: String,
     pub(crate) reboot: String,
     pub(crate) shutdown: String,
+    pub(crate) logout: String,
     pub(crate) edit_wifi: String,
     pub(crate) edit_bluetooth: String,
     pub(crate) open_system_monitor: String,

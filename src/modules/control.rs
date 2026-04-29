@@ -49,7 +49,6 @@ const INTROSPECTION: &str = r#"
 <?xml version="1.0" encoding="UTF-8"?>
 <node>
     <interface name="org.me.LayerShellControl">
-        <method name="CapsLockToggled"></method>
         <method name="Exit"></method>
         <method name="ReloadStyles"></method>
         <method name="ToggleSessionScreen"></method>
@@ -89,7 +88,6 @@ fn try_parse_control_req<'a>(message: IncomingMessage<'a>) -> Result<(&'a str, &
 
 #[derive(Debug)]
 pub(crate) enum ControlRequest {
-    CapsLockToggled,
     Exit,
     ReloadStyles,
     ToggleSessionScreen,
@@ -98,7 +96,6 @@ pub(crate) enum ControlRequest {
 impl ControlRequest {
     fn try_parse(s: &str) -> Result<Self> {
         match s {
-            "CapsLockToggled" => Ok(ControlRequest::CapsLockToggled),
             "Exit" => Ok(ControlRequest::Exit),
             "ReloadStyles" => Ok(ControlRequest::ReloadStyles),
             "ToggleSessionScreen" => Ok(ControlRequest::ToggleSessionScreen),

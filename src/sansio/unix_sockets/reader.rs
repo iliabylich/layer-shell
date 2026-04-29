@@ -34,7 +34,13 @@ impl UnixSocketReader {
         }
     }
 
-    #[expect(dead_code)]
+    pub(crate) fn new_connected_from_fd(fd: i32) -> Self {
+        let mut this = Self::dummy();
+        this.fd = fd;
+        this.state = State::ReadyTo(Action::Read);
+        this
+    }
+
     pub(crate) fn dummy() -> Self {
         Self {
             addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },

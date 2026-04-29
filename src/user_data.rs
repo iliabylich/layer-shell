@@ -8,6 +8,7 @@ pub(crate) enum ModuleId {
     GeoLocation,
 
     CapsLock,
+    Niri,
 
     SessionDBus,
     SystemDBus,
