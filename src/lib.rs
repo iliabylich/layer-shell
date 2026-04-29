@@ -22,8 +22,8 @@ use crate::{
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
-        CPU, Clock, Control, ControlRequest, Hyprland, HyprlandQueue, HyprlandReader,
-        HyprlandWriter, Location, Memory, Network, SessionDBus, Sound, SystemDBus, Tray, Weather,
+        CPU, Clock, Control, ControlRequest, Location, Memory, Network, SessionDBus, Sound,
+        SystemDBus, Tray, Weather,
     },
     sansio::{Satisfy, Wants},
     timer::Timer,
@@ -44,8 +44,6 @@ struct IO {
     tray: Tray,
     system_dbus: SystemDBus,
     network: Network,
-    hyprland_reader: HyprlandReader,
-    hyprland_writer: HyprlandWriter,
 
     location: Location,
     weather: Weather,
@@ -76,8 +74,6 @@ impl IO {
         let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
         let io_config = Box::leak(Box::new(IOConfig::from(&config)));
 
-        let (hyprland_reader, hyprland_writer) = Hyprland::connect();
-
         let mut this = Self {
             config,
             io_config,
@@ -91,8 +87,6 @@ impl IO {
             tray: Tray::new(),
             system_dbus: SystemDBus::new(),
             network: Network::new(),
-            hyprland_reader,
-            hyprland_writer,
 
             location: Location::new(),
             weather: Weather::new(),
@@ -113,8 +107,6 @@ impl IO {
         schedule!(self.timer);
 
         schedule!(self.location);
-        schedule!(self.hyprland_reader);
-        schedule!(self.hyprland_writer);
         schedule!(self.cpu);
         schedule!(self.memory);
 
@@ -132,8 +124,7 @@ impl IO {
     fn on_control_req(&mut self, req: ControlRequest) {
         match req {
             ControlRequest::CapsLockToggled => {
-                HyprlandQueue::enqueue_get_caps_lock();
-                schedule!(self.hyprland_writer);
+                todo!()
             }
             ControlRequest::Exit => EventQueue::push_back(Event::Exit),
             ControlRequest::ReloadStyles => EventQueue::push_back(Event::ReloadStyles),
@@ -174,15 +165,6 @@ impl IO {
                 ModuleId::Weather => {
                     satisfy!(self.weather);
                     schedule!(self.weather);
-                }
-
-                ModuleId::HyprlandReader => {
-                    satisfy!(self.hyprland_reader);
-                    schedule!(self.hyprland_reader);
-                }
-                ModuleId::HyprlandWriter => {
-                    satisfy!(self.hyprland_writer);
-                    schedule!(self.hyprland_writer);
                 }
 
                 ModuleId::SessionDBus => {
@@ -260,39 +242,31 @@ impl IO {
             return;
         }
 
-        macro_rules! hyprctl {
-            ($($arg:tt)*) => {{
-                HyprlandQueue::enqueue_dispatch(format!($($arg)*), );
-                schedule!(self.hyprland_writer);
-            }};
-        }
         match cmd {
-            Command::GoToWorkspace { workspace } => {
-                hyprctl!("workspace {}", workspace)
-            }
             Command::Lock => {
-                hyprctl!("exec {}", self.config.lock)
+                spawn(&self.config.lock);
             }
             Command::Reboot => {
-                hyprctl!("exec {}", self.config.reboot)
+                spawn(&self.config.reboot);
             }
             Command::Shutdown => {
-                hyprctl!("exec {}", self.config.shutdown)
+                spawn(&self.config.shutdown);
             }
             Command::Logout => {
-                hyprctl!("exit")
+                // hyprctl!("exit")
+                todo!()
             }
             Command::SpawnWiFiEditor => {
-                hyprctl!("exec {}", self.config.edit_wifi)
+                spawn(&self.config.edit_wifi);
             }
             Command::SpawnBluetoothEditor => {
-                hyprctl!("exec {}", self.config.edit_bluetooth)
+                spawn(&self.config.edit_bluetooth);
             }
             Command::SpawnSystemMonitor => {
-                hyprctl!("exec {}", self.config.open_system_monitor)
+                spawn(&self.config.open_system_monitor);
             }
             Command::ChangeTheme => {
-                hyprctl!("exec {}", self.config.change_theme)
+                spawn(&self.config.change_theme);
             }
 
             Command::TriggerTray { uuid } => {
@@ -369,10 +343,6 @@ fn process_command(cmd: Command) {
     io_mut().process_command(cmd);
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn io_hyprland_go_to_workspace(workspace: usize) {
-    process_command(Command::GoToWorkspace { workspace });
-}
 #[unsafe(no_mangle)]
 pub extern "C" fn io_lock() {
     process_command(Command::Lock);
@@ -469,5 +439,26 @@ fn schedule_wanted(wants: Wants, module_id: ModuleId) {
             sqe.prep_close(fd);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Close));
         }
+    }
+}
+
+fn spawn(cmd: &str) {
+    use std::process::{Command, Stdio};
+
+    let mut cmd = cmd.split_whitespace();
+    let Some(first) = cmd.next() else {
+        log::warn!("Command {cmd:?} can't be parsed");
+        return;
+    };
+    let rest = cmd.collect::<Vec<_>>();
+
+    if let Err(err) = Command::new(first)
+        .args(rest)
+        .stdout(Stdio::null())
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        log::error!("{err:?}");
     }
 }

@@ -9,7 +9,6 @@
 #include "ui/view_models/sound_model.h"
 #include "ui/view_models/tray_model.h"
 #include "ui/view_models/weather_model.h"
-#include "ui/view_models/workspaces_model.h"
 
 struct _IOModel {
   GObject parent_instance;
@@ -23,15 +22,13 @@ struct _IOModel {
   SoundModel *sound;
   CapsLockModel *caps_lock;
   CpuModel *cpu;
-  WorkspacesModel *workspaces;
   TrayModel *tray;
 };
 
 G_DEFINE_TYPE(IOModel, io_model, G_TYPE_OBJECT)
 
 enum {
-  PROP_WORKSPACES = 1,
-  PROP_TRAY,
+  PROP_TRAY = 1,
   PROP_OVERLAYS,
   PROP_CPU,
   PROP_CLOCK,
@@ -90,9 +87,6 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_WEATHER:
     g_value_set_object(value, self->weather);
     break;
-  case PROP_WORKSPACES:
-    g_value_set_object(value, self->workspaces);
-    break;
   case PROP_TRAY:
     g_value_set_object(value, self->tray);
     break;
@@ -119,7 +113,6 @@ static void io_model_finalize(GObject *object) {
   g_clear_object(&self->sound);
   g_clear_object(&self->caps_lock);
   g_clear_object(&self->cpu);
-  g_clear_object(&self->workspaces);
   g_clear_object(&self->tray);
   G_OBJECT_CLASS(io_model_parent_class)->finalize(object);
 }
@@ -135,14 +128,14 @@ static void io_model_init(IOModel *self) {
   self->caps_lock = caps_lock_model_new();
 
   self->cpu = cpu_model_new();
-  self->workspaces = workspaces_model_new();
   self->tray = tray_model_new();
 
   g_signal_connect_object(self->sound, "overlay-visibility-changed",
-                          G_CALLBACK(sound_overlay_visibility_changed), self, 0);
-  g_signal_connect_object(self->caps_lock, "overlay-visibility-changed",
-                          G_CALLBACK(caps_lock_overlay_visibility_changed), self,
+                          G_CALLBACK(sound_overlay_visibility_changed), self,
                           0);
+  g_signal_connect_object(self->caps_lock, "overlay-visibility-changed",
+                          G_CALLBACK(caps_lock_overlay_visibility_changed),
+                          self, 0);
 }
 
 static void io_model_class_init(IOModelClass *klass) {
@@ -151,39 +144,26 @@ static void io_model_class_init(IOModelClass *klass) {
   object_class->set_property = io_model_set_property;
   object_class->finalize = io_model_finalize;
 
-  properties[PROP_WORKSPACES] =
-      g_param_spec_object("workspaces", NULL, NULL, workspaces_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_TRAY] =
-      g_param_spec_object("tray", NULL, NULL, tray_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_OVERLAYS] =
-      g_param_spec_object("overlays", NULL, NULL, overlays_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_CPU] = g_param_spec_object("cpu", NULL, NULL,
-                                             cpu_model_get_type(),
-                                             G_PARAM_READABLE);
-  properties[PROP_CLOCK] =
-      g_param_spec_object("clock", NULL, NULL, clock_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_LANGUAGE] =
-      g_param_spec_object("language", NULL, NULL, language_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_MEMORY] =
-      g_param_spec_object("memory", NULL, NULL, memory_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_NETWORK] =
-      g_param_spec_object("network", NULL, NULL, network_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_SOUND] =
-      g_param_spec_object("sound", NULL, NULL, sound_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_CAPS_LOCK] =
-      g_param_spec_object("caps-lock", NULL, NULL, caps_lock_model_get_type(),
-                          G_PARAM_READABLE);
-  properties[PROP_WEATHER] =
-      g_param_spec_object("weather", NULL, NULL, weather_model_get_type(),
-                          G_PARAM_READABLE);
+  properties[PROP_TRAY] = g_param_spec_object(
+      "tray", NULL, NULL, tray_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_OVERLAYS] = g_param_spec_object(
+      "overlays", NULL, NULL, overlays_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_CPU] = g_param_spec_object(
+      "cpu", NULL, NULL, cpu_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_CLOCK] = g_param_spec_object(
+      "clock", NULL, NULL, clock_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_LANGUAGE] = g_param_spec_object(
+      "language", NULL, NULL, language_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_MEMORY] = g_param_spec_object(
+      "memory", NULL, NULL, memory_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_NETWORK] = g_param_spec_object(
+      "network", NULL, NULL, network_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_SOUND] = g_param_spec_object(
+      "sound", NULL, NULL, sound_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_CAPS_LOCK] = g_param_spec_object(
+      "caps-lock", NULL, NULL, caps_lock_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_WEATHER] = g_param_spec_object(
+      "weather", NULL, NULL, weather_model_get_type(), G_PARAM_READABLE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 }
 

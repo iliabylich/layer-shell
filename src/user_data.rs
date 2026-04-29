@@ -8,9 +8,6 @@ pub(crate) enum ModuleId {
 
     GeoLocation,
 
-    HyprlandReader,
-    HyprlandWriter,
-
     SessionDBus,
     SystemDBus,
 

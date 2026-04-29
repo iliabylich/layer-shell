@@ -44,9 +44,6 @@ static void event_received(const IO_Event *event) {
   gobject_set_nested(G_OBJECT(model), child, prop, val)
 
   switch (event->tag) {
-  case IO_Event_Workspaces:
-    SET("workspaces", "data", (gpointer)&event->workspaces.workspaces);
-    break;
   case IO_Event_ReloadStyles:
     css_reload();
     break;
@@ -135,9 +132,6 @@ static gboolean read_io_events(gint, GIOCondition, gpointer) {
   return exiting ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
 }
 
-static void workspace_switched(TopBar *, guint num) {
-  io_hyprland_go_to_workspace(num);
-}
 static void tray_triggered(TopBar *, const char *uuid) {
   io_trigger_tray(uuid);
 }
@@ -151,7 +145,6 @@ static void create_widgets() {
 #define CONNECT(obj, signal, callback, data)                                   \
   g_signal_connect(obj, signal, G_CALLBACK(callback), data)
 
-  CONNECT(top_bar, "workspace-switched", workspace_switched, NULL);
   CONNECT(top_bar, "change-theme-clicked", io_change_theme, NULL);
   CONNECT(top_bar, "tray-triggered", tray_triggered, NULL);
   CONNECT(top_bar, "memory-clicked", io_spawn_system_monitor, NULL);

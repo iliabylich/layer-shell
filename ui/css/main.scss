@@ -110,36 +110,6 @@ popover {
             }
         }
 
-        &.workspaces {
-            row {
-                padding: 0;
-                background: none;
-
-                &:hover,
-                &:focus {
-                    background: none;
-                }
-            }
-
-            button {
-                min-width: 35px;
-
-                &:first-child {
-                    border-top-left-radius: 8px;
-                    border-bottom-left-radius: 8px;
-                }
-
-                &:last-child {
-                    border-top-right-radius: 8px;
-                    border-bottom-right-radius: 8px;
-                }
-
-                &:checked {
-                    background-color: var(--inverse_primary);
-                }
-            }
-        }
-
         &.tray {
             row {
                 padding: 0 4px;

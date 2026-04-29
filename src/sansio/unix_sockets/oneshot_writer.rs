@@ -32,6 +32,7 @@ enum Action {
 }
 
 impl UnixSocketOneshotWriter {
+    #[expect(dead_code)]
     pub(crate) fn new(addr: sockaddr_un, data: StringRef) -> Self {
         let mut buf = [0; 4_096];
         let mut writer = ArrayWriter::new(&mut buf);
@@ -50,6 +51,7 @@ impl UnixSocketOneshotWriter {
         }
     }
 
+    #[expect(dead_code)]
     pub(crate) fn wants(&mut self) -> Option<Wants> {
         let State::ReadyTo(action) = self.state else {
             return None;
@@ -88,6 +90,7 @@ impl UnixSocketOneshotWriter {
         Some(wants)
     }
 
+    #[expect(dead_code)]
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
         let action = match self.state {
             State::WaitingFor(action) => action,

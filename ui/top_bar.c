@@ -4,18 +4,9 @@
 #include "ui/view_models/io_model.h"
 #include "ui/view_models/tray_app_item.h"
 #include "ui/view_models/tray_model.h"
-#include "ui/view_models/workspace_item.h"
 #include <gtk4-layer-shell.h>
 
 LOGGER("TopBar", 0)
-
-static char *format_workspace_num(GObject *, guint num) {
-  return g_strdup_printf("%u", num);
-}
-
-static GVariant *workspace_action_target(GObject *, guint num) {
-  return g_variant_new_uint32(num);
-}
 
 static const char *CPU_INDICATORS[] = {
     "<span color='#FFFFFF'>\xe2\x96\x81</span>",
@@ -98,8 +89,7 @@ struct _TopBar {
 G_DEFINE_TYPE(TopBar, top_bar, BASE_OVERLAY_TYPE)
 
 enum {
-  SIGNAL_WORKSPACE_SWITCHED = 0,
-  SIGNAL_CHANGE_THEME_CLICKED,
+  SIGNAL_CHANGE_THEME_CLICKED = 0,
   SIGNAL_TRAY_TRIGGERED,
   SIGNAL_WEATHER_CLICKED,
   SIGNAL_TERMINAL_CLICKED,
@@ -127,12 +117,6 @@ static void top_bar_constructed(GObject *object) {
                    self);
   g_object_unref(tray);
   g_object_unref(tray_apps);
-}
-
-static void ws_switch(GSimpleAction *, GVariant *parameter, gpointer data) {
-  TopBar *self = TOP_BAR(data);
-  guint num = g_variant_get_uint32(parameter);
-  g_signal_emit(self, signals[SIGNAL_WORKSPACE_SWITCHED], 0, num);
 }
 
 #define FORWARD_CLICKED(name, sig)                                             \
@@ -174,14 +158,6 @@ static void top_bar_init(TopBar *self) {
 
   gtk_widget_init_template(GTK_WIDGET(self));
 
-  GSimpleAction *ws_action =
-      g_simple_action_new("switch", G_VARIANT_TYPE_UINT32);
-  g_signal_connect(ws_action, "activate", G_CALLBACK(ws_switch), self);
-  GSimpleActionGroup *ws_group = g_simple_action_group_new();
-  g_action_map_add_action(G_ACTION_MAP(ws_group), G_ACTION(ws_action));
-  gtk_widget_insert_action_group(GTK_WIDGET(self), "ws",
-                                 G_ACTION_GROUP(ws_group));
-
 #define CONNECT(widget, signal, callback)                                      \
   g_signal_connect(widget, signal, G_CALLBACK(callback), self)
 
@@ -211,10 +187,6 @@ static void top_bar_class_init(TopBarClass *klass) {
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->constructed = top_bar_constructed;
 
-  signals[SIGNAL_WORKSPACE_SWITCHED] = g_signal_new(
-      "workspace-switched", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
-      NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
-
 #define SIGNAL_CLICKED(id, name)                                               \
   signals[id] =                                                                \
       g_signal_new(name, G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL, \
@@ -236,15 +208,11 @@ static void top_bar_class_init(TopBarClass *klass) {
       NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 
   g_type_ensure(tray_app_item_get_type());
-  g_type_ensure(workspace_item_get_type());
   g_type_ensure(cpu_item_get_type());
 
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
   gtk_widget_class_set_template_from_resource(widget_class,
                                               "/layer-shell/top_bar.ui");
-  gtk_widget_class_bind_template_callback(widget_class, format_workspace_num);
-  gtk_widget_class_bind_template_callback(widget_class,
-                                          workspace_action_target);
   gtk_widget_class_bind_template_callback(widget_class, format_cpu_load);
   gtk_widget_class_bind_template_callback(widget_class, format_memory_label);
   gtk_widget_class_bind_template_callback(widget_class, format_clock_label);

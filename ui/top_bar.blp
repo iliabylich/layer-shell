@@ -21,26 +21,6 @@ template $TopBar: $BaseOverlay {
       orientation: horizontal;
       spacing: 4;
 
-      ListView {
-        orientation: horizontal;
-        styles ["widget", "workspaces"]
-
-        factory: BuilderListItemFactory {
-          template ListItem {
-            child: ToggleButton {
-              cursor: Gdk.Cursor { name: "pointer"; };
-              label: bind $format_workspace_num(template.item as <$WorkspaceItem>.num) as <string>;
-              active: bind template.item as <$WorkspaceItem>.active;
-              action-name: "ws.switch";
-              action-target: bind $workspace_action_target(template.item as <$WorkspaceItem>.num) as <GLib.Variant>;
-            };
-          }
-        };
-
-        model: NoSelection {
-          model: bind template.model as <$IOModel>.workspaces as <$WorkspacesModel>.items;
-        };
-      }
       Button change_theme {
         cursor: Gdk.Cursor { name: "pointer"; };
         label: "";

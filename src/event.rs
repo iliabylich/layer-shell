@@ -1,8 +1,8 @@
 use crate::{
     ffi::FFIArray,
     modules::{
-        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, HyprlandWorkspace, TrayIcon,
-        TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour,
+        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, TrayIcon, TrayItem,
+        WeatherCode, WeatherOnDay, WeatherOnHour,
     },
     utils::StringRef,
 };
@@ -21,9 +21,6 @@ pub enum Event {
     },
     Clock {
         unix_seconds: i64,
-    },
-    Workspaces {
-        workspaces: FFIArray<HyprlandWorkspace>,
     },
     Language {
         lang: StringRef,
