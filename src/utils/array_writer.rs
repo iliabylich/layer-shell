@@ -10,6 +10,7 @@ impl<'a> ArrayWriter<'a> {
         ArrayWriter { buf, offset: 0 }
     }
 
+    #[expect(dead_code)]
     pub(crate) fn as_str(&self) -> Result<&str> {
         core::str::from_utf8(&self.buf[..self.offset]).context("malformed ArrayWriter's buffer")
     }

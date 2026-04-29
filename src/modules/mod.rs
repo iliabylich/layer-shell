@@ -1,3 +1,4 @@
+mod caps_lock;
 mod clock;
 mod control;
 mod cpu;
@@ -10,6 +11,7 @@ mod system_dbus;
 mod tray;
 mod weather;
 
+pub(crate) use caps_lock::CapsLock;
 pub(crate) use clock::Clock;
 pub(crate) use control::{Control, ControlRequest};
 pub(crate) use cpu::CPU;

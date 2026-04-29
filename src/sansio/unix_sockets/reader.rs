@@ -34,6 +34,7 @@ impl UnixSocketReader {
         }
     }
 
+    #[expect(dead_code)]
     pub(crate) fn dummy() -> Self {
         Self {
             addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },

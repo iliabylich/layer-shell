@@ -22,8 +22,8 @@ use crate::{
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
-        CPU, Clock, Control, ControlRequest, Location, Memory, Network, SessionDBus, Sound,
-        SystemDBus, Tray, Weather,
+        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, SessionDBus,
+        Sound, SystemDBus, Tray, Weather,
     },
     sansio::{Satisfy, Wants},
     timer::Timer,
@@ -49,6 +49,7 @@ struct IO {
     weather: Weather,
     cpu: CPU,
     memory: Memory,
+    caps_lock: CapsLock,
 
     on_event: extern "C" fn(event: *const Event),
     running: bool,
@@ -92,6 +93,7 @@ impl IO {
             weather: Weather::new(),
             cpu: CPU::new(),
             memory: Memory::new(),
+            caps_lock: CapsLock::new(),
 
             on_event,
             running: true,
@@ -109,6 +111,7 @@ impl IO {
         schedule!(self.location);
         schedule!(self.cpu);
         schedule!(self.memory);
+        schedule!(self.caps_lock);
 
         self.sound.init();
         self.control.init();
@@ -165,6 +168,11 @@ impl IO {
                 ModuleId::Weather => {
                     satisfy!(self.weather);
                     schedule!(self.weather);
+                }
+
+                ModuleId::CapsLock => {
+                    satisfy!(self.caps_lock);
+                    schedule!(self.caps_lock);
                 }
 
                 ModuleId::SessionDBus => {

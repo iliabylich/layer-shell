@@ -5,8 +5,9 @@ use core::cell::Cell;
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum ModuleId {
     Weather,
-
     GeoLocation,
+
+    CapsLock,
 
     SessionDBus,
     SystemDBus,
