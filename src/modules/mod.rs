@@ -9,6 +9,7 @@ mod niri;
 mod session_dbus;
 mod sound;
 mod system_dbus;
+mod timer;
 mod tray;
 mod weather;
 
@@ -23,6 +24,7 @@ pub(crate) use niri::Niri;
 pub(crate) use session_dbus::SessionDBus;
 pub(crate) use sound::Sound;
 pub(crate) use system_dbus::SystemDBus;
+pub(crate) use timer::Timer;
 pub(crate) use tray::Tray;
 pub(crate) use weather::Weather;
 

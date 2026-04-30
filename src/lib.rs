@@ -8,7 +8,6 @@ mod ffi;
 mod liburing;
 mod modules;
 mod sansio;
-mod timer;
 mod unix_socket;
 mod user_data;
 mod utils;
@@ -23,10 +22,9 @@ use crate::{
     liburing::IoUring,
     modules::{
         CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, Niri,
-        SessionDBus, Sound, SystemDBus, Tray, Weather,
+        SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
     },
     sansio::{Satisfy, Wants},
-    timer::Timer,
     user_data::{ModuleId, UserData},
     utils::{Logger, StringRef},
 };
@@ -216,7 +214,7 @@ impl IO {
                     schedule!(self.memory);
                 }
                 ModuleId::Timer => {
-                    let tick = self.timer.satisfy(satisfy, res)?;
+                    let tick = satisfy!(self.timer)?;
                     schedule!(self.timer);
 
                     self.clock.tick();
