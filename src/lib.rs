@@ -28,8 +28,9 @@ use crate::{
     sansio::{Satisfy, Wants},
     timer::Timer,
     user_data::{ModuleId, UserData},
-    utils::{Logger, StringRef, report_and_exit},
+    utils::{Logger, StringRef},
 };
+use anyhow::{Context, Result, bail};
 
 struct IO {
     config: Config,
@@ -61,26 +62,26 @@ static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
 
 macro_rules! schedule {
     ($module:expr) => {{
-        if let Some(wants) = $module.wants() {
+        if let Some(wants) = $module.wants()? {
             let module_id = $module.module_id();
-            if let Some(wants_next) = $module.wants() {
-                report_and_exit!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
+            if let Some(wants_next) = $module.wants()? {
+                anyhow::bail!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
             }
-            schedule_wanted(wants, module_id)
+            schedule_wanted(wants, module_id)?;
         }
     }};
 }
 
 impl IO {
-    fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Self {
-        let config = Config::read().unwrap_or_else(|err| report_and_exit!("{err:?}"));
-        let io_config = Box::leak(Box::new(IOConfig::from(&config)));
+    fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Result<Self> {
+        let config = Config::read()?;
+        let io_config = Box::leak(Box::new(IOConfig::try_from(&config)?));
 
         let mut this = Self {
             config,
             io_config,
 
-            timer: Timer::new(),
+            timer: Timer::new()?,
             clock: Clock::new(),
 
             session_dbus: SessionDBus::new(),
@@ -95,19 +96,19 @@ impl IO {
             cpu: CPU::new(),
             memory: Memory::new(),
             caps_lock: CapsLock::new(),
-            niri: Niri::new(),
+            niri: Niri::new()?,
 
             on_event,
             running: true,
             logging_enabled,
         };
 
-        this.init();
+        this.init()?;
 
-        this
+        Ok(this)
     }
 
-    fn init(&mut self) {
+    fn init(&mut self) -> Result<()> {
         schedule!(self.timer);
 
         schedule!(self.location);
@@ -116,15 +117,16 @@ impl IO {
         schedule!(self.caps_lock);
         schedule!(self.niri);
 
-        self.sound.init();
+        self.sound.init()?;
         self.control.init();
-        self.tray.init();
+        self.tray.init()?;
         schedule!(self.session_dbus);
 
-        self.network.init();
+        self.network.init()?;
         schedule!(self.system_dbus);
 
-        IoUring::submit_if_dirty();
+        IoUring::submit_if_dirty()?;
+        Ok(())
     }
 
     fn on_control_req(&mut self, req: ControlRequest) {
@@ -137,17 +139,17 @@ impl IO {
         }
     }
 
-    fn handle_readable(&mut self) {
+    fn handle_readable(&mut self) -> Result<()> {
         if !self.running {
-            return;
+            return Ok(());
         }
 
-        while let Some(cqe) = IoUring::try_get_cqe() {
+        while let Some(cqe) = IoUring::try_get_cqe()? {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
-            let UserData { module_id, op, .. } = UserData::from(user_data);
-            let satisfy = Satisfy::from(op);
+            let UserData { module_id, op, .. } = UserData::try_from(user_data)?;
+            let satisfy = Satisfy::try_from(op)?;
 
             macro_rules! satisfy {
                 ($module:expr) => {
@@ -185,7 +187,7 @@ impl IO {
 
                     if let Some(message) = message {
                         self.sound.on_message(message);
-                        self.tray.on_message(message);
+                        self.tray.on_message(message)?;
 
                         if let Some(req) = self.control.on_message(message) {
                             self.on_control_req(req);
@@ -199,7 +201,7 @@ impl IO {
                     let message = satisfy!(self.system_dbus);
 
                     if let Some(message) = message {
-                        self.network.on_message(message);
+                        self.network.on_message(message)?;
                     }
 
                     schedule!(self.system_dbus);
@@ -214,7 +216,7 @@ impl IO {
                     schedule!(self.memory);
                 }
                 ModuleId::Timer => {
-                    let tick = self.timer.satisfy(satisfy, res);
+                    let tick = self.timer.satisfy(satisfy, res)?;
                     schedule!(self.timer);
 
                     self.clock.tick();
@@ -228,7 +230,7 @@ impl IO {
                     self.memory.tick(tick);
                     schedule!(self.memory);
 
-                    self.sound.tick(tick);
+                    self.sound.tick(tick)?;
                     schedule!(self.session_dbus);
                 }
             }
@@ -236,7 +238,7 @@ impl IO {
             IoUring::cqe_seen(cqe);
         }
 
-        IoUring::submit_if_dirty();
+        IoUring::submit_if_dirty()?;
 
         while let Some(event) = EventQueue::pop_front() {
             if self.logging_enabled {
@@ -244,101 +246,146 @@ impl IO {
             }
             (self.on_event)(&event);
         }
+
+        Ok(())
     }
 
-    fn wait_readable(&mut self) {
+    fn wait_readable(&mut self) -> Result<()> {
         IoUring::submit_and_wait(1)
     }
 
-    fn process_command(&mut self, cmd: Command) {
+    fn process_command(&mut self, cmd: Command) -> Result<()> {
         if !self.running {
-            return;
+            return Ok(());
         }
 
         match cmd {
             Command::Lock => {
-                spawn(&self.config.lock);
+                spawn(&self.config.lock)?;
             }
             Command::Reboot => {
-                spawn(&self.config.reboot);
+                spawn(&self.config.reboot)?;
             }
             Command::Shutdown => {
-                spawn(&self.config.shutdown);
+                spawn(&self.config.shutdown)?;
             }
             Command::Logout => {
-                spawn(&self.config.logout);
+                spawn(&self.config.logout)?;
             }
             Command::SpawnWiFiEditor => {
-                spawn(&self.config.edit_wifi);
+                spawn(&self.config.edit_wifi)?;
             }
             Command::SpawnBluetoothEditor => {
-                spawn(&self.config.edit_bluetooth);
+                spawn(&self.config.edit_bluetooth)?;
             }
             Command::SpawnSystemMonitor => {
-                spawn(&self.config.open_system_monitor);
+                spawn(&self.config.open_system_monitor)?;
             }
             Command::ChangeTheme => {
-                spawn(&self.config.change_theme);
+                spawn(&self.config.change_theme)?;
             }
 
             Command::TriggerTray { uuid } => {
-                self.tray.trigger(uuid);
+                self.tray.trigger(uuid)?;
                 schedule!(self.session_dbus);
             }
         }
 
-        IoUring::submit_if_dirty();
+        IoUring::submit_if_dirty()?;
+        Ok(())
     }
 
     fn deinit(&mut self) {
         self.running = false;
         IoUring::deinit();
     }
-}
 
-fn io_mut() -> &'static mut IO {
-    unsafe { GLOBAL_IO.as_mut() }
-        .unwrap_or_else(|| report_and_exit!("IO is not initialized. Call io_init() first."))
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) {
-    if unsafe { !GLOBAL_IO.is_null() } {
-        report_and_exit!("io_init() called while IO is already initialized");
-    }
-
-    Logger::init();
-
-    rustls_openssl::default_provider()
-        .install_default()
-        .unwrap_or_else(|_| report_and_exit!("failed to install OpenSSL CryptoProvider"));
-    IoUring::init(10, 0);
-    unsafe {
-        GLOBAL_IO = Box::into_raw(Box::new(IO::new(on_event, logging_enabled)));
+    fn global() -> Result<&'static mut IO> {
+        unsafe { GLOBAL_IO.as_mut() }.context("IO is not initialized. Call io_init() first.")
     }
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn io_deinit() {
-    if unsafe { GLOBAL_IO.is_null() } {
-        report_and_exit!("io_deinit() called while IO is not initialized");
-    }
-
-    unsafe {
-        (*GLOBAL_IO).deinit();
-        drop(Box::from_raw(GLOBAL_IO));
-        GLOBAL_IO = core::ptr::null_mut();
-    }
+macro_rules! try_or {
+    ($fallback:expr; $code:expr) => {{
+        match std::panic::catch_unwind(|| $code) {
+            Ok(Ok(out)) => out,
+            Ok(Err(err)) => {
+                let err: anyhow::Error = err;
+                log::error!("error returned: {err:?}");
+                $fallback
+            }
+            Err(err) => {
+                log::error!("panic: {err:?}");
+                $fallback
+            }
+        }
+    }};
+}
+macro_rules! try_or_null {
+    ($code:block) => {
+        try_or!(std::ptr::null_mut(); $code)
+    };
+}
+macro_rules! try_or_false {
+    ($code:block) => {
+        try_or!(false; $code)
+    };
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_handle_readable() {
-    io_mut().handle_readable();
+#[must_use]
+pub extern "C" fn io_init(
+    on_event: extern "C" fn(event: *const Event),
+    logging_enabled: bool,
+) -> bool {
+    try_or_false!({
+        if unsafe { !GLOBAL_IO.is_null() } {
+            bail!("io_init() called while IO is already initialized");
+        }
+
+        Logger::init()?;
+
+        rustls_openssl::default_provider()
+            .install_default()
+            .map_err(|_err| anyhow::anyhow!("failed to install OpenSSL CryptoProvider"))?;
+        IoUring::init(10, 0)?;
+        unsafe {
+            GLOBAL_IO = Box::into_raw(Box::new(IO::new(on_event, logging_enabled)?));
+        }
+        Ok(true)
+    })
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_wait_readable() {
-    io_mut().wait_readable();
+pub extern "C" fn io_deinit() -> bool {
+    try_or_false!({
+        if unsafe { GLOBAL_IO.is_null() } {
+            bail!("io_deinit() called while IO is not initialized");
+        }
+
+        unsafe {
+            (*GLOBAL_IO).deinit();
+            drop(Box::from_raw(GLOBAL_IO));
+            GLOBAL_IO = core::ptr::null_mut();
+        }
+        Ok(true)
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn io_handle_readable() -> bool {
+    try_or_false!({
+        IO::global()?.handle_readable()?;
+        Ok(true)
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn io_wait_readable() -> bool {
+    try_or_false!({
+        IO::global()?.wait_readable()?;
+        Ok(true)
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -348,76 +395,97 @@ pub extern "C" fn io_as_raw_fd() -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_get_config() -> *const IOConfig {
-    io_mut().io_config
-}
-
-fn process_command(cmd: Command) {
-    io_mut().process_command(cmd);
+    try_or_null!({ Ok(IO::global()?.io_config) })
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_lock() {
-    process_command(Command::Lock);
+pub extern "C" fn io_lock() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::Lock)?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_reboot() {
-    process_command(Command::Reboot);
+pub extern "C" fn io_reboot() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::Reboot)?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_shutdown() {
-    process_command(Command::Shutdown);
+pub extern "C" fn io_shutdown() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::Shutdown)?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_logout() {
-    process_command(Command::Logout);
+pub extern "C" fn io_logout() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::Logout)?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
 #[expect(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "C" fn io_trigger_tray(uuid: *const core::ffi::c_char) {
-    let uuid = unsafe { std::ffi::CStr::from_ptr(uuid) }
-        .to_str()
-        .unwrap_or_else(|err| report_and_exit!("{:?}", err));
+pub extern "C" fn io_trigger_tray(uuid: *const core::ffi::c_char) -> bool {
+    try_or_false!({
+        let uuid = unsafe { std::ffi::CStr::from_ptr(uuid) }.to_str()?;
 
-    process_command(Command::TriggerTray {
-        uuid: StringRef::new(uuid),
-    });
+        IO::global()?.process_command(Command::TriggerTray {
+            uuid: StringRef::new(uuid)?,
+        })?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_wifi_editor() {
-    process_command(Command::SpawnWiFiEditor);
+pub extern "C" fn io_spawn_wifi_editor() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::SpawnWiFiEditor)?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_bluetooh_editor() {
-    process_command(Command::SpawnBluetoothEditor);
+pub extern "C" fn io_spawn_bluetooh_editor() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::SpawnBluetoothEditor)?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_system_monitor() {
-    process_command(Command::SpawnSystemMonitor);
+pub extern "C" fn io_spawn_system_monitor() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::SpawnSystemMonitor)?;
+        Ok(true)
+    })
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_change_theme() {
-    process_command(Command::ChangeTheme);
+pub extern "C" fn io_change_theme() -> bool {
+    try_or_false!({
+        IO::global()?.process_command(Command::ChangeTheme)?;
+        Ok(true)
+    })
 }
 
-fn schedule_wanted(wants: Wants, module_id: ModuleId) {
+fn schedule_wanted(wants: Wants, module_id: ModuleId) -> Result<()> {
     match wants {
         Wants::Socket { domain, r#type } => {
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_socket(domain, r#type, 0, 0);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Socket));
         }
         Wants::Connect { fd, addr, addrlen } => {
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_connect(fd, addr, addrlen);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Connect));
         }
         Wants::Read { fd, buf, len } => {
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_read(fd, buf, len);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
         }
         Wants::Write { fd, buf, len } => {
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_write(fd, buf, len);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
         }
@@ -428,11 +496,11 @@ fn schedule_wanted(wants: Wants, module_id: ModuleId) {
             writebuf,
             writelen,
         } => {
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_read(fd, readbuf, readlen);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
 
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_write(fd, writebuf, writelen);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
         }
@@ -442,35 +510,33 @@ fn schedule_wanted(wants: Wants, module_id: ModuleId) {
             flags,
             mode,
         } => {
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_openat(dfd, path, flags, mode);
             sqe.set_user_data(UserData::new(module_id, Satisfy::OpenAt));
         }
         Wants::Close { fd } => {
-            let mut sqe = IoUring::get_sqe();
+            let mut sqe = IoUring::get_sqe()?;
             sqe.prep_close(fd);
             sqe.set_user_data(UserData::new(module_id, Satisfy::Close));
         }
     }
+
+    Ok(())
 }
 
-fn spawn(cmd: &str) {
+fn spawn(cmd: &str) -> Result<()> {
     use std::process::{Command, Stdio};
 
     let mut cmd = cmd.split_whitespace();
-    let Some(first) = cmd.next() else {
-        log::warn!("Command {cmd:?} can't be parsed");
-        return;
-    };
+    let first = cmd.next().context("command can't be pased")?;
     let rest = cmd.collect::<Vec<_>>();
 
-    if let Err(err) = Command::new(first)
+    Command::new(first)
         .args(rest)
         .stdout(Stdio::null())
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-    {
-        log::error!("{err:?}");
-    }
+        .map(|_| ())
+        .context("failed to spawn")
 }

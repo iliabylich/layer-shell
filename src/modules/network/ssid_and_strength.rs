@@ -19,7 +19,7 @@ pub(crate) struct SsidAndStrengthEvent {
 impl SsidAndStrength {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: GET,
+            oneshot: GET.with_data(()),
             subscription: SUBSCRIPTION,
         }
     }
@@ -29,13 +29,14 @@ impl SsidAndStrength {
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) {
+    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
-        self.oneshot.send(path, SystemDBus::queue());
+        self.oneshot.send(path, SystemDBus::queue())?;
+        Ok(())
     }
 
     pub(crate) fn on_message(
@@ -117,5 +118,5 @@ fn parse_ssid(ssid: IncomingValue<'_>) -> Result<StringRef> {
         bytes.push(byte);
     }
     let ssid = String::from_utf8_lossy(&bytes).to_string();
-    Ok(StringRef::new(ssid.as_str()))
+    StringRef::new(ssid.as_str())
 }

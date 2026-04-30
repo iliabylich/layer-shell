@@ -1,8 +1,8 @@
 use crate::{
     sansio::{Satisfy, Wants},
-    utils::{ArrayWriter, StringRef, report_and_exit},
+    utils::{ArrayWriter, StringRef},
 };
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
@@ -32,22 +32,20 @@ enum Action {
 }
 
 impl UnixSocketOneshotWriter {
-    pub(crate) fn new(addr: sockaddr_un, data: StringRef) -> Self {
+    pub(crate) fn new(addr: sockaddr_un, data: StringRef) -> Result<Self> {
         let mut buf = [0; 4_096];
         let mut writer = ArrayWriter::new(&mut buf);
-        write!(&mut writer, "{}", data).unwrap_or_else(|err: core::fmt::Error| {
-            report_and_exit!("failed to write command to buffer: {err:?}")
-        });
+        write!(&mut writer, "{}", data).context("failed to write command to buffer: {err:?}")?;
         let write_buflen = writer.offset;
 
-        Self {
+        Ok(Self {
             addr,
             buf,
             write_buflen,
             bytes_read: 0,
             fd: -1,
             state: State::ReadyTo(Action::Socket),
-        }
+        })
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {

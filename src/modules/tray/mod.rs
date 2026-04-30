@@ -1,4 +1,5 @@
 use crate::{Event, event_queue::EventQueue, modules::tray::app::TrayEvent, utils::StringRef};
+use anyhow::Result;
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
 pub use item::TrayItem;
@@ -33,69 +34,72 @@ impl Tray {
         }
     }
 
-    pub(crate) fn init(&mut self) {
+    pub(crate) fn init(&mut self) -> Result<()> {
         self.status_notifier_watcher.init();
-        self.name_lost_or_changed.init();
+        self.name_lost_or_changed.init()?;
+        Ok(())
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
-        if let Some(service) = self.status_notifier_watcher.on_message(message) {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<()> {
+        if let Some(service) = self.status_notifier_watcher.on_message(message)? {
             log::info!(target: "Tray", "Added {service:?}");
-            let mut tray_app = App::new(service.clone());
-            tray_app.init();
+            let mut tray_app = App::new(service.clone())?;
+            tray_app.init()?;
             self.registry.insert(service, tray_app);
-            return;
+            return Ok(());
         }
 
-        if let Some(service) = self.name_lost_or_changed.on_message(message) {
+        if let Some(service) = self.name_lost_or_changed.on_message(message)? {
             let Some(key) = self
                 .registry
                 .keys()
                 .find(|s| s.name() == service || s.raw_address() == service)
                 .cloned()
             else {
-                return;
+                return Ok(());
             };
 
             let Some(mut tray_app) = self.registry.remove(&key) else {
-                return;
+                return Ok(());
             };
 
             log::info!(target: "Tray", "Removed {service}");
             tray_app.reset();
             EventQueue::push_back(Event::TrayAppRemoved {
-                service: StringRef::new(service.as_str()),
+                service: StringRef::new(service.as_str())?,
             })
         }
 
         for (service, app) in &mut self.registry {
-            if let Some(event) = app.on_message(message) {
+            if let Some(event) = app.on_message(message)? {
                 let service = service.name();
 
                 let event = match event {
                     TrayEvent::Initialized(icon, layout) => Event::TrayAppAdded {
-                        service: StringRef::new(service.as_str()),
+                        service: StringRef::new(service.as_str())?,
                         items: layout.into(),
                         icon,
                     },
                     TrayEvent::IconUpdated(icon) => Event::TrayAppIconUpdated {
-                        service: StringRef::new(service.as_str()),
+                        service: StringRef::new(service.as_str())?,
                         icon,
                     },
                     TrayEvent::MenuUpdated(layout) => Event::TrayAppMenuUpdated {
-                        service: StringRef::new(service.as_str()),
+                        service: StringRef::new(service.as_str())?,
                         items: layout.into(),
                     },
                 };
                 EventQueue::push_back(event);
             }
         }
+
+        Ok(())
     }
 
-    pub(crate) fn trigger(&self, uuid: StringRef) {
+    pub(crate) fn trigger(&self, uuid: StringRef) -> Result<()> {
         let Ok((service, id)) = UUID::decode(uuid.clone()) else {
             log::error!("malformed UUID: {uuid:?}");
-            return;
+            return Ok(());
         };
 
         let Some(key) = self
@@ -105,14 +109,15 @@ impl Tray {
             .cloned()
         else {
             log::info!(target: "Tray", "service {service} doesn't exist");
-            return;
+            return Ok(());
         };
 
         let Some(tray_app) = self.registry.get(&key) else {
             log::info!(target: "Tray", "service {service} doesn't exist");
-            return;
+            return Ok(());
         };
 
-        tray_app.trigger(id);
+        tray_app.trigger(id)?;
+        Ok(())
     }
 }

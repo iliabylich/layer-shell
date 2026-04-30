@@ -24,7 +24,7 @@ impl Memory {
         ModuleId::Memory
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         self.reader.wants()
     }
 

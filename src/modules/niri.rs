@@ -22,35 +22,39 @@ pub(crate) struct Niri {
 }
 
 impl Niri {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new() -> Result<Self> {
         let Ok(path) = std::env::var("NIRI_SOCKET") else {
             log::error!("no $NIRI_SOCKET");
-            return Self {
+            return Ok(Self {
                 state: None,
                 queue: vec![],
                 layouts: vec![],
-            };
+            });
         };
 
         let addr = new_unix_socket(path.as_bytes());
-        Self {
+        Ok(Self {
             state: Some(State::Writer(Box::new(UnixSocketOneshotWriter::new(
                 addr,
-                StringRef::new("\"EventStream\"\n"),
-            )))),
+                StringRef::new("\"EventStream\"\n")?,
+            )?))),
             queue: vec![],
             layouts: vec![],
-        }
+        })
     }
 
     pub(crate) fn module_id(&self) -> ModuleId {
         ModuleId::Niri
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.state.as_mut()? {
-            State::Writer(writer) => writer.wants(),
-            State::Reader(reader) => reader.wants(),
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+        let Some(state) = self.state.as_mut() else {
+            return Ok(None);
+        };
+
+        match state {
+            State::Writer(writer) => Ok(writer.wants()),
+            State::Reader(reader) => Ok(reader.wants()),
         }
     }
 
@@ -118,7 +122,7 @@ impl Niri {
         if let Some(current_layout_idx) = current_layout_idx {
             let lang = &self.layouts[current_layout_idx];
             EventQueue::push_back(Event::Language {
-                lang: StringRef::new(lang),
+                lang: StringRef::new(lang)?,
             });
         }
 

@@ -1,4 +1,5 @@
 use crate::{FFIArray, utils::StringRef};
+use anyhow::Result;
 
 #[derive(Clone, Debug, Default)]
 #[repr(C)]
@@ -15,15 +16,15 @@ pub enum TrayIcon {
 }
 
 impl TrayIcon {
-    pub(crate) fn detect_name_or_path(name_or_path: &str) -> Self {
+    pub(crate) fn detect_name_or_path(name_or_path: &str) -> Result<Self> {
         if name_or_path.starts_with("/") {
-            Self::Path {
-                path: StringRef::new(name_or_path),
-            }
+            Ok(Self::Path {
+                path: StringRef::new(name_or_path)?,
+            })
         } else {
-            Self::Name {
-                name: StringRef::new(name_or_path),
-            }
+            Ok(Self::Name {
+                name: StringRef::new(name_or_path)?,
+            })
         }
     }
 }

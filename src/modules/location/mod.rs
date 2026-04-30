@@ -24,8 +24,8 @@ impl Location {
         ModuleId::GeoLocation
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.https.wants()
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+        Ok(self.https.wants())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<(f64, f64)>> {

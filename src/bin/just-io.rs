@@ -5,8 +5,11 @@ extern "C" fn on_event(event: *const Event) {
     log::info!("{event:?}");
 }
 
-fn main() {
-    io_init(on_event, false);
+fn main() -> Result<(), ()> {
+    if !io_init(on_event, false) {
+        eprintln!("io_init failed");
+        return Ok(());
+    }
 
     loop {
         // log::info!("Waiting...");

@@ -126,15 +126,23 @@ fn parse(attributes: IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Optio
         }
     }
 
-    let icon = icon_name
-        .and_then(|name_or_path| {
+    let icon_name = match icon_name {
+        Some(name_or_path) => {
             if name_or_path.is_empty() {
                 None
             } else {
-                Some(TrayIcon::detect_name_or_path(name_or_path))
+                Some(TrayIcon::detect_name_or_path(name_or_path)?)
             }
-        })
-        .or_else(|| icon_pixmap.map(TrayIcon::Pixmap));
+        }
+        None => None,
+    };
 
-    Ok((menu.map(StringRef::new), icon))
+    let icon_pixmap = icon_pixmap.map(TrayIcon::Pixmap);
+
+    let menu = match menu {
+        Some(menu) => Some(StringRef::new(menu)?),
+        None => None,
+    };
+
+    Ok((menu, icon_name.or(icon_pixmap)))
 }

@@ -1,4 +1,4 @@
-use crate::utils::report_and_exit;
+use anyhow::{Context as _, Result};
 use core::str::FromStr;
 use log::{Level, LevelFilter, Metadata, Record};
 
@@ -7,7 +7,7 @@ pub(crate) struct Logger {
 }
 
 impl Logger {
-    pub(crate) fn init() {
+    pub(crate) fn init() -> Result<()> {
         let (level, level_filter) = std::env::var("RUST_LOG")
             .ok()
             .and_then(|v| {
@@ -20,7 +20,9 @@ impl Logger {
         let logger: &'static Self = Box::leak(Box::new(Self { level }));
         log::set_logger(logger)
             .map(|()| log::set_max_level(level_filter))
-            .unwrap_or_else(|err| report_and_exit!("failed to initialize logger: {err:?}"));
+            .map_err(|err| anyhow::anyhow!(err))
+            .context("failed to initialize logger: {err:?}")?;
+        Ok(())
     }
 }
 

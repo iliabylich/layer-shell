@@ -37,9 +37,9 @@ impl FileReader {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         let State::ReadyTo(action) = self.state else {
-            return None;
+            return Ok(None);
         };
 
         let wants = match action {
@@ -52,12 +52,12 @@ impl FileReader {
 
             Action::Read => Wants::Read {
                 fd: self.fd,
-                buf: self.kind.buffer().as_mut_ptr(),
-                len: self.kind.buffer().len(),
+                buf: self.kind.buffer()?.as_mut_ptr(),
+                len: self.kind.buffer()?.len(),
             },
         };
         self.state = State::WaitingFor(action);
-        Some(wants)
+        Ok(Some(wants))
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&'static [u8]>> {
@@ -78,7 +78,7 @@ impl FileReader {
             (Action::Read, Satisfy::Read) => {
                 ensure!(res > 0, "FileReader::Read failed: {res}");
                 let bytes_read = res as usize;
-                let out = &self.kind.buffer()[..bytes_read];
+                let out = &self.kind.buffer()?[..bytes_read];
                 self.state = State::Sleeping;
                 Ok(Some(out))
             }

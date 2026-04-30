@@ -1,5 +1,5 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::Context as _;
+use anyhow::{Context as _, Result};
 use mini_sansio_dbus::{
     IncomingMessage, IncomingValue, MethodCall, OutgoingValue, Subscription, interface_is,
     messages::org_freedesktop_dbus::SetProperty, path_is, value_is,
@@ -19,7 +19,7 @@ pub(crate) struct TxRxEvent {
 impl TxRx {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: CONFIGURE,
+            oneshot: CONFIGURE.with_data(()),
             subscription: SUBSCRIPTION,
         }
     }
@@ -29,13 +29,14 @@ impl TxRx {
         self.subscription.reset(SystemDBus::queue());
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) {
-        self.oneshot.send(path.clone(), SystemDBus::queue());
+    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
+        self.oneshot.send(path.clone(), SystemDBus::queue())?;
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
+        Ok(())
     }
 
     pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {

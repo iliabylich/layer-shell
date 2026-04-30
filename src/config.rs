@@ -1,4 +1,4 @@
-use crate::utils::{StringRef, report_and_exit};
+use crate::utils::StringRef;
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -57,36 +57,36 @@ pub struct IOTerminal {
     pub command: *mut *mut core::ffi::c_char,
 }
 
-impl From<&Config> for IOConfig {
-    fn from(config: &Config) -> Self {
-        Self {
-            ping: vec_of_string_to_null_terminated_c_array(&config.ping),
-            terminal: IOTerminal::from(&config.terminal),
-        }
+impl TryFrom<&Config> for IOConfig {
+    type Error = anyhow::Error;
+
+    fn try_from(config: &Config) -> Result<Self> {
+        Ok(Self {
+            ping: vec_of_string_to_null_terminated_c_array(&config.ping)?,
+            terminal: IOTerminal::try_from(&config.terminal)?,
+        })
     }
 }
 
-impl From<&Terminal> for IOTerminal {
-    fn from(terminal: &Terminal) -> Self {
-        Self {
-            label: StringRef::new(&terminal.label),
-            command: vec_of_string_to_null_terminated_c_array(&terminal.command),
-        }
+impl TryFrom<&Terminal> for IOTerminal {
+    type Error = anyhow::Error;
+
+    fn try_from(terminal: &Terminal) -> Result<Self> {
+        Ok(Self {
+            label: StringRef::new(&terminal.label)?,
+            command: vec_of_string_to_null_terminated_c_array(&terminal.command)?,
+        })
     }
 }
 
-fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> *mut *mut core::ffi::c_char {
+fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> Result<*mut *mut core::ffi::c_char> {
     let mut cmd = cmd
         .iter()
-        .map(|s| {
-            std::ffi::CString::new(s.clone().into_bytes())
-                .unwrap_or_else(|err| report_and_exit!("{:?}", err))
-                .into_raw()
-        })
-        .collect::<Vec<_>>();
+        .map(|s| Ok(std::ffi::CString::new(s.clone().into_bytes())?.into_raw()))
+        .collect::<Result<Vec<_>>>()?;
     cmd.push(core::ptr::null_mut());
     let mut cmd = cmd.into_boxed_slice();
     let ptr = cmd.as_mut_ptr();
     core::mem::forget(cmd);
-    ptr
+    Ok(ptr)
 }

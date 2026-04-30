@@ -1,7 +1,8 @@
 use crate::{
     modules::{SessionDBus, TrayIcon, TrayItem, tray::service::Service},
-    utils::{StringRef, report_and_exit},
+    utils::StringRef,
 };
+use anyhow::{Context, Result};
 use dbusmenu::{
     GET_LAYOUT, SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED, SUBSCRIBE_TO_LAYOUT_UPDATED,
     items_properties_updated_match_rule, layout_updated_match_rule,
@@ -49,40 +50,43 @@ pub(crate) enum TrayEvent {
 }
 
 impl App {
-    pub(crate) fn new(service: Service) -> Self {
+    pub(crate) fn new(service: Service) -> Result<Self> {
         let service_name = service.name();
 
-        Self {
+        Ok(Self {
             service,
-            get_menu_and_icon: GET_MENU_AND_ICON,
-            subscribe_to_new_icon: SUBSCRIBE_TO_NEW_ICON,
+            get_menu_and_icon: GET_MENU_AND_ICON.with_data(()),
+            subscribe_to_new_icon: SUBSCRIBE_TO_NEW_ICON.with_data(()),
             menu_and_icon_subscription: MENU_AND_ICON_SUBSCRIPTION,
-            subscribe_to_layout_updated: SUBSCRIBE_TO_LAYOUT_UPDATED,
-            subscribe_to_items_properties_updated: SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED,
+            subscribe_to_layout_updated: SUBSCRIBE_TO_LAYOUT_UPDATED.with_data(()),
+            subscribe_to_items_properties_updated: SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED
+                .with_data(()),
 
-            menu: StringRef::new(""),
+            menu: StringRef::new("")?,
             get_layout: GET_LAYOUT.with_data(service_name),
 
             state: State::Nothing,
-        }
+        })
     }
 
-    fn schedule_request_props(&mut self) {
+    fn schedule_request_props(&mut self) -> Result<()> {
         self.get_menu_and_icon.reset();
         self.get_menu_and_icon
-            .send(self.service.name(), SessionDBus::queue());
+            .send(self.service.name(), SessionDBus::queue())?;
+        Ok(())
     }
 
-    pub(crate) fn init(&mut self) {
+    pub(crate) fn init(&mut self) -> Result<()> {
         self.subscribe_to_new_icon
-            .send(self.service.name(), SessionDBus::queue());
+            .send(self.service.name(), SessionDBus::queue())?;
         self.get_menu_and_icon
-            .send(self.service.name(), SessionDBus::queue());
+            .send(self.service.name(), SessionDBus::queue())?;
         self.menu_and_icon_subscription.start(
             "org.freedesktop.DBus",
             "/StatusNotifierItem",
             SessionDBus::queue(),
         );
+        Ok(())
     }
 
     pub(crate) fn reset(&mut self) {
@@ -113,29 +117,31 @@ impl App {
         }
     }
 
-    fn schedule_get_layout(&mut self) {
+    fn schedule_get_layout(&mut self) -> Result<()> {
         self.get_layout.reset();
         self.get_layout.send(
             (self.service.name(), self.menu.clone()),
             SessionDBus::queue(),
-        );
+        )?;
+        Ok(())
     }
 
-    fn on_menu_received(&mut self, menu: StringRef) {
+    fn on_menu_received(&mut self, menu: StringRef) -> Result<()> {
         if self.menu != "" {
-            return;
+            return Ok(());
         }
 
         self.menu = menu;
-        self.schedule_get_layout();
+        self.schedule_get_layout()?;
         self.subscribe_to_layout_updated.send(
             (self.service.name(), self.menu.clone()),
             SessionDBus::queue(),
-        );
+        )?;
         self.subscribe_to_items_properties_updated.send(
             (self.service.name(), self.menu.clone()),
             SessionDBus::queue(),
-        );
+        )?;
+        Ok(())
     }
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
@@ -176,29 +182,29 @@ impl App {
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<TrayEvent> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<Option<TrayEvent>> {
         if let Some((menu, icon)) = self.get_menu_and_icon.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Received requested props for {:?}", self.service);
 
-            self.on_menu_received(menu);
-            return self.on_icon_received(icon);
+            self.on_menu_received(menu)?;
+            return Ok(self.on_icon_received(icon));
         }
 
         if let Some(()) = self.subscribe_to_new_icon.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Subscribed to NewIcon");
-            return None;
+            return Ok(None);
         }
 
         if let Some((_, icon)) = self.menu_and_icon_subscription.process(message) {
             log::info!(target: "Tray", "Received updated props for {:?}", self.service);
             if let Some(icon) = icon {
-                return self.on_icon_received(icon);
+                return Ok(self.on_icon_received(icon));
             }
         }
 
         if let Some(layout) = self.get_layout.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Got layout");
-            return self.on_layout_receieved(layout);
+            return Ok(self.on_layout_receieved(layout));
         }
 
         if self
@@ -209,7 +215,7 @@ impl App {
             .is_some()
         {
             log::info!(target: "Tray", "Subscribed to LayoutUpdated");
-            return None;
+            return Ok(None);
         }
 
         if self
@@ -220,21 +226,21 @@ impl App {
             .is_some()
         {
             log::info!(target: "Tray", "Subscribed to ItemPropertiesUpdated");
-            return None;
+            return Ok(None);
         }
 
         if parse_new_icon_signal(message, self.service.raw_address()).is_ok() {
             log::info!(target: "Tray", "Received NewIcon signal");
-            self.schedule_request_props();
-            return None;
+            self.schedule_request_props()?;
+            return Ok(None);
         }
 
         if parse_layout_updated_signal(message, self.service.raw_address(), self.menu.clone())
             .is_ok()
         {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
-            self.schedule_get_layout();
-            return None;
+            self.schedule_get_layout()?;
+            return Ok(None);
         }
         if parse_items_properties_updated_signal(
             message,
@@ -244,17 +250,16 @@ impl App {
         .is_ok()
         {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
-            self.schedule_get_layout();
-            return None;
+            self.schedule_get_layout()?;
+            return Ok(None);
         }
 
-        None
+        Ok(None)
     }
 
-    pub(crate) fn trigger(&self, id: i32) {
-        let timestamp = u32::try_from(chrono::Utc::now().timestamp()).unwrap_or_else(|err| {
-            report_and_exit!(target: "Tray", "can't construct u32 from chrono timestamp: {err:?}")
-        });
+    pub(crate) fn trigger(&self, id: i32) -> Result<()> {
+        let timestamp = u32::try_from(chrono::Utc::now().timestamp())
+            .context("can't construct u32 from chrono timestamp")?;
 
         let message = OutgoingMessage::MethodCall {
             destination: Some(self.service.name().to_string()),
@@ -273,5 +278,6 @@ impl App {
         };
 
         SessionDBus::queue().push_back(message);
+        Ok(())
     }
 }

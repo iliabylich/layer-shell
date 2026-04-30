@@ -14,14 +14,15 @@ pub(crate) struct Sound {
 impl Sound {
     pub(crate) fn new() -> Self {
         Self {
-            oneshot: GET,
+            oneshot: GET.with_data(()),
             subscription: SUBSCRIPTION,
             healthy: true,
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.oneshot.send((), SessionDBus::queue())
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.oneshot.send((), SessionDBus::queue())?;
+        Ok(())
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
@@ -56,12 +57,13 @@ impl Sound {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: u64) {
+    pub(crate) fn tick(&mut self, tick: u64) -> Result<()> {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
             self.oneshot.reset();
-            self.oneshot.send((), SessionDBus::queue());
+            self.oneshot.send((), SessionDBus::queue())?;
         }
+        Ok(())
     }
 }
 

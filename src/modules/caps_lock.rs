@@ -5,6 +5,7 @@ use crate::{
     unix_socket::new_unix_socket,
     user_data::ModuleId,
 };
+use anyhow::Result;
 
 pub(crate) struct CapsLock {
     reader: UnixSocketReader,
@@ -24,8 +25,8 @@ impl CapsLock {
         ModuleId::CapsLock
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.reader.wants()
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+        Ok(self.reader.wants())
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {

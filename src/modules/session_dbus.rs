@@ -2,6 +2,7 @@ use crate::{
     sansio::{Satisfy, Wants},
     user_data::ModuleId,
 };
+use anyhow::Result;
 use mini_sansio_dbus::{DBusConnection, DBusQueue, IncomingMessage};
 
 pub(crate) struct SessionDBus {
@@ -35,8 +36,8 @@ impl SessionDBus {
         ModuleId::SessionDBus
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.conn.wants(queue(), readbuf()).map(Wants::from)
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+        Ok(self.conn.wants(queue(), readbuf()).map(Wants::from))
     }
 
     pub(crate) fn satisfy(

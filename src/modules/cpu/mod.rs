@@ -29,7 +29,7 @@ impl CPU {
         ModuleId::CPU
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         self.reader.wants()
     }
 
@@ -40,7 +40,7 @@ impl CPU {
         let s = core::str::from_utf8(buf).context("decoding error")?;
         let data = Parser::parse_all(s).context("parse error")?;
 
-        let usage_per_core = self.store.update(data);
+        let usage_per_core = self.store.update(data)?;
         let event = Event::CpuUsage {
             usage_per_core: usage_per_core.into(),
         };

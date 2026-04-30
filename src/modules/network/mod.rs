@@ -1,5 +1,6 @@
 use crate::{Event, event_queue::EventQueue, utils::StringRef};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
+use anyhow::Result;
 use mini_sansio_dbus::IncomingMessage;
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -37,27 +38,29 @@ impl Network {
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.wireless_connection.init()
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.wireless_connection.init()?;
+        Ok(())
     }
 
-    fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent) {
+    fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent) -> Result<()> {
         match e {
             WirelessConnectionEvent::Connected(path) => {
-                self.primary_device.init(path);
+                self.primary_device.init(path)?;
             }
             WirelessConnectionEvent::Disconnected => {
                 self.primary_device.reset();
             }
         }
+        Ok(())
     }
 
-    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) {
+    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) -> Result<()> {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
-                self.active_access_point.init(path.clone());
+                self.active_access_point.init(path.clone())?;
                 self.speed.reset();
-                self.tx_rx.init(path);
+                self.tx_rx.init(path)?;
             }
             PrimaryDeviceEvent::Disconnected => {
                 self.active_access_point.reset();
@@ -65,17 +68,19 @@ impl Network {
                 self.tx_rx.reset();
             }
         }
+        Ok(())
     }
 
-    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent) {
+    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent) -> Result<()> {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
-                self.ssid_and_strength.init(path);
+                self.ssid_and_strength.init(path)?;
             }
             ActiveAccessPointEvent::Disconnected => {
                 self.ssid_and_strength.reset();
             }
         }
+        Ok(())
     }
 
     fn on_tx_rx_event(&mut self, e: TxRxEvent) {
@@ -90,10 +95,10 @@ impl Network {
         }
     }
 
-    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
+    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) -> Result<()> {
         if let Some(ssid) = e.ssid {
             let event = Event::NetworkSsid {
-                ssid: StringRef::new(ssid.as_str()),
+                ssid: StringRef::new(ssid.as_str())?,
             };
             EventQueue::push_back(event)
         }
@@ -102,31 +107,35 @@ impl Network {
             let event = Event::NetworkStrength { strength };
             EventQueue::push_back(event)
         }
+
+        Ok(())
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
-        if let Some(e) = self.wireless_connection.on_message(message) {
-            self.on_wireless_connection_event(e);
-            return;
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<()> {
+        if let Some(e) = self.wireless_connection.on_message(message)? {
+            self.on_wireless_connection_event(e)?;
+            return Ok(());
         }
 
         if let Some(e) = self.primary_device.on_message(message) {
-            self.on_primary_device_event(e);
-            return;
+            self.on_primary_device_event(e)?;
+            return Ok(());
         }
 
         if let Some(e) = self.active_access_point.on_message(message) {
-            self.on_active_access_point_event(e);
-            return;
+            self.on_active_access_point_event(e)?;
+            return Ok(());
         }
 
         if let Some(e) = self.tx_rx.on_message(message) {
             self.on_tx_rx_event(e);
-            return;
+            return Ok(());
         }
 
         if let Some(e) = self.ssid_and_strength.on_message(message) {
-            self.on_ssid_and_strength_event(e);
+            return self.on_ssid_and_strength_event(e);
         }
+
+        Ok(())
     }
 }

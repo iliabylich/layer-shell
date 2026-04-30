@@ -1,4 +1,4 @@
-use crate::utils::assert_or_exit;
+use anyhow::{Result, ensure};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
@@ -16,13 +16,13 @@ static mut BUFFERS: [[u8; BUF_SIZE]; COUNT] =
     unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
 
 impl FileReaderKind {
-    pub(crate) fn buffer(self) -> &'static mut [u8; BUF_SIZE] {
-        assert_or_exit!(
+    pub(crate) fn buffer(self) -> Result<&'static mut [u8; BUF_SIZE]> {
+        ensure!(
             (self as usize) < (Self::MAX as usize),
             "unknown file kind: {}",
             self as usize
         );
 
-        unsafe { &mut BUFFERS[self as usize] }
+        unsafe { Ok(&mut BUFFERS[self as usize]) }
     }
 }

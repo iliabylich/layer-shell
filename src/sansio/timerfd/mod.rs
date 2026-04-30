@@ -1,7 +1,4 @@
-use crate::{
-    sansio::{Satisfy, Wants},
-    utils::assert_or_exit,
-};
+use crate::sansio::{Satisfy, Wants};
 use anyhow::{Result, bail, ensure};
 use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
 
@@ -18,13 +15,13 @@ enum State {
 }
 
 impl TimerFd {
-    pub(crate) fn new() -> Self {
-        Self {
-            fd: create_timer(),
+    pub(crate) fn new() -> Result<Self> {
+        Ok(Self {
+            fd: create_timer()?,
             buf: [0; _],
             ticks: 0,
             state: State::ReadyToRead,
-        }
+        })
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
@@ -59,10 +56,10 @@ impl TimerFd {
     }
 }
 
-fn create_timer() -> i32 {
+fn create_timer() -> Result<i32> {
     let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
-    assert_or_exit!(
+    ensure!(
         fd != -1,
         "timerfd_create returned -1: {}",
         std::io::Error::last_os_error()
@@ -80,11 +77,11 @@ fn create_timer() -> i32 {
     };
 
     let res = unsafe { timerfd_settime(fd, 0, &timer_spec, core::ptr::null_mut()) };
-    assert_or_exit!(
+    ensure!(
         res != -1,
         "timerfd_settime returned -1: {}",
         std::io::Error::last_os_error()
     );
 
-    fd
+    Ok(fd)
 }

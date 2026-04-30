@@ -1,4 +1,4 @@
-use crate::utils::report_and_exit;
+use anyhow::{Result, bail};
 
 const SLOTS_COUNT: usize = 100;
 
@@ -16,15 +16,15 @@ impl StringPool {
         }
     }
 
-    fn _alloc(&mut self, s: &str) -> StringRef {
+    fn _alloc(&mut self, s: &str) -> Result<StringRef> {
         let Some(slot) = self.slots.iter_mut().find(|slot| slot.free) else {
             for (idx, slot) in self.slots.iter().enumerate() {
                 log::error!("slot {idx}: {:?}", slot.as_str());
             }
-            report_and_exit!("not enough space in StringPool");
+            bail!("not enough space in StringPool");
         };
-        slot.acquire(s);
-        StringRef { slot }
+        slot.acquire(s)?;
+        Ok(StringRef { slot })
     }
 }
 
@@ -49,13 +49,13 @@ impl Slot {
         }
     }
 
-    fn acquire(&mut self, s: &str) {
+    fn acquire(&mut self, s: &str) -> Result<()> {
         if !self.free {
-            report_and_exit!("bug: Slot in string pool is not free");
+            bail!("bug: Slot in string pool is not free");
         }
 
         if s.len() >= MAX_STRING_LEN {
-            report_and_exit!(
+            bail!(
                 "string is too long to be in a StringPool (len is {})",
                 s.len()
             );
@@ -66,6 +66,7 @@ impl Slot {
         self.len = s.len();
         self.free = false;
         self.refcount = 1;
+        Ok(())
     }
 
     fn release(&mut self) {
@@ -97,7 +98,7 @@ pub struct StringRef {
 }
 
 impl StringRef {
-    pub(crate) fn new(s: &str) -> Self {
+    pub(crate) fn new(s: &str) -> Result<Self> {
         unsafe { STRING_POOL._alloc(s) }
     }
 
@@ -152,14 +153,10 @@ impl core::hash::Hash for StringRef {
 
 impl Eq for StringRef {}
 
-impl Default for StringRef {
-    fn default() -> Self {
-        Self::new("")
-    }
-}
+impl TryFrom<&str> for StringRef {
+    type Error = anyhow::Error;
 
-impl From<&str> for StringRef {
-    fn from(value: &str) -> Self {
+    fn try_from(value: &str) -> Result<Self> {
         Self::new(value)
     }
 }

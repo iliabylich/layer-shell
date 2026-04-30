@@ -180,8 +180,15 @@ int main(int argc, char **argv) {
   g_signal_connect(obj, signal, G_CALLBACK(callback), data)
 
   setenv("GSK_RENDERER", "cairo", true);
-  io_init(event_received, true);
+  if (!io_init(event_received, true)) {
+    fprintf(stderr, "io_init failed\n");
+    return 1;
+  }
   config = io_get_config();
+  if (config == NULL) {
+    fprintf(stderr, "NULL config\n");
+    return 1;
+  }
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);
   CONNECT(app, "activate", create_widgets, NULL);

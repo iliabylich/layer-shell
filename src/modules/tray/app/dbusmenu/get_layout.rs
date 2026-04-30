@@ -97,7 +97,7 @@ fn parse_item(service: StringRef, item: IncomingValue<'_>) -> Result<ItemOrSepar
 
     let id = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(id, IncomingValue::Int32(id));
-    let uuid = UUID::encode(service.clone(), id);
+    let uuid = UUID::encode(service.clone(), id)?;
 
     let props = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(props, IncomingValue::Array(props));
@@ -170,7 +170,7 @@ fn parse_item(service: StringRef, item: IncomingValue<'_>) -> Result<ItemOrSepar
         Ok(ItemOrSeparator::Item(TrayItem::Nested {
             id,
             uuid,
-            label: StringRef::new(label),
+            label: StringRef::new(label)?,
             children: children.into(),
         }))
     } else if type_ == "separator" {
@@ -179,27 +179,27 @@ fn parse_item(service: StringRef, item: IncomingValue<'_>) -> Result<ItemOrSepar
         Ok(ItemOrSeparator::Item(TrayItem::Disabled {
             id,
             uuid,
-            label: StringRef::new(label),
+            label: StringRef::new(label)?,
         }))
     } else if toggle_type == "checkmark" {
         Ok(ItemOrSeparator::Item(TrayItem::Checkbox {
             id,
             uuid,
-            label: StringRef::new(label),
+            label: StringRef::new(label)?,
             checked: toggle_state == 1,
         }))
     } else if toggle_type == "radio" {
         Ok(ItemOrSeparator::Item(TrayItem::Radio {
             id,
             uuid,
-            label: StringRef::new(label),
+            label: StringRef::new(label)?,
             selected: toggle_state == 1,
         }))
     } else {
         Ok(ItemOrSeparator::Item(TrayItem::Regular {
             id,
             uuid,
-            label: StringRef::new(label),
+            label: StringRef::new(label)?,
         }))
     }
 }

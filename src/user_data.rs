@@ -1,4 +1,4 @@
-use crate::utils::assert_or_exit;
+use anyhow::{Result, ensure};
 use core::cell::Cell;
 
 #[repr(u8)]
@@ -27,13 +27,15 @@ impl From<ModuleId> for u8 {
     }
 }
 
-impl From<u8> for ModuleId {
-    fn from(value: u8) -> Self {
-        assert_or_exit!(
+impl TryFrom<u8> for ModuleId {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(
             value <= MAX as u8,
             "received malformed ModuleId from io_uring: {value}"
         );
-        unsafe { core::mem::transmute::<u8, Self>(value) }
+        Ok(unsafe { core::mem::transmute::<u8, Self>(value) })
     }
 }
 
@@ -75,16 +77,18 @@ impl From<UserData> for u64 {
     }
 }
 
-impl From<u64> for UserData {
-    fn from(value: u64) -> Self {
+impl TryFrom<u64> for UserData {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u64) -> Result<Self> {
         let bytes: [u8; 8] = value.to_le_bytes();
-        let module_id = ModuleId::from(bytes[0]);
+        let module_id = ModuleId::try_from(bytes[0])?;
         let op = bytes[1];
         let req = {
             let mut req = [0; 4];
             req.copy_from_slice(&bytes[2..6]);
             u32::from_le_bytes(req)
         };
-        Self { module_id, op, req }
+        Ok(Self { module_id, op, req })
     }
 }

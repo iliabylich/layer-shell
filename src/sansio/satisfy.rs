@@ -1,4 +1,4 @@
-use crate::utils::assert_or_exit;
+use anyhow::{Result, ensure};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 
@@ -18,13 +18,15 @@ impl From<Satisfy> for u8 {
     }
 }
 
-impl From<u8> for Satisfy {
-    fn from(value: u8) -> Self {
-        assert_or_exit!(
+impl TryFrom<u8> for Satisfy {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        ensure!(
             value <= MAX as u8,
             "received malformed Satisfy from io_uring: {value}"
         );
-        unsafe { core::mem::transmute::<u8, Self>(value) }
+        unsafe { Ok(core::mem::transmute::<u8, Self>(value)) }
     }
 }
 

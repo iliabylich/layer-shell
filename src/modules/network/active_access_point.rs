@@ -1,5 +1,5 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::Context as _;
+use anyhow::{Context as _, Result};
 use mini_sansio_dbus::{
     IncomingMessage, IncomingValue, MethodCall, Subscription, interface_is,
     messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
@@ -28,7 +28,7 @@ impl From<StringRef> for ActiveAccessPointEvent {
 impl ActiveAccessPoint {
     pub(crate) fn new() -> Self {
         Self {
-            get: GET,
+            get: GET.with_data(()),
             subscription: SUBSCRIPTION,
         }
     }
@@ -38,13 +38,14 @@ impl ActiveAccessPoint {
         self.get.reset();
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) {
+    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
-        self.get.send(path, SystemDBus::queue());
+        self.get.send(path, SystemDBus::queue())?;
+        Ok(())
     }
 
     pub(crate) fn on_message(
@@ -78,7 +79,7 @@ const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
             IncomingValue::ObjectPath(active_access_point)
         );
 
-        Ok(StringRef::new(active_access_point))
+        Ok(StringRef::new(active_access_point)?)
     });
 
 const SUBSCRIPTION: Subscription<StringRef> =
@@ -101,7 +102,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
             if key == "ActiveAccessPoint" {
                 let value = value.materialize()?;
                 value_is!(value, IncomingValue::ObjectPath(value));
-                return Ok(StringRef::new(value));
+                return Ok(StringRef::new(value)?);
             }
         }
 

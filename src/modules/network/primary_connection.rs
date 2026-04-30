@@ -1,5 +1,5 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::Context as _;
+use anyhow::{Context as _, Result};
 use mini_sansio_dbus::{
     IncomingMessage, IncomingValue, MethodCall, Subscription, interface_is,
     messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
@@ -28,18 +28,19 @@ impl From<StringRef> for PrimaryConnectionEvent {
 impl PrimaryConnection {
     pub(crate) fn new() -> Self {
         Self {
-            get: GET,
+            get: GET.with_data(()),
             subscription: SUBSCRIPTION,
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.get.send((), SystemDBus::queue());
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.get.send((), SystemDBus::queue())?;
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             "/org/freedesktop/NetworkManager",
             SystemDBus::queue(),
         );
+        Ok(())
     }
 
     pub(crate) fn on_message(
@@ -66,7 +67,7 @@ const GET: MethodCall<(), StringRef, ()> = MethodCall::builder()
         value_is!(path, IncomingValue::Variant(path));
         let path = path.materialize()?;
         value_is!(path, IncomingValue::ObjectPath(path));
-        Ok(StringRef::new(path))
+        Ok(StringRef::new(path)?)
     });
 
 const SUBSCRIPTION: Subscription<StringRef> =
@@ -90,7 +91,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
             if key == "PrimaryConnection" {
                 let value = value.materialize()?;
                 value_is!(value, IncomingValue::ObjectPath(value));
-                return Ok(StringRef::new(value));
+                return Ok(StringRef::new(value)?);
             }
         }
 

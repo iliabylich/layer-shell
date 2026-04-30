@@ -12,17 +12,23 @@ pub(crate) struct NameLostOrNameOwnerChanged {
 impl NameLostOrNameOwnerChanged {
     pub(crate) fn new() -> Self {
         Self {
-            name_changed: SUBSCRIBE,
+            name_changed: SUBSCRIBE.with_data(()),
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.name_changed.send((), SessionDBus::queue())
+    pub(crate) fn init(&mut self) -> Result<()> {
+        self.name_changed.send((), SessionDBus::queue())?;
+        Ok(())
     }
 
-    pub(crate) fn on_message<'a>(&mut self, message: IncomingMessage<'a>) -> Option<StringRef> {
-        let address = parse_name_owner_changed(message).ok()?;
-        Some(StringRef::new(address))
+    pub(crate) fn on_message<'a>(
+        &mut self,
+        message: IncomingMessage<'a>,
+    ) -> Result<Option<StringRef>> {
+        let Ok(address) = parse_name_owner_changed(message) else {
+            return Ok(None);
+        };
+        Ok(Some(StringRef::new(address)?))
     }
 }
 

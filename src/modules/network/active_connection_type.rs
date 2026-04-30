@@ -1,5 +1,5 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::Context;
+use anyhow::{Context, Result};
 use mini_sansio_dbus::{
     IncomingBody, IncomingMessage, IncomingValue, MethodCall,
     messages::org_freedesktop_dbus::GetProperty, value_is,
@@ -14,13 +14,14 @@ impl ActiveConnectionType {
     pub(crate) fn new() -> Self {
         Self {
             path: None,
-            oneshot: GET,
+            oneshot: GET.with_data(()),
         }
     }
 
-    pub(crate) fn request(&mut self, path: StringRef) {
-        self.oneshot.send(path.clone(), SystemDBus::queue());
+    pub(crate) fn request(&mut self, path: StringRef) -> Result<()> {
+        self.oneshot.send(path.clone(), SystemDBus::queue())?;
         self.path = Some(path);
+        Ok(())
     }
 
     pub(crate) fn reset(&mut self) {

@@ -1,5 +1,5 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::Context as _;
+use anyhow::{Context as _, Result};
 use mini_sansio_dbus::{
     IncomingBody, IncomingMessage, IncomingValue, MethodCall, Subscription, interface_is,
     messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
@@ -28,7 +28,7 @@ impl From<StringRef> for PrimaryDeviceEvent {
 impl PrimaryDevice {
     pub(crate) fn new() -> Self {
         Self {
-            get: GET,
+            get: GET.with_data(()),
             subscription: SUBSCRIPTION,
         }
     }
@@ -38,13 +38,14 @@ impl PrimaryDevice {
         self.get.reset();
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) {
+    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
-        self.get.send(path, SystemDBus::queue());
+        self.get.send(path, SystemDBus::queue())?;
+        Ok(())
     }
 
     pub(crate) fn on_message(
@@ -75,7 +76,7 @@ const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
         let device = iter.try_next()?.context("expected at least one device")?;
         value_is!(device, IncomingValue::ObjectPath(device));
 
-        Ok(StringRef::new(device))
+        Ok(StringRef::new(device)?)
     });
 
 const SUBSCRIPTION: Subscription<StringRef> =
@@ -105,7 +106,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
                 let mut iter = devices.iter();
                 let device = iter.try_next()?.context("expected at least one device")?;
                 value_is!(device, IncomingValue::ObjectPath(device));
-                return Ok(StringRef::new(device));
+                return Ok(StringRef::new(device)?);
             }
         }
 
