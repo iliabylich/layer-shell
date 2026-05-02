@@ -8,7 +8,7 @@ use crate::{
         CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, Niri,
         SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
     },
-    sansio::{Satisfy, Wants},
+    sansio::{Https, Satisfy, Wants},
     user_data::{ModuleId, UserData},
     utils::Logger,
 };
@@ -34,7 +34,6 @@ pub(crate) struct IO {
     memory: Memory,
     caps_lock: CapsLock,
     niri: Niri,
-
     on_event: extern "C" fn(event: *const Event),
     running: bool,
     logging_enabled: bool,
@@ -64,10 +63,8 @@ impl IO {
         }
 
         Logger::init()?;
+        Https::init()?;
 
-        rustls_openssl::default_provider()
-            .install_default()
-            .map_err(|_err| anyhow::anyhow!("failed to install OpenSSL CryptoProvider"))?;
         IoUring::init(10, 0)?;
         unsafe {
             GLOBAL_IO = Box::into_raw(Box::new(IO::new(on_event, logging_enabled)?));

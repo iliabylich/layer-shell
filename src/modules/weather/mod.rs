@@ -2,7 +2,7 @@ use crate::{
     Event,
     event_queue::EventQueue,
     modules::weather::weather_response::WeatherResponse,
-    sansio::{Https, HttpsRequest, Satisfy, Wants},
+    sansio::{Https, HttpRequest, Satisfy, Wants},
     user_data::ModuleId,
 };
 use anyhow::Result;
@@ -31,7 +31,7 @@ impl Weather {
         *self = Self::Ready {
             lat,
             lng,
-            https: Https::new(HttpsRequest::get(HOST, path(lat, lng))),
+            https: Https::new(HttpRequest::get(HOST, path(lat, lng))),
         }
     }
 
@@ -51,7 +51,7 @@ impl Weather {
         match self {
             Weather::WaitingForLocation => Ok(()),
             Weather::Ready { https, .. } => {
-                let Some(response) = https.satisfy(satisfy, res)? else {
+                let Some(response) = https.satisfy(satisfy, res) else {
                     return Ok(());
                 };
                 let response = WeatherResponse::parse(response)?;
@@ -91,7 +91,7 @@ impl Weather {
             *self = Self::Ready {
                 lat,
                 lng,
-                https: Https::new(HttpsRequest::get(HOST, path(lat, lng))),
+                https: Https::new(HttpRequest::get(HOST, path(lat, lng))),
             }
         }
     }

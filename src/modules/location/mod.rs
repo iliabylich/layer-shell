@@ -1,5 +1,5 @@
 use crate::{
-    sansio::{Https, HttpsRequest, Satisfy, Wants},
+    sansio::{HttpRequest, Https, Satisfy, Wants},
     user_data::ModuleId,
 };
 use anyhow::Result;
@@ -16,7 +16,7 @@ pub(crate) struct Location {
 impl Location {
     pub(crate) fn new() -> Self {
         Self {
-            https: Https::new(HttpsRequest::get(HOST, "/")),
+            https: Https::new(HttpRequest::get(HOST, "/")),
         }
     }
 
@@ -29,7 +29,7 @@ impl Location {
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<(f64, f64)>> {
-        let Some(response) = self.https.satisfy(satisfy, res)? else {
+        let Some(response) = self.https.satisfy(satisfy, res) else {
             return Ok(None);
         };
         let location = LocationResponse::parse(response)?;
@@ -41,7 +41,6 @@ impl Location {
             Ok(location) => location,
             Err(err) => {
                 log::error!("Location module crashed: {satisfy:?} {res} {err:?}");
-                self.https.stop();
                 None
             }
         }

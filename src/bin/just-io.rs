@@ -6,17 +6,14 @@ extern "C" fn on_event(event: *const Event) {
 }
 
 fn main() -> Result<(), ()> {
-    if !io_init(on_event, false) {
-        eprintln!("io_init failed");
-        return Ok(());
-    }
+    assert!(io_init(on_event, false), "init failed");
 
     loop {
         // log::info!("Waiting...");
-        io_wait_readable();
+        assert!(io_wait_readable(), "wait_readable failed");
         // log::info!("Wait finished...");
 
         // log::info!("Processing...");
-        io_handle_readable();
+        assert!(io_handle_readable(), "wait_readable failed");
     }
 }

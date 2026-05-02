@@ -1,73 +1,142 @@
+mod handshake;
+mod read_write;
 mod request;
 mod response;
+mod state;
 
-use crate::sansio::{Dns, Satisfy, TlsOverTcp, Wants};
-use anyhow::Result;
-pub(crate) use request::HttpsRequest;
-pub(crate) use response::HttpsResponse;
-use rustls::pki_types::ServerName;
+pub(crate) use request::HttpRequest;
+pub(crate) use response::HttpResponse;
 
-pub(crate) struct Https {
-    domain: &'static str,
-    request: Vec<u8>,
-    state: State,
-}
+use crate::sansio::{Dns, Satisfy, Wants};
+use anyhow::{Result, ensure};
+use handshake::OpenSslHandshake;
+use libc::sockaddr_in;
+use read_write::OpenSslReadWrite;
+use state::OpenSslState;
 
 enum State {
     Dns(Box<Dns>),
-    TlsOverTcp(Box<TlsOverTcp>),
+
+    ReadyToSocket,
+    WaitingForSocket,
+    ReadyToConnect,
+    WaitingForConnect,
+
+    Handshaking(OpenSslHandshake),
+    ReadWrite(OpenSslReadWrite),
+
     Done,
-    Dead,
+}
+
+pub(crate) struct Https {
+    state: State,
+    addr: sockaddr_in,
+    fd: i32,
+    request: Vec<u8>,
+    domain: &'static str,
 }
 
 impl Https {
-    pub(crate) fn new(request: HttpsRequest) -> Self {
+    pub(crate) fn init() -> Result<()> {
+        OpenSslState::init()
+    }
+
+    pub(crate) fn new(request: HttpRequest) -> Self {
         let domain = request.host();
-        let request = request.into_bytes();
+
         Self {
-            domain,
-            request,
             state: State::Dns(Box::new(Dns::new(domain.as_bytes()))),
+            addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
+            fd: -1,
+            request: request.into_bytes(),
+            domain,
         }
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
             State::Dns(dns) => dns.wants(),
-            State::TlsOverTcp(tls_over_tcp) => tls_over_tcp.wants(),
 
-            State::Done | State::Dead => None,
+            State::ReadyToSocket => {
+                self.state = State::WaitingForSocket;
+                Some(Wants::Socket {
+                    domain: libc::AF_INET,
+                    r#type: libc::SOCK_STREAM,
+                })
+            }
+            State::WaitingForSocket => None,
+
+            State::ReadyToConnect => {
+                self.state = State::WaitingForConnect;
+                Some(Wants::Connect {
+                    fd: self.fd,
+                    addr: (&self.addr as *const libc::sockaddr_in).cast(),
+                    addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
+                })
+            }
+            State::WaitingForConnect => None,
+
+            State::Handshaking(handshake) => handshake.wants(),
+
+            State::ReadWrite(ready) => ready.wants(),
+
+            State::Done => None,
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<HttpsResponse>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
-            (State::Dead, _) => {}
-
             (State::Dns(dns), _) => {
-                if let Some(mut addr) = dns.satisfy(satisfy, res)? {
+                if let Some(mut addr) = dns.satisfy(satisfy, res).unwrap() {
                     addr.sin_port = 443_u16.to_be();
-                    let request = core::mem::take(&mut self.request);
-                    let server_name = ServerName::try_from(self.domain)?;
-                    self.state =
-                        State::TlsOverTcp(Box::new(TlsOverTcp::new(addr, server_name, request)?));
+                    self.addr = addr;
+                    self.state = State::ReadyToSocket;
                 }
             }
-            (State::TlsOverTcp(tls_over_tcp), _) => {
-                if let Some(response) = tls_over_tcp.satisfy(satisfy, res)? {
+
+            (State::WaitingForSocket, Satisfy::Socket) => {
+                ensure!(res >= 0, "OpenSsl::Socket failed: {res}");
+                self.fd = res;
+                self.state = State::ReadyToConnect;
+            }
+
+            (State::WaitingForConnect, Satisfy::Connect) => {
+                ensure!(res >= 0, "OpenSsl::Connect failed: {res}");
+
+                self.state = State::Handshaking(OpenSslHandshake::new(self.fd, self.domain)?);
+            }
+
+            (State::Handshaking(handshake), Satisfy::Read | Satisfy::Write) => {
+                if let Some(state) = handshake.satisfy(satisfy, res)? {
+                    self.state = State::ReadWrite(OpenSslReadWrite::new(
+                        self.fd,
+                        state,
+                        self.request.clone(),
+                    )?)
+                }
+            }
+
+            (State::ReadWrite(ready), Satisfy::Read | Satisfy::Write) => {
+                if let Some(response) = ready.satisfy(satisfy, res)? {
                     self.state = State::Done;
-                    let response = HttpsResponse::parse(response)?;
-                    return Ok(Some(response));
+                    return Ok(Some(HttpResponse::parse(response)?));
                 }
             }
-            (State::Done, _) => {}
+
+            _ => unreachable!(),
         }
 
         Ok(None)
     }
 
-    pub(crate) fn stop(&mut self) {
-        log::error!("Stopping HTTPS");
-        self.state = State::Dead;
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<HttpResponse> {
+        match self.try_satisfy(satisfy, res) {
+            Ok(res) => res,
+            Err(err) => {
+                log::error!("{err:?}");
+                self.state = State::Done;
+                None
+            }
+        }
     }
 }

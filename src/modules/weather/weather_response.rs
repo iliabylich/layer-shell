@@ -1,5 +1,5 @@
 use super::WeatherCode;
-use crate::{Event, sansio::HttpsResponse};
+use crate::{Event, sansio::HttpResponse};
 use anyhow::{Context as _, Result, ensure};
 use chrono::TimeZone;
 use serde::Deserialize;
@@ -33,7 +33,7 @@ pub(crate) struct DailyWeatherResponse {
 }
 
 impl WeatherResponse {
-    pub(crate) fn parse(response: HttpsResponse) -> Result<Self> {
+    pub(crate) fn parse(response: HttpResponse) -> Result<Self> {
         ensure!(response.status == 200);
         serde_json::from_str(&response.body).context("malformed JSON output")
     }

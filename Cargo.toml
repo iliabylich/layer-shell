@@ -13,26 +13,21 @@ anyhow = { version = "1", default-features = false, features = [
     "backtrace",
 ] }
 log = { version = "0.4", default-features = false }
-rustls = { version = "0.23", features = [
-    "tls12",
-    "std",
-    "log",
-], default-features = false }
-rustls-openssl = "0.3"
-webpki-roots = "1"
 libc = "0.2"
-chrono = { version = "0.4", default-features = false, features = [
-    "clock",
-    "serde",
-] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 serde = { version = "1", default-features = false, features = [
     "std",
     "derive",
 ] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
-toml = "1.1"
+toml = { version = "1.1", default-features = false, features = [
+    "std",
+    "serde",
+    "parse",
+] }
 mini-sansio-dbus = "1.1"
+openssl-sys = "0.9.114"
 
 [build-dependencies]
 cc = "1"
