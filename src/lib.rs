@@ -15,6 +15,7 @@
 #![expect(clippy::cast_possible_truncation)]
 #![expect(clippy::arithmetic_side_effects)]
 #![expect(clippy::too_many_lines)]
+#![expect(clippy::unsafe_derive_deserialize)]
 
 mod command;
 mod config;
@@ -29,12 +30,14 @@ mod unix_socket;
 mod user_data;
 mod utils;
 
+use std::os::fd::AsRawFd as _;
+
 use command::Command;
 use config::IOConfig;
 pub use event::Event;
 pub use ffi::FFIArray;
 
-use crate::{io::IO, liburing::IoUring, utils::StringRef};
+use crate::{io::IO, utils::StringRef};
 
 macro_rules! map_panic_to_exit_with_error {
     ($code:expr) => {{
@@ -70,12 +73,12 @@ pub extern "C" fn io_handle_readable() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_wait_readable() {
-    map_panic_to_exit_with_error!(IO::wait_readable());
+    map_panic_to_exit_with_error!(IO::global()?.wait_readable());
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_as_raw_fd() -> i32 {
-    IoUring::as_raw_fd()
+    map_panic_to_exit_with_error!(Ok(IO::global()?.as_raw_fd()))
 }
 
 #[unsafe(no_mangle)]

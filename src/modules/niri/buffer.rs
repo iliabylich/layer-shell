@@ -7,7 +7,7 @@ pub(crate) struct Buffer {
 }
 
 impl Buffer {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self { queue: vec![] }
     }
 
@@ -52,7 +52,7 @@ impl NiriEvent {
         let (pre, post) = bytes.split_at(nl_idx);
         let post = unsafe { post.get_unchecked(1..) };
 
-        Some((NiriEvent::parse(pre), post))
+        Some((Self::parse(pre), post))
     }
 }
 

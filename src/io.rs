@@ -1,3 +1,5 @@
+use std::os::fd::AsRawFd;
+
 use crate::{
     Event,
     command::Command,
@@ -8,13 +10,15 @@ use crate::{
         CPU, CapsLock, Clock, Control, ControlRequest, InfallibleModule, Location, Memory, Network,
         Niri, SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
     },
-    sansio::{Https, Satisfy, Wants},
+    sansio::{Https, Satisfy},
     user_data::{ModuleId, UserData},
     utils::Logger,
 };
 use anyhow::{Context, Result, bail};
 
 pub(crate) struct IO {
+    io_uring: IoUring,
+
     config: Config,
     pub(crate) io_config: *const IOConfig,
 
@@ -44,13 +48,13 @@ pub(crate) struct IO {
 static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
 
 macro_rules! schedule {
-    ($module:expr, $module_id:expr) => {{
+    ($module:expr, $module_id:expr, $io_uring:expr) => {{
         let module_id = $module_id;
         if let Some(wants) = $module.wants() {
             if let Some(wants_next) = $module.wants() {
                 anyhow::bail!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
             }
-            schedule_wanted(wants, module_id)?;
+            $io_uring.schedule(module_id, wants)?;
         }
     }};
 }
@@ -69,7 +73,6 @@ impl IO {
         SessionDBus::init();
         SystemDBus::init();
 
-        IoUring::init(10, 0)?;
         unsafe {
             GLOBAL_IO = Box::into_raw(Box::new(Self::new(on_event, logging_enabled)?));
         }
@@ -93,6 +96,8 @@ impl IO {
         let io_config = Box::leak(Box::new(IOConfig::try_from(&config)?));
 
         let mut this = Self {
+            io_uring: IoUring::new(10, 0)?,
+
             config,
             io_config,
 
@@ -125,23 +130,23 @@ impl IO {
     }
 
     fn start(&mut self) -> Result<()> {
-        schedule!(self.timer, ModuleId::Timer);
+        schedule!(self.timer, ModuleId::Timer, &mut self.io_uring);
 
-        schedule!(self.location, ModuleId::GeoLocation);
-        schedule!(self.cpu, ModuleId::CPU);
-        schedule!(self.memory, ModuleId::Memory);
-        schedule!(self.caps_lock, ModuleId::CapsLock);
-        schedule!(self.niri, ModuleId::Niri);
+        schedule!(self.location, ModuleId::GeoLocation, &mut self.io_uring);
+        schedule!(self.cpu, ModuleId::CPU, &mut self.io_uring);
+        schedule!(self.memory, ModuleId::Memory, &mut self.io_uring);
+        schedule!(self.caps_lock, ModuleId::CapsLock, &mut self.io_uring);
+        schedule!(self.niri, ModuleId::Niri, &mut self.io_uring);
 
         self.sound.init()?;
         Control::init();
         self.tray.init()?;
-        schedule!(self.session_dbus, ModuleId::SessionDBus);
+        schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
 
         self.network.init()?;
-        schedule!(self.system_dbus, ModuleId::SystemDBus);
+        schedule!(self.system_dbus, ModuleId::SystemDBus, &mut self.io_uring);
 
-        IoUring::submit_if_dirty()?;
+        self.io_uring.submit_if_dirty()?;
         Ok(())
     }
 
@@ -158,7 +163,7 @@ impl IO {
             return Ok(());
         }
 
-        while let Some(cqe) = IoUring::try_get_cqe()? {
+        while let Some(cqe) = self.io_uring.try_get_cqe()? {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
@@ -178,25 +183,25 @@ impl IO {
                         if let Some(weather) = self.weather.inner() {
                             weather.setup(lat, lng);
                         }
-                        schedule!(self.weather, ModuleId::Weather);
+                        schedule!(self.weather, ModuleId::Weather, &mut self.io_uring);
                     } else {
-                        schedule!(self.location, ModuleId::GeoLocation);
+                        schedule!(self.location, ModuleId::GeoLocation, &mut self.io_uring);
                     }
                 }
 
                 ModuleId::Weather => {
                     satisfy!(self.weather);
-                    schedule!(self.weather, ModuleId::Weather);
+                    schedule!(self.weather, ModuleId::Weather, &mut self.io_uring);
                 }
 
                 ModuleId::CapsLock => {
                     satisfy!(self.caps_lock);
-                    schedule!(self.caps_lock, ModuleId::CapsLock);
+                    schedule!(self.caps_lock, ModuleId::CapsLock, &mut self.io_uring);
                 }
 
                 ModuleId::Niri => {
                     satisfy!(self.niri);
-                    schedule!(self.niri, ModuleId::Niri);
+                    schedule!(self.niri, ModuleId::Niri, &mut self.io_uring);
                 }
 
                 ModuleId::SessionDBus => {
@@ -211,7 +216,7 @@ impl IO {
                         }
                     }
 
-                    schedule!(self.session_dbus, ModuleId::SessionDBus);
+                    schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
                 }
 
                 ModuleId::SystemDBus => {
@@ -221,42 +226,42 @@ impl IO {
                         self.network.on_message(message)?;
                     }
 
-                    schedule!(self.system_dbus, ModuleId::SystemDBus);
+                    schedule!(self.system_dbus, ModuleId::SystemDBus, &mut self.io_uring);
                 }
 
                 ModuleId::CPU => {
                     satisfy!(self.cpu);
-                    schedule!(self.cpu, ModuleId::CPU);
+                    schedule!(self.cpu, ModuleId::CPU, &mut self.io_uring);
                 }
                 ModuleId::Memory => {
                     satisfy!(self.memory);
-                    schedule!(self.memory, ModuleId::Memory);
+                    schedule!(self.memory, ModuleId::Memory, &mut self.io_uring);
                 }
                 ModuleId::Timer => {
                     if let Some(tick) = satisfy!(self.timer) {
-                        schedule!(self.timer, ModuleId::Timer);
+                        schedule!(self.timer, ModuleId::Timer, &mut self.io_uring);
 
                         Clock::tick();
 
                         self.weather.tick(tick);
-                        schedule!(self.weather, ModuleId::Weather);
+                        schedule!(self.weather, ModuleId::Weather, &mut self.io_uring);
 
                         self.cpu.tick(tick);
-                        schedule!(self.cpu, ModuleId::CPU);
+                        schedule!(self.cpu, ModuleId::CPU, &mut self.io_uring);
 
                         self.memory.tick(tick);
-                        schedule!(self.memory, ModuleId::Memory);
+                        schedule!(self.memory, ModuleId::Memory, &mut self.io_uring);
 
                         self.sound.tick(tick)?;
-                        schedule!(self.session_dbus, ModuleId::SessionDBus);
+                        schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
                     }
                 }
             }
 
-            IoUring::cqe_seen(cqe);
+            self.io_uring.cqe_seen(cqe);
         }
 
-        IoUring::submit_if_dirty()?;
+        self.io_uring.submit_if_dirty()?;
 
         while let Some(event) = EventQueue::pop_front() {
             if self.logging_enabled {
@@ -268,8 +273,8 @@ impl IO {
         Ok(())
     }
 
-    pub(crate) fn wait_readable() -> Result<()> {
-        IoUring::submit_and_wait(1)
+    pub(crate) fn wait_readable(&mut self) -> Result<()> {
+        self.io_uring.submit_and_wait(1)
     }
 
     pub(crate) fn process_command(&mut self, cmd: Command) -> Result<()> {
@@ -305,17 +310,17 @@ impl IO {
 
             Command::TriggerTray { uuid } => {
                 self.tray.trigger(uuid.as_str())?;
-                schedule!(self.session_dbus, ModuleId::SessionDBus);
+                schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
             }
         }
 
-        IoUring::submit_if_dirty()?;
+        self.io_uring.submit_if_dirty()?;
         Ok(())
     }
 
     fn stop(&mut self) {
         self.running = false;
-        IoUring::deinit();
+        self.io_uring.deinit();
     }
 
     pub(crate) fn global() -> Result<&'static mut Self> {
@@ -323,61 +328,10 @@ impl IO {
     }
 }
 
-fn schedule_wanted(wants: Wants, module_id: ModuleId) -> Result<()> {
-    match wants {
-        Wants::Socket { domain, r#type } => {
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_socket(domain, r#type, 0, 0);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::Socket));
-        }
-        Wants::Connect { fd, addr, addrlen } => {
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_connect(fd, addr, addrlen);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::Connect));
-        }
-        Wants::Read { fd, buf, len } => {
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_read(fd, buf, len);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
-        }
-        Wants::Write { fd, buf, len } => {
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_write(fd, buf, len);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
-        }
-        Wants::ReadWrite {
-            fd,
-            readbuf,
-            readlen,
-            writebuf,
-            writelen,
-        } => {
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_read(fd, readbuf, readlen);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
-
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_write(fd, writebuf, writelen);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
-        }
-        Wants::OpenAt {
-            dfd,
-            path,
-            flags,
-            mode,
-        } => {
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_openat(dfd, path, flags, mode);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::OpenAt));
-        }
-        Wants::Close { fd } => {
-            let mut sqe = IoUring::get_sqe()?;
-            sqe.prep_close(fd);
-            sqe.set_user_data(UserData::new(module_id, Satisfy::Close));
-        }
+impl AsRawFd for IO {
+    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
+        self.io_uring.as_raw_fd()
     }
-
-    Ok(())
 }
 
 fn spawn(cmd: &str) -> Result<()> {
