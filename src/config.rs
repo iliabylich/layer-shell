@@ -26,10 +26,8 @@ pub(crate) struct Terminal {
 impl Config {
     pub(crate) fn read() -> Result<Self> {
         let path = config_dir()?.join("layer-shell").join("config.toml");
-        let contents =
-            std::fs::read_to_string(&path).with_context(|| format!("failed to read {path:?}"))?;
-        let config: Config =
-            toml::from_str(&contents).with_context(|| format!("failed to parse {path:?}"))?;
+        let contents = std::fs::read_to_string(&path)?;
+        let config = toml::from_str(&contents)?;
 
         log::info!(target: "Config", "{config:#?}");
 

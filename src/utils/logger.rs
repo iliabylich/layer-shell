@@ -21,7 +21,7 @@ impl Logger {
         log::set_logger(logger)
             .map(|()| log::set_max_level(level_filter))
             .map_err(|err| anyhow::anyhow!(err))
-            .context("failed to initialize logger: {err:?}")?;
+            .context("failed to initialize logger")?;
         Ok(())
     }
 }

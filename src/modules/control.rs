@@ -12,36 +12,30 @@ use mini_sansio_dbus::{
 pub(crate) struct Control;
 
 impl Control {
-    pub(crate) fn new() -> Self {
-        Self
-    }
-
-    pub(crate) fn init(&mut self) {
+    pub(crate) fn init() {
         let message = RequestName::build("org.me.LayerShellControl");
         SessionDBus::queue().push_back(message);
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<ControlRequest> {
+    pub(crate) fn on_message(message: IncomingMessage<'_>) -> Option<ControlRequest> {
         if let Ok((sender, serial)) = try_parse_introspect_req(message) {
             let reply =
                 IntrospectResponse::build(serial, sender.as_str(), INTROSPECTION.to_string());
             SessionDBus::queue().push_back(reply);
-            return None;
-        }
-
-        if let Ok((member, sender, serial)) = try_parse_control_req(message) {
-            if let Ok(control_req) = ControlRequest::try_parse(member) {
-                let reply = OutgoingMessage::new_method_return_no_body(serial, sender);
-                SessionDBus::queue().push_back(reply);
-                return Some(control_req);
-            } else {
+            None
+        } else if let Ok((member, sender, serial)) = try_parse_control_req(message) {
+            let Ok(control_req) = ControlRequest::try_parse(member) else {
                 let reply = OutgoingMessage::new_err_no_method(serial, sender);
                 SessionDBus::queue().push_back(reply);
                 return None;
-            }
-        }
+            };
 
-        None
+            let reply = OutgoingMessage::new_method_return_no_body(serial, sender);
+            SessionDBus::queue().push_back(reply);
+            Some(control_req)
+        } else {
+            None
+        }
     }
 }
 
@@ -69,7 +63,7 @@ fn try_parse_introspect_req(message: IncomingMessage) -> Result<(StringRef, u32)
     Ok((StringRef::new(&sender)?, serial))
 }
 
-fn try_parse_control_req<'a>(message: IncomingMessage<'a>) -> Result<(&'a str, &'a str, u32)> {
+fn try_parse_control_req(message: IncomingMessage<'_>) -> Result<(&str, &str, u32)> {
     ensure!(message.message_type == MessageType::MethodCall);
     let serial = message.serial;
     let path = message.path.context("no Path")?;
@@ -86,7 +80,7 @@ fn try_parse_control_req<'a>(message: IncomingMessage<'a>) -> Result<(&'a str, &
     Ok((member, sender, serial))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum ControlRequest {
     Exit,
     ReloadStyles,
@@ -96,9 +90,9 @@ pub(crate) enum ControlRequest {
 impl ControlRequest {
     fn try_parse(s: &str) -> Result<Self> {
         match s {
-            "Exit" => Ok(ControlRequest::Exit),
-            "ReloadStyles" => Ok(ControlRequest::ReloadStyles),
-            "ToggleSessionScreen" => Ok(ControlRequest::ToggleSessionScreen),
+            "Exit" => Ok(Self::Exit),
+            "ReloadStyles" => Ok(Self::ReloadStyles),
+            "ToggleSessionScreen" => Ok(Self::ToggleSessionScreen),
             _ => bail!("unsupported method"),
         }
     }

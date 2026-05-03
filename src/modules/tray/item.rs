@@ -29,9 +29,9 @@ pub enum TrayItem {
         id: i32,
         uuid: StringRef,
         label: StringRef,
-        children: FFIArray<TrayItem>,
+        children: FFIArray<Self>,
     },
     Section {
-        children: FFIArray<TrayItem>,
+        children: FFIArray<Self>,
     },
 }

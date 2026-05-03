@@ -10,7 +10,7 @@ pub(crate) struct TxRx {
     subscription: Subscription<TxRxEvent>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct TxRxEvent {
     pub(crate) tx: Option<u64>,
     pub(crate) rx: Option<u64>,
@@ -30,12 +30,12 @@ impl TxRx {
     }
 
     pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
-        self.oneshot.send(path.clone(), SystemDBus::queue())?;
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
+        self.oneshot.send(path, SystemDBus::queue())?;
         Ok(())
     }
 

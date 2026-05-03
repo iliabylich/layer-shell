@@ -23,7 +23,7 @@ const MAX: ModuleId = ModuleId::Timer;
 
 impl From<ModuleId> for u8 {
     fn from(value: ModuleId) -> Self {
-        value as u8
+        value as Self
     }
 }
 
@@ -46,14 +46,14 @@ pub(crate) struct UserData {
     pub(crate) op: u8,
     pub(crate) req: u32,
 }
-const _: [u8; 8] = [0; core::mem::size_of::<UserData>()];
+const _: [u8; 8] = [0; size_of::<UserData>()];
 
 thread_local! {
     static NEXT_REQUEST_ID: Cell<u32> = const { Cell::new(1) };
 }
 fn next_request_id() -> u32 {
     let request_id = NEXT_REQUEST_ID.get();
-    NEXT_REQUEST_ID.set(request_id + 1);
+    NEXT_REQUEST_ID.set(request_id.wrapping_add(1));
     request_id
 }
 
@@ -73,7 +73,7 @@ impl From<UserData> for u64 {
         bytes[0] = user_data.module_id.into();
         bytes[1] = user_data.op;
         bytes[2..6].copy_from_slice(&user_data.req.to_le_bytes());
-        u64::from_le_bytes(bytes)
+        Self::from_le_bytes(bytes)
     }
 }
 

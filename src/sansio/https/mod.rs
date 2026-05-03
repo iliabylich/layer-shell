@@ -53,41 +53,39 @@ impl Https {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
             State::Dns(dns) => dns.wants(),
 
             State::ReadyToSocket => {
                 self.state = State::WaitingForSocket;
-                Some(Wants::Socket {
+                Ok(Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_STREAM,
-                })
+                }))
             }
-            State::WaitingForSocket => None,
 
             State::ReadyToConnect => {
                 self.state = State::WaitingForConnect;
-                Some(Wants::Connect {
+                Ok(Some(Wants::Connect {
                     fd: self.fd,
-                    addr: (&self.addr as *const libc::sockaddr_in).cast(),
-                    addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
-                })
+                    addr: (&raw const self.addr).cast(),
+                    addrlen: size_of::<sockaddr_in>() as u32,
+                }))
             }
-            State::WaitingForConnect => None,
 
-            State::Handshaking(handshake) => handshake.wants(),
+            State::Handshaking(handshake) => Ok(handshake.wants()),
 
-            State::ReadWrite(ready) => ready.wants(),
+            State::ReadWrite(ready) => Ok(ready.wants()),
 
-            State::Done => None,
+            State::WaitingForConnect | State::WaitingForSocket | State::Done => Ok(None),
         }
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
             (State::Dns(dns), _) => {
-                if let Some(mut addr) = dns.satisfy(satisfy, res).unwrap() {
+                if let Some(mut addr) = dns.satisfy(satisfy, res)? {
                     addr.sin_port = 443_u16.to_be();
                     self.addr = addr;
                     self.state = State::ReadyToSocket;
@@ -112,7 +110,7 @@ impl Https {
                         self.fd,
                         state,
                         self.request.clone(),
-                    )?)
+                    )?);
                 }
             }
 

@@ -52,10 +52,10 @@ pub(crate) const GET_LAYOUT: MethodCall<(StringRef, StringRef), Vec<TrayItem>, S
 
             value_is!(top_level_items, IncomingValue::Array(top_level_items));
 
-            parse_items(service, top_level_items).map_err(|err| err.into())
+            parse_items(service.as_str(), &top_level_items).map_err(Into::into)
         });
 
-fn parse_items(service: StringRef, items: IncomingArrayValue<'_>) -> Result<Vec<TrayItem>> {
+fn parse_items(service: &str, items: &IncomingArrayValue<'_>) -> Result<Vec<TrayItem>> {
     let mut out = vec![];
     let mut batch = vec![];
     let mut iter = items.iter();
@@ -63,9 +63,9 @@ fn parse_items(service: StringRef, items: IncomingArrayValue<'_>) -> Result<Vec<
     while let Some(item) = iter.try_next()? {
         value_is!(item, IncomingValue::Variant(item));
         let item = item.materialize()?;
-        let item = parse_item(service.clone(), item)?;
+        let item = parse_item(service, item)?;
         match item {
-            ItemOrSeparator::Skip => continue,
+            ItemOrSeparator::Skip => {}
             ItemOrSeparator::Item(item) => batch.push(item),
             ItemOrSeparator::Separator => {
                 let section = TrayItem::Section {
@@ -90,14 +90,14 @@ fn parse_items(service: StringRef, items: IncomingArrayValue<'_>) -> Result<Vec<
     Ok(out)
 }
 
-fn parse_item(service: StringRef, item: IncomingValue<'_>) -> Result<ItemOrSeparator> {
+fn parse_item(service: &str, item: IncomingValue<'_>) -> Result<ItemOrSeparator> {
     value_is!(item, IncomingValue::Struct(fields));
 
     let mut fields_iter = fields.iter()?;
 
     let id = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(id, IncomingValue::Int32(id));
-    let uuid = UUID::encode(service.clone(), id)?;
+    let uuid = UUID::encode(service, id)?;
 
     let props = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(props, IncomingValue::Array(props));
@@ -158,7 +158,7 @@ fn parse_item(service: StringRef, item: IncomingValue<'_>) -> Result<ItemOrSepar
 
     let children_values = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(children_values, IncomingValue::Array(children_values));
-    let children = parse_items(service, children_values)?;
+    let children = parse_items(service, &children_values)?;
 
     if label.len() > 100 {
         label = &label[..100];

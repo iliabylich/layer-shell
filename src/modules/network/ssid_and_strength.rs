@@ -59,7 +59,7 @@ const GET: MethodCall<StringRef, SsidAndStrengthEvent, ()> = MethodCall::builder
     .try_process(&|mut body: IncomingBody<'_>, _data| {
         let properties = body.try_next()?.context("no Properties in Body")?;
         value_is!(properties, IncomingValue::Array(properties));
-        let (ssid, strength) = parse_properties(properties)?;
+        let (ssid, strength) = parse_properties(&properties)?;
 
         let ssid = ssid.context("no Ssid")?;
         let strength = strength.context("no Strength")?;
@@ -80,12 +80,14 @@ const SUBSCRIPTION: Subscription<SsidAndStrengthEvent> =
 
         let properties = body.try_next()?.context("no Properties in Body")?;
         value_is!(properties, IncomingValue::Array(properties));
-        let (ssid, strength) = parse_properties(properties)?;
+        let (ssid, strength) = parse_properties(&properties)?;
 
         Ok(SsidAndStrengthEvent { ssid, strength })
     });
 
-fn parse_properties(properties: IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Option<u8>)> {
+fn parse_properties(
+    properties: &IncomingArrayValue<'_>,
+) -> Result<(Option<StringRef>, Option<u8>)> {
     let mut iter = properties.iter();
     let mut ssid = None;
     let mut strength = None;

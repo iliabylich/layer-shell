@@ -1,12 +1,12 @@
 use crate::{
     Event,
     event_queue::EventQueue,
+    modules::Module,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     unix_socket::new_unix_socket,
-    user_data::ModuleId,
     utils::StringRef,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -32,65 +32,46 @@ impl Niri {
             });
         };
 
-        let addr = new_unix_socket(path.as_bytes());
+        let addr = new_unix_socket(path.as_bytes())?;
         Ok(Self {
             state: Some(State::Writer(Box::new(UnixSocketOneshotWriter::new(
                 addr,
-                StringRef::new("\"EventStream\"\n")?,
+                "\"EventStream\"\n",
             )?))),
             queue: vec![],
             layouts: vec![],
         })
     }
 
-    pub(crate) fn module_id(&self) -> ModuleId {
-        ModuleId::Niri
-    }
-
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
-        let Some(state) = self.state.as_mut() else {
-            return Ok(None);
-        };
-
-        match state {
-            State::Writer(writer) => Ok(writer.wants()),
-            State::Reader(reader) => Ok(reader.wants()),
-        }
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         let Some(state) = &mut self.state else {
-            return;
+            return Ok(());
         };
 
         match state {
             State::Writer(writer) => {
-                if let Err(err) = writer.satisfy(satisfy, res) {
-                    log::error!(target: "Niri", "{err:?}");
-                    self.state = None;
-                    return;
-                }
+                writer.satisfy(satisfy, res)?;
 
                 if matches!(satisfy, Satisfy::Write) {
                     self.state = Some(State::Reader(Box::new(
                         UnixSocketReader::new_connected_from_fd(writer.fd()),
                     )));
                 }
+
+                Ok(())
             }
             State::Reader(reader) => {
                 let Some((buf, len)) = reader.satisfy(satisfy, res) else {
-                    return;
+                    return Ok(());
                 };
 
-                if let Err(err) = self.on_data(&buf[..len]) {
-                    log::error!(target: "Niri", "{err:?}");
-                    self.state = None;
-                }
+                self.parse_event(buf.get(..len).context("buf is too short")?)?;
+                Ok(())
             }
         }
     }
 
-    fn on_data(&mut self, buf: &[u8]) -> Result<()> {
+    fn parse_event(&mut self, buf: &[u8]) -> Result<()> {
         self.queue.extend(buf.iter());
 
         let mut q = self.queue.as_slice();
@@ -110,7 +91,7 @@ impl Niri {
                 None => {}
             }
 
-            let post = &post[1..];
+            let post = post.get(1..).context("malformed event")?;
             q = post;
         }
 
@@ -120,13 +101,38 @@ impl Niri {
             self.layouts = layouts;
         }
         if let Some(current_layout_idx) = current_layout_idx {
-            let lang = &self.layouts[current_layout_idx];
+            let lang = self
+                .layouts
+                .get(current_layout_idx)
+                .context("no such layout idx")?;
             EventQueue::push_back(Event::Language {
                 lang: StringRef::new(lang)?,
             });
         }
 
         Ok(())
+    }
+}
+
+impl Module for Niri {
+    type Output = ();
+
+    fn wants(&mut self) -> Result<Option<Wants>> {
+        let Some(state) = self.state.as_mut() else {
+            return Ok(None);
+        };
+
+        match state {
+            State::Writer(writer) => writer.wants(),
+            State::Reader(reader) => Ok(reader.wants()),
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
+        if let Err(err) = self.try_satisfy(satisfy, res) {
+            log::error!(target: "Niri", "{err:?}");
+            self.state = None;
+        }
     }
 }
 

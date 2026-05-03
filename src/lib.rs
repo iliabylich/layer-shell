@@ -1,4 +1,20 @@
 #![expect(static_mut_refs)]
+#![warn(trivial_casts)]
+#![warn(trivial_numeric_casts)]
+#![warn(unused_qualifications)]
+#![warn(deprecated_in_future)]
+#![warn(unused_lifetimes)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+#![warn(clippy::panic)]
+#![warn(clippy::indexing_slicing)]
+#![warn(clippy::arithmetic_side_effects)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![expect(clippy::redundant_pub_crate)]
+#![expect(clippy::cast_possible_truncation)]
+#![expect(clippy::arithmetic_side_effects)]
+#![expect(clippy::too_many_lines)]
 
 mod command;
 mod config;
@@ -78,7 +94,7 @@ pub extern "C" fn io_handle_readable() -> bool {
 #[unsafe(no_mangle)]
 pub extern "C" fn io_wait_readable() -> bool {
     map_panic_to_false!({
-        IO::global()?.wait_readable()?;
+        IO::wait_readable()?;
         Ok(true)
     })
 }

@@ -17,19 +17,19 @@ impl Parser {
                 .with_context(|| format!("not an int on {prefix} line"))
         };
 
-        let line1 = lines.next().context("no line 1")?;
-        let total_kb = parse_mem(line1, "MemTotal:")?;
+        let mem_total = lines.next().context("no line 1")?;
+        let total_kb = parse_mem(mem_total, "MemTotal:")?;
 
-        let _line2 = lines.next().context("no line 2")?;
+        let _skip = lines.next().context("no line 2")?;
 
-        let line3 = lines.next().context("no line 3")?;
-        let available_kb = parse_mem(line3, "MemAvailable:")?;
+        let mem_available = lines.next().context("no line 3")?;
+        let available_kb = parse_mem(mem_available, "MemAvailable:")?;
 
         let used_kb = total_kb - available_kb;
 
         Ok((
-            (used_kb as f64) / 1024.0 / 1024.0,
-            (total_kb as f64) / 1024.0 / 1024.0,
+            (f64::from(u32::try_from(used_kb).context("used KB is too long")?)) / 1024.0 / 1024.0,
+            (f64::from(u32::try_from(total_kb).context("total KB is too long")?)) / 1024.0 / 1024.0,
         ))
     }
 }

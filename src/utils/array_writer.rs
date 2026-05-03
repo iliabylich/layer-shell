@@ -6,25 +6,26 @@ pub(crate) struct ArrayWriter<'a> {
 }
 
 impl<'a> ArrayWriter<'a> {
-    pub(crate) fn new(buf: &'a mut [u8]) -> Self {
+    pub(crate) const fn new(buf: &'a mut [u8]) -> Self {
         ArrayWriter { buf, offset: 0 }
     }
 
     #[expect(dead_code)]
     pub(crate) fn as_str(&self) -> Result<&str> {
-        core::str::from_utf8(&self.buf[..self.offset]).context("malformed ArrayWriter's buffer")
+        core::str::from_utf8(self.buf.get(..self.offset).context("malformed offset")?)
+            .context("malformed ArrayWriter's buffer")
     }
 }
 
-impl<'a> core::fmt::Write for ArrayWriter<'a> {
+impl core::fmt::Write for ArrayWriter<'_> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         let bytes = s.as_bytes();
 
-        let remainder = &mut self.buf[self.offset..];
+        let remainder = self.buf.get_mut(self.offset..).ok_or(core::fmt::Error)?;
         if remainder.len() < bytes.len() {
             return Err(core::fmt::Error);
         }
-        let remainder = &mut remainder[..bytes.len()];
+        let remainder = remainder.get_mut(..bytes.len()).ok_or(core::fmt::Error)?;
         remainder.copy_from_slice(bytes);
 
         self.offset += bytes.len();

@@ -1,6 +1,6 @@
 use crate::{
+    modules::Module,
     sansio::{Satisfy, Wants},
-    user_data::ModuleId,
 };
 use anyhow::Result;
 use mini_sansio_dbus::{DBusConnection, DBusQueue, IncomingMessage};
@@ -14,15 +14,17 @@ fn readbuf() -> &'static mut Vec<u8> {
     unsafe { &mut READBUF }
 }
 
-static mut QUEUE: Option<DBusQueue> = None;
+static mut QUEUE: DBusQueue = DBusQueue::empty();
 fn queue() -> &'static mut DBusQueue {
-    unsafe { QUEUE.as_mut().unwrap() }
+    unsafe { &mut QUEUE }
 }
 
 impl SessionDBus {
-    pub(crate) fn new() -> Self {
-        unsafe { QUEUE = Some(DBusQueue::new()) }
+    pub(crate) fn init() {
+        queue().push_hello();
+    }
 
+    pub(crate) fn new() -> Self {
         Self {
             conn: DBusConnection::new_session().unwrap_or_else(|_| DBusConnection::dummy()),
         }
@@ -31,20 +33,16 @@ impl SessionDBus {
     pub(crate) fn queue() -> &'static mut DBusQueue {
         queue()
     }
+}
 
-    pub(crate) const fn module_id(&self) -> ModuleId {
-        ModuleId::SessionDBus
-    }
+impl Module for SessionDBus {
+    type Output = Option<IncomingMessage<'static>>;
 
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+    fn wants(&mut self) -> Result<Option<Wants>> {
         Ok(self.conn.wants(queue(), readbuf()).map(Wants::from))
     }
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Option<IncomingMessage<'static>> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
         let result = self.conn.satisfy(satisfy.into(), res, readbuf(), queue());
 
         match result {

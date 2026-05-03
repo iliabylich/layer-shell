@@ -4,22 +4,19 @@ pub(crate) enum HttpRequest {
 }
 
 impl HttpRequest {
-    pub(crate) fn get(host: &'static str, path: impl Into<String>) -> Self {
-        Self::Get {
-            host,
-            path: path.into(),
-        }
+    pub(crate) const fn get(host: &'static str, path: String) -> Self {
+        Self::Get { host, path }
     }
 
-    pub(crate) fn host(&self) -> &'static str {
+    pub(crate) const fn host(&self) -> &'static str {
         match self {
-            HttpRequest::Get { host, .. } => host,
+            Self::Get { host, .. } => host,
         }
     }
 
     pub(crate) fn into_bytes(self) -> Vec<u8> {
         match self {
-            HttpRequest::Get { path, host } => {
+            Self::Get { path, host } => {
                 format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n")
                     .into_bytes()
             }

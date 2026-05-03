@@ -5,7 +5,7 @@ pub struct FFIArray<T> {
 }
 
 impl<T> FFIArray<T> {
-    pub(crate) fn as_slice(&self) -> &[T] {
+    pub(crate) const fn as_slice(&self) -> &[T] {
         unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
     }
 }
@@ -26,7 +26,7 @@ where
 
 impl<T> From<FFIArray<T>> for Vec<T> {
     fn from(array: FFIArray<T>) -> Self {
-        let vec = unsafe { Vec::from_raw_parts(array.ptr, array.len, array.len) };
+        let vec = unsafe { Self::from_raw_parts(array.ptr, array.len, array.len) };
         std::mem::forget(array);
         vec
     }

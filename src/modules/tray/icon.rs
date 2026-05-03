@@ -17,7 +17,7 @@ pub enum TrayIcon {
 
 impl TrayIcon {
     pub(crate) fn detect_name_or_path(name_or_path: &str) -> Result<Self> {
-        if name_or_path.starts_with("/") {
+        if name_or_path.starts_with('/') {
             Ok(Self::Path {
                 path: StringRef::new(name_or_path)?,
             })

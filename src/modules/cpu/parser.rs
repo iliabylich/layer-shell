@@ -4,26 +4,7 @@ pub(crate) struct Parser;
 
 impl Parser {
     fn parse_line(line: &str) -> Result<(u8, u64, u64)> {
-        let mut parts = line.split(" ");
-
-        fn cut_str<'a>(
-            i: &mut impl Iterator<Item = &'a str>,
-            idx: usize,
-            name: &str,
-        ) -> Result<&'a str> {
-            i.next()
-                .with_context(|| format!("no {idx} item ({name}) in CPU line"))
-        }
-
-        fn cut_u64<'a>(
-            i: &mut impl Iterator<Item = &'a str>,
-            idx: usize,
-            name: &str,
-        ) -> Result<u64> {
-            let s = cut_str(i, idx, name)?;
-            s.parse()
-                .with_context(|| format!("non-int {name} component: {s}"))
-        }
+        let mut parts = line.split(' ');
 
         let id = cut_str(&mut parts, 0, "cpuN")?
             .strip_prefix("cpu")
@@ -58,11 +39,25 @@ impl Parser {
     }
 
     pub(crate) fn parse_all(s: &str) -> Result<Vec<(u8, u64, u64)>> {
-        s.lines()
-            .filter(|line| line.starts_with("cpu") && line.as_bytes()[3].is_ascii_digit())
-            .map(|line| {
-                Self::parse_line(line).with_context(|| format!("failed to parse line '{line}'"))
-            })
-            .collect::<Result<Vec<_>, _>>()
+        let mut cpus = vec![];
+        for line in s.lines() {
+            if line.starts_with("cpu") && line.as_bytes().get(3).is_some_and(u8::is_ascii_digit) {
+                let cpu = Self::parse_line(line)
+                    .with_context(|| format!("failed to parse line '{line}'"))?;
+                cpus.push(cpu);
+            }
+        }
+        Ok(cpus)
     }
+}
+
+fn cut_str<'a>(i: &mut impl Iterator<Item = &'a str>, idx: usize, name: &str) -> Result<&'a str> {
+    i.next()
+        .with_context(|| format!("no {idx} item ({name}) in CPU line"))
+}
+
+fn cut_u64<'a>(i: &mut impl Iterator<Item = &'a str>, idx: usize, name: &str) -> Result<u64> {
+    let s = cut_str(i, idx, name)?;
+    s.parse()
+        .with_context(|| format!("non-int {name} component: {s}"))
 }

@@ -1,4 +1,4 @@
-use anyhow::{Result, ensure};
+use anyhow::{Context as _, Result, ensure};
 use openssl_sys::{
     BIO, BIO_new, BIO_s_mem, SSL, SSL_CTX, SSL_CTX_new, SSL_CTX_set_default_verify_paths,
     SSL_CTX_set_min_proto_version, SSL_CTX_set_verify, SSL_VERIFY_PEER, SSL_free, SSL_get0_param,
@@ -36,7 +36,7 @@ impl OpenSslState {
         let ssl = unsafe { SSL_new(ctx) };
         ensure!(!ssl.is_null(), "SSL is NULL");
 
-        let hostname = CString::from_str(hostname).unwrap();
+        let hostname = CString::from_str(hostname).context("hostname contains NULL")?;
         let res = unsafe { SSL_set_tlsext_host_name(ssl, hostname.as_ptr().cast_mut()) };
         ensure!(res == 1, "SSL_set_tlsext_host_name failed");
 

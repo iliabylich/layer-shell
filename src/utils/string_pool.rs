@@ -10,13 +10,14 @@ struct StringPool {
 static mut STRING_POOL: StringPool = StringPool::new();
 
 impl StringPool {
+    #[expect(clippy::large_stack_arrays)]
     const fn new() -> Self {
         Self {
             slots: [Slot::empty(); SLOTS_COUNT],
         }
     }
 
-    fn _alloc(&mut self, s: &str) -> Result<StringRef> {
+    fn alloc(&mut self, s: &str) -> Result<StringRef> {
         let Some(slot) = self.slots.iter_mut().find(|slot| slot.free) else {
             for (idx, slot) in self.slots.iter().enumerate() {
                 log::error!("slot {idx}: {:?}", slot.as_str());
@@ -62,14 +63,18 @@ impl Slot {
         }
 
         let bytes = s.as_bytes();
-        self.s[..bytes.len()].copy_from_slice(bytes);
+        unsafe {
+            self.s
+                .get_unchecked_mut(..bytes.len())
+                .copy_from_slice(bytes);
+        }
         self.len = s.len();
         self.free = false;
         self.refcount = 1;
         Ok(())
     }
 
-    fn release(&mut self) {
+    const fn release(&mut self) {
         self.s = [0; 256];
         self.len = 0;
         self.refcount = 0;
@@ -77,18 +82,18 @@ impl Slot {
     }
 
     fn as_bytes(&self) -> &[u8] {
-        &self.s[..self.len]
+        unsafe { self.s.get_unchecked(..self.len) }
     }
 
     fn as_str(&self) -> &str {
         unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
     }
 
-    fn addref(&mut self) {
+    const fn addref(&mut self) {
         self.refcount += 1;
     }
 
-    fn delref(&mut self) {
+    const fn delref(&mut self) {
         self.refcount -= 1;
     }
 }
@@ -99,7 +104,7 @@ pub struct StringRef {
 
 impl StringRef {
     pub(crate) fn new(s: &str) -> Result<Self> {
-        unsafe { STRING_POOL._alloc(s) }
+        unsafe { STRING_POOL.alloc(s) }
     }
 
     #[expect(clippy::mut_from_ref)]
@@ -187,10 +192,10 @@ mod tests {
     fn test_string_pool() {
         let mut pool = StringPool::new();
 
-        let s1 = pool._alloc("foo");
+        let s1 = pool.alloc("foo");
         assert!(!pool.slots[0].free);
 
-        let s2 = pool._alloc("bar");
+        let s2 = pool.alloc("bar");
         assert!(!pool.slots[1].free);
 
         drop(s2);
@@ -206,7 +211,7 @@ mod tests {
 
         for _ in 0..2 {
             let strings = (0..SLOTS_COUNT)
-                .map(|_| pool._alloc("foo"))
+                .map(|_| pool.alloc("foo"))
                 .collect::<Vec<_>>();
 
             for idx in 0..SLOTS_COUNT {

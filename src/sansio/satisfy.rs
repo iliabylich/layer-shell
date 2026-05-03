@@ -14,7 +14,7 @@ const MAX: Satisfy = Satisfy::OpenAt;
 
 impl From<Satisfy> for u8 {
     fn from(value: Satisfy) -> Self {
-        value as u8
+        value as Self
     }
 }
 
@@ -33,10 +33,10 @@ impl TryFrom<u8> for Satisfy {
 impl From<Satisfy> for mini_sansio_dbus::Satisfy {
     fn from(satisfy: Satisfy) -> Self {
         match satisfy {
-            Satisfy::Socket => mini_sansio_dbus::Satisfy::Socket,
-            Satisfy::Connect => mini_sansio_dbus::Satisfy::Connect,
-            Satisfy::Write => mini_sansio_dbus::Satisfy::Write,
-            Satisfy::Read => mini_sansio_dbus::Satisfy::Read,
+            Satisfy::Socket => Self::Socket,
+            Satisfy::Connect => Self::Connect,
+            Satisfy::Write => Self::Write,
+            Satisfy::Read => Self::Read,
             _ => unreachable!(),
         }
     }

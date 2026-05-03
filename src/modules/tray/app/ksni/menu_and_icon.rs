@@ -19,7 +19,7 @@ pub(crate) const GET_MENU_AND_ICON: MethodCall<StringRef, (StringRef, TrayIcon),
     .try_process(&|mut body, _data| {
         let array = body.try_next()?.context("no array")?;
         value_is!(array, IncomingValue::Array(array));
-        match parse(array)? {
+        match parse(&array)? {
             (Some(menu), Some(icon)) => Ok((menu, icon)),
 
             other => {
@@ -41,10 +41,10 @@ pub(crate) const MENU_AND_ICON_SUBSCRIPTION: Subscription<(Option<StringRef>, Op
 
         let items = body.try_next()?.context("no items")?;
         value_is!(items, IncomingValue::Array(items));
-        parse(items).map_err(|err| err.into())
+        parse(&items).map_err(Into::into)
     });
 
-fn parse(attributes: IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Option<TrayIcon>)> {
+fn parse(attributes: &IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Option<TrayIcon>)> {
     let mut menu = None;
     let mut icon_name = None;
     let mut icon_pixmap = None;
@@ -102,6 +102,7 @@ fn parse(attributes: IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Optio
                 };
 
                 // argb -> rgba
+                #[expect(clippy::indexing_slicing, clippy::cast_sign_loss)]
                 for i in 0..width * height {
                     let base = i as usize * 4;
 

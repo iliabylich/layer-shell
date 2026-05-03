@@ -49,7 +49,7 @@ impl Tray {
             return Ok(());
         }
 
-        if let Some(service) = self.name_lost_or_changed.on_message(message)? {
+        if let Some(service) = NameLostOrNameOwnerChanged::on_message(message)? {
             let Some(key) = self
                 .registry
                 .keys()
@@ -67,7 +67,7 @@ impl Tray {
             tray_app.reset();
             EventQueue::push_back(Event::TrayAppRemoved {
                 service: StringRef::new(service.as_str())?,
-            })
+            });
         }
 
         for (service, app) in &mut self.registry {
@@ -96,8 +96,8 @@ impl Tray {
         Ok(())
     }
 
-    pub(crate) fn trigger(&self, uuid: StringRef) -> Result<()> {
-        let Ok((service, id)) = UUID::decode(uuid.clone()) else {
+    pub(crate) fn trigger(&self, uuid: &str) -> Result<()> {
+        let Ok((service, id)) = UUID::decode(uuid) else {
             log::error!("malformed UUID: {uuid:?}");
             return Ok(());
         };

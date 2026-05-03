@@ -95,17 +95,17 @@ impl Network {
         }
     }
 
-    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) -> Result<()> {
+    fn on_ssid_and_strength_event(e: SsidAndStrengthEvent) -> Result<()> {
         if let Some(ssid) = e.ssid {
             let event = Event::NetworkSsid {
                 ssid: StringRef::new(ssid.as_str())?,
             };
-            EventQueue::push_back(event)
+            EventQueue::push_back(event);
         }
 
         if let Some(strength) = e.strength {
             let event = Event::NetworkStrength { strength };
-            EventQueue::push_back(event)
+            EventQueue::push_back(event);
         }
 
         Ok(())
@@ -133,7 +133,7 @@ impl Network {
         }
 
         if let Some(e) = self.ssid_and_strength.on_message(message) {
-            return self.on_ssid_and_strength_event(e);
+            return Self::on_ssid_and_strength_event(e);
         }
 
         Ok(())

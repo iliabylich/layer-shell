@@ -79,7 +79,7 @@ const GET: MethodCall<(), (u32, bool), ()> = MethodCall::builder()
         let attributes = body.try_next()?.context("expected 1 value")?;
         value_is!(attributes, IncomingValue::Array(attributes));
 
-        let (volume, muted) = parse(attributes)?;
+        let (volume, muted) = parse(&attributes)?;
         let volume = volume.context("no Volume")?;
         let muted = muted.context("no Muted")?;
 
@@ -97,10 +97,10 @@ const SUBSCRIPTION: Subscription<(Option<u32>, Option<bool>)> =
         let attributes = body.try_next()?.context("no attributes in Body")?;
         value_is!(attributes, IncomingValue::Array(attributes));
 
-        parse(attributes).map_err(|err| err.into())
+        parse(&attributes).map_err(Into::into)
     });
 
-fn parse(attributes: IncomingArrayValue) -> Result<(Option<u32>, Option<bool>)> {
+fn parse(attributes: &IncomingArrayValue) -> Result<(Option<u32>, Option<bool>)> {
     let mut volume = None;
     let mut muted = None;
 
@@ -124,7 +124,7 @@ fn parse(attributes: IncomingArrayValue) -> Result<(Option<u32>, Option<bool>)> 
         if key == "Muted" {
             let value = value.materialize()?;
             value_is!(value, IncomingValue::Bool(value));
-            muted = Some(value)
+            muted = Some(value);
         }
     }
 

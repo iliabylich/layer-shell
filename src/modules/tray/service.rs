@@ -7,7 +7,7 @@ pub(crate) struct Service {
 }
 
 impl Service {
-    pub(crate) fn new(raw_address: StringRef, name: StringRef) -> Self {
+    pub(crate) const fn new(raw_address: StringRef, name: StringRef) -> Self {
         Self { raw_address, name }
     }
 

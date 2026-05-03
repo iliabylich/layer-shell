@@ -97,22 +97,22 @@ impl App {
         self.get_layout.reset();
     }
 
-    fn remove_match(&self, rule: String) {
+    fn remove_match(rule: String) {
         let message = RemoveMatch::build_from_rule(rule);
         SessionDBus::queue().push_back(message);
     }
 
     fn unsubscribe_matches(&self) {
-        self.remove_match(new_icon_match_rule(self.service.name()));
+        Self::remove_match(new_icon_match_rule(self.service.name().as_str()));
 
         if self.menu != "" {
-            self.remove_match(layout_updated_match_rule(
-                self.service.name(),
-                self.menu.clone(),
+            Self::remove_match(layout_updated_match_rule(
+                self.service.name().as_str(),
+                self.menu.as_str(),
             ));
-            self.remove_match(items_properties_updated_match_rule(
-                self.service.name(),
-                self.menu.clone(),
+            Self::remove_match(items_properties_updated_match_rule(
+                self.service.name().as_str(),
+                self.menu.as_str(),
             ));
         }
     }
@@ -190,7 +190,7 @@ impl App {
             return Ok(self.on_icon_received(icon));
         }
 
-        if let Some(()) = self.subscribe_to_new_icon.try_recv(message).ok().flatten() {
+        if self.subscribe_to_new_icon.try_recv(message).ok().flatten() == Some(()) {
             log::info!(target: "Tray", "Subscribed to NewIcon");
             return Ok(None);
         }
@@ -229,14 +229,18 @@ impl App {
             return Ok(None);
         }
 
-        if parse_new_icon_signal(message, self.service.raw_address()).is_ok() {
+        if parse_new_icon_signal(message, self.service.raw_address().as_str()).is_ok() {
             log::info!(target: "Tray", "Received NewIcon signal");
             self.schedule_request_props()?;
             return Ok(None);
         }
 
-        if parse_layout_updated_signal(message, self.service.raw_address(), self.menu.clone())
-            .is_ok()
+        if parse_layout_updated_signal(
+            message,
+            self.service.raw_address().as_str(),
+            self.menu.as_str(),
+        )
+        .is_ok()
         {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
             self.schedule_get_layout()?;
@@ -244,8 +248,8 @@ impl App {
         }
         if parse_items_properties_updated_signal(
             message,
-            self.service.raw_address(),
-            self.menu.clone(),
+            self.service.raw_address().as_str(),
+            self.menu.as_str(),
         )
         .is_ok()
         {

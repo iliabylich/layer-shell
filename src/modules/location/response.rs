@@ -5,28 +5,8 @@ use serde::Deserialize;
 pub(crate) struct LocationResponse;
 
 impl LocationResponse {
-    pub(crate) fn parse(response: HttpResponse) -> Result<(f64, f64)> {
+    pub(crate) fn parse(response: &HttpResponse) -> Result<(f64, f64)> {
         ensure!(response.status == 200);
-
-        #[derive(Debug, Deserialize)]
-        struct Response {
-            location: Vec<Location>,
-        }
-        #[derive(Debug, Deserialize)]
-        struct Location {
-            lat: f64,
-            lng: f64,
-            source: Source,
-        }
-        #[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
-        enum Source {
-            #[serde(rename = "freegeoip")]
-            FreeGeoIP,
-            #[serde(rename = "ipapi")]
-            IpAPI,
-            #[serde(rename = "ipwhois")]
-            IpWhoIs,
-        }
 
         let response: Response =
             serde_json::from_str(&response.body).context("malformed JSON output")?;
@@ -45,4 +25,26 @@ impl LocationResponse {
 
         Ok((lat, lng))
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct Response {
+    location: Vec<Location>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Location {
+    lat: f64,
+    lng: f64,
+    source: Source,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+enum Source {
+    #[serde(rename = "freegeoip")]
+    FreeGeoIP,
+    #[serde(rename = "ipapi")]
+    IpAPI,
+    #[serde(rename = "ipwhois")]
+    IpWhoIs,
 }

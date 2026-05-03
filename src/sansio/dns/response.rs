@@ -40,9 +40,9 @@ impl Response {
                     },
                     sin_zero: [0; 8],
                 });
-            } else {
-                let _ = read_slice(buf, &mut pos, rdlength as usize)?;
             }
+
+            let _ = read_slice(buf, &mut pos, rdlength as usize)?;
         }
 
         bail!("no A record in the DNS response")

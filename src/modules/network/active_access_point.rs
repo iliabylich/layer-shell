@@ -59,7 +59,7 @@ impl ActiveAccessPoint {
 }
 
 const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
-    .send(&|path: StringRef, _| {
+    .send(&|path: StringRef, ()| {
         GetProperty::build(
             "org.freedesktop.NetworkManager",
             path.as_str(),
@@ -67,7 +67,7 @@ const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
             "ActiveAccessPoint",
         )
     })
-    .try_process(&|mut body: mini_sansio_dbus::IncomingBody<'_>, _| {
+    .try_process(&|mut body: mini_sansio_dbus::IncomingBody<'_>, ()| {
         let active_access_point = body.try_next()?.context("no ActiveAccessPoint in Body")?;
         value_is!(
             active_access_point,

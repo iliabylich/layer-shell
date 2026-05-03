@@ -1,8 +1,8 @@
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 pub(crate) struct Store(Option<Vec<(u8, u64, u64)>>);
 
 impl Store {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self(None)
     }
 
@@ -14,20 +14,6 @@ impl Store {
                     previous.len(),
                     next.len()
                 );
-            }
-
-            fn load_comparing_to(
-                (next_id, next_idle, next_total): (u8, u64, u64),
-                (prev_id, prev_idle, prev_total): (u8, u64, u64),
-            ) -> Result<u8> {
-                if next_id != prev_id {
-                    bail!("CPU id mismatch: {next_id} vs {prev_id}");
-                }
-
-                let idle_d = (next_idle - prev_idle) as f64;
-                let total_d = (next_total - prev_total) as f64;
-
-                Ok((100.0 * (1.0 - idle_d / total_d)) as u8)
             }
 
             previous
@@ -42,4 +28,22 @@ impl Store {
         self.0 = Some(next);
         Ok(usage_per_core)
     }
+}
+
+fn load_comparing_to(
+    (next_id, next_idle, next_total): (u8, u64, u64),
+    (prev_id, prev_idle, prev_total): (u8, u64, u64),
+) -> Result<u8> {
+    if next_id != prev_id {
+        bail!("CPU id mismatch: {next_id} vs {prev_id}");
+    }
+
+    let idle_d = f64::from(u32::try_from(next_idle - prev_idle).context("values are too large")?);
+    let total_d =
+        f64::from(u32::try_from(next_total - prev_total).context("values are too large")?);
+    let percent = 100.0 * (1.0 - idle_d / total_d);
+
+    let percent = percent as i64;
+
+    u8::try_from(percent).context("percent is too big for u8")
 }

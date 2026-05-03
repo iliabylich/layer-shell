@@ -15,7 +15,7 @@ impl StatusNotifierWatcherIntrospection {
         }
     }
 
-    fn reply_ok(&self, serial: u32, destination: &str, body: Vec<OutgoingValue>) {
+    fn reply_ok(serial: u32, destination: &str, body: Vec<OutgoingValue>) {
         let message = OutgoingMessage::MethodReturn {
             serial: 0,
             reply_serial: serial,
@@ -27,29 +27,29 @@ impl StatusNotifierWatcherIntrospection {
         SessionDBus::queue().push_back(message);
     }
 
-    fn reply_err(&self, serial: u32, destination: &str) {
+    fn reply_err(serial: u32, destination: &str) {
         let reply = OutgoingMessage::new_err_no_method(serial, destination);
         SessionDBus::queue().push_back(reply);
     }
 
-    pub(crate) fn process_message(&mut self, message: IncomingMessage<'_>) -> bool {
+    pub(crate) fn process_message(&self, message: IncomingMessage<'_>) -> bool {
         let Ok((serial, sender, req)) = self.introspection.handle(message) else {
             return false;
         };
 
         match req {
             IntrospectibleObjectAtRequest::Introspect { path } => match path {
-                "/" => self.reply_ok(
+                "/" => Self::reply_ok(
                     serial,
                     sender,
                     vec![OutgoingValue::String(root_introspection_xml())],
                 ),
-                "/StatusNotifierWatcher" => self.reply_ok(
+                "/StatusNotifierWatcher" => Self::reply_ok(
                     serial,
                     sender,
                     vec![OutgoingValue::String(ksni_introspection_xml())],
                 ),
-                _ => self.reply_err(serial, sender),
+                _ => Self::reply_err(serial, sender),
             },
 
             IntrospectibleObjectAtRequest::GetAllProperties { path, interface } => {
@@ -87,10 +87,10 @@ impl StatusNotifierWatcherIntrospection {
                                 ),
                             ],
                         )];
-                        self.reply_ok(serial, sender, body);
+                        Self::reply_ok(serial, sender, body);
                     }
 
-                    _ => self.reply_err(serial, sender),
+                    _ => Self::reply_err(serial, sender),
                 }
             }
 
@@ -122,16 +122,16 @@ impl StatusNotifierWatcherIntrospection {
                     ))),
 
                     _ => {
-                        self.reply_err(serial, sender);
+                        Self::reply_err(serial, sender);
                         return true;
                     }
                 };
 
-                self.reply_ok(serial, sender, vec![value]);
+                Self::reply_ok(serial, sender, vec![value]);
             }
 
             _ => {
-                self.reply_err(serial, sender);
+                Self::reply_err(serial, sender);
             }
         }
 

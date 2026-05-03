@@ -18,9 +18,9 @@ pub(crate) enum PrimaryConnectionEvent {
 impl From<StringRef> for PrimaryConnectionEvent {
     fn from(path: StringRef) -> Self {
         if path == "/" {
-            PrimaryConnectionEvent::Disconnected
+            Self::Disconnected
         } else {
-            PrimaryConnectionEvent::Connected(path)
+            Self::Connected(path)
         }
     }
 }

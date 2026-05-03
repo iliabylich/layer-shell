@@ -1,6 +1,6 @@
 use crate::{
+    modules::Module,
     sansio::{HttpRequest, Https, Satisfy, Wants},
-    user_data::ModuleId,
 };
 use anyhow::Result;
 use response::LocationResponse;
@@ -16,27 +16,27 @@ pub(crate) struct Location {
 impl Location {
     pub(crate) fn new() -> Self {
         Self {
-            https: Https::new(HttpRequest::get(HOST, "/")),
+            https: Https::new(HttpRequest::get(HOST, "/".to_string())),
         }
-    }
-
-    pub(crate) const fn module_id(&self) -> ModuleId {
-        ModuleId::GeoLocation
-    }
-
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
-        Ok(self.https.wants())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<(f64, f64)>> {
         let Some(response) = self.https.satisfy(satisfy, res) else {
             return Ok(None);
         };
-        let location = LocationResponse::parse(response)?;
+        let location = LocationResponse::parse(&response)?;
         Ok(Some(location))
     }
+}
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<(f64, f64)> {
+impl Module for Location {
+    type Output = Option<(f64, f64)>;
+
+    fn wants(&mut self) -> Result<Option<Wants>> {
+        self.https.wants()
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
         match self.try_satisfy(satisfy, res) {
             Ok(location) => location,
             Err(err) => {

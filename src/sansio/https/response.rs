@@ -17,7 +17,7 @@ impl HttpResponse {
             .context("no separator between status line and headers")?;
 
         let status = status
-            .split(" ")
+            .split(' ')
             .nth(1)
             .context("malformed status line")?
             .parse::<u16>()

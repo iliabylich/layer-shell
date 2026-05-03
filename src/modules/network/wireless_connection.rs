@@ -64,13 +64,13 @@ impl WirelessConnection {
         &mut self,
         is_wireless: bool,
         path: StringRef,
-    ) -> Option<WirelessConnectionEvent> {
+    ) -> WirelessConnectionEvent {
         if is_wireless {
             self.state = State::ConnectedAndHavePathAndType;
-            Some(WirelessConnectionEvent::Connected(path))
+            WirelessConnectionEvent::Connected(path)
         } else {
             self.state = State::Disconnected;
-            Some(WirelessConnectionEvent::Disconnected)
+            WirelessConnectionEvent::Disconnected
         }
     }
 
@@ -83,7 +83,9 @@ impl WirelessConnection {
         }
 
         if let Some((is_wireless, path)) = self.active_connection_type.on_message(message) {
-            return Ok(self.on_active_connection_type_received(is_wireless, path));
+            return Ok(Some(
+                self.on_active_connection_type_received(is_wireless, path),
+            ));
         }
 
         Ok(None)

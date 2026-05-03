@@ -33,3 +33,13 @@ pub use weather::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherCode, WeatherOnDay,
     WeatherOnHour,
 };
+
+use crate::sansio::{Satisfy, Wants};
+use anyhow::Result;
+
+pub(crate) trait Module {
+    type Output;
+
+    fn wants(&mut self) -> Result<Option<Wants>>;
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output;
+}

@@ -1,5 +1,5 @@
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context as _, Result, bail, ensure};
 pub(crate) use kind::FileReaderKind;
 use libc::{AT_FDCWD, O_RDONLY};
 use std::ffi::CStr;
@@ -28,7 +28,7 @@ enum Action {
 }
 
 impl FileReader {
-    pub(crate) fn new(path: &'static CStr, kind: FileReaderKind) -> Self {
+    pub(crate) const fn new(path: &'static CStr, kind: FileReaderKind) -> Self {
         Self {
             path,
             fd: -1,
@@ -76,9 +76,12 @@ impl FileReader {
             }
 
             (Action::Read, Satisfy::Read) => {
-                ensure!(res > 0, "FileReader::Read failed: {res}");
-                let bytes_read = res as usize;
-                let out = &self.kind.buffer()?[..bytes_read];
+                let bytes_read = usize::try_from(res).context("read failed")?;
+                let out = self
+                    .kind
+                    .buffer()?
+                    .get(..bytes_read)
+                    .context("buffer is too short")?;
                 self.state = State::Sleeping;
                 Ok(Some(out))
             }
@@ -100,7 +103,7 @@ impl FileReader {
         }
     }
 
-    pub(crate) fn tick(&mut self) {
+    pub(crate) const fn tick(&mut self) {
         if matches!(self.state, State::Sleeping) {
             self.state = State::ReadyTo(Action::Read);
         }

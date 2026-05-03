@@ -1,8 +1,8 @@
 use crate::{
     Event,
     event_queue::EventQueue,
+    modules::Module,
     sansio::{FileReader, FileReaderKind, Satisfy, Wants},
-    user_data::ModuleId,
 };
 use anyhow::{Context as _, Result};
 use parser::Parser;
@@ -18,19 +18,11 @@ pub(crate) struct CPU {
 }
 
 impl CPU {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             reader: FileReader::new(c"/proc/stat", FileReaderKind::CPU),
             store: Store::new(),
         }
-    }
-
-    pub(crate) const fn module_id(&self) -> ModuleId {
-        ModuleId::CPU
-    }
-
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
-        self.reader.wants()
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
@@ -48,14 +40,22 @@ impl CPU {
         Ok(())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) {
+    pub(crate) const fn tick(&mut self, _tick: u64) {
+        self.reader.tick();
+    }
+}
+
+impl Module for CPU {
+    type Output = ();
+
+    fn wants(&mut self) -> Result<Option<Wants>> {
+        self.reader.wants()
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
         if let Err(err) = self.try_satisfy(satisfy, res) {
             log::error!("CPU module crashed: {satisfy:?} {res} {err:?}");
             self.reader.stop();
         }
-    }
-
-    pub(crate) fn tick(&mut self, _tick: u64) {
-        self.reader.tick();
     }
 }

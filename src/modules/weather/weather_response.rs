@@ -33,7 +33,7 @@ pub(crate) struct DailyWeatherResponse {
 }
 
 impl WeatherResponse {
-    pub(crate) fn parse(response: HttpResponse) -> Result<Self> {
+    pub(crate) fn parse(response: &HttpResponse) -> Result<Self> {
         ensure!(response.status == 200);
         serde_json::from_str(&response.body).context("malformed JSON output")
     }
@@ -49,7 +49,7 @@ impl TryFrom<WeatherResponse> for Event {
             daily,
         } = response;
 
-        Ok(Event::Weather {
+        Ok(Self::Weather {
             temperature: current.temperature_2m,
             code: WeatherCode::from(current.weather_code),
             hourly_forecast: map_hourly_forecase(hourly)?,

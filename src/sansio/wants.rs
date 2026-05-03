@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum Wants {
     Socket {
         domain: i32,
@@ -40,19 +40,19 @@ pub(crate) enum Wants {
 impl From<mini_sansio_dbus::Wants> for Wants {
     fn from(wants: mini_sansio_dbus::Wants) -> Self {
         match wants {
-            mini_sansio_dbus::Wants::Socket { domain, r#type } => Wants::Socket { domain, r#type },
+            mini_sansio_dbus::Wants::Socket { domain, r#type } => Self::Socket { domain, r#type },
             mini_sansio_dbus::Wants::Connect { fd, addr, addrlen } => {
-                Wants::Connect { fd, addr, addrlen }
+                Self::Connect { fd, addr, addrlen }
             }
-            mini_sansio_dbus::Wants::Read { fd, buf, len } => Wants::Read { fd, buf, len },
-            mini_sansio_dbus::Wants::Write { fd, buf, len } => Wants::Write { fd, buf, len },
+            mini_sansio_dbus::Wants::Read { fd, buf, len } => Self::Read { fd, buf, len },
+            mini_sansio_dbus::Wants::Write { fd, buf, len } => Self::Write { fd, buf, len },
             mini_sansio_dbus::Wants::ReadWrite {
                 fd,
                 readbuf,
                 readlen,
                 writebuf,
                 writelen,
-            } => Wants::ReadWrite {
+            } => Self::ReadWrite {
                 fd,
                 readbuf,
                 readlen,

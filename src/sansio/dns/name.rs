@@ -3,9 +3,10 @@ pub(crate) struct DnsName {
     len: usize,
 }
 
+#[expect(clippy::indexing_slicing)]
 impl DnsName {
-    pub(crate) fn new() -> Self {
-        DnsName {
+    pub(crate) const fn new() -> Self {
+        Self {
             buf: [0u8; 253],
             len: 0,
         }

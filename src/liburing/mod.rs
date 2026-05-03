@@ -9,7 +9,17 @@ use libc::{ETIME, strerror};
 use std::mem::MaybeUninit;
 
 mod cqe;
-#[expect(dead_code, unsafe_op_in_unsafe_fn, non_camel_case_types)]
+#[expect(
+    dead_code,
+    unsafe_op_in_unsafe_fn,
+    non_camel_case_types,
+    trivial_casts,
+    clippy::indexing_slicing,
+    clippy::ptr_as_ptr,
+    clippy::ref_as_ptr,
+    clippy::missing_const_for_fn,
+    clippy::use_self
+)]
 mod generated;
 mod sqe;
 
@@ -18,9 +28,8 @@ fn checkerr(errno: i32) -> Result<()> {
         let str = unsafe { strerror(errno) };
         let str = unsafe { std::ffi::CStr::from_ptr(str) }.to_string_lossy();
         bail!("IoUring error: {str:?}")
-    } else {
-        Ok(())
     }
+    Ok(())
 }
 
 static mut NOTIMEOUT: __kernel_timespec = __kernel_timespec {
@@ -35,7 +44,7 @@ static mut DIRTY: bool = false;
 
 fn ring_init(entries: usize, flags: u32) -> Result<()> {
     let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
-    let errno = unsafe { __liburing_queue_init(entries as u32, &mut ring, flags) };
+    let errno = unsafe { __liburing_queue_init(entries as u32, &raw mut ring, flags) };
     checkerr(errno)?;
 
     unsafe {
@@ -91,7 +100,7 @@ impl IoUring {
     #[allow(dead_code)]
     pub(crate) fn wait_cqe() -> Result<Cqe> {
         let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
-        let errno = unsafe { __liburing_wait_cqe(ring_get(), &mut cqe) };
+        let errno = unsafe { __liburing_wait_cqe(ring_get(), &raw mut cqe) };
         checkerr(errno)?;
         ensure!(!cqe.is_null(), "got NULL from io_uring_wait_cqe");
         Ok(Cqe { cqe })
@@ -100,7 +109,7 @@ impl IoUring {
     pub(crate) fn try_get_cqe() -> Result<Option<Cqe>> {
         let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
         let errno =
-            unsafe { __liburing_wait_cqe_timeout(ring_get(), &mut cqe, &raw mut NOTIMEOUT) };
+            unsafe { __liburing_wait_cqe_timeout(ring_get(), &raw mut cqe, &raw mut NOTIMEOUT) };
         if errno == -ETIME {
             return Ok(None);
         }

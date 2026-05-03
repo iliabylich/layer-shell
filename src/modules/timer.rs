@@ -1,6 +1,6 @@
 use crate::{
+    modules::Module,
     sansio::{Satisfy, TimerFd, Wants},
-    user_data::ModuleId,
 };
 use anyhow::Result;
 
@@ -14,16 +14,16 @@ impl Timer {
             timerfd: TimerFd::new()?,
         })
     }
+}
 
-    pub(crate) const fn module_id(&self) -> ModuleId {
-        ModuleId::Timer
-    }
+impl Module for Timer {
+    type Output = Result<u64>;
 
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+    fn wants(&mut self) -> Result<Option<Wants>> {
         Ok(self.timerfd.wants())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<u64> {
+    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
         self.timerfd.satisfy(satisfy, res)
     }
 }

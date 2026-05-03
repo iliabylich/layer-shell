@@ -1,4 +1,4 @@
-use anyhow::{Result, ensure};
+use anyhow::{Context, Result, ensure};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
@@ -23,6 +23,10 @@ impl FileReaderKind {
             self as usize
         );
 
-        unsafe { Ok(&mut BUFFERS[self as usize]) }
+        unsafe {
+            BUFFERS
+                .get_mut(self as usize)
+                .context("unknown FileReaderKind")
+        }
     }
 }

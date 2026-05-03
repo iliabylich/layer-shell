@@ -5,7 +5,7 @@ use crate::{
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
-        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, Niri,
+        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Module, Network, Niri,
         SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
     },
     sansio::{Https, Satisfy, Wants},
@@ -19,11 +19,9 @@ pub(crate) struct IO {
     pub(crate) io_config: *const IOConfig,
 
     timer: Timer,
-    clock: Clock,
 
     session_dbus: SessionDBus,
     sound: Sound,
-    control: Control,
     tray: Tray,
     system_dbus: SystemDBus,
     network: Network,
@@ -42,9 +40,9 @@ pub(crate) struct IO {
 static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
 
 macro_rules! schedule {
-    ($module:expr) => {{
+    ($module:expr, $module_id:expr) => {{
+        let module_id = $module_id;
         if let Some(wants) = $module.wants()? {
-            let module_id = $module.module_id();
             if let Some(wants_next) = $module.wants()? {
                 anyhow::bail!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
             }
@@ -64,10 +62,12 @@ impl IO {
 
         Logger::init()?;
         Https::init()?;
+        SessionDBus::init();
+        SystemDBus::init();
 
         IoUring::init(10, 0)?;
         unsafe {
-            GLOBAL_IO = Box::into_raw(Box::new(IO::new(on_event, logging_enabled)?));
+            GLOBAL_IO = Box::into_raw(Box::new(Self::new(on_event, logging_enabled)?));
         }
         Ok(())
     }
@@ -95,11 +95,9 @@ impl IO {
             io_config,
 
             timer: Timer::new()?,
-            clock: Clock::new(),
 
             session_dbus: SessionDBus::new(),
             sound: Sound::new(),
-            control: Control::new(),
             tray: Tray::new(),
             system_dbus: SystemDBus::new(),
             network: Network::new(),
@@ -108,7 +106,7 @@ impl IO {
             weather: Weather::new(),
             cpu: CPU::new(),
             memory: Memory::new(),
-            caps_lock: CapsLock::new(),
+            caps_lock: CapsLock::new()?,
             niri: Niri::new()?,
 
             on_event,
@@ -122,34 +120,32 @@ impl IO {
     }
 
     fn start(&mut self) -> Result<()> {
-        schedule!(self.timer);
+        schedule!(self.timer, ModuleId::Timer);
 
-        schedule!(self.location);
-        schedule!(self.cpu);
-        schedule!(self.memory);
-        schedule!(self.caps_lock);
-        schedule!(self.niri);
+        schedule!(self.location, ModuleId::GeoLocation);
+        schedule!(self.cpu, ModuleId::CPU);
+        schedule!(self.memory, ModuleId::Memory);
+        schedule!(self.caps_lock, ModuleId::CapsLock);
+        schedule!(self.niri, ModuleId::Niri);
 
         self.sound.init()?;
-        self.control.init();
+        Control::init();
         self.tray.init()?;
-        schedule!(self.session_dbus);
+        schedule!(self.session_dbus, ModuleId::SessionDBus);
 
         self.network.init()?;
-        schedule!(self.system_dbus);
+        schedule!(self.system_dbus, ModuleId::SystemDBus);
 
         IoUring::submit_if_dirty()?;
         Ok(())
     }
 
-    fn on_control_req(&mut self, req: ControlRequest) {
-        match req {
-            ControlRequest::Exit => EventQueue::push_back(Event::Exit),
-            ControlRequest::ReloadStyles => EventQueue::push_back(Event::ReloadStyles),
-            ControlRequest::ToggleSessionScreen => {
-                EventQueue::push_back(Event::ToggleSessionScreen)
-            }
-        }
+    fn on_control_req(req: ControlRequest) {
+        EventQueue::push_back(match req {
+            ControlRequest::Exit => Event::Exit,
+            ControlRequest::ReloadStyles => Event::ReloadStyles,
+            ControlRequest::ToggleSessionScreen => Event::ToggleSessionScreen,
+        });
     }
 
     pub(crate) fn handle_readable(&mut self) -> Result<()> {
@@ -174,25 +170,25 @@ impl IO {
                 ModuleId::GeoLocation => {
                     if let Some((lat, lng)) = satisfy!(self.location) {
                         self.weather.setup(lat, lng);
-                        schedule!(self.weather);
+                        schedule!(self.weather, ModuleId::Weather);
                     } else {
-                        schedule!(self.location);
+                        schedule!(self.location, ModuleId::GeoLocation);
                     }
                 }
 
                 ModuleId::Weather => {
                     satisfy!(self.weather);
-                    schedule!(self.weather);
+                    schedule!(self.weather, ModuleId::Weather);
                 }
 
                 ModuleId::CapsLock => {
                     satisfy!(self.caps_lock);
-                    schedule!(self.caps_lock);
+                    schedule!(self.caps_lock, ModuleId::CapsLock);
                 }
 
                 ModuleId::Niri => {
                     satisfy!(self.niri);
-                    schedule!(self.niri);
+                    schedule!(self.niri, ModuleId::Niri);
                 }
 
                 ModuleId::SessionDBus => {
@@ -202,12 +198,12 @@ impl IO {
                         self.sound.on_message(message);
                         self.tray.on_message(message)?;
 
-                        if let Some(req) = self.control.on_message(message) {
-                            self.on_control_req(req);
+                        if let Some(req) = Control::on_message(message) {
+                            Self::on_control_req(req);
                         }
                     }
 
-                    schedule!(self.session_dbus);
+                    schedule!(self.session_dbus, ModuleId::SessionDBus);
                 }
 
                 ModuleId::SystemDBus => {
@@ -217,34 +213,34 @@ impl IO {
                         self.network.on_message(message)?;
                     }
 
-                    schedule!(self.system_dbus);
+                    schedule!(self.system_dbus, ModuleId::SystemDBus);
                 }
 
                 ModuleId::CPU => {
                     satisfy!(self.cpu);
-                    schedule!(self.cpu);
+                    schedule!(self.cpu, ModuleId::CPU);
                 }
                 ModuleId::Memory => {
                     satisfy!(self.memory);
-                    schedule!(self.memory);
+                    schedule!(self.memory, ModuleId::Memory);
                 }
                 ModuleId::Timer => {
                     let tick = satisfy!(self.timer)?;
-                    schedule!(self.timer);
+                    schedule!(self.timer, ModuleId::Timer);
 
-                    self.clock.tick();
+                    Clock::tick();
 
                     self.weather.tick(tick);
-                    schedule!(self.weather);
+                    schedule!(self.weather, ModuleId::Weather);
 
                     self.cpu.tick(tick);
-                    schedule!(self.cpu);
+                    schedule!(self.cpu, ModuleId::CPU);
 
                     self.memory.tick(tick);
-                    schedule!(self.memory);
+                    schedule!(self.memory, ModuleId::Memory);
 
                     self.sound.tick(tick)?;
-                    schedule!(self.session_dbus);
+                    schedule!(self.session_dbus, ModuleId::SessionDBus);
                 }
             }
 
@@ -257,13 +253,13 @@ impl IO {
             if self.logging_enabled {
                 log::info!(target: "IO", "{event:?}");
             }
-            (self.on_event)(&event);
+            (self.on_event)(&raw const event);
         }
 
         Ok(())
     }
 
-    pub(crate) fn wait_readable(&mut self) -> Result<()> {
+    pub(crate) fn wait_readable() -> Result<()> {
         IoUring::submit_and_wait(1)
     }
 
@@ -299,8 +295,8 @@ impl IO {
             }
 
             Command::TriggerTray { uuid } => {
-                self.tray.trigger(uuid)?;
-                schedule!(self.session_dbus);
+                self.tray.trigger(uuid.as_str())?;
+                schedule!(self.session_dbus, ModuleId::SessionDBus);
             }
         }
 
@@ -313,7 +309,7 @@ impl IO {
         IoUring::deinit();
     }
 
-    pub(crate) fn global() -> Result<&'static mut IO> {
+    pub(crate) fn global() -> Result<&'static mut Self> {
         unsafe { GLOBAL_IO.as_mut() }.context("IO is not initialized. Call io_init() first.")
     }
 }

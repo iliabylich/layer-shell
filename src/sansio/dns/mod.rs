@@ -3,7 +3,7 @@ mod request;
 mod response;
 
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use request::Request;
 use response::Response;
 
@@ -40,7 +40,7 @@ pub(crate) struct Dns {
 }
 
 impl Dns {
-    pub(crate) fn new(domain: &'static [u8]) -> Self {
+    pub(crate) const fn new(domain: &'static [u8]) -> Self {
         Self {
             state: State::ReadyTo(Action::Socket),
             fd: -1,
@@ -59,9 +59,9 @@ impl Dns {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         let State::ReadyTo(action) = self.state else {
-            return None;
+            return Ok(None);
         };
 
         let wants = match action {
@@ -72,12 +72,15 @@ impl Dns {
 
             Action::Connect => Wants::Connect {
                 fd: self.fd,
-                addr: (&self.addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-                addrlen: core::mem::size_of::<libc::sockaddr_in>() as u32,
+                addr: (&raw const self.addr).cast::<libc::sockaddr>(),
+                addrlen: size_of::<libc::sockaddr_in>() as u32,
             },
 
             Action::Write => {
-                let buf = &self.buf[self.pos..self.len];
+                let buf = self
+                    .buf
+                    .get(self.pos..self.len)
+                    .context("buf is too short")?;
                 Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
@@ -86,7 +89,7 @@ impl Dns {
             }
 
             Action::Read => {
-                let buf = &mut self.buf[self.len..];
+                let buf = self.buf.get_mut(self.len..).context("buf is too short")?;
                 Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
@@ -97,7 +100,7 @@ impl Dns {
             Action::Close => Wants::Close { fd: self.fd },
         };
         self.state = State::WaitingFor(action);
-        Some(wants)
+        Ok(Some(wants))
     }
 
     pub(crate) fn satisfy(
@@ -133,7 +136,7 @@ impl Dns {
 
             (Action::Write, Satisfy::Write) => {
                 ensure!(res >= 0, "DNS::Write failed: {res}");
-                let bytes_written = res as usize;
+                let bytes_written = usize::try_from(res).context("write failed")?;
 
                 self.pos += bytes_written;
                 ensure!(self.pos <= self.len);
@@ -147,8 +150,7 @@ impl Dns {
             }
 
             (Action::Read, Satisfy::Read) => {
-                ensure!(res >= 0, "DNS::Read failed: {res}");
-                let bytes_read = res as usize;
+                let bytes_read = usize::try_from(res).context("read failed")?;
 
                 self.len += bytes_read;
                 ensure!(self.len < MAX_DNS_PACKET);
@@ -160,7 +162,7 @@ impl Dns {
             (Action::Close, Satisfy::Close) => {
                 ensure!(res >= 0, "DNS::Close failed: {res}");
 
-                let reply = Response::read(&self.buf[..self.len])?;
+                let reply = Response::read(self.buf.get(..self.len).context("buf is too short")?)?;
                 self.state = State::Done;
                 Ok(Some(reply))
             }

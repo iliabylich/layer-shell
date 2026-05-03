@@ -21,10 +21,7 @@ impl NameLostOrNameOwnerChanged {
         Ok(())
     }
 
-    pub(crate) fn on_message<'a>(
-        &mut self,
-        message: IncomingMessage<'a>,
-    ) -> Result<Option<StringRef>> {
+    pub(crate) fn on_message(message: IncomingMessage<'_>) -> Result<Option<StringRef>> {
         let Ok(address) = parse_name_owner_changed(message) else {
             return Ok(None);
         };
@@ -48,7 +45,7 @@ const SUBSCRIBE: MethodCall<(), (), ()> = MethodCall::builder()
         }
     }).try_process(&|_body, _data| unreachable!());
 
-fn parse_name_owner_changed<'a>(message: IncomingMessage<'a>) -> Result<&'a str> {
+fn parse_name_owner_changed(message: IncomingMessage<'_>) -> Result<&str> {
     ensure!(message.message_type == MessageType::Signal);
 
     let path = message.path.context("no Path")?;

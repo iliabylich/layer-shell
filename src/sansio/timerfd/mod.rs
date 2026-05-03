@@ -1,5 +1,5 @@
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
 
 pub(crate) struct TimerFd {
@@ -24,7 +24,7 @@ impl TimerFd {
         })
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) const fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::ReadyToRead => {
                 self.state = State::WaitingForRead;
@@ -41,7 +41,8 @@ impl TimerFd {
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<u64> {
         match satisfy {
             Satisfy::Read => {
-                ensure!(res as usize == self.buf.len());
+                let bytes_read = usize::try_from(res).context("TimerFd: read failed")?;
+                ensure!(bytes_read == self.buf.len());
                 let expirations = u64::from_ne_bytes(self.buf);
 
                 let ticks = self.ticks;
@@ -76,7 +77,7 @@ fn create_timer() -> Result<i32> {
         },
     };
 
-    let res = unsafe { timerfd_settime(fd, 0, &timer_spec, core::ptr::null_mut()) };
+    let res = unsafe { timerfd_settime(fd, 0, &raw const timer_spec, core::ptr::null_mut()) };
     ensure!(
         res != -1,
         "timerfd_settime returned -1: {}",

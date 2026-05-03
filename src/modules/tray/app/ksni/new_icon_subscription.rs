@@ -6,19 +6,18 @@ use mini_sansio_dbus::{
 };
 
 pub(crate) const SUBSCRIBE_TO_NEW_ICON: MethodCall<StringRef, (), ()> = MethodCall::builder()
-    .send(&|address, _data| AddMatch::build_from_rule(new_icon_match_rule(address)))
+    .send(&|address: StringRef, _data| {
+        AddMatch::build_from_rule(new_icon_match_rule(address.as_str()))
+    })
     .try_process(&|_body, _data| Ok(()));
 
-pub(crate) fn new_icon_match_rule(address: StringRef) -> String {
+pub(crate) fn new_icon_match_rule(address: &str) -> String {
     format!(
         "type='signal',sender='{address}',interface='org.kde.StatusNotifierItem',member='NewIcon',path='/StatusNotifierItem'"
     )
 }
 
-pub(crate) fn parse_new_icon_signal(
-    message: IncomingMessage<'_>,
-    address: StringRef,
-) -> Result<()> {
+pub(crate) fn parse_new_icon_signal(message: IncomingMessage<'_>, address: &str) -> Result<()> {
     ensure!(message.message_type == MessageType::Signal);
 
     let path = message.path.context("no Path")?;

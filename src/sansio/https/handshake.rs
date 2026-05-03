@@ -1,5 +1,5 @@
 use crate::sansio::{Satisfy, Wants, https::state::OpenSslState};
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context as _, Result, bail, ensure};
 use openssl_sys::{
     BIO_ctrl, BIO_read, BIO_write, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,
     SSL_get_error,
@@ -76,9 +76,10 @@ impl OpenSslHandshake {
         self.writebuf.clear();
         while unsafe { BIO_ctrl(self.tls.wbio, BIO_CTRL_PENDING, 0, std::ptr::null_mut()) } > 0 {
             let mut buf = [0_u8; 1_024];
-            let read = unsafe { BIO_read(self.tls.wbio, buf.as_mut_ptr().cast(), 1_024) };
-            ensure!(read > 0, "OpenSslHandshake: BIO_read failed: {read} <= 0");
-            self.writebuf.extend_from_slice(&buf[..read as usize]);
+            let res = unsafe { BIO_read(self.tls.wbio, buf.as_mut_ptr().cast(), 1_024) };
+            let bytes_read = usize::try_from(res).context("BIO_read failed")?;
+            self.writebuf
+                .extend_from_slice(buf.get(..bytes_read).context("buf is too short")?);
         }
         Ok(())
     }
@@ -114,15 +115,12 @@ impl OpenSslHandshake {
     ) -> Result<Option<Rc<OpenSslState>>> {
         match (self.state, satisfy) {
             (State::WaitingForRead, Satisfy::Read) => {
-                ensure!(res > 0, "OpenSslHandshake: read failed {res}");
-                let received = &self.readbuf[..res as usize];
-                let written = unsafe {
-                    BIO_write(
-                        self.tls.rbio,
-                        received.as_ptr().cast(),
-                        received.len() as i32,
-                    )
-                };
+                let bytes_read = usize::try_from(res).context("read failed")?;
+                let received = self
+                    .readbuf
+                    .get(..bytes_read)
+                    .context("readbuf is too short")?;
+                let written = unsafe { BIO_write(self.tls.rbio, received.as_ptr().cast(), res) };
                 ensure!(
                     written == res,
                     "OpenSslHandshake: read failed {written} != {res}"

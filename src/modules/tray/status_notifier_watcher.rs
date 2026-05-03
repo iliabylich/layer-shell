@@ -32,16 +32,16 @@ impl StatusNotifierWatcher {
         self.reply_serial = Some(SessionDBus::queue().push_back(message));
     }
 
-    fn reply_ok(&self, serial: u32, destination: &str) {
+    fn reply_ok(serial: u32, destination: &str) {
         let reply = OutgoingMessage::new_method_return_no_body(serial, destination);
         SessionDBus::queue().push_back(reply);
     }
 
     pub(crate) fn init(&mut self) {
-        self.request()
+        self.request();
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<Option<Service>> {
+    pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Result<Option<Service>> {
         if self.introspection.process_message(message) {
             return Ok(None);
         }
@@ -49,14 +49,14 @@ impl StatusNotifierWatcher {
         if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    self.reply_ok(serial, sender);
+                    Self::reply_ok(serial, sender);
                     return Ok(Some(Service::new(
                         StringRef::new(sender)?,
                         StringRef::new(address)?,
                     )));
                 }
                 KSNIRequest::Other => {
-                    self.reply_ok(serial, sender);
+                    Self::reply_ok(serial, sender);
                     return Ok(None);
                 }
             }
