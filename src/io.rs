@@ -72,9 +72,9 @@ impl IO {
         Ok(())
     }
 
-    pub(crate) fn deinit() -> Result<()> {
+    pub(crate) fn deinit() {
         if unsafe { GLOBAL_IO.is_null() } {
-            bail!("io_deinit() called while IO is not initialized");
+            return;
         }
 
         unsafe {
@@ -82,8 +82,6 @@ impl IO {
             drop(Box::from_raw(GLOBAL_IO));
             GLOBAL_IO = core::ptr::null_mut();
         }
-
-        Ok(())
     }
 
     fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Result<Self> {

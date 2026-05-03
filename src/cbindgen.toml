@@ -37,3 +37,6 @@ include = ["TrayItem"]
 
 [enum]
 prefix_with_name = true
+
+[fn]
+must_use = "__attribute__((warn_unused_result))"
