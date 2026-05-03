@@ -54,7 +54,7 @@ const CONFIGURE: MethodCall<StringRef, (), ()> = MethodCall::builder()
             OutgoingValue::UInt32(1000),
         )
     })
-    .try_process(&|_body, _data| unreachable!());
+    .try_process(&|_body, _data| Err(anyhow::anyhow!("not meant to be called").into()));
 
 const SUBSCRIPTION: Subscription<TxRxEvent> =
     Subscription::new(&|mut body, path, subscribed_to| {

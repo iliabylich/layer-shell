@@ -8,7 +8,7 @@ pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;
 
 use crate::sansio::{Dns, Satisfy, Wants};
-use anyhow::{Result, ensure};
+use anyhow::{Result, bail, ensure};
 use handshake::OpenSslHandshake;
 use libc::sockaddr_in;
 use read_write::OpenSslReadWrite;
@@ -25,7 +25,31 @@ enum State {
     Handshaking(OpenSslHandshake),
     ReadWrite(OpenSslReadWrite),
 
+    ReadyToClose,
+    WaitingForClose,
+
     Done,
+}
+
+impl std::fmt::Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Dns(_) => "Dns",
+                Self::ReadyToSocket => "ReadyToSocket",
+                Self::WaitingForSocket => "WaitingForSocket",
+                Self::ReadyToConnect => "ReadyToConnect",
+                Self::WaitingForConnect => "WaitingForConnect",
+                Self::Handshaking(_) => "Handshaking",
+                Self::ReadWrite(_) => "ReadWrite",
+                Self::ReadyToClose => "ReadyToClose",
+                Self::WaitingForClose => "WaitingForClose",
+                Self::Done => "Done",
+            }
+        )
+    }
 }
 
 pub(crate) struct Https {
@@ -34,6 +58,7 @@ pub(crate) struct Https {
     fd: i32,
     request: Vec<u8>,
     domain: &'static str,
+    response: Vec<u8>,
 }
 
 impl Https {
@@ -50,6 +75,7 @@ impl Https {
             fd: -1,
             request: request.into_bytes(),
             domain,
+            response: vec![],
         }
     }
 
@@ -78,7 +104,15 @@ impl Https {
 
             State::ReadWrite(ready) => Ok(ready.wants()),
 
-            State::WaitingForConnect | State::WaitingForSocket | State::Done => Ok(None),
+            State::ReadyToClose => {
+                self.state = State::WaitingForClose;
+                Ok(Some(Wants::Close { fd: self.fd }))
+            }
+
+            State::WaitingForConnect
+            | State::WaitingForSocket
+            | State::WaitingForClose
+            | State::Done => Ok(None),
         }
     }
 
@@ -116,12 +150,19 @@ impl Https {
 
             (State::ReadWrite(ready), Satisfy::Read | Satisfy::Write) => {
                 if let Some(response) = ready.satisfy(satisfy, res)? {
-                    self.state = State::Done;
-                    return Ok(Some(HttpResponse::parse(response)?));
+                    self.response = response;
+                    self.state = State::ReadyToClose;
                 }
             }
 
-            _ => unreachable!(),
+            (State::WaitingForClose, Satisfy::Close) => {
+                ensure!(res >= 0, "close failed: {res}");
+                self.state = State::Done;
+                let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
+                return Ok(Some(response));
+            }
+
+            _ => bail!("malformed state: {:?} vs {satisfy:?}", self.state),
         }
 
         Ok(None)

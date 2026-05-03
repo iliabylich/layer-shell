@@ -43,7 +43,7 @@ const SUBSCRIBE: MethodCall<(), (), ()> = MethodCall::builder()
                 "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',path='/org/freedesktop/DBus'".to_string(),
             )],
         }
-    }).try_process(&|_body, _data| unreachable!());
+    }).try_process(&|_body, _data| Err(anyhow::anyhow!("not meant to be called").into()));
 
 fn parse_name_owner_changed(message: IncomingMessage<'_>) -> Result<&str> {
     ensure!(message.message_type == MessageType::Signal);
