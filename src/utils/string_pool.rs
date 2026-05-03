@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use std::cell::Cell;
 
 const SLOTS_COUNT: usize = 100;
 
@@ -13,7 +14,7 @@ impl StringPool {
     #[expect(clippy::large_stack_arrays)]
     const fn new() -> Self {
         Self {
-            slots: [Slot::empty(); SLOTS_COUNT],
+            slots: [const { Slot::empty() }; SLOTS_COUNT],
         }
     }
 
@@ -31,12 +32,12 @@ impl StringPool {
 
 const MAX_STRING_LEN: usize = 256;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 #[repr(C)]
 struct Slot {
     s: [u8; MAX_STRING_LEN],
     len: usize,
-    refcount: u8,
+    refcount: Cell<u8>,
     free: bool,
 }
 
@@ -45,7 +46,7 @@ impl Slot {
         Self {
             s: [0; MAX_STRING_LEN],
             len: 0,
-            refcount: 0,
+            refcount: Cell::new(0),
             free: true,
         }
     }
@@ -70,14 +71,14 @@ impl Slot {
         }
         self.len = s.len();
         self.free = false;
-        self.refcount = 1;
+        self.refcount = Cell::new(1);
         Ok(())
     }
 
     const fn release(&mut self) {
         self.s = [0; 256];
         self.len = 0;
-        self.refcount = 0;
+        self.refcount = Cell::new(0);
         self.free = true;
     }
 
@@ -89,12 +90,12 @@ impl Slot {
         unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
     }
 
-    const fn addref(&mut self) {
-        self.refcount += 1;
+    fn addref(&self) {
+        self.refcount.update(|v| v + 1);
     }
 
-    const fn delref(&mut self) {
-        self.refcount -= 1;
+    fn delref(&self) {
+        self.refcount.update(|v| v - 1);
     }
 }
 
@@ -107,8 +108,11 @@ impl StringRef {
         unsafe { STRING_POOL.alloc(s) }
     }
 
-    #[expect(clippy::mut_from_ref)]
-    fn slot(&self) -> &mut Slot {
+    fn slot(&self) -> &Slot {
+        unsafe { &*self.slot }
+    }
+
+    fn slot_mut(&mut self) -> &mut Slot {
         unsafe { &mut *self.slot }
     }
 
@@ -175,10 +179,10 @@ impl Clone for StringRef {
 
 impl Drop for StringRef {
     fn drop(&mut self) {
-        let slot = self.slot();
+        let slot = self.slot_mut();
 
         slot.delref();
-        if slot.refcount == 0 {
+        if slot.refcount.get() == 0 {
             slot.release();
         }
     }

@@ -81,7 +81,10 @@ pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event), logging_
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_deinit() {
-    map_panic_to_exit_with_error!(Ok(global_io()?.stop()));
+    map_panic_to_exit_with_error!({
+        global_io()?.stop();
+        Ok(())
+    });
 
     unsafe {
         drop(Box::from_raw(GLOBAL_IO));
