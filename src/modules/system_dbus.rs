@@ -1,5 +1,5 @@
 use crate::{
-    modules::Module,
+    modules::FallibleModule,
     sansio::{Satisfy, Wants},
 };
 use anyhow::Result;
@@ -35,23 +35,17 @@ impl SystemDBus {
     }
 }
 
-impl Module for SystemDBus {
-    type Output = Option<IncomingMessage<'static>>;
+impl FallibleModule for SystemDBus {
+    const NAME: &str = "SystemDBus";
+    type Output = IncomingMessage<'static>;
 
-    fn wants(&mut self) -> Result<Option<Wants>> {
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
         Ok(self.conn.wants(queue(), readbuf()).map(Wants::from))
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
-        let result = self.conn.satisfy(satisfy.into(), res, readbuf(), queue());
-
-        match result {
-            Ok(message) => message,
-            Err(err) => {
-                log::error!("SystemDBus has crashed: {err:?}");
-                self.conn.stop();
-                None
-            }
-        }
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+        self.conn
+            .satisfy(satisfy.into(), res, readbuf(), queue())
+            .map_err(Into::into)
     }
 }

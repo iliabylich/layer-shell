@@ -1,7 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::Module,
+    modules::FallibleModule,
     sansio::{FileReader, FileReaderKind, Satisfy, Wants},
 };
 use anyhow::{Context as _, Result};
@@ -24,10 +24,19 @@ impl CPU {
             store: Store::new(),
         }
     }
+}
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
+impl FallibleModule for CPU {
+    const NAME: &str = "CPU";
+    type Output = ();
+
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
+        self.reader.wants()
+    }
+
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
         let Some(buf) = self.reader.satisfy(satisfy, res) else {
-            return Ok(());
+            return Ok(None);
         };
         let s = core::str::from_utf8(buf).context("decoding error")?;
         let data = Parser::parse_all(s).context("parse error")?;
@@ -37,25 +46,11 @@ impl CPU {
             usage_per_core: usage_per_core.into(),
         };
         EventQueue::push_back(event);
-        Ok(())
+        Ok(None)
     }
 
-    pub(crate) const fn tick(&mut self, _tick: u64) {
+    fn try_tick(&mut self, _tick: u64) -> Result<()> {
         self.reader.tick();
-    }
-}
-
-impl Module for CPU {
-    type Output = ();
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
-        self.reader.wants()
-    }
-
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
-        if let Err(err) = self.try_satisfy(satisfy, res) {
-            log::error!("CPU module crashed: {satisfy:?} {res} {err:?}");
-            self.reader.stop();
-        }
+        Ok(())
     }
 }

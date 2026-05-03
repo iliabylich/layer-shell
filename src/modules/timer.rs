@@ -1,5 +1,5 @@
 use crate::{
-    modules::Module,
+    modules::FallibleModule,
     sansio::{Satisfy, TimerFd, Wants},
 };
 use anyhow::Result;
@@ -16,14 +16,15 @@ impl Timer {
     }
 }
 
-impl Module for Timer {
-    type Output = Result<u64>;
+impl FallibleModule for Timer {
+    const NAME: &str = "Timer";
+    type Output = u64;
 
-    fn wants(&mut self) -> Result<Option<Wants>> {
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
         Ok(self.timerfd.wants())
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
-        self.timerfd.satisfy(satisfy, res)
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+        self.timerfd.satisfy(satisfy, res).map(Some)
     }
 }

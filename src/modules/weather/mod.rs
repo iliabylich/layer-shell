@@ -1,7 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::{Module, weather::weather_response::WeatherResponse},
+    modules::{FallibleModule, weather::weather_response::WeatherResponse},
     sansio::{HttpRequest, Https, Satisfy, Wants},
 };
 use anyhow::Result;
@@ -56,8 +56,36 @@ impl Weather {
             Self::Dead { latlng } => *latlng,
         }
     }
+}
 
-    pub(crate) fn tick(&mut self, tick: u64) {
+impl FallibleModule for Weather {
+    const NAME: &str = "Weather";
+    type Output = ();
+
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
+        match self {
+            Self::Ready { https, .. } => https.wants(),
+
+            Self::WaitingForLocation | Self::Dead { .. } => Ok(None),
+        }
+    }
+
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+        if matches!(self, Self::Dead { .. }) {
+            return Ok(None);
+        }
+
+        if let Err(err) = self.try_satisfy(satisfy, res) {
+            log::error!("Weather module crashed: {satisfy:?} {res} {err:?}");
+            *self = Self::Dead {
+                latlng: self.latlng(),
+            };
+        }
+
+        Ok(None)
+    }
+
+    fn try_tick(&mut self, tick: u64) -> Result<()> {
         if tick.is_multiple_of(10)
             && let Some((lat, lng)) = self.latlng()
         {
@@ -67,31 +95,8 @@ impl Weather {
                 https: Https::new(HttpRequest::get(HOST, path(lat, lng))),
             }
         }
-    }
-}
 
-impl Module for Weather {
-    type Output = ();
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
-        match self {
-            Self::Ready { https, .. } => https.wants(),
-
-            Self::WaitingForLocation | Self::Dead { .. } => Ok(None),
-        }
-    }
-
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
-        if matches!(self, Self::Dead { .. }) {
-            return;
-        }
-
-        if let Err(err) = self.try_satisfy(satisfy, res) {
-            log::error!("Weather module crashed: {satisfy:?} {res} {err:?}");
-            *self = Self::Dead {
-                latlng: self.latlng(),
-            };
-        }
+        Ok(())
     }
 }
 

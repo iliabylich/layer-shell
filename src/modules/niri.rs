@@ -1,7 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::Module,
+    modules::FallibleModule,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     unix_socket::new_unix_socket,
     utils::StringRef,
@@ -114,10 +114,11 @@ impl Niri {
     }
 }
 
-impl Module for Niri {
+impl FallibleModule for Niri {
+    const NAME: &str = "Niri";
     type Output = ();
 
-    fn wants(&mut self) -> Result<Option<Wants>> {
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
         let Some(state) = self.state.as_mut() else {
             return Ok(None);
         };
@@ -128,11 +129,9 @@ impl Module for Niri {
         }
     }
 
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
-        if let Err(err) = self.try_satisfy(satisfy, res) {
-            log::error!(target: "Niri", "{err:?}");
-            self.state = None;
-        }
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+        self.try_satisfy(satisfy, res)?;
+        Ok(None)
     }
 }
 

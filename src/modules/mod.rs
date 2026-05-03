@@ -37,9 +37,61 @@ pub use weather::{
 use crate::sansio::{Satisfy, Wants};
 use anyhow::Result;
 
-pub(crate) trait Module {
+pub(crate) trait FallibleModule {
+    const NAME: &str;
     type Output;
 
-    fn wants(&mut self) -> Result<Option<Wants>>;
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output;
+    fn try_wants(&mut self) -> Result<Option<Wants>>;
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>>;
+    fn try_tick(&mut self, _tick: u64) -> Result<()> {
+        Ok(())
+    }
+}
+
+pub(crate) struct InfallibleModule<M> {
+    module: Option<M>,
+}
+
+impl<M: FallibleModule> InfallibleModule<M> {
+    pub(crate) const fn new(module: M) -> Self {
+        Self {
+            module: Some(module),
+        }
+    }
+
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
+        match self.module.as_mut()?.try_wants() {
+            Ok(wants) => wants,
+            Err(err) => {
+                log::error!(target: M::NAME, "{err:?}");
+                None
+            }
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<M::Output> {
+        match self.module.as_mut()?.try_satisfy(satisfy, res) {
+            Ok(output) => output,
+            Err(err) => {
+                log::error!(target: M::NAME, "{err:?}");
+                self.module = None;
+                None
+            }
+        }
+    }
+
+    pub(crate) const fn inner(&mut self) -> Option<&mut M> {
+        self.module.as_mut()
+    }
+
+    pub(crate) fn tick(&mut self, tick: u64) {
+        let Some(module) = self.module.as_mut() else {
+            return;
+        };
+
+        if let Err(err) = module.try_tick(tick) {
+            log::error!(target: M::NAME, "{err:?}");
+            self.module = None;
+        }
+    }
 }

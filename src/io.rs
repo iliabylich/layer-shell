@@ -5,8 +5,8 @@ use crate::{
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
-        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Module, Network, Niri,
-        SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
+        CPU, CapsLock, Clock, Control, ControlRequest, InfallibleModule, Location, Memory, Network,
+        Niri, SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
     },
     sansio::{Https, Satisfy, Wants},
     user_data::{ModuleId, UserData},
@@ -18,20 +18,24 @@ pub(crate) struct IO {
     config: Config,
     pub(crate) io_config: *const IOConfig,
 
-    timer: Timer,
+    timer: InfallibleModule<Timer>,
 
-    session_dbus: SessionDBus,
+    session_dbus: InfallibleModule<SessionDBus>,
     sound: Sound,
     tray: Tray,
-    system_dbus: SystemDBus,
+    system_dbus: InfallibleModule<SystemDBus>,
     network: Network,
 
-    location: Location,
-    weather: Weather,
-    cpu: CPU,
-    memory: Memory,
-    caps_lock: CapsLock,
-    niri: Niri,
+    location: InfallibleModule<Location>,
+    coordinates: Option<(f64, f64)>,
+    weather: InfallibleModule<Weather>,
+
+    cpu: InfallibleModule<CPU>,
+    memory: InfallibleModule<Memory>,
+
+    caps_lock: InfallibleModule<CapsLock>,
+    niri: InfallibleModule<Niri>,
+
     on_event: extern "C" fn(event: *const Event),
     running: bool,
     logging_enabled: bool,
@@ -42,8 +46,8 @@ static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
 macro_rules! schedule {
     ($module:expr, $module_id:expr) => {{
         let module_id = $module_id;
-        if let Some(wants) = $module.wants()? {
-            if let Some(wants_next) = $module.wants()? {
+        if let Some(wants) = $module.wants() {
+            if let Some(wants_next) = $module.wants() {
                 anyhow::bail!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
             }
             schedule_wanted(wants, module_id)?;
@@ -92,20 +96,23 @@ impl IO {
             config,
             io_config,
 
-            timer: Timer::new()?,
+            timer: InfallibleModule::new(Timer::new()?),
 
-            session_dbus: SessionDBus::new(),
+            session_dbus: InfallibleModule::new(SessionDBus::new()),
             sound: Sound::new(),
             tray: Tray::new(),
-            system_dbus: SystemDBus::new(),
+            system_dbus: InfallibleModule::new(SystemDBus::new()),
             network: Network::new(),
 
-            location: Location::new(),
-            weather: Weather::new(),
-            cpu: CPU::new(),
-            memory: Memory::new(),
-            caps_lock: CapsLock::new()?,
-            niri: Niri::new()?,
+            location: InfallibleModule::new(Location::new()),
+            coordinates: None,
+            weather: InfallibleModule::new(Weather::new()),
+
+            cpu: InfallibleModule::new(CPU::new()),
+            memory: InfallibleModule::new(Memory::new()),
+
+            caps_lock: InfallibleModule::new(CapsLock::new()?),
+            niri: InfallibleModule::new(Niri::new()?),
 
             on_event,
             running: true,
@@ -167,7 +174,10 @@ impl IO {
             match module_id {
                 ModuleId::GeoLocation => {
                     if let Some((lat, lng)) = satisfy!(self.location) {
-                        self.weather.setup(lat, lng);
+                        self.coordinates = Some((lat, lng));
+                        if let Some(weather) = self.weather.inner() {
+                            weather.setup(lat, lng);
+                        }
                         schedule!(self.weather, ModuleId::Weather);
                     } else {
                         schedule!(self.location, ModuleId::GeoLocation);
@@ -223,22 +233,23 @@ impl IO {
                     schedule!(self.memory, ModuleId::Memory);
                 }
                 ModuleId::Timer => {
-                    let tick = satisfy!(self.timer)?;
-                    schedule!(self.timer, ModuleId::Timer);
+                    if let Some(tick) = satisfy!(self.timer) {
+                        schedule!(self.timer, ModuleId::Timer);
 
-                    Clock::tick();
+                        Clock::tick();
 
-                    self.weather.tick(tick);
-                    schedule!(self.weather, ModuleId::Weather);
+                        self.weather.tick(tick);
+                        schedule!(self.weather, ModuleId::Weather);
 
-                    self.cpu.tick(tick);
-                    schedule!(self.cpu, ModuleId::CPU);
+                        self.cpu.tick(tick);
+                        schedule!(self.cpu, ModuleId::CPU);
 
-                    self.memory.tick(tick);
-                    schedule!(self.memory, ModuleId::Memory);
+                        self.memory.tick(tick);
+                        schedule!(self.memory, ModuleId::Memory);
 
-                    self.sound.tick(tick)?;
-                    schedule!(self.session_dbus, ModuleId::SessionDBus);
+                        self.sound.tick(tick)?;
+                        schedule!(self.session_dbus, ModuleId::SessionDBus);
+                    }
                 }
             }
 

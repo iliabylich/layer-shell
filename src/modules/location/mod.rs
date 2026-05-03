@@ -1,5 +1,5 @@
 use crate::{
-    modules::Module,
+    modules::FallibleModule,
     sansio::{HttpRequest, Https, Satisfy, Wants},
 };
 use anyhow::Result;
@@ -19,30 +19,21 @@ impl Location {
             https: Https::new(HttpRequest::get(HOST, "/".to_string())),
         }
     }
+}
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<(f64, f64)>> {
+impl FallibleModule for Location {
+    const NAME: &str = "Location";
+    type Output = (f64, f64);
+
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
+        self.https.wants()
+    }
+
+    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
         let Some(response) = self.https.satisfy(satisfy, res) else {
             return Ok(None);
         };
         let location = LocationResponse::parse(&response)?;
         Ok(Some(location))
-    }
-}
-
-impl Module for Location {
-    type Output = Option<(f64, f64)>;
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
-        self.https.wants()
-    }
-
-    fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Self::Output {
-        match self.try_satisfy(satisfy, res) {
-            Ok(location) => location,
-            Err(err) => {
-                log::error!("Location module crashed: {satisfy:?} {res} {err:?}");
-                None
-            }
-        }
     }
 }
