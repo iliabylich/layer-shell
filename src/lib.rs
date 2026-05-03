@@ -38,6 +38,13 @@ pub use event::Event;
 pub use ffi::FFIArray;
 
 use crate::{io::IO, utils::StringRef};
+use anyhow::{Context as _, Result};
+
+static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
+
+fn global_io() -> Result<&'static mut IO> {
+    unsafe { GLOBAL_IO.as_mut() }.context("IO is not initialized. Call io_init() first.")
+}
 
 macro_rules! map_panic_to_exit_with_error {
     ($code:expr) => {{
@@ -58,50 +65,66 @@ macro_rules! map_panic_to_exit_with_error {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) {
-    map_panic_to_exit_with_error!(IO::init(on_event, logging_enabled));
+    if unsafe { !GLOBAL_IO.is_null() } {
+        eprintln!("io_init() has been already called");
+        std::process::exit(1);
+    }
+
+    map_panic_to_exit_with_error!({
+        IO::init()?;
+        unsafe {
+            GLOBAL_IO = Box::into_raw(Box::new(IO::new(on_event, logging_enabled)?));
+        }
+        Ok(())
+    });
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_deinit() {
-    IO::deinit();
+    map_panic_to_exit_with_error!(Ok(global_io()?.stop()));
+
+    unsafe {
+        drop(Box::from_raw(GLOBAL_IO));
+        GLOBAL_IO = core::ptr::null_mut();
+    }
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_handle_readable() {
-    map_panic_to_exit_with_error!(IO::global()?.handle_readable());
+    map_panic_to_exit_with_error!(global_io()?.handle_readable());
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_wait_readable() {
-    map_panic_to_exit_with_error!(IO::global()?.wait_readable());
+    map_panic_to_exit_with_error!(global_io()?.wait_readable());
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_as_raw_fd() -> i32 {
-    map_panic_to_exit_with_error!(Ok(IO::global()?.as_raw_fd()))
+    map_panic_to_exit_with_error!(Ok(global_io()?.as_raw_fd()))
 }
 
 #[unsafe(no_mangle)]
 #[must_use]
 pub extern "C" fn io_get_config() -> *const IOConfig {
-    map_panic_to_exit_with_error!(Ok(IO::global()?.io_config))
+    map_panic_to_exit_with_error!(Ok(global_io()?.io_config))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_lock() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::Lock));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Lock));
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_reboot() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::Reboot));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Reboot));
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_shutdown() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::Shutdown));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Shutdown));
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_logout() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::Logout));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Logout));
 }
 #[unsafe(no_mangle)]
 #[expect(clippy::not_unsafe_ptr_arg_deref)]
@@ -109,24 +132,24 @@ pub extern "C" fn io_trigger_tray(uuid: *const core::ffi::c_char) {
     map_panic_to_exit_with_error!({
         let uuid = unsafe { std::ffi::CStr::from_ptr(uuid) }.to_str()?;
 
-        IO::global()?.process_command(Command::TriggerTray {
+        global_io()?.process_command(Command::TriggerTray {
             uuid: StringRef::new(uuid)?,
         })
     });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_wifi_editor() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::SpawnWiFiEditor));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::SpawnWiFiEditor));
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_bluetooh_editor() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::SpawnBluetoothEditor));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::SpawnBluetoothEditor));
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_system_monitor() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::SpawnSystemMonitor));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::SpawnSystemMonitor));
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_change_theme() {
-    map_panic_to_exit_with_error!(IO::global()?.process_command(Command::ChangeTheme));
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::ChangeTheme));
 }

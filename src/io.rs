@@ -14,7 +14,7 @@ use crate::{
     user_data::{ModuleId, UserData},
     utils::Logger,
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 
 pub(crate) struct IO {
     io_uring: IoUring,
@@ -45,8 +45,6 @@ pub(crate) struct IO {
     logging_enabled: bool,
 }
 
-static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();
-
 macro_rules! schedule {
     ($module:expr, $module_id:expr, $io_uring:expr) => {{
         let module_id = $module_id;
@@ -60,38 +58,23 @@ macro_rules! schedule {
 }
 
 impl IO {
-    pub(crate) fn init(
-        on_event: extern "C" fn(event: *const Event),
-        logging_enabled: bool,
-    ) -> Result<()> {
-        if unsafe { !GLOBAL_IO.is_null() } {
-            bail!("io_init() called while IO is already initialized");
-        }
-
+    pub(crate) fn init() -> Result<()> {
         Logger::init()?;
         Https::init()?;
         SessionDBus::init();
         SystemDBus::init();
-
-        unsafe {
-            GLOBAL_IO = Box::into_raw(Box::new(Self::new(on_event, logging_enabled)?));
-        }
         Ok(())
     }
 
-    pub(crate) fn deinit() {
-        if unsafe { GLOBAL_IO.is_null() } {
-            return;
-        }
-
-        unsafe {
-            (*GLOBAL_IO).stop();
-            drop(Box::from_raw(GLOBAL_IO));
-            GLOBAL_IO = core::ptr::null_mut();
-        }
+    pub(crate) fn stop(&mut self) {
+        self.running = false;
+        self.io_uring.deinit();
     }
 
-    fn new(on_event: extern "C" fn(event: *const Event), logging_enabled: bool) -> Result<Self> {
+    pub(crate) fn new(
+        on_event: extern "C" fn(event: *const Event),
+        logging_enabled: bool,
+    ) -> Result<Self> {
         let config = Config::read()?;
         let io_config = Box::leak(Box::new(IOConfig::try_from(&config)?));
 
@@ -316,15 +299,6 @@ impl IO {
 
         self.io_uring.submit_if_dirty()?;
         Ok(())
-    }
-
-    fn stop(&mut self) {
-        self.running = false;
-        self.io_uring.deinit();
-    }
-
-    pub(crate) fn global() -> Result<&'static mut Self> {
-        unsafe { GLOBAL_IO.as_mut() }.context("IO is not initialized. Call io_init() first.")
     }
 }
 
