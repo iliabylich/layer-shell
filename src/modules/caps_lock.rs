@@ -4,6 +4,7 @@ use crate::{
     modules::FallibleModule,
     sansio::{Satisfy, UnixSocketReader, Wants},
     unix_socket::new_unix_socket,
+    user_data::ModuleId,
 };
 use anyhow::{Context, Result};
 
@@ -23,7 +24,7 @@ impl CapsLock {
 }
 
 impl FallibleModule for CapsLock {
-    const NAME: &str = "CapsLock";
+    const MODULE_ID: ModuleId = ModuleId::CapsLock;
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {

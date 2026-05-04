@@ -1,6 +1,7 @@
 use crate::{
     modules::FallibleModule,
     sansio::{Satisfy, TimerFd, Wants},
+    user_data::ModuleId,
 };
 use anyhow::Result;
 
@@ -17,7 +18,7 @@ impl Timer {
 }
 
 impl FallibleModule for Timer {
-    const NAME: &str = "Timer";
+    const MODULE_ID: ModuleId = ModuleId::Timer;
     type Output = u64;
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {

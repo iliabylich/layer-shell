@@ -46,8 +46,8 @@ pub(crate) struct IO {
 }
 
 macro_rules! schedule {
-    ($module:expr, $module_id:expr, $io_uring:expr) => {{
-        let module_id = $module_id;
+    ($module:expr, $io_uring:expr) => {{
+        let module_id = $module.module_id();
         if let Some(wants) = $module.wants() {
             if let Some(wants_next) = $module.wants() {
                 anyhow::bail!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
@@ -113,21 +113,21 @@ impl IO {
     }
 
     fn start(&mut self) -> Result<()> {
-        schedule!(self.timer, ModuleId::Timer, &mut self.io_uring);
+        schedule!(self.timer, &mut self.io_uring);
 
-        schedule!(self.location, ModuleId::GeoLocation, &mut self.io_uring);
-        schedule!(self.cpu, ModuleId::CPU, &mut self.io_uring);
-        schedule!(self.memory, ModuleId::Memory, &mut self.io_uring);
-        schedule!(self.caps_lock, ModuleId::CapsLock, &mut self.io_uring);
-        schedule!(self.niri, ModuleId::Niri, &mut self.io_uring);
+        schedule!(self.location, &mut self.io_uring);
+        schedule!(self.cpu, &mut self.io_uring);
+        schedule!(self.memory, &mut self.io_uring);
+        schedule!(self.caps_lock, &mut self.io_uring);
+        schedule!(self.niri, &mut self.io_uring);
 
         self.sound.init()?;
         Control::init();
         self.tray.init()?;
-        schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
+        schedule!(self.session_dbus, &mut self.io_uring);
 
         self.network.init()?;
-        schedule!(self.system_dbus, ModuleId::SystemDBus, &mut self.io_uring);
+        schedule!(self.system_dbus, &mut self.io_uring);
 
         self.io_uring.submit_if_dirty()?;
         Ok(())
@@ -166,25 +166,25 @@ impl IO {
                         if let Some(weather) = self.weather.inner() {
                             weather.setup(lat, lng);
                         }
-                        schedule!(self.weather, ModuleId::Weather, &mut self.io_uring);
+                        schedule!(self.weather, &mut self.io_uring);
                     } else {
-                        schedule!(self.location, ModuleId::GeoLocation, &mut self.io_uring);
+                        schedule!(self.location, &mut self.io_uring);
                     }
                 }
 
                 ModuleId::Weather => {
                     satisfy!(self.weather);
-                    schedule!(self.weather, ModuleId::Weather, &mut self.io_uring);
+                    schedule!(self.weather, &mut self.io_uring);
                 }
 
                 ModuleId::CapsLock => {
                     satisfy!(self.caps_lock);
-                    schedule!(self.caps_lock, ModuleId::CapsLock, &mut self.io_uring);
+                    schedule!(self.caps_lock, &mut self.io_uring);
                 }
 
                 ModuleId::Niri => {
                     satisfy!(self.niri);
-                    schedule!(self.niri, ModuleId::Niri, &mut self.io_uring);
+                    schedule!(self.niri, &mut self.io_uring);
                 }
 
                 ModuleId::SessionDBus => {
@@ -199,7 +199,7 @@ impl IO {
                         }
                     }
 
-                    schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
+                    schedule!(self.session_dbus, &mut self.io_uring);
                 }
 
                 ModuleId::SystemDBus => {
@@ -209,34 +209,34 @@ impl IO {
                         self.network.on_message(message)?;
                     }
 
-                    schedule!(self.system_dbus, ModuleId::SystemDBus, &mut self.io_uring);
+                    schedule!(self.system_dbus, &mut self.io_uring);
                 }
 
                 ModuleId::CPU => {
                     satisfy!(self.cpu);
-                    schedule!(self.cpu, ModuleId::CPU, &mut self.io_uring);
+                    schedule!(self.cpu, &mut self.io_uring);
                 }
                 ModuleId::Memory => {
                     satisfy!(self.memory);
-                    schedule!(self.memory, ModuleId::Memory, &mut self.io_uring);
+                    schedule!(self.memory, &mut self.io_uring);
                 }
                 ModuleId::Timer => {
                     if let Some(tick) = satisfy!(self.timer) {
-                        schedule!(self.timer, ModuleId::Timer, &mut self.io_uring);
+                        schedule!(self.timer, &mut self.io_uring);
 
                         Clock::tick();
 
                         self.weather.tick(tick);
-                        schedule!(self.weather, ModuleId::Weather, &mut self.io_uring);
+                        schedule!(self.weather, &mut self.io_uring);
 
                         self.cpu.tick(tick);
-                        schedule!(self.cpu, ModuleId::CPU, &mut self.io_uring);
+                        schedule!(self.cpu, &mut self.io_uring);
 
                         self.memory.tick(tick);
-                        schedule!(self.memory, ModuleId::Memory, &mut self.io_uring);
+                        schedule!(self.memory, &mut self.io_uring);
 
                         self.sound.tick(tick)?;
-                        schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
+                        schedule!(self.session_dbus, &mut self.io_uring);
                     }
                 }
             }
@@ -293,7 +293,7 @@ impl IO {
 
             Command::TriggerTray { uuid } => {
                 self.tray.trigger(uuid.as_str())?;
-                schedule!(self.session_dbus, ModuleId::SessionDBus, &mut self.io_uring);
+                schedule!(self.session_dbus, &mut self.io_uring);
             }
         }
 

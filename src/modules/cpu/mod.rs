@@ -3,6 +3,7 @@ use crate::{
     event_queue::EventQueue,
     modules::FallibleModule,
     sansio::{FileReader, Satisfy, Wants},
+    user_data::ModuleId,
 };
 use anyhow::{Context as _, Result};
 use parser::{CoreUsage, Parser};
@@ -25,7 +26,7 @@ impl CPU {
 }
 
 impl FallibleModule for CPU {
-    const NAME: &str = "CPU";
+    const MODULE_ID: ModuleId = ModuleId::CPU;
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {

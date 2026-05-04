@@ -1,6 +1,7 @@
 use crate::{
     modules::FallibleModule,
     sansio::{HttpRequest, Https, Satisfy, Wants},
+    user_data::ModuleId,
 };
 use anyhow::Result;
 use response::LocationResponse;
@@ -22,7 +23,7 @@ impl Location {
 }
 
 impl FallibleModule for Location {
-    const NAME: &str = "Location";
+    const MODULE_ID: ModuleId = ModuleId::GeoLocation;
     type Output = (f64, f64);
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {

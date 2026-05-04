@@ -4,6 +4,7 @@ use crate::{
     modules::FallibleModule,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     unix_socket::new_unix_socket,
+    user_data::ModuleId,
     utils::StringRef,
 };
 use anyhow::{Context, Result};
@@ -72,7 +73,7 @@ impl Niri {
 }
 
 impl FallibleModule for Niri {
-    const NAME: &str = "Niri";
+    const MODULE_ID: ModuleId = ModuleId::Niri;
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {

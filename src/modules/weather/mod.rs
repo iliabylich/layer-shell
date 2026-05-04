@@ -3,6 +3,7 @@ use crate::{
     event_queue::EventQueue,
     modules::{FallibleModule, weather::weather_response::WeatherResponse},
     sansio::{HttpRequest, Https, Satisfy, Wants},
+    user_data::ModuleId,
 };
 use anyhow::Result;
 pub use weather_code::WeatherCode;
@@ -59,7 +60,7 @@ impl Weather {
 }
 
 impl FallibleModule for Weather {
-    const NAME: &str = "Weather";
+    const MODULE_ID: ModuleId = ModuleId::Weather;
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {

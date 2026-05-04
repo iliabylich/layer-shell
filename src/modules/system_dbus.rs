@@ -1,6 +1,7 @@
 use crate::{
     modules::FallibleModule,
     sansio::{Satisfy, Wants},
+    user_data::ModuleId,
 };
 use anyhow::Result;
 use mini_sansio_dbus::{DBusConnection, DBusQueue, IncomingMessage};
@@ -36,7 +37,7 @@ impl SystemDBus {
 }
 
 impl FallibleModule for SystemDBus {
-    const NAME: &str = "SystemDBus";
+    const MODULE_ID: ModuleId = ModuleId::SystemDBus;
     type Output = IncomingMessage<'static>;
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {

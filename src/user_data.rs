@@ -21,6 +21,22 @@ pub(crate) enum ModuleId {
 
 const MAX: ModuleId = ModuleId::Timer;
 
+impl ModuleId {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Weather => "Weather",
+            Self::GeoLocation => "GeoLocation",
+            Self::CapsLock => "CapsLock",
+            Self::Niri => "Niri",
+            Self::SessionDBus => "SessionDBus",
+            Self::SystemDBus => "SystemDBus",
+            Self::CPU => "CPU",
+            Self::Memory => "Memory",
+            Self::Timer => "Timer",
+        }
+    }
+}
+
 impl From<ModuleId> for u8 {
     fn from(value: ModuleId) -> Self {
         value as Self

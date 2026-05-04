@@ -3,6 +3,7 @@ use crate::{
     event_queue::EventQueue,
     modules::FallibleModule,
     sansio::{FileReader, Satisfy, Wants},
+    user_data::ModuleId,
 };
 use anyhow::{Context as _, Result};
 use parser::Parser;
@@ -22,7 +23,7 @@ impl Memory {
 }
 
 impl FallibleModule for Memory {
-    const NAME: &str = "Memory";
+    const MODULE_ID: ModuleId = ModuleId::Memory;
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {
