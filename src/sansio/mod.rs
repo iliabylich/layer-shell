@@ -7,7 +7,7 @@ mod unix_sockets;
 mod wants;
 
 pub(crate) use dns::Dns;
-pub(crate) use file_reader::{FileReader, FileReaderKind};
+pub(crate) use file_reader::FileReader;
 pub(crate) use https::{HttpRequest, HttpResponse, Https};
 pub(crate) use satisfy::Satisfy;
 pub(crate) use timerfd::TimerFd;

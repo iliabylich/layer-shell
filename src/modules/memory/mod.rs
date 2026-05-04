@@ -2,7 +2,7 @@ use crate::{
     Event,
     event_queue::EventQueue,
     modules::FallibleModule,
-    sansio::{FileReader, FileReaderKind, Satisfy, Wants},
+    sansio::{FileReader, Satisfy, Wants},
 };
 use anyhow::{Context as _, Result};
 use parser::Parser;
@@ -10,13 +10,13 @@ use parser::Parser;
 mod parser;
 
 pub(crate) struct Memory {
-    reader: FileReader,
+    reader: FileReader<1_024>,
 }
 
 impl Memory {
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            reader: FileReader::new(c"/proc/meminfo", FileReaderKind::Memory),
+            reader: FileReader::new(c"/proc/meminfo"),
         }
     }
 }
@@ -26,15 +26,14 @@ impl FallibleModule for Memory {
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {
-        self.reader.wants()
+        Ok(self.reader.wants())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        let Some(buf) = self.reader.satisfy(satisfy, res) else {
+        let Some(buf) = self.reader.try_satisfy(satisfy, res)? else {
             return Ok(None);
         };
-        let s = core::str::from_utf8(buf).context("decoding error")?;
-        let (used, total) = Parser::parse(s).context("parse error")?;
+        let (used, total) = Parser::parse(buf).context("parse error")?;
 
         EventQueue::push_back(Event::Memory { used, total });
         Ok(None)

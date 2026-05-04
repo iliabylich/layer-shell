@@ -167,7 +167,7 @@ impl Dns {
             }
 
             _ => {
-                bail!("malformed state: {:?}", self.state)
+                bail!("malformed state {:?}", self.state)
             }
         }
     }

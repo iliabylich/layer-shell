@@ -2,26 +2,24 @@ use crate::{
     Event,
     event_queue::EventQueue,
     modules::FallibleModule,
-    sansio::{FileReader, FileReaderKind, Satisfy, Wants},
+    sansio::{FileReader, Satisfy, Wants},
 };
 use anyhow::{Context as _, Result};
-use parser::Parser;
-use store::Store;
+use parser::{CoreUsage, Parser};
 
 mod parser;
-mod store;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct CPU {
-    reader: FileReader,
-    store: Store,
+    reader: FileReader<1_024>,
+    state: Option<Vec<CoreUsage>>,
 }
 
 impl CPU {
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            reader: FileReader::new(c"/proc/stat", FileReaderKind::CPU),
-            store: Store::new(),
+            reader: FileReader::new(c"/proc/stat"),
+            state: None,
         }
     }
 }
@@ -31,21 +29,20 @@ impl FallibleModule for CPU {
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {
-        self.reader.wants()
+        Ok(self.reader.wants())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        let Some(buf) = self.reader.satisfy(satisfy, res) else {
+        let Some(buf) = self.reader.try_satisfy(satisfy, res)? else {
             return Ok(None);
         };
-        let s = core::str::from_utf8(buf).context("decoding error")?;
-        let data = Parser::parse_all(s).context("parse error")?;
+        let prev = self.state.take();
+        let next = Parser::parse(buf).context("parse error")?;
 
-        let usage_per_core = self.store.update(data)?;
-        let event = Event::CpuUsage {
-            usage_per_core: usage_per_core.into(),
-        };
-        EventQueue::push_back(event);
+        let usage_per_core = diff(prev.as_deref(), &next)?.into();
+        self.state = Some(next);
+        EventQueue::push_back(Event::CpuUsage { usage_per_core });
+
         Ok(None)
     }
 
@@ -53,4 +50,15 @@ impl FallibleModule for CPU {
         self.reader.tick();
         Ok(())
     }
+}
+
+fn diff(prev: Option<&[CoreUsage]>, next: &[CoreUsage]) -> Result<Vec<u8>> {
+    let Some(prev) = prev else {
+        return Ok(vec![0; next.len()]);
+    };
+
+    prev.iter()
+        .zip(next.iter())
+        .map(|(prev, next)| next.load_comparing_to(*prev))
+        .collect()
 }
