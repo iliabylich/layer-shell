@@ -31,7 +31,7 @@ impl FallibleModule for CapsLock {
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        let Some((buf, len)) = self.reader.satisfy(satisfy, res) else {
+        let Some((buf, len)) = self.reader.try_satisfy(satisfy, res)? else {
             return Ok(None);
         };
 

@@ -73,7 +73,7 @@ impl<M: FallibleModule> InfallibleModule<M> {
         match self.module.as_mut()?.try_satisfy(satisfy, res) {
             Ok(output) => output,
             Err(err) => {
-                log::error!(target: M::NAME, "{err:?}");
+                log::error!(target: M::NAME, "crash, stopping. satisfy={satisfy:?}, res={res}, err: {err:?}");
                 self.module = None;
                 None
             }
@@ -90,7 +90,7 @@ impl<M: FallibleModule> InfallibleModule<M> {
         };
 
         if let Err(err) = module.try_tick(tick) {
-            log::error!(target: M::NAME, "{err:?}");
+            log::error!(target: M::NAME, "crash, stopping. err: {err:?}");
             self.module = None;
         }
     }

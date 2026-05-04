@@ -94,7 +94,7 @@ impl FallibleModule for Niri {
                 }
             }
             State::Reader(reader) => {
-                let Some((buf, len)) = reader.satisfy(satisfy, res) else {
+                let Some((buf, len)) = reader.try_satisfy(satisfy, res)? else {
                     return Ok(None);
                 };
                 let buf = buf.get(..len).context("buf is too short")?;

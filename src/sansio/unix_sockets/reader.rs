@@ -6,8 +6,6 @@ use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 enum State {
     ReadyTo(Action),
     WaitingFor(Action),
-
-    Dead,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -51,33 +49,42 @@ impl UnixSocketReader {
     }
 
     pub(crate) const fn wants(&mut self) -> Option<Wants> {
-        let State::ReadyTo(action) = self.state else {
-            return None;
-        };
+        match self.state {
+            State::ReadyTo(Action::Socket) => {
+                self.state = State::WaitingFor(Action::Socket);
+                Some(Wants::Socket {
+                    domain: AF_UNIX,
+                    r#type: SOCK_STREAM,
+                })
+            }
 
-        let wants = match action {
-            Action::Socket => Wants::Socket {
-                domain: AF_UNIX,
-                r#type: SOCK_STREAM,
-            },
+            State::ReadyTo(Action::Connect) => {
+                self.state = State::WaitingFor(Action::Connect);
+                Some(Wants::Connect {
+                    fd: self.fd,
+                    addr: (&raw const self.addr).cast::<sockaddr>(),
+                    addrlen: size_of::<sockaddr_un>() as u32,
+                })
+            }
 
-            Action::Connect => Wants::Connect {
-                fd: self.fd,
-                addr: (&raw const self.addr).cast::<sockaddr>(),
-                addrlen: size_of::<sockaddr_un>() as u32,
-            },
+            State::ReadyTo(Action::Read) => {
+                self.state = State::WaitingFor(Action::Read);
+                Some(Wants::Read {
+                    fd: self.fd,
+                    buf: self.buf.as_mut_ptr(),
+                    len: self.buf.len(),
+                })
+            }
 
-            Action::Read => Wants::Read {
-                fd: self.fd,
-                buf: self.buf.as_mut_ptr(),
-                len: self.buf.len(),
-            },
-        };
-        self.state = State::WaitingFor(action);
-        Some(wants)
+            State::WaitingFor(_) => None,
+        }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<([u8; 1_024], usize)>> {
+    pub(crate) fn try_satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+    ) -> Result<Option<([u8; 1_024], usize)>> {
         match (self.state, satisfy) {
             (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
                 ensure!(res >= 0, "Socket failed: {res}");
@@ -94,33 +101,16 @@ impl UnixSocketReader {
 
             (State::WaitingFor(Action::Read), Satisfy::Read) => {
                 let bytes_read = usize::try_from(res).context("Read failed")?;
+                ensure!(bytes_read != 0, "EOF");
                 let buf = self.buf;
                 self.buf = [0; _];
                 self.state = State::ReadyTo(Action::Read);
                 Ok(Some((buf, bytes_read)))
             }
 
-            (State::Dead, _) => Ok(None),
-
             (state, satisfy) => {
                 bail!("malformed state: {state:?} vs {satisfy:?}");
             }
         }
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<([u8; 1_024], usize)> {
-        match self.try_satisfy(satisfy, res) {
-            Ok(buf) => buf,
-            Err(err) => {
-                log::error!("Module UnixSocketReader has crashed: {satisfy:?} {res} {err:?}");
-                self.stop();
-                None
-            }
-        }
-    }
-
-    pub(crate) fn stop(&mut self) {
-        log::error!("Stopping UnixSocketReader");
-        self.state = State::Dead;
     }
 }

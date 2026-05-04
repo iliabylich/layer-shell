@@ -81,7 +81,7 @@ impl Https {
 
     pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Dns(dns) => dns.wants(),
+            State::Dns(dns) => dns.try_wants(),
 
             State::ReadyToSocket => {
                 self.state = State::WaitingForSocket;
@@ -119,7 +119,7 @@ impl Https {
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
             (State::Dns(dns), _) => {
-                if let Some(mut addr) = dns.satisfy(satisfy, res)? {
+                if let Some(mut addr) = dns.try_satisfy(satisfy, res)? {
                     addr.sin_port = 443_u16.to_be();
                     self.addr = addr;
                     self.state = State::ReadyToSocket;

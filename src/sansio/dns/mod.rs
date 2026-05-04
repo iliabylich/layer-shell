@@ -17,7 +17,6 @@ const MAX_DNS_PACKET: usize = 512;
 enum State {
     ReadyTo(Action),
     WaitingFor(Action),
-    Done,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -59,70 +58,72 @@ impl Dns {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
-        let State::ReadyTo(action) = self.state else {
-            return Ok(None);
-        };
+    pub(crate) fn try_wants(&mut self) -> Result<Option<Wants>> {
+        match self.state {
+            State::ReadyTo(Action::Socket) => {
+                self.state = State::WaitingFor(Action::Socket);
+                Ok(Some(Wants::Socket {
+                    domain: libc::AF_INET,
+                    r#type: libc::SOCK_DGRAM,
+                }))
+            }
 
-        let wants = match action {
-            Action::Socket => Wants::Socket {
-                domain: libc::AF_INET,
-                r#type: libc::SOCK_DGRAM,
-            },
+            State::ReadyTo(Action::Connect) => {
+                self.state = State::WaitingFor(Action::Connect);
+                Ok(Some(Wants::Connect {
+                    fd: self.fd,
+                    addr: (&raw const self.addr).cast::<libc::sockaddr>(),
+                    addrlen: size_of::<libc::sockaddr_in>() as u32,
+                }))
+            }
 
-            Action::Connect => Wants::Connect {
-                fd: self.fd,
-                addr: (&raw const self.addr).cast::<libc::sockaddr>(),
-                addrlen: size_of::<libc::sockaddr_in>() as u32,
-            },
-
-            Action::Write => {
+            State::ReadyTo(Action::Write) => {
+                self.state = State::WaitingFor(Action::Write);
                 let buf = self
                     .buf
                     .get(self.pos..self.len)
                     .context("buf is too short")?;
-                Wants::Write {
+                Ok(Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                }))
             }
 
-            Action::Read => {
+            State::ReadyTo(Action::Read) => {
+                self.state = State::WaitingFor(Action::Read);
                 let buf = self.buf.get_mut(self.len..).context("buf is too short")?;
-                Wants::Read {
+                Ok(Some(Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                }
+                }))
             }
 
-            Action::Close => Wants::Close { fd: self.fd },
-        };
-        self.state = State::WaitingFor(action);
-        Ok(Some(wants))
+            State::ReadyTo(Action::Close) => {
+                self.state = State::WaitingFor(Action::Close);
+                Ok(Some(Wants::Close { fd: self.fd }))
+            }
+
+            State::WaitingFor(_) => Ok(None),
+        }
     }
 
-    pub(crate) fn satisfy(
+    pub(crate) fn try_satisfy(
         &mut self,
         satisfy: Satisfy,
         res: i32,
     ) -> Result<Option<libc::sockaddr_in>> {
-        let action = match self.state {
-            State::WaitingFor(action) => action,
-            state => bail!("malformed DNS state: {state:?} vs {satisfy:?}"),
-        };
-
-        match (action, satisfy) {
-            (Action::Socket, Satisfy::Socket) => {
-                ensure!(res >= 0, "DNS::Socket failed: {res}");
+        match (self.state, satisfy) {
+            (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
+                ensure!(res >= 0);
                 self.fd = res;
                 self.state = State::ReadyTo(Action::Connect);
                 Ok(None)
             }
 
-            (Action::Connect, Satisfy::Connect) => {
-                ensure!(res >= 0, "DNS::Connect failed: {res}");
+            (State::WaitingFor(Action::Connect), Satisfy::Connect) => {
+                ensure!(res >= 0);
 
                 let mut buf = [0_u8; MAX_DNS_PACKET];
                 let len = Request::write(&mut buf, self.domain, TYPE_A);
@@ -134,8 +135,7 @@ impl Dns {
                 Ok(None)
             }
 
-            (Action::Write, Satisfy::Write) => {
-                ensure!(res >= 0, "DNS::Write failed: {res}");
+            (State::WaitingFor(Action::Write), Satisfy::Write) => {
                 let bytes_written = usize::try_from(res).context("write failed")?;
 
                 self.pos += bytes_written;
@@ -149,7 +149,7 @@ impl Dns {
                 Ok(None)
             }
 
-            (Action::Read, Satisfy::Read) => {
+            (State::WaitingFor(Action::Read), Satisfy::Read) => {
                 let bytes_read = usize::try_from(res).context("read failed")?;
 
                 self.len += bytes_read;
@@ -159,16 +159,15 @@ impl Dns {
                 Ok(None)
             }
 
-            (Action::Close, Satisfy::Close) => {
-                ensure!(res >= 0, "DNS::Close failed: {res}");
+            (State::WaitingFor(Action::Close), Satisfy::Close) => {
+                ensure!(res >= 0);
 
                 let reply = Response::read(self.buf.get(..self.len).context("buf is too short")?)?;
-                self.state = State::Done;
                 Ok(Some(reply))
             }
 
-            (state, satisfy) => {
-                bail!("malformed DNS state: {state:?} vs {satisfy:?}")
+            _ => {
+                bail!("malformed state: {:?}", self.state)
             }
         }
     }
