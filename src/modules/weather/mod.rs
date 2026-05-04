@@ -38,7 +38,7 @@ impl Weather {
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
         match self {
             Self::Ready { https, .. } => {
-                let Some(response) = https.satisfy(satisfy, res) else {
+                let Some(response) = https.try_satisfy(satisfy, res)? else {
                     return Ok(());
                 };
                 let response = WeatherResponse::parse(&response)?;

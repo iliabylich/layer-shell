@@ -19,7 +19,6 @@ pub(crate) struct UnixSocketOneshotWriter {
 enum State {
     ReadyTo(Action),
     WaitingFor(Action),
-    Done,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -49,42 +48,51 @@ impl UnixSocketOneshotWriter {
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        let State::ReadyTo(action) = self.state else {
-            return None;
-        };
+        match self.state {
+            State::ReadyTo(Action::Socket) => {
+                self.state = State::WaitingFor(Action::Socket);
+                Some(Wants::Socket {
+                    domain: AF_UNIX,
+                    r#type: SOCK_STREAM,
+                })
+            }
 
-        let wants = match action {
-            Action::Socket => Wants::Socket {
-                domain: AF_UNIX,
-                r#type: SOCK_STREAM,
-            },
+            State::ReadyTo(Action::Connect) => {
+                self.state = State::WaitingFor(Action::Connect);
+                Some(Wants::Connect {
+                    fd: self.fd,
+                    addr: (&raw const self.addr).cast::<sockaddr>(),
+                    addrlen: size_of::<sockaddr_un>() as u32,
+                })
+            }
 
-            Action::Connect => Wants::Connect {
-                fd: self.fd,
-                addr: (&raw const self.addr).cast::<sockaddr>(),
-                addrlen: size_of::<sockaddr_un>() as u32,
-            },
-
-            Action::Write => {
+            State::ReadyTo(Action::Write) => {
+                self.state = State::WaitingFor(Action::Write);
                 // SAFETY: write_buflen is guaranteed not to exceed buf's len
                 let buf = unsafe { self.buf.get_unchecked(..self.write_buflen) };
-                Wants::Write {
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }
+                })
             }
 
-            Action::Read => Wants::Read {
-                fd: self.fd,
-                buf: self.buf.as_mut_ptr(),
-                len: self.buf.len(),
-            },
+            State::ReadyTo(Action::Read) => {
+                self.state = State::WaitingFor(Action::Read);
+                Some(Wants::Read {
+                    fd: self.fd,
+                    buf: self.buf.as_mut_ptr(),
+                    len: self.buf.len(),
+                })
+            }
 
-            Action::Close => Wants::Close { fd: self.fd },
-        };
-        self.state = State::WaitingFor(action);
-        Some(wants)
+            State::ReadyTo(Action::Close) => {
+                self.state = State::WaitingFor(Action::Close);
+                Some(Wants::Close { fd: self.fd })
+            }
+
+            State::WaitingFor(_) => None,
+        }
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
@@ -116,7 +124,6 @@ impl UnixSocketOneshotWriter {
 
             (State::WaitingFor(Action::Close), Satisfy::Close) => {
                 ensure!(res >= 0, "close failed: {res}");
-                self.state = State::Done;
                 Ok(Some(
                     self.buf
                         .get(..self.bytes_read)

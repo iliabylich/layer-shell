@@ -17,38 +17,29 @@ use state::OpenSslState;
 enum State {
     Dns(Box<Dns>),
 
-    ReadyToSocket,
-    WaitingForSocket,
-    ReadyToConnect,
-    WaitingForConnect,
+    ReadyTo(Action),
+    WaitingFor(Action),
 
     Handshaking(OpenSslHandshake),
     ReadWrite(OpenSslReadWrite),
+}
 
-    ReadyToClose,
-    WaitingForClose,
-
-    Done,
+#[derive(Debug)]
+enum Action {
+    Socket,
+    Connect,
+    Close,
 }
 
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Dns(_) => "Dns",
-                Self::ReadyToSocket => "ReadyToSocket",
-                Self::WaitingForSocket => "WaitingForSocket",
-                Self::ReadyToConnect => "ReadyToConnect",
-                Self::WaitingForConnect => "WaitingForConnect",
-                Self::Handshaking(_) => "Handshaking",
-                Self::ReadWrite(_) => "ReadWrite",
-                Self::ReadyToClose => "ReadyToClose",
-                Self::WaitingForClose => "WaitingForClose",
-                Self::Done => "Done",
-            }
-        )
+        match self {
+            Self::Dns(_) => write!(f, "Dns"),
+            Self::ReadyTo(action) => write!(f, "ReadyTo({action:?}"),
+            Self::WaitingFor(action) => write!(f, "WaitingFor({action:?}"),
+            Self::Handshaking(_) => write!(f, "Handshaking"),
+            Self::ReadWrite(_) => write!(f, "ReadWrite"),
+        }
     }
 }
 
@@ -83,16 +74,16 @@ impl Https {
         match &mut self.state {
             State::Dns(dns) => dns.wants(),
 
-            State::ReadyToSocket => {
-                self.state = State::WaitingForSocket;
+            State::ReadyTo(Action::Socket) => {
+                self.state = State::WaitingFor(Action::Socket);
                 Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_STREAM,
                 })
             }
 
-            State::ReadyToConnect => {
-                self.state = State::WaitingForConnect;
+            State::ReadyTo(Action::Connect) => {
+                self.state = State::WaitingFor(Action::Connect);
                 Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast(),
@@ -104,35 +95,36 @@ impl Https {
 
             State::ReadWrite(ready) => ready.wants(),
 
-            State::ReadyToClose => {
-                self.state = State::WaitingForClose;
+            State::ReadyTo(Action::Close) => {
+                self.state = State::WaitingFor(Action::Close);
                 Some(Wants::Close { fd: self.fd })
             }
 
-            State::WaitingForConnect
-            | State::WaitingForSocket
-            | State::WaitingForClose
-            | State::Done => None,
+            State::WaitingFor(_) => None,
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<HttpResponse>> {
+    pub(crate) fn try_satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        res: i32,
+    ) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
             (State::Dns(dns), _) => {
                 if let Some(mut addr) = dns.try_satisfy(satisfy, res)? {
                     addr.sin_port = 443_u16.to_be();
                     self.addr = addr;
-                    self.state = State::ReadyToSocket;
+                    self.state = State::ReadyTo(Action::Socket);
                 }
             }
 
-            (State::WaitingForSocket, Satisfy::Socket) => {
+            (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
                 ensure!(res >= 0, "OpenSsl::Socket failed: {res}");
                 self.fd = res;
-                self.state = State::ReadyToConnect;
+                self.state = State::ReadyTo(Action::Connect);
             }
 
-            (State::WaitingForConnect, Satisfy::Connect) => {
+            (State::WaitingFor(Action::Connect), Satisfy::Connect) => {
                 ensure!(res >= 0, "OpenSsl::Connect failed: {res}");
 
                 self.state = State::Handshaking(OpenSslHandshake::new(self.fd, self.domain)?);
@@ -151,13 +143,12 @@ impl Https {
             (State::ReadWrite(ready), Satisfy::Read | Satisfy::Write) => {
                 if let Some(response) = ready.satisfy(satisfy, res)? {
                     self.response = response;
-                    self.state = State::ReadyToClose;
+                    self.state = State::ReadyTo(Action::Close);
                 }
             }
 
-            (State::WaitingForClose, Satisfy::Close) => {
+            (State::WaitingFor(Action::Close), Satisfy::Close) => {
                 ensure!(res >= 0, "close failed: {res}");
-                self.state = State::Done;
                 let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
                 return Ok(Some(response));
             }
@@ -166,16 +157,5 @@ impl Https {
         }
 
         Ok(None)
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<HttpResponse> {
-        match self.try_satisfy(satisfy, res) {
-            Ok(res) => res,
-            Err(err) => {
-                log::error!("{err:?}");
-                self.state = State::Done;
-                None
-            }
-        }
     }
 }
