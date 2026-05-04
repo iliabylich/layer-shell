@@ -48,9 +48,9 @@ impl UnixSocketOneshotWriter {
         })
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         let State::ReadyTo(action) = self.state else {
-            return Ok(None);
+            return None;
         };
 
         let wants = match action {
@@ -66,10 +66,8 @@ impl UnixSocketOneshotWriter {
             },
 
             Action::Write => {
-                let buf = self
-                    .buf
-                    .get(..self.write_buflen)
-                    .context("buffer is too short")?;
+                // SAFETY: write_buflen is guaranteed not to exceed buf's len
+                let buf = unsafe { self.buf.get_unchecked(..self.write_buflen) };
                 Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
@@ -86,7 +84,7 @@ impl UnixSocketOneshotWriter {
             Action::Close => Wants::Close { fd: self.fd },
         };
         self.state = State::WaitingFor(action);
-        Ok(Some(wants))
+        Some(wants)
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {

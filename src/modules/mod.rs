@@ -44,7 +44,7 @@ pub(crate) trait FallibleModule {
     const MODULE_ID: ModuleId;
     type Output;
 
-    fn try_wants(&mut self) -> Result<Option<Wants>>;
+    fn wants(&mut self) -> Option<Wants>;
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>>;
     fn try_tick(&mut self, _tick: u64) -> Result<()> {
         Ok(())
@@ -65,13 +65,7 @@ impl<M: FallibleModule> InfallibleModule<M> {
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.module.as_mut()?.try_wants() {
-            Ok(wants) => wants,
-            Err(err) => {
-                log::error!(target: Self::NAME, "{err:?}");
-                None
-            }
-        }
+        self.module.as_mut()?.wants()
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<M::Output> {

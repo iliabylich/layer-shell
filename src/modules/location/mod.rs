@@ -26,7 +26,7 @@ impl FallibleModule for Location {
     const MODULE_ID: ModuleId = ModuleId::GeoLocation;
     type Output = (f64, f64);
 
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
+    fn wants(&mut self) -> Option<Wants> {
         self.https.wants()
     }
 

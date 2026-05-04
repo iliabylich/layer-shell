@@ -40,8 +40,8 @@ impl FallibleModule for SystemDBus {
     const MODULE_ID: ModuleId = ModuleId::SystemDBus;
     type Output = IncomingMessage<'static>;
 
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
-        Ok(self.conn.wants(queue(), readbuf()).map(Wants::from))
+    fn wants(&mut self) -> Option<Wants> {
+        self.conn.wants(queue(), readbuf()).map(Wants::from)
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {

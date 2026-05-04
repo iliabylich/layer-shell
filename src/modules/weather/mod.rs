@@ -63,11 +63,11 @@ impl FallibleModule for Weather {
     const MODULE_ID: ModuleId = ModuleId::Weather;
     type Output = ();
 
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
+    fn wants(&mut self) -> Option<Wants> {
         match self {
             Self::Ready { https, .. } => https.wants(),
 
-            Self::WaitingForLocation | Self::Dead { .. } => Ok(None),
+            Self::WaitingForLocation | Self::Dead { .. } => None,
         }
     }
 

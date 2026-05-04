@@ -27,8 +27,8 @@ impl FallibleModule for CapsLock {
     const MODULE_ID: ModuleId = ModuleId::CapsLock;
     type Output = ();
 
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
-        Ok(self.reader.wants())
+    fn wants(&mut self) -> Option<Wants> {
+        self.reader.wants()
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {

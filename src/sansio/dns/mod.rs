@@ -58,54 +58,53 @@ impl Dns {
         }
     }
 
-    pub(crate) fn try_wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
             State::ReadyTo(Action::Socket) => {
                 self.state = State::WaitingFor(Action::Socket);
-                Ok(Some(Wants::Socket {
+                Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_DGRAM,
-                }))
+                })
             }
 
             State::ReadyTo(Action::Connect) => {
                 self.state = State::WaitingFor(Action::Connect);
-                Ok(Some(Wants::Connect {
+                Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast::<libc::sockaddr>(),
                     addrlen: size_of::<libc::sockaddr_in>() as u32,
-                }))
+                })
             }
 
             State::ReadyTo(Action::Write) => {
                 self.state = State::WaitingFor(Action::Write);
-                let buf = self
-                    .buf
-                    .get(self.pos..self.len)
-                    .context("buf is too short")?;
-                Ok(Some(Wants::Write {
+                // SAFETY: len never exceeds buf's size
+                let buf = unsafe { self.buf.get_unchecked(self.pos..self.len) };
+                Some(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                }))
+                })
             }
 
             State::ReadyTo(Action::Read) => {
                 self.state = State::WaitingFor(Action::Read);
-                let buf = self.buf.get_mut(self.len..).context("buf is too short")?;
-                Ok(Some(Wants::Read {
+                // SAFETY: len never exceeds buf's size
+                let buf = unsafe { self.buf.get_unchecked_mut(self.len..) };
+                Some(Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                }))
+                })
             }
 
             State::ReadyTo(Action::Close) => {
                 self.state = State::WaitingFor(Action::Close);
-                Ok(Some(Wants::Close { fd: self.fd }))
+                Some(Wants::Close { fd: self.fd })
             }
 
-            State::WaitingFor(_) => Ok(None),
+            State::WaitingFor(_) => None,
         }
     }
 

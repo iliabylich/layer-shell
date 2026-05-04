@@ -21,8 +21,8 @@ impl FallibleModule for Timer {
     const MODULE_ID: ModuleId = ModuleId::Timer;
     type Output = u64;
 
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
-        Ok(self.timerfd.wants())
+    fn wants(&mut self) -> Option<Wants> {
+        self.timerfd.wants()
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {

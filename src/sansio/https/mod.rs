@@ -79,40 +79,40 @@ impl Https {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
-            State::Dns(dns) => dns.try_wants(),
+            State::Dns(dns) => dns.wants(),
 
             State::ReadyToSocket => {
                 self.state = State::WaitingForSocket;
-                Ok(Some(Wants::Socket {
+                Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_STREAM,
-                }))
+                })
             }
 
             State::ReadyToConnect => {
                 self.state = State::WaitingForConnect;
-                Ok(Some(Wants::Connect {
+                Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast(),
                     addrlen: size_of::<sockaddr_in>() as u32,
-                }))
+                })
             }
 
-            State::Handshaking(handshake) => Ok(handshake.wants()),
+            State::Handshaking(handshake) => handshake.wants(),
 
-            State::ReadWrite(ready) => Ok(ready.wants()),
+            State::ReadWrite(ready) => ready.wants(),
 
             State::ReadyToClose => {
                 self.state = State::WaitingForClose;
-                Ok(Some(Wants::Close { fd: self.fd }))
+                Some(Wants::Close { fd: self.fd })
             }
 
             State::WaitingForConnect
             | State::WaitingForSocket
             | State::WaitingForClose
-            | State::Done => Ok(None),
+            | State::Done => None,
         }
     }
 
