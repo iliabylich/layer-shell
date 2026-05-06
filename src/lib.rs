@@ -99,7 +99,10 @@ pub extern "C" fn io_handle_readable() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_wait_readable() {
-    map_panic_to_exit_with_error!(global_io()?.wait_readable());
+    map_panic_to_exit_with_error!({
+        global_io()?.wait_readable();
+        Ok(())
+    });
 }
 
 #[unsafe(no_mangle)]
@@ -115,19 +118,31 @@ pub extern "C" fn io_get_config() -> *const IOConfig {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_lock() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Lock));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::Lock);
+        Ok(())
+    });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_reboot() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Reboot));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::Reboot);
+        Ok(())
+    });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_shutdown() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Shutdown));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::Shutdown);
+        Ok(())
+    });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_logout() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::Logout));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::Logout);
+        Ok(())
+    });
 }
 #[unsafe(no_mangle)]
 #[expect(clippy::not_unsafe_ptr_arg_deref)]
@@ -137,22 +152,36 @@ pub extern "C" fn io_trigger_tray(uuid: *const core::ffi::c_char) {
 
         global_io()?.process_command(Command::TriggerTray {
             uuid: StringRef::new(uuid)?,
-        })
+        });
+
+        Ok(())
     });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_wifi_editor() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::SpawnWiFiEditor));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::SpawnWiFiEditor);
+        Ok(())
+    });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_bluetooh_editor() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::SpawnBluetoothEditor));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::SpawnBluetoothEditor);
+        Ok(())
+    });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_spawn_system_monitor() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::SpawnSystemMonitor));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::SpawnSystemMonitor);
+        Ok(())
+    });
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn io_change_wallpaper() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::ChangeWallpaper));
+    map_panic_to_exit_with_error!({
+        global_io()?.process_command(Command::ChangeWallpaper);
+        Ok(())
+    });
 }

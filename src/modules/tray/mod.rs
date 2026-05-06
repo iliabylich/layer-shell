@@ -96,7 +96,7 @@ impl Tray {
         Ok(())
     }
 
-    pub(crate) fn trigger(&self, uuid: &str) -> Result<()> {
+    fn try_trigger(&self, uuid: &str) -> Result<()> {
         let Ok((service, id)) = UUID::decode(uuid) else {
             log::error!("malformed UUID: {uuid:?}");
             return Ok(());
@@ -119,5 +119,11 @@ impl Tray {
 
         tray_app.trigger(id)?;
         Ok(())
+    }
+
+    pub(crate) fn trigger(&self, uuid: &str) {
+        if let Err(err) = self.try_trigger(uuid) {
+            log::error!("{err:?}");
+        }
     }
 }

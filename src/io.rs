@@ -50,9 +50,10 @@ macro_rules! schedule {
         let module_id = $module.module_id();
         if let Some(wants) = $module.wants() {
             if let Some(wants_next) = $module.wants() {
-                anyhow::bail!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
+                log::error!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
+                std::process::exit(1);
             }
-            $io_uring.schedule(module_id, wants)?;
+            $io_uring.schedule(module_id, wants);
         }
     }};
 }
@@ -79,7 +80,7 @@ impl IO {
         let io_config = Box::leak(Box::new(IOConfig::try_from(&config)?));
 
         let mut this = Self {
-            io_uring: IoUring::new(10, 0)?,
+            io_uring: IoUring::new(10, 0),
 
             config,
             io_config,
@@ -129,7 +130,7 @@ impl IO {
         self.network.init()?;
         schedule!(self.system_dbus, &mut self.io_uring);
 
-        self.io_uring.submit_if_dirty()?;
+        self.io_uring.submit_if_dirty();
         Ok(())
     }
 
@@ -145,7 +146,7 @@ impl IO {
             return Ok(());
         }
 
-        while let Some(cqe) = self.io_uring.try_get_cqe()? {
+        while let Some(cqe) = self.io_uring.try_get_cqe() {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
@@ -243,7 +244,7 @@ impl IO {
             self.io_uring.cqe_seen(cqe);
         }
 
-        self.io_uring.submit_if_dirty()?;
+        self.io_uring.submit_if_dirty();
 
         while let Some(event) = EventQueue::pop_front() {
             if self.logging_enabled {
@@ -255,13 +256,13 @@ impl IO {
         Ok(())
     }
 
-    pub(crate) fn wait_readable(&mut self) -> Result<()> {
-        self.io_uring.submit_and_wait(1)
+    pub(crate) fn wait_readable(&mut self) {
+        self.io_uring.submit_and_wait(1);
     }
 
-    pub(crate) fn process_command(&mut self, cmd: Command) -> Result<()> {
+    pub(crate) fn process_command(&mut self, cmd: Command) {
         if !self.running {
-            return Ok(());
+            return;
         }
 
         match cmd {
@@ -291,18 +292,17 @@ impl IO {
             }
 
             Command::TriggerTray { uuid } => {
-                self.tray.trigger(uuid.as_str())?;
+                self.tray.trigger(uuid.as_str());
                 schedule!(self.session_dbus, &mut self.io_uring);
             }
         }
 
-        self.io_uring.submit_if_dirty()?;
-        Ok(())
+        self.io_uring.submit_if_dirty();
     }
 }
 
 impl AsRawFd for IO {
-    fn as_raw_fd(&self) -> std::os::unix::prelude::RawFd {
+    fn as_raw_fd(&self) -> i32 {
         self.io_uring.as_raw_fd()
     }
 }
