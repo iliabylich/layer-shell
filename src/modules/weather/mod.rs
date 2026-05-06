@@ -87,14 +87,22 @@ impl FallibleModule for Weather {
     }
 
     fn try_tick(&mut self, tick: u64) -> Result<()> {
-        if tick.is_multiple_of(10)
-            && let Some((lat, lng)) = self.latlng()
+        if !tick.is_multiple_of(60) {
+            return Ok(());
+        }
+
+        if let Self::Ready { https, .. } = self
+            && https.is_waiting()
         {
+            return Ok(());
+        }
+
+        if let Some((lat, lng)) = self.latlng() {
             *self = Self::Ready {
                 lat,
                 lng,
                 https: Https::new(HttpRequest::get(HOST, path(lat, lng))),
-            }
+            };
         }
 
         Ok(())

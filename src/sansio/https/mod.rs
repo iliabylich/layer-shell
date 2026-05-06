@@ -22,6 +22,8 @@ enum State {
 
     Handshaking(OpenSslHandshake),
     ReadWrite(OpenSslReadWrite),
+
+    Done,
 }
 
 #[derive(Debug)]
@@ -39,6 +41,7 @@ impl std::fmt::Debug for State {
             Self::WaitingFor(action) => write!(f, "WaitingFor({action:?}"),
             Self::Handshaking(_) => write!(f, "Handshaking"),
             Self::ReadWrite(_) => write!(f, "ReadWrite"),
+            Self::Done => write!(f, "Done"),
         }
     }
 }
@@ -67,6 +70,15 @@ impl Https {
             request: request.into_bytes(),
             domain,
             response: vec![],
+        }
+    }
+
+    pub(crate) const fn is_waiting(&self) -> bool {
+        match &self.state {
+            State::WaitingFor(_) => true,
+            State::Handshaking(handshake) => handshake.is_waiting(),
+            State::ReadWrite(read_write) => read_write.is_waiting(),
+            State::Dns(_) | State::ReadyTo(_) | State::Done => false,
         }
     }
 
@@ -100,7 +112,7 @@ impl Https {
                 Some(Wants::Close { fd: self.fd })
             }
 
-            State::WaitingFor(_) => None,
+            State::WaitingFor(_) | State::Done => None,
         }
     }
 
@@ -150,6 +162,7 @@ impl Https {
             (State::WaitingFor(Action::Close), Satisfy::Close) => {
                 ensure!(res >= 0, "close failed: {res}");
                 let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
+                self.state = State::Done;
                 return Ok(Some(response));
             }
 

@@ -51,16 +51,19 @@ impl OpenSslHandshake {
     fn determine_state(&mut self) -> Result<Progress> {
         let ret = unsafe { SSL_connect(self.tls.ssl) };
 
-        self.drain_wbio()?;
-        if !self.writebuf.is_empty() {
-            return Ok(Progress::NextState(State::ReadyToWrite));
-        }
-
         if ret == 1 {
+            self.drain_wbio()?;
+            if !self.writebuf.is_empty() {
+                return Ok(Progress::NextState(State::ReadyToWrite));
+            }
             return Ok(Progress::Done);
         }
 
         let err = unsafe { SSL_get_error(self.tls.ssl, ret) };
+        self.drain_wbio()?;
+        if !self.writebuf.is_empty() {
+            return Ok(Progress::NextState(State::ReadyToWrite));
+        }
 
         if err == SSL_ERROR_WANT_READ {
             Ok(Progress::NextState(State::ReadyToRead))
@@ -108,6 +111,10 @@ impl OpenSslHandshake {
         }
     }
 
+    pub(crate) const fn is_waiting(&self) -> bool {
+        matches!(self.state, State::WaitingForRead | State::WaitingForWrite)
+    }
+
     pub(crate) fn satisfy(
         &mut self,
         satisfy: Satisfy,
@@ -116,6 +123,7 @@ impl OpenSslHandshake {
         match (self.state, satisfy) {
             (State::WaitingForRead, Satisfy::Read) => {
                 let bytes_read = usize::try_from(res).context("read failed")?;
+                ensure!(bytes_read > 0, "OpenSslHandshake: EOF");
                 let received = self
                     .readbuf
                     .get(..bytes_read)
@@ -128,7 +136,13 @@ impl OpenSslHandshake {
             }
 
             (State::WaitingForWrite, Satisfy::Write) => {
-                ensure!(res > 0, "OpenSslHandshake: write failed {res}");
+                let bytes_written =
+                    usize::try_from(res).context("OpenSslHandshake: write failed")?;
+                ensure!(
+                    bytes_written == self.writebuf.len(),
+                    "OpenSslHandshake: write failed {bytes_written} != {}",
+                    self.writebuf.len()
+                );
             }
 
             _ => bail!(

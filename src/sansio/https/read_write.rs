@@ -54,10 +54,31 @@ impl OpenSslReadWrite {
                 i32::try_from(self.request.len()).context("request len doesn't fit into i32")?,
             )
         };
+        if res <= 0 {
+            let err = unsafe { SSL_get_error(self.tls.ssl, res) };
+            self.drain_wbio()?;
+            if !self.writebuf.is_empty() {
+                self.state = State::ReadyToWrite;
+                return Ok(());
+            }
+
+            match err {
+                SSL_ERROR_WANT_READ => {
+                    self.state = State::ReadyToRead;
+                    return Ok(());
+                }
+                SSL_ERROR_WANT_WRITE => {
+                    bail!("OpenSslReadWrite: SSL_write wanted write with empty wbio");
+                }
+                _ => bail!("OpenSslReadWrite: SSL_write failed {err}"),
+            }
+        }
+
         let bytes_written = usize::try_from(res).context("SSL_write failed")?;
         ensure!(
             bytes_written == self.request.len(),
-            "OpenSslReadWrite: SSL_write failed {bytes_written}"
+            "OpenSslReadWrite: SSL_write failed {bytes_written} != {}",
+            self.request.len()
         );
 
         self.drain_wbio()?;
@@ -105,10 +126,20 @@ impl OpenSslReadWrite {
         }
     }
 
+    pub(crate) const fn is_waiting(&self) -> bool {
+        matches!(self.state, State::WaitingForRead | State::WaitingForWrite)
+    }
+
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Vec<u8>>> {
         match (self.state, satisfy) {
             (State::WaitingForWrite, Satisfy::Write) => {
-                ensure!(res > 0, "OpenSslReadWrite: write failed {res}");
+                let bytes_written =
+                    usize::try_from(res).context("OpenSslReadWrite: write failed")?;
+                ensure!(
+                    bytes_written == self.writebuf.len(),
+                    "OpenSslReadWrite: write failed {bytes_written} != {}",
+                    self.writebuf.len()
+                );
                 self.writebuf.clear();
                 self.state = State::ReadyToRead;
                 Ok(None)
@@ -116,6 +147,7 @@ impl OpenSslReadWrite {
 
             (State::WaitingForRead, Satisfy::Read) => {
                 let bytes_read = usize::try_from(res).context("OpenSslReadWrite: read failed")?;
+                ensure!(bytes_read > 0, "OpenSslReadWrite: EOF");
                 let encrypted = self.readbuf.get(..bytes_read).context("buf is too short")?;
                 let written = unsafe { BIO_write(self.tls.rbio, encrypted.as_ptr().cast(), res) };
                 ensure!(
