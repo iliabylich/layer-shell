@@ -38,29 +38,27 @@ impl Network {
         }
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
-        self.wireless_connection.init()?;
-        Ok(())
+    pub(crate) fn init(&mut self) {
+        self.wireless_connection.init();
     }
 
-    fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent) -> Result<()> {
+    fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent) {
         match e {
             WirelessConnectionEvent::Connected(path) => {
-                self.primary_device.init(path)?;
+                self.primary_device.init(path);
             }
             WirelessConnectionEvent::Disconnected => {
                 self.primary_device.reset();
             }
         }
-        Ok(())
     }
 
-    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) -> Result<()> {
+    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
-                self.active_access_point.init(path.clone())?;
+                self.active_access_point.init(path.clone());
                 self.speed.reset();
-                self.tx_rx.init(path)?;
+                self.tx_rx.init(path);
             }
             PrimaryDeviceEvent::Disconnected => {
                 self.active_access_point.reset();
@@ -68,19 +66,17 @@ impl Network {
                 self.tx_rx.reset();
             }
         }
-        Ok(())
     }
 
-    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent) -> Result<()> {
+    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent) {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
-                self.ssid_and_strength.init(path)?;
+                self.ssid_and_strength.init(path);
             }
             ActiveAccessPointEvent::Disconnected => {
                 self.ssid_and_strength.reset();
             }
         }
-        Ok(())
     }
 
     fn on_tx_rx_event(&mut self, e: TxRxEvent) {
@@ -112,18 +108,18 @@ impl Network {
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<()> {
-        if let Some(e) = self.wireless_connection.on_message(message)? {
-            self.on_wireless_connection_event(e)?;
+        if let Some(e) = self.wireless_connection.on_message(message) {
+            self.on_wireless_connection_event(e);
             return Ok(());
         }
 
         if let Some(e) = self.primary_device.on_message(message) {
-            self.on_primary_device_event(e)?;
+            self.on_primary_device_event(e);
             return Ok(());
         }
 
         if let Some(e) = self.active_access_point.on_message(message) {
-            self.on_active_access_point_event(e)?;
+            self.on_active_access_point_event(e);
             return Ok(());
         }
 

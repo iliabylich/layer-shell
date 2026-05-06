@@ -1,8 +1,9 @@
 use crate::{modules::SystemDBus, utils::StringRef};
 use anyhow::{Context as _, Result};
 use mini_sansio_dbus::{
-    IncomingArrayValue, IncomingBody, IncomingMessage, IncomingValue, MethodCall, Subscription,
-    interface_is, messages::org_freedesktop_dbus::GetAllProperties, path_is, value_is,
+    IncomingArrayValue, IncomingBody, IncomingMessage, IncomingValue, IncompleteMethodCall,
+    MethodCall, Subscription, interface_is, messages::org_freedesktop_dbus::GetAllProperties,
+    path_is, value_is,
 };
 
 pub(crate) struct SsidAndStrength {
@@ -29,14 +30,13 @@ impl SsidAndStrength {
         self.oneshot.reset();
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
+    pub(crate) fn init(&mut self, path: StringRef) {
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
-        self.oneshot.send(path, SystemDBus::queue())?;
-        Ok(())
+        self.oneshot.send(path, SystemDBus::queue());
     }
 
     pub(crate) fn on_message(
@@ -48,8 +48,8 @@ impl SsidAndStrength {
     }
 }
 
-const GET: MethodCall<StringRef, SsidAndStrengthEvent, ()> = MethodCall::builder()
-    .send(&|path: StringRef, _data| {
+const GET: IncompleteMethodCall<StringRef, SsidAndStrengthEvent, ()> =
+    MethodCall::new(&|path: StringRef, _data| {
         GetAllProperties::build(
             "org.freedesktop.NetworkManager",
             path.as_str(),
@@ -88,7 +88,7 @@ const SUBSCRIPTION: Subscription<SsidAndStrengthEvent> =
 fn parse_properties(
     properties: &IncomingArrayValue<'_>,
 ) -> Result<(Option<StringRef>, Option<u8>)> {
-    let mut iter = properties.iter();
+    let mut iter = properties.items_iter();
     let mut ssid = None;
     let mut strength = None;
     while let Some(attribute) = iter.try_next()? {
@@ -113,7 +113,7 @@ fn parse_properties(
 
 fn parse_ssid(ssid: IncomingValue<'_>) -> Result<StringRef> {
     value_is!(ssid, IncomingValue::Array(ssid));
-    let mut iter = ssid.iter();
+    let mut iter = ssid.items_iter();
     let mut bytes = vec![];
     while let Some(byte) = iter.try_next()? {
         value_is!(byte, IncomingValue::Byte(byte));

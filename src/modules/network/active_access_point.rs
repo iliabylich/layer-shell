@@ -1,7 +1,7 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::{Context as _, Result};
+use anyhow::Context as _;
 use mini_sansio_dbus::{
-    IncomingMessage, IncomingValue, MethodCall, Subscription, interface_is,
+    IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall, Subscription, interface_is,
     messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
 };
 
@@ -38,14 +38,13 @@ impl ActiveAccessPoint {
         self.get.reset();
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
+    pub(crate) fn init(&mut self, path: StringRef) {
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
-        self.get.send(path, SystemDBus::queue())?;
-        Ok(())
+        self.get.send(path, SystemDBus::queue());
     }
 
     pub(crate) fn on_message(
@@ -58,8 +57,8 @@ impl ActiveAccessPoint {
     }
 }
 
-const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
-    .send(&|path: StringRef, ()| {
+const GET: IncompleteMethodCall<StringRef, StringRef, ()> =
+    MethodCall::new(&|path: StringRef, ()| {
         GetProperty::build(
             "org.freedesktop.NetworkManager",
             path.as_str(),
@@ -92,7 +91,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
 
         let attributes = body.try_next()?.context("no Attributes in Body")?;
         value_is!(attributes, IncomingValue::Array(attributes));
-        let mut iter = attributes.iter();
+        let mut iter = attributes.items_iter();
         while let Some(attribute) = iter.try_next()? {
             value_is!(attribute, IncomingValue::DictEntry(dict_entry));
             let (key, value) = dict_entry.key_value()?;

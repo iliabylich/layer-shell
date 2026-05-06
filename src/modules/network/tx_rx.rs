@@ -1,8 +1,8 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::{Context as _, Result};
+use anyhow::Context as _;
 use mini_sansio_dbus::{
-    IncomingMessage, IncomingValue, MethodCall, OutgoingValue, Subscription, interface_is,
-    messages::org_freedesktop_dbus::SetProperty, path_is, value_is,
+    IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall, OutgoingValue, Subscription,
+    interface_is, messages::org_freedesktop_dbus::SetProperty, path_is, value_is,
 };
 
 pub(crate) struct TxRx {
@@ -29,14 +29,13 @@ impl TxRx {
         self.subscription.reset(SystemDBus::queue());
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
+    pub(crate) fn init(&mut self, path: StringRef) {
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
-        self.oneshot.send(path, SystemDBus::queue())?;
-        Ok(())
+        self.oneshot.send(path, SystemDBus::queue());
     }
 
     pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {
@@ -44,8 +43,8 @@ impl TxRx {
     }
 }
 
-const CONFIGURE: MethodCall<StringRef, (), ()> = MethodCall::builder()
-    .send(&|path: StringRef, _data| {
+const CONFIGURE: IncompleteMethodCall<StringRef, (), ()> =
+    MethodCall::new(&|path: StringRef, _data| {
         SetProperty::build(
             "org.freedesktop.NetworkManager",
             path.as_str(),
@@ -69,7 +68,7 @@ const SUBSCRIPTION: Subscription<TxRxEvent> =
 
         let attributes = body.try_next()?.context("no Attributes in Body")?;
         value_is!(attributes, IncomingValue::Array(attributes));
-        let mut iter = attributes.iter();
+        let mut iter = attributes.items_iter();
         let mut tx = None;
         let mut rx = None;
         while let Some(attribute) = iter.try_next()? {

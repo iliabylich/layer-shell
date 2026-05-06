@@ -1,7 +1,7 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::{Context, Result};
+use anyhow::Context;
 use mini_sansio_dbus::{
-    IncomingBody, IncomingMessage, IncomingValue, MethodCall,
+    IncomingBody, IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall,
     messages::org_freedesktop_dbus::GetProperty, value_is,
 };
 
@@ -18,13 +18,12 @@ impl ActiveConnectionType {
         }
     }
 
-    pub(crate) fn request(&mut self, path: StringRef) -> Result<()> {
-        self.oneshot.send(path.clone(), SystemDBus::queue())?;
+    pub(crate) fn request(&mut self, path: StringRef) {
+        self.oneshot.send(path.clone(), SystemDBus::queue());
         self.path = Some(path);
-        Ok(())
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub(crate) const fn reset(&mut self) {
         self.oneshot.reset();
     }
 
@@ -34,8 +33,8 @@ impl ActiveConnectionType {
     }
 }
 
-const GET: MethodCall<StringRef, bool, ()> = MethodCall::builder()
-    .send(&|path: StringRef, _data| {
+const GET: IncompleteMethodCall<StringRef, bool, ()> =
+    MethodCall::new(&|path: StringRef, _data| {
         GetProperty::build(
             "org.freedesktop.NetworkManager",
             path.as_str(),

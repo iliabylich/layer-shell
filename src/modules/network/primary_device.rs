@@ -1,8 +1,8 @@
 use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::{Context as _, Result};
+use anyhow::Context as _;
 use mini_sansio_dbus::{
-    IncomingBody, IncomingMessage, IncomingValue, MethodCall, Subscription, interface_is,
-    messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
+    IncomingBody, IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall, Subscription,
+    interface_is, messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
 };
 
 pub(crate) struct PrimaryDevice {
@@ -38,14 +38,13 @@ impl PrimaryDevice {
         self.get.reset();
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) -> Result<()> {
+    pub(crate) fn init(&mut self, path: StringRef) {
         self.subscription.start(
             "org.freedesktop.NetworkManager",
             path.to_string(),
             SystemDBus::queue(),
         );
-        self.get.send(path, SystemDBus::queue())?;
-        Ok(())
+        self.get.send(path, SystemDBus::queue());
     }
 
     pub(crate) fn on_message(
@@ -58,8 +57,8 @@ impl PrimaryDevice {
     }
 }
 
-const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
-    .send(&|path: StringRef, _data| {
+const GET: IncompleteMethodCall<StringRef, StringRef, ()> =
+    MethodCall::new(&|path: StringRef, _data| {
         GetProperty::build(
             "org.freedesktop.NetworkManager",
             path.as_str(),
@@ -72,7 +71,7 @@ const GET: MethodCall<StringRef, StringRef, ()> = MethodCall::builder()
         value_is!(devices, IncomingValue::Variant(devices));
         let devices = devices.materialize()?;
         value_is!(devices, IncomingValue::Array(devices));
-        let mut iter = devices.iter();
+        let mut iter = devices.items_iter();
         let device = iter.try_next()?.context("expected at least one device")?;
         value_is!(device, IncomingValue::ObjectPath(device));
 
@@ -92,7 +91,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
 
         let items = body.try_next()?.context("no Items in Body")?;
         value_is!(items, IncomingValue::Array(items));
-        let mut iter = items.iter();
+        let mut iter = items.items_iter();
         while let Some(item) = iter.try_next()? {
             value_is!(item, IncomingValue::DictEntry(dict_entry));
             let (key, value) = dict_entry.key_value()?;
@@ -103,7 +102,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
                 let devices = value;
                 let devices = devices.materialize()?;
                 value_is!(devices, IncomingValue::Array(devices));
-                let mut iter = devices.iter();
+                let mut iter = devices.items_iter();
                 let device = iter.try_next()?.context("expected at least one device")?;
                 value_is!(device, IncomingValue::ObjectPath(device));
                 return Ok(StringRef::new(device)?);

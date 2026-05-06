@@ -1,8 +1,8 @@
 use crate::{modules::SessionDBus, utils::StringRef};
 use anyhow::{Context, Result, bail, ensure};
 use mini_sansio_dbus::{
-    IncomingMessage, IncomingValue, MessageType, MethodCall, OutgoingMessage, OutgoingValue,
-    interface_is, member_is, path_is, value_is,
+    IncomingMessage, IncomingValue, IncompleteMethodCall, MessageType, MethodCall, OutgoingMessage,
+    OutgoingValue, interface_is, member_is, path_is, value_is,
 };
 
 pub(crate) struct NameLostOrNameOwnerChanged {
@@ -16,9 +16,8 @@ impl NameLostOrNameOwnerChanged {
         }
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
-        self.name_changed.send((), SessionDBus::queue())?;
-        Ok(())
+    pub(crate) fn init(&mut self) {
+        self.name_changed.send((), SessionDBus::queue());
     }
 
     pub(crate) fn on_message(message: IncomingMessage<'_>) -> Result<Option<StringRef>> {
@@ -29,8 +28,7 @@ impl NameLostOrNameOwnerChanged {
     }
 }
 
-const SUBSCRIBE: MethodCall<(), (), ()> = MethodCall::builder()
-    .send(&|_input, _data| {
+const SUBSCRIBE: IncompleteMethodCall<(), (), ()> = MethodCall::new(&|_input, _data| {
         OutgoingMessage::MethodCall {
             serial: 0,
             path: String::from("/org/freedesktop/DBus"),

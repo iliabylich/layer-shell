@@ -1,8 +1,9 @@
 use crate::{Event, event_queue::EventQueue, modules::SessionDBus};
 use anyhow::{Context as _, Result};
 use mini_sansio_dbus::{
-    IncomingArrayValue, IncomingMessage, IncomingValue, MethodCall, Subscription, interface_is,
-    messages::org_freedesktop_dbus::GetAllProperties, path_is, value_is,
+    IncomingArrayValue, IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall,
+    Subscription, interface_is, messages::org_freedesktop_dbus::GetAllProperties, path_is,
+    value_is,
 };
 
 pub(crate) struct Sound {
@@ -20,9 +21,8 @@ impl Sound {
         }
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
-        self.oneshot.send((), SessionDBus::queue())?;
-        Ok(())
+    pub(crate) fn init(&mut self) {
+        self.oneshot.send((), SessionDBus::queue());
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
@@ -57,34 +57,32 @@ impl Sound {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: u64) -> Result<()> {
+    pub(crate) fn tick(&mut self, tick: u64) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
             self.oneshot.reset();
-            self.oneshot.send((), SessionDBus::queue())?;
+            self.oneshot.send((), SessionDBus::queue());
         }
-        Ok(())
     }
 }
 
-const GET: MethodCall<(), (u32, bool), ()> = MethodCall::builder()
-    .send(&|_input, _data| {
-        GetAllProperties::build(
-            "org.local.PipewireDBus",
-            "/org/local/PipewireDBus",
-            "org.local.PipewireDBus",
-        )
-    })
-    .try_process(&|mut body, _data| {
-        let attributes = body.try_next()?.context("expected 1 value")?;
-        value_is!(attributes, IncomingValue::Array(attributes));
+const GET: IncompleteMethodCall<(), (u32, bool), ()> = MethodCall::new(&|_input, _data| {
+    GetAllProperties::build(
+        "org.local.PipewireDBus",
+        "/org/local/PipewireDBus",
+        "org.local.PipewireDBus",
+    )
+})
+.try_process(&|mut body, _data| {
+    let attributes = body.try_next()?.context("expected 1 value")?;
+    value_is!(attributes, IncomingValue::Array(attributes));
 
-        let (volume, muted) = parse(&attributes)?;
-        let volume = volume.context("no Volume")?;
-        let muted = muted.context("no Muted")?;
+    let (volume, muted) = parse(&attributes)?;
+    let volume = volume.context("no Volume")?;
+    let muted = muted.context("no Muted")?;
 
-        Ok((volume, muted))
-    });
+    Ok((volume, muted))
+});
 
 const SUBSCRIPTION: Subscription<(Option<u32>, Option<bool>)> =
     Subscription::new(&|mut body, path, _subscribed_to| {
@@ -104,7 +102,7 @@ fn parse(attributes: &IncomingArrayValue) -> Result<(Option<u32>, Option<bool>)>
     let mut volume = None;
     let mut muted = None;
 
-    let mut iter = attributes.iter();
+    let mut iter = attributes.items_iter();
     while let Some(item) = iter.try_next()? {
         value_is!(item, IncomingValue::DictEntry(dict_entry));
 

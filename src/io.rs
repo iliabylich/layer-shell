@@ -108,12 +108,12 @@ impl IO {
             logging_enabled,
         };
 
-        this.start()?;
+        this.start();
 
         Ok(this)
     }
 
-    fn start(&mut self) -> Result<()> {
+    fn start(&mut self) {
         schedule!(self.timer, &mut self.io_uring);
 
         schedule!(self.location, &mut self.io_uring);
@@ -122,16 +122,15 @@ impl IO {
         schedule!(self.caps_lock, &mut self.io_uring);
         schedule!(self.niri, &mut self.io_uring);
 
-        self.sound.init()?;
+        self.sound.init();
         Control::init();
-        self.tray.init()?;
+        self.tray.init();
         schedule!(self.session_dbus, &mut self.io_uring);
 
-        self.network.init()?;
+        self.network.init();
         schedule!(self.system_dbus, &mut self.io_uring);
 
         self.io_uring.submit_if_dirty();
-        Ok(())
     }
 
     fn on_control_req(req: ControlRequest) {
@@ -235,7 +234,7 @@ impl IO {
                         self.memory.tick(tick);
                         schedule!(self.memory, &mut self.io_uring);
 
-                        self.sound.tick(tick)?;
+                        self.sound.tick(tick);
                         schedule!(self.session_dbus, &mut self.io_uring);
                     }
                 }

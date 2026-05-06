@@ -9,7 +9,7 @@ pub(crate) struct StatusNotifierWatcherIntrospection {
 }
 
 impl StatusNotifierWatcherIntrospection {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             introspection: IntrospectibleObjectAt::new("org.kde.StatusNotifierWatcher"),
         }

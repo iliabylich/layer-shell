@@ -34,17 +34,16 @@ impl Tray {
         }
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.status_notifier_watcher.init();
-        self.name_lost_or_changed.init()?;
-        Ok(())
+        self.name_lost_or_changed.init();
     }
 
     pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<()> {
         if let Some(service) = self.status_notifier_watcher.on_message(message)? {
             log::info!(target: "Tray", "Added {service:?}");
             let mut tray_app = App::new(service.clone())?;
-            tray_app.init()?;
+            tray_app.init();
             self.registry.insert(service, tray_app);
             return Ok(());
         }
@@ -71,7 +70,7 @@ impl Tray {
         }
 
         for (service, app) in &mut self.registry {
-            if let Some(event) = app.on_message(message)? {
+            if let Some(event) = app.on_message(message) {
                 let service = service.name();
 
                 let event = match event {

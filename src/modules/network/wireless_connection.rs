@@ -1,4 +1,3 @@
-use anyhow::Result;
 use mini_sansio_dbus::IncomingMessage;
 
 use crate::{
@@ -37,25 +36,24 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
-        self.primary_connection.init()?;
-        Ok(())
+    pub(crate) fn init(&mut self) {
+        self.primary_connection.init();
     }
 
     fn on_primary_connection_event(
         &mut self,
         e: PrimaryConnectionEvent,
-    ) -> Result<Option<WirelessConnectionEvent>> {
+    ) -> Option<WirelessConnectionEvent> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
-                self.active_connection_type.request(path)?;
+                self.active_connection_type.request(path);
                 self.state = State::ConnectedAndHavePath;
-                Ok(None)
+                None
             }
             PrimaryConnectionEvent::Disconnected => {
                 self.active_connection_type.reset();
                 self.state = State::Disconnected;
-                Ok(Some(WirelessConnectionEvent::Disconnected))
+                Some(WirelessConnectionEvent::Disconnected)
             }
         }
     }
@@ -77,17 +75,15 @@ impl WirelessConnection {
     pub(crate) fn on_message(
         &mut self,
         message: IncomingMessage<'_>,
-    ) -> Result<Option<WirelessConnectionEvent>> {
+    ) -> Option<WirelessConnectionEvent> {
         if let Some(e) = self.primary_connection.on_message(message) {
             return self.on_primary_connection_event(e);
         }
 
         if let Some((is_wireless, path)) = self.active_connection_type.on_message(message) {
-            return Ok(Some(
-                self.on_active_connection_type_received(is_wireless, path),
-            ));
+            return Some(self.on_active_connection_type_received(is_wireless, path));
         }
 
-        Ok(None)
+        None
     }
 }

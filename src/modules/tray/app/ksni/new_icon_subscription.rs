@@ -1,12 +1,12 @@
 use crate::utils::StringRef;
 use anyhow::{Context as _, Result, ensure};
 use mini_sansio_dbus::{
-    IncomingMessage, MessageType, MethodCall, interface_is, member_is,
+    IncomingMessage, IncompleteMethodCall, MessageType, MethodCall, interface_is, member_is,
     messages::org_freedesktop_dbus::AddMatch, path_is, sender_is,
 };
 
-pub(crate) const SUBSCRIBE_TO_NEW_ICON: MethodCall<StringRef, (), ()> = MethodCall::builder()
-    .send(&|address: StringRef, _data| {
+pub(crate) const SUBSCRIBE_TO_NEW_ICON: IncompleteMethodCall<StringRef, (), ()> =
+    MethodCall::new(&|address: StringRef, _data| {
         AddMatch::build_from_rule(new_icon_match_rule(address.as_str()))
     })
     .try_process(&|_body, _data| Ok(()));

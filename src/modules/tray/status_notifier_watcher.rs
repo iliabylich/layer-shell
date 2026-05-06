@@ -20,7 +20,7 @@ pub(crate) struct StatusNotifierWatcher {
 }
 
 impl StatusNotifierWatcher {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             reply_serial: None,
             introspection: StatusNotifierWatcherIntrospection::new(),

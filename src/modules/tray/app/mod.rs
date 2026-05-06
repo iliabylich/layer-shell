@@ -69,24 +69,22 @@ impl App {
         })
     }
 
-    fn schedule_request_props(&mut self) -> Result<()> {
+    fn schedule_request_props(&mut self) {
         self.get_menu_and_icon.reset();
         self.get_menu_and_icon
-            .send(self.service.name(), SessionDBus::queue())?;
-        Ok(())
+            .send(self.service.name(), SessionDBus::queue());
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self) {
         self.subscribe_to_new_icon
-            .send(self.service.name(), SessionDBus::queue())?;
+            .send(self.service.name(), SessionDBus::queue());
         self.get_menu_and_icon
-            .send(self.service.name(), SessionDBus::queue())?;
+            .send(self.service.name(), SessionDBus::queue());
         self.menu_and_icon_subscription.start(
             "org.freedesktop.DBus",
             "/StatusNotifierItem",
             SessionDBus::queue(),
         );
-        Ok(())
     }
 
     pub(crate) fn reset(&mut self) {
@@ -117,31 +115,29 @@ impl App {
         }
     }
 
-    fn schedule_get_layout(&mut self) -> Result<()> {
+    fn schedule_get_layout(&mut self) {
         self.get_layout.reset();
         self.get_layout.send(
             (self.service.name(), self.menu.clone()),
             SessionDBus::queue(),
-        )?;
-        Ok(())
+        );
     }
 
-    fn on_menu_received(&mut self, menu: StringRef) -> Result<()> {
+    fn on_menu_received(&mut self, menu: StringRef) {
         if self.menu != "" {
-            return Ok(());
+            return;
         }
 
         self.menu = menu;
-        self.schedule_get_layout()?;
+        self.schedule_get_layout();
         self.subscribe_to_layout_updated.send(
             (self.service.name(), self.menu.clone()),
             SessionDBus::queue(),
-        )?;
+        );
         self.subscribe_to_items_properties_updated.send(
             (self.service.name(), self.menu.clone()),
             SessionDBus::queue(),
-        )?;
-        Ok(())
+        );
     }
 
     fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
@@ -182,29 +178,29 @@ impl App {
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<Option<TrayEvent>> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<TrayEvent> {
         if let Some((menu, icon)) = self.get_menu_and_icon.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Received requested props for {:?}", self.service);
 
-            self.on_menu_received(menu)?;
-            return Ok(self.on_icon_received(icon));
+            self.on_menu_received(menu);
+            return self.on_icon_received(icon);
         }
 
         if self.subscribe_to_new_icon.try_recv(message).ok().flatten() == Some(()) {
             log::info!(target: "Tray", "Subscribed to NewIcon");
-            return Ok(None);
+            return None;
         }
 
         if let Some((_, icon)) = self.menu_and_icon_subscription.process(message) {
             log::info!(target: "Tray", "Received updated props for {:?}", self.service);
             if let Some(icon) = icon {
-                return Ok(self.on_icon_received(icon));
+                return self.on_icon_received(icon);
             }
         }
 
         if let Some(layout) = self.get_layout.try_recv(message).ok().flatten() {
             log::info!(target: "Tray", "Got layout");
-            return Ok(self.on_layout_receieved(layout));
+            return self.on_layout_receieved(layout);
         }
 
         if self
@@ -215,7 +211,7 @@ impl App {
             .is_some()
         {
             log::info!(target: "Tray", "Subscribed to LayoutUpdated");
-            return Ok(None);
+            return None;
         }
 
         if self
@@ -226,13 +222,13 @@ impl App {
             .is_some()
         {
             log::info!(target: "Tray", "Subscribed to ItemPropertiesUpdated");
-            return Ok(None);
+            return None;
         }
 
         if parse_new_icon_signal(message, self.service.raw_address().as_str()).is_ok() {
             log::info!(target: "Tray", "Received NewIcon signal");
-            self.schedule_request_props()?;
-            return Ok(None);
+            self.schedule_request_props();
+            return None;
         }
 
         if parse_layout_updated_signal(
@@ -243,8 +239,8 @@ impl App {
         .is_ok()
         {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
-            self.schedule_get_layout()?;
-            return Ok(None);
+            self.schedule_get_layout();
+            return None;
         }
         if parse_items_properties_updated_signal(
             message,
@@ -254,11 +250,11 @@ impl App {
         .is_ok()
         {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
-            self.schedule_get_layout()?;
-            return Ok(None);
+            self.schedule_get_layout();
+            return None;
         }
 
-        Ok(None)
+        None
     }
 
     pub(crate) fn trigger(&self, id: i32) -> Result<()> {

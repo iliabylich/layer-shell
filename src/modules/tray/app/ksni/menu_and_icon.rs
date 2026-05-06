@@ -4,12 +4,11 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use mini_sansio_dbus::{
-    IncomingArrayValue, IncomingValue, MethodCall, Subscription, interface_is,
-    messages::org_freedesktop_dbus::GetAllProperties, path_is, value_is,
+    IncomingArrayValue, IncomingValue, IncompleteMethodCall, MethodCall, Subscription,
+    interface_is, messages::org_freedesktop_dbus::GetAllProperties, path_is, value_is,
 };
 
-pub(crate) const GET_MENU_AND_ICON: MethodCall<StringRef, (StringRef, TrayIcon), ()> = MethodCall::builder()
-    .send(&|destination: StringRef, _data| {
+pub(crate) const GET_MENU_AND_ICON: IncompleteMethodCall<StringRef, (StringRef, TrayIcon), ()> = MethodCall::new(&|destination: StringRef, _data| {
         GetAllProperties::build(
             destination.to_string(),
             "/StatusNotifierItem",
@@ -49,7 +48,7 @@ fn parse(attributes: &IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Opti
     let mut icon_name = None;
     let mut icon_pixmap = None;
 
-    let mut iter = attributes.iter();
+    let mut iter = attributes.items_iter();
     while let Some(item) = iter.try_next()? {
         value_is!(item, IncomingValue::DictEntry(dict_entry));
         let (key, value) = dict_entry.key_value()?;
@@ -71,13 +70,13 @@ fn parse(attributes: &IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Opti
                 let value = value.materialize()?;
                 value_is!(value, IncomingValue::Array(value));
 
-                let mut iter = value.iter();
+                let mut iter = value.items_iter();
                 let Some(w_h_bytes) = iter.try_next()? else {
                     continue;
                 };
                 value_is!(w_h_bytes, IncomingValue::Struct(w_h_bytes));
 
-                let mut iter = w_h_bytes.iter()?;
+                let mut iter = w_h_bytes.fields_iter()?;
 
                 let width = iter.try_next()?;
                 let Some(width) = width else {
@@ -93,7 +92,7 @@ fn parse(attributes: &IncomingArrayValue<'_>) -> Result<(Option<StringRef>, Opti
 
                 let mut bytes = {
                     let mut out = vec![];
-                    let mut iter = bytes.iter();
+                    let mut iter = bytes.items_iter();
                     while let Some(byte) = iter.try_next()? {
                         value_is!(byte, IncomingValue::Byte(byte));
                         out.push(byte);

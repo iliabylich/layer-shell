@@ -4,61 +4,63 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use mini_sansio_dbus::{
-    IncomingArrayValue, IncomingValue, MethodCall, OutgoingCompleteType, OutgoingMessage,
-    OutgoingValue, value_is,
+    IncomingArrayValue, IncomingValue, IncompleteMethodCall, MethodCall, OutgoingCompleteType,
+    OutgoingMessage, OutgoingValue, value_is,
 };
 
-pub(crate) const GET_LAYOUT: MethodCall<(StringRef, StringRef), Vec<TrayItem>, StringRef> =
-    MethodCall::builder()
-        .send(&|(destination, path): (StringRef, StringRef), _service| {
-            OutgoingMessage::MethodCall {
-                destination: Some(destination.to_string()),
-                path: path.to_string(),
-                interface: Some(String::from("com.canonical.dbusmenu")),
-                serial: 0,
-                member: String::from("GetLayout"),
-                sender: None,
-                unix_fds: None,
-                body: vec![
-                    OutgoingValue::Int32(0),
-                    OutgoingValue::Int32(1),
-                    OutgoingValue::Array(
-                        OutgoingCompleteType::String,
-                        vec![
-                            OutgoingValue::String(String::from("type")),
-                            OutgoingValue::String(String::from("label")),
-                            OutgoingValue::String(String::from("enabled")),
-                            OutgoingValue::String(String::from("visible")),
-                            OutgoingValue::String(String::from("icon-name")),
-                            OutgoingValue::String(String::from("icon-data")),
-                            OutgoingValue::String(String::from("shortcut")),
-                            OutgoingValue::String(String::from("toggle-type")),
-                            OutgoingValue::String(String::from("toggle-state")),
-                            OutgoingValue::String(String::from("children-display")),
-                        ],
-                    ),
+pub(crate) const GET_LAYOUT: IncompleteMethodCall<
+    (StringRef, StringRef),
+    Vec<TrayItem>,
+    StringRef,
+> = MethodCall::new(&|(destination, path): (StringRef, StringRef), _service| {
+    OutgoingMessage::MethodCall {
+        destination: Some(destination.to_string()),
+        path: path.to_string(),
+        interface: Some(String::from("com.canonical.dbusmenu")),
+        serial: 0,
+        member: String::from("GetLayout"),
+        sender: None,
+        unix_fds: None,
+        body: vec![
+            OutgoingValue::Int32(0),
+            OutgoingValue::Int32(1),
+            OutgoingValue::Array(
+                OutgoingCompleteType::String,
+                vec![
+                    OutgoingValue::String(String::from("type")),
+                    OutgoingValue::String(String::from("label")),
+                    OutgoingValue::String(String::from("enabled")),
+                    OutgoingValue::String(String::from("visible")),
+                    OutgoingValue::String(String::from("icon-name")),
+                    OutgoingValue::String(String::from("icon-data")),
+                    OutgoingValue::String(String::from("shortcut")),
+                    OutgoingValue::String(String::from("toggle-type")),
+                    OutgoingValue::String(String::from("toggle-state")),
+                    OutgoingValue::String(String::from("children-display")),
                 ],
-            }
-        })
-        .try_process(&|mut body, service| {
-            let _ = body.try_next()?.context("no root item id")?;
-            let root = body.try_next()?.context("no root")?;
-            value_is!(root, IncomingValue::Struct(root));
+            ),
+        ],
+    }
+})
+.try_process(&|mut body, service| {
+    let _ = body.try_next()?.context("no root item id")?;
+    let root = body.try_next()?.context("no root")?;
+    value_is!(root, IncomingValue::Struct(root));
 
-            let mut iter = root.iter()?;
-            let _ = iter.try_next()?.context("expected 3 items")?;
-            let _ = iter.try_next()?.context("expected 3 items")?;
-            let top_level_items = iter.try_next()?.context("expected 3 items")?;
+    let mut iter = root.fields_iter()?;
+    let _ = iter.try_next()?.context("expected 3 items")?;
+    let _ = iter.try_next()?.context("expected 3 items")?;
+    let top_level_items = iter.try_next()?.context("expected 3 items")?;
 
-            value_is!(top_level_items, IncomingValue::Array(top_level_items));
+    value_is!(top_level_items, IncomingValue::Array(top_level_items));
 
-            parse_items(service.as_str(), &top_level_items).map_err(Into::into)
-        });
+    parse_items(service.as_str(), &top_level_items).map_err(Into::into)
+});
 
 fn parse_items(service: &str, items: &IncomingArrayValue<'_>) -> Result<Vec<TrayItem>> {
     let mut out = vec![];
     let mut batch = vec![];
-    let mut iter = items.iter();
+    let mut iter = items.items_iter();
 
     while let Some(item) = iter.try_next()? {
         value_is!(item, IncomingValue::Variant(item));
@@ -93,7 +95,7 @@ fn parse_items(service: &str, items: &IncomingArrayValue<'_>) -> Result<Vec<Tray
 fn parse_item(service: &str, item: IncomingValue<'_>) -> Result<ItemOrSeparator> {
     value_is!(item, IncomingValue::Struct(fields));
 
-    let mut fields_iter = fields.iter()?;
+    let mut fields_iter = fields.fields_iter()?;
 
     let id = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(id, IncomingValue::Int32(id));
@@ -101,7 +103,7 @@ fn parse_item(service: &str, item: IncomingValue<'_>) -> Result<ItemOrSeparator>
 
     let props = fields_iter.try_next()?.context("expected 3 items")?;
     value_is!(props, IncomingValue::Array(props));
-    let mut props_iter = props.iter();
+    let mut props_iter = props.items_iter();
     let mut type_ = "standard";
     let mut label = "";
     let mut enabled = true;

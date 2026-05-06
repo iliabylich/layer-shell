@@ -2,18 +2,17 @@ use crate::utils::StringRef;
 use anyhow::{Context as _, Result, ensure};
 pub(crate) use get_layout::GET_LAYOUT;
 use mini_sansio_dbus::{
-    IncomingMessage, MessageType, MethodCall, interface_is, member_is,
+    IncomingMessage, IncompleteMethodCall, MessageType, MethodCall, interface_is, member_is,
     messages::org_freedesktop_dbus::AddMatch, path_is, sender_is,
 };
 
 mod get_layout;
 
-pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: MethodCall<(StringRef, StringRef), (), ()> =
-    MethodCall::builder()
-        .send(&|(address, path): (StringRef, StringRef), _data| {
-            AddMatch::build_from_rule(layout_updated_match_rule(address.as_str(), path.as_str()))
-        })
-        .try_process(&|_, _data| Ok(()));
+pub(crate) const SUBSCRIBE_TO_LAYOUT_UPDATED: IncompleteMethodCall<(StringRef, StringRef), (), ()> =
+    MethodCall::new(&|(address, path): (StringRef, StringRef), _data| {
+        AddMatch::build_from_rule(layout_updated_match_rule(address.as_str(), path.as_str()))
+    })
+    .try_process(&|_, _data| Ok(()));
 
 pub(crate) fn layout_updated_match_rule(address: &str, path: &str) -> String {
     format!(
@@ -41,15 +40,17 @@ pub(crate) fn parse_layout_updated_signal(
     Ok(())
 }
 
-pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: MethodCall<(StringRef, StringRef), (), ()> =
-    MethodCall::builder()
-        .send(&|(address, path): (StringRef, StringRef), _data| {
-            AddMatch::build_from_rule(items_properties_updated_match_rule(
-                address.as_str(),
-                path.as_str(),
-            ))
-        })
-        .try_process(&|_body, _data| Ok(()));
+pub(crate) const SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED: IncompleteMethodCall<
+    (StringRef, StringRef),
+    (),
+    (),
+> = MethodCall::new(&|(address, path): (StringRef, StringRef), _data| {
+    AddMatch::build_from_rule(items_properties_updated_match_rule(
+        address.as_str(),
+        path.as_str(),
+    ))
+})
+.try_process(&|_body, _data| Ok(()));
 
 pub(crate) fn items_properties_updated_match_rule(address: &str, path: &str) -> String {
     format!(
