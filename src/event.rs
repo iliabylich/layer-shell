@@ -60,7 +60,6 @@ pub enum Event {
         service: StringRef,
     },
     ToggleSessionScreen,
-    ReloadStyles,
     CapsLockToggled {
         enabled: bool,
     },

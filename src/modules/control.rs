@@ -44,7 +44,6 @@ const INTROSPECTION: &str = r#"
 <node>
     <interface name="org.me.LayerShellControl">
         <method name="Exit"></method>
-        <method name="ReloadStyles"></method>
         <method name="ToggleSessionScreen"></method>
     </interface>
 </node>
@@ -83,7 +82,6 @@ fn try_parse_control_req(message: IncomingMessage<'_>) -> Result<(&str, &str, u3
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ControlRequest {
     Exit,
-    ReloadStyles,
     ToggleSessionScreen,
 }
 
@@ -91,7 +89,6 @@ impl ControlRequest {
     fn try_parse(s: &str) -> Result<Self> {
         match s {
             "Exit" => Ok(Self::Exit),
-            "ReloadStyles" => Ok(Self::ReloadStyles),
             "ToggleSessionScreen" => Ok(Self::ToggleSessionScreen),
             _ => bail!("unsupported method"),
         }

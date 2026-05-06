@@ -136,7 +136,6 @@ impl IO {
     fn on_control_req(req: ControlRequest) {
         EventQueue::push_back(match req {
             ControlRequest::Exit => Event::Exit,
-            ControlRequest::ReloadStyles => Event::ReloadStyles,
             ControlRequest::ToggleSessionScreen => Event::ToggleSessionScreen,
         });
     }

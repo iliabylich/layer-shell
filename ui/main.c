@@ -44,9 +44,6 @@ static void event_received(const IO_Event *event) {
   gobject_set_nested(G_OBJECT(model), child, prop, val)
 
   switch (event->tag) {
-  case IO_Event_ReloadStyles:
-    css_reload();
-    break;
   case IO_Event_TrayAppAdded:
     io_model_tray_add_app(model, event->tray_app_added.service,
                           event->tray_app_added.icon,
