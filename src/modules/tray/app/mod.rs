@@ -50,10 +50,10 @@ pub(crate) enum TrayEvent {
 }
 
 impl App {
-    pub(crate) fn new(service: Service) -> Result<Self> {
+    pub(crate) fn new(service: Service) -> Self {
         let service_name = service.name();
 
-        Ok(Self {
+        Self {
             service,
             get_menu_and_icon: GET_MENU_AND_ICON.with_data(()),
             subscribe_to_new_icon: SUBSCRIBE_TO_NEW_ICON.with_data(()),
@@ -62,11 +62,11 @@ impl App {
             subscribe_to_items_properties_updated: SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED
                 .with_data(()),
 
-            menu: StringRef::new("")?,
+            menu: StringRef::new(""),
             get_layout: GET_LAYOUT.with_data(service_name),
 
             state: State::Nothing,
-        })
+        }
     }
 
     fn schedule_request_props(&mut self) {

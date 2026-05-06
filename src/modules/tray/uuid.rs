@@ -5,7 +5,7 @@ use anyhow::{Context as _, Result};
 pub(crate) struct UUID;
 
 impl UUID {
-    pub(crate) fn encode(service: &str, id: i32) -> Result<StringRef> {
+    pub(crate) fn encode(service: &str, id: i32) -> StringRef {
         let uuid = format!("{service}**{id}");
         StringRef::new(uuid.as_str())
     }
@@ -19,6 +19,6 @@ impl UUID {
             .parse::<i32>()
             .with_context(|| format!("ID (the last part) is not a i32 in {uuid:?}"))?;
 
-        Ok((StringRef::new(service)?, id))
+        Ok((StringRef::new(service), id))
     }
 }

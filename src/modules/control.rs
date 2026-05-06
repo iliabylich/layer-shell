@@ -59,7 +59,7 @@ fn try_parse_introspect_req(message: IncomingMessage) -> Result<(StringRef, u32)
 
     destination_is!(destination, "org.me.LayerShellControl");
     path_is!(path, "/");
-    Ok((StringRef::new(&sender)?, serial))
+    Ok((StringRef::new(&sender), serial))
 }
 
 fn try_parse_control_req(message: IncomingMessage<'_>) -> Result<(&str, &str, u32)> {

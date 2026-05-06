@@ -41,28 +41,28 @@ impl StatusNotifierWatcher {
         self.request();
     }
 
-    pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Result<Option<Service>> {
+    pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<Service> {
         if self.introspection.process_message(message) {
-            return Ok(None);
+            return None;
         }
 
         if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
                     Self::reply_ok(serial, sender);
-                    return Ok(Some(Service::new(
-                        StringRef::new(sender)?,
-                        StringRef::new(address)?,
-                    )));
+                    return Some(Service::new(
+                        StringRef::new(sender),
+                        StringRef::new(address),
+                    ));
                 }
                 KSNIRequest::Other => {
                     Self::reply_ok(serial, sender);
-                    return Ok(None);
+                    return None;
                 }
             }
         }
 
-        Ok(None)
+        None
     }
 }
 

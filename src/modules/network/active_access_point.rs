@@ -78,7 +78,7 @@ const GET: IncompleteMethodCall<StringRef, StringRef, ()> =
             IncomingValue::ObjectPath(active_access_point)
         );
 
-        Ok(StringRef::new(active_access_point)?)
+        Ok(StringRef::new(active_access_point))
     });
 
 const SUBSCRIPTION: Subscription<StringRef> =
@@ -101,7 +101,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
             if key == "ActiveAccessPoint" {
                 let value = value.materialize()?;
                 value_is!(value, IncomingValue::ObjectPath(value));
-                return Ok(StringRef::new(value)?);
+                return Ok(StringRef::new(value));
             }
         }
 

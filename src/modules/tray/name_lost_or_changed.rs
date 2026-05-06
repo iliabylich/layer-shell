@@ -20,11 +20,11 @@ impl NameLostOrNameOwnerChanged {
         self.name_changed.send((), SessionDBus::queue());
     }
 
-    pub(crate) fn on_message(message: IncomingMessage<'_>) -> Result<Option<StringRef>> {
+    pub(crate) fn on_message(message: IncomingMessage<'_>) -> Option<StringRef> {
         let Ok(address) = parse_name_owner_changed(message) else {
-            return Ok(None);
+            return None;
         };
-        Ok(Some(StringRef::new(address)?))
+        Some(StringRef::new(address))
     }
 }
 

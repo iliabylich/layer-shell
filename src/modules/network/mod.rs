@@ -1,6 +1,5 @@
-use crate::{Event, event_queue::EventQueue, utils::StringRef};
+use crate::{Event, event_queue::EventQueue};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
-use anyhow::Result;
 use mini_sansio_dbus::IncomingMessage;
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
@@ -91,11 +90,9 @@ impl Network {
         }
     }
 
-    fn on_ssid_and_strength_event(e: SsidAndStrengthEvent) -> Result<()> {
+    fn on_ssid_and_strength_event(e: SsidAndStrengthEvent) {
         if let Some(ssid) = e.ssid {
-            let event = Event::NetworkSsid {
-                ssid: StringRef::new(ssid.as_str())?,
-            };
+            let event = Event::NetworkSsid { ssid };
             EventQueue::push_back(event);
         }
 
@@ -103,35 +100,31 @@ impl Network {
             let event = Event::NetworkStrength { strength };
             EventQueue::push_back(event);
         }
-
-        Ok(())
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<()> {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
         if let Some(e) = self.wireless_connection.on_message(message) {
             self.on_wireless_connection_event(e);
-            return Ok(());
+            return;
         }
 
         if let Some(e) = self.primary_device.on_message(message) {
             self.on_primary_device_event(e);
-            return Ok(());
+            return;
         }
 
         if let Some(e) = self.active_access_point.on_message(message) {
             self.on_active_access_point_event(e);
-            return Ok(());
+            return;
         }
 
         if let Some(e) = self.tx_rx.on_message(message) {
             self.on_tx_rx_event(e);
-            return Ok(());
+            return;
         }
 
         if let Some(e) = self.ssid_and_strength.on_message(message) {
-            return Self::on_ssid_and_strength_event(e);
+            Self::on_ssid_and_strength_event(e);
         }
-
-        Ok(())
     }
 }

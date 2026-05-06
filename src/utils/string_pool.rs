@@ -1,4 +1,3 @@
-use anyhow::{Result, bail};
 use std::cell::Cell;
 
 const SLOTS_COUNT: usize = 100;
@@ -18,15 +17,17 @@ impl StringPool {
         }
     }
 
-    fn alloc(&mut self, s: &str) -> Result<StringRef> {
+    fn alloc(&mut self, s: &str) -> StringRef {
         let Some(slot) = self.slots.iter_mut().find(|slot| slot.free) else {
             for (idx, slot) in self.slots.iter().enumerate() {
                 log::error!("slot {idx}: {:?}", slot.as_str());
             }
-            bail!("not enough space in StringPool");
+            log::error!("not enough space in StringPool");
+            log::error!("{:?}", std::backtrace::Backtrace::force_capture());
+            std::process::exit(1);
         };
-        slot.acquire(s)?;
-        Ok(StringRef { slot })
+        slot.acquire(s);
+        StringRef { slot }
     }
 }
 
@@ -51,16 +52,20 @@ impl Slot {
         }
     }
 
-    fn acquire(&mut self, s: &str) -> Result<()> {
+    fn acquire(&mut self, s: &str) {
         if !self.free {
-            bail!("bug: Slot in string pool is not free");
+            log::error!("bug: Slot in string pool is not free");
+            log::error!("{:?}", std::backtrace::Backtrace::force_capture());
+            std::process::exit(1)
         }
 
         if s.len() >= MAX_STRING_LEN {
-            bail!(
+            log::error!(
                 "string is too long to be in a StringPool (len is {})",
                 s.len()
             );
+            log::error!("{:?}", std::backtrace::Backtrace::force_capture());
+            std::process::exit(1);
         }
 
         let bytes = s.as_bytes();
@@ -72,7 +77,6 @@ impl Slot {
         self.len = s.len();
         self.free = false;
         self.refcount = Cell::new(1);
-        Ok(())
     }
 
     const fn release(&mut self) {
@@ -104,7 +108,7 @@ pub struct StringRef {
 }
 
 impl StringRef {
-    pub(crate) fn new(s: &str) -> Result<Self> {
+    pub(crate) fn new(s: &str) -> Self {
         unsafe { STRING_POOL.alloc(s) }
     }
 
@@ -162,10 +166,8 @@ impl core::hash::Hash for StringRef {
 
 impl Eq for StringRef {}
 
-impl TryFrom<&str> for StringRef {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> Result<Self> {
+impl From<&str> for StringRef {
+    fn from(value: &str) -> Self {
         Self::new(value)
     }
 }

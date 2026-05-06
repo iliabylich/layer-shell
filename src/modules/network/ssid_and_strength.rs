@@ -120,5 +120,5 @@ fn parse_ssid(ssid: IncomingValue<'_>) -> Result<StringRef> {
         bytes.push(byte);
     }
     let ssid = String::from_utf8_lossy(&bytes).to_string();
-    StringRef::new(ssid.as_str())
+    Ok(StringRef::new(ssid.as_str()))
 }

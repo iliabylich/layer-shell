@@ -65,7 +65,7 @@ const GET: IncompleteMethodCall<(), StringRef, ()> = MethodCall::new(&|_input, _
     value_is!(path, IncomingValue::Variant(path));
     let path = path.materialize()?;
     value_is!(path, IncomingValue::ObjectPath(path));
-    Ok(StringRef::new(path)?)
+    Ok(StringRef::new(path))
 });
 
 const SUBSCRIPTION: Subscription<StringRef> =
@@ -89,7 +89,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
             if key == "PrimaryConnection" {
                 let value = value.materialize()?;
                 value_is!(value, IncomingValue::ObjectPath(value));
-                return Ok(StringRef::new(value)?);
+                return Ok(StringRef::new(value));
             }
         }
 

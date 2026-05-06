@@ -75,7 +75,7 @@ const GET: IncompleteMethodCall<StringRef, StringRef, ()> =
         let device = iter.try_next()?.context("expected at least one device")?;
         value_is!(device, IncomingValue::ObjectPath(device));
 
-        Ok(StringRef::new(device)?)
+        Ok(StringRef::new(device))
     });
 
 const SUBSCRIPTION: Subscription<StringRef> =
@@ -105,7 +105,7 @@ const SUBSCRIPTION: Subscription<StringRef> =
                 let mut iter = devices.items_iter();
                 let device = iter.try_next()?.context("expected at least one device")?;
                 value_is!(device, IncomingValue::ObjectPath(device));
-                return Ok(StringRef::new(device)?);
+                return Ok(StringRef::new(device));
             }
         }
 

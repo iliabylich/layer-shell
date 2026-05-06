@@ -191,7 +191,7 @@ impl IO {
 
                     if let Some(message) = message {
                         self.sound.on_message(message);
-                        self.tray.on_message(message)?;
+                        self.tray.on_message(message);
 
                         if let Some(req) = Control::on_message(message) {
                             Self::on_control_req(req);
@@ -205,7 +205,7 @@ impl IO {
                     let message = satisfy!(self.system_dbus);
 
                     if let Some(message) = message {
-                        self.network.on_message(message)?;
+                        self.network.on_message(message);
                     }
 
                     schedule!(self.system_dbus, &mut self.io_uring);

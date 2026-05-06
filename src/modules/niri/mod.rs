@@ -64,7 +64,7 @@ impl Niri {
                 .get(current_layout_idx)
                 .context("no such layout idx")?;
             EventQueue::push_back(Event::Language {
-                lang: StringRef::new(lang)?,
+                lang: StringRef::new(lang),
             });
         }
 

@@ -1,4 +1,4 @@
-use crate::{Event, event_queue::EventQueue, modules::tray::app::TrayEvent, utils::StringRef};
+use crate::{Event, event_queue::EventQueue, modules::tray::app::TrayEvent};
 use anyhow::Result;
 use app::App;
 pub use icon::{TrayIcon, TrayIconPixmap};
@@ -39,34 +39,32 @@ impl Tray {
         self.name_lost_or_changed.init();
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Result<()> {
-        if let Some(service) = self.status_notifier_watcher.on_message(message)? {
+    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
+        if let Some(service) = self.status_notifier_watcher.on_message(message) {
             log::info!(target: "Tray", "Added {service:?}");
-            let mut tray_app = App::new(service.clone())?;
+            let mut tray_app = App::new(service.clone());
             tray_app.init();
             self.registry.insert(service, tray_app);
-            return Ok(());
+            return;
         }
 
-        if let Some(service) = NameLostOrNameOwnerChanged::on_message(message)? {
+        if let Some(service) = NameLostOrNameOwnerChanged::on_message(message) {
             let Some(key) = self
                 .registry
                 .keys()
                 .find(|s| s.name() == service || s.raw_address() == service)
                 .cloned()
             else {
-                return Ok(());
+                return;
             };
 
             let Some(mut tray_app) = self.registry.remove(&key) else {
-                return Ok(());
+                return;
             };
 
             log::info!(target: "Tray", "Removed {service}");
             tray_app.reset();
-            EventQueue::push_back(Event::TrayAppRemoved {
-                service: StringRef::new(service.as_str())?,
-            });
+            EventQueue::push_back(Event::TrayAppRemoved { service });
         }
 
         for (service, app) in &mut self.registry {
@@ -75,24 +73,22 @@ impl Tray {
 
                 let event = match event {
                     TrayEvent::Initialized(icon, layout) => Event::TrayAppAdded {
-                        service: StringRef::new(service.as_str())?,
+                        service: service.clone(),
                         items: layout.into(),
                         icon,
                     },
                     TrayEvent::IconUpdated(icon) => Event::TrayAppIconUpdated {
-                        service: StringRef::new(service.as_str())?,
+                        service: service.clone(),
                         icon,
                     },
                     TrayEvent::MenuUpdated(layout) => Event::TrayAppMenuUpdated {
-                        service: StringRef::new(service.as_str())?,
+                        service: service.clone(),
                         items: layout.into(),
                     },
                 };
                 EventQueue::push_back(event);
             }
         }
-
-        Ok(())
     }
 
     fn try_trigger(&self, uuid: &str) -> Result<()> {

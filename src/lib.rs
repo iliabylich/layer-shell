@@ -148,7 +148,7 @@ pub extern "C" fn io_trigger_tray(uuid: *const core::ffi::c_char) {
         let uuid = unsafe { core::ffi::CStr::from_ptr(uuid) }.to_str()?;
 
         global_io()?.process_command(Command::TriggerTray {
-            uuid: StringRef::new(uuid)?,
+            uuid: StringRef::new(uuid),
         });
 
         Ok(())

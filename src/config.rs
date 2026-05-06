@@ -71,7 +71,7 @@ impl TryFrom<&Terminal> for IOTerminal {
 
     fn try_from(terminal: &Terminal) -> Result<Self> {
         Ok(Self {
-            label: StringRef::new(&terminal.label)?,
+            label: StringRef::new(&terminal.label),
             command: vec_of_string_to_null_terminated_c_array(&terminal.command)?,
         })
     }
