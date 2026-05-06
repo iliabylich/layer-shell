@@ -266,28 +266,28 @@ impl IO {
 
         match cmd {
             Command::Lock => {
-                spawn(&self.config.lock)?;
+                spawn(&self.config.lock);
             }
             Command::Reboot => {
-                spawn(&self.config.reboot)?;
+                spawn(&self.config.reboot);
             }
             Command::Shutdown => {
-                spawn(&self.config.shutdown)?;
+                spawn(&self.config.shutdown);
             }
             Command::Logout => {
-                spawn(&self.config.logout)?;
+                spawn(&self.config.logout);
             }
             Command::SpawnWiFiEditor => {
-                spawn(&self.config.edit_wifi)?;
+                spawn(&self.config.edit_wifi);
             }
             Command::SpawnBluetoothEditor => {
-                spawn(&self.config.edit_bluetooth)?;
+                spawn(&self.config.edit_bluetooth);
             }
             Command::SpawnSystemMonitor => {
-                spawn(&self.config.open_system_monitor)?;
+                spawn(&self.config.open_system_monitor);
             }
             Command::ChangeTheme => {
-                spawn(&self.config.change_theme)?;
+                spawn(&self.config.change_theme);
             }
 
             Command::TriggerTray { uuid } => {
@@ -307,12 +307,19 @@ impl AsRawFd for IO {
     }
 }
 
-fn spawn(cmd: &str) -> Result<()> {
+fn spawn(cmd: &str) {
+    if let Err(err) = try_spawn(cmd) {
+        log::error!("{err:?}");
+    }
+}
+
+fn try_spawn(cmd: &str) -> Result<()> {
     use std::process::{Command, Stdio};
 
     let mut cmd = cmd.split_whitespace();
-    let first = cmd.next().context("command can't be pased")?;
-    let rest = cmd.collect::<Vec<_>>();
+    let first = cmd.next().context("command can't be parsed")?;
+    let home = std::env::var("HOME").context("no $HOME")?;
+    let rest = cmd.map(|arg| arg.replace("~", &home)).collect::<Vec<_>>();
 
     Command::new(first)
         .args(rest)
