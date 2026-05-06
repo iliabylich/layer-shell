@@ -153,6 +153,6 @@ pub extern "C" fn io_spawn_system_monitor() {
     map_panic_to_exit_with_error!(global_io()?.process_command(Command::SpawnSystemMonitor));
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_change_theme() {
-    map_panic_to_exit_with_error!(global_io()?.process_command(Command::ChangeTheme));
+pub extern "C" fn io_change_wallpaper() {
+    map_panic_to_exit_with_error!(global_io()?.process_command(Command::ChangeWallpaper));
 }

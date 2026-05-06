@@ -142,7 +142,7 @@ static void create_widgets() {
 #define CONNECT(obj, signal, callback, data)                                   \
   g_signal_connect(obj, signal, G_CALLBACK(callback), data)
 
-  CONNECT(top_bar, "change-theme-clicked", io_change_theme, NULL);
+  CONNECT(top_bar, "change-wallpaper-clicked", io_change_wallpaper, NULL);
   CONNECT(top_bar, "tray-triggered", tray_triggered, NULL);
   CONNECT(top_bar, "memory-clicked", io_spawn_system_monitor, NULL);
   CONNECT(top_bar, "network-settings-clicked", io_spawn_wifi_editor, NULL);

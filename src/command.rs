@@ -11,7 +11,7 @@ pub(crate) enum Command {
     SpawnWiFiEditor,
     SpawnBluetoothEditor,
     SpawnSystemMonitor,
-    ChangeTheme,
+    ChangeWallpaper,
 
     TriggerTray { uuid: StringRef },
 }

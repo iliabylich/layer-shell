@@ -12,7 +12,7 @@ pub(crate) struct Config {
     pub(crate) edit_wifi: String,
     pub(crate) edit_bluetooth: String,
     pub(crate) open_system_monitor: String,
-    pub(crate) change_theme: String,
+    pub(crate) change_wallpaper: String,
 
     pub(crate) ping: Vec<String>,
     pub(crate) terminal: Terminal,

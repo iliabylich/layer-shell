@@ -78,7 +78,7 @@ static char *format_network_speed(GObject *, uint64_t bytes_per_sec) {
 struct _TopBar {
   GtkWidget parent_instance;
 
-  GtkWidget *change_theme;
+  GtkWidget *change_wallpaper;
   GtkWidget *weather;
   GtkWidget *terminal;
   GtkWidget *memory;
@@ -89,7 +89,7 @@ struct _TopBar {
 G_DEFINE_TYPE(TopBar, top_bar, BASE_OVERLAY_TYPE)
 
 enum {
-  SIGNAL_CHANGE_THEME_CLICKED = 0,
+  SIGNAL_CHANGE_WALLPAPER_CLICKED = 0,
   SIGNAL_TRAY_TRIGGERED,
   SIGNAL_WEATHER_CLICKED,
   SIGNAL_TERMINAL_CLICKED,
@@ -124,7 +124,7 @@ static void top_bar_constructed(GObject *object) {
     g_signal_emit(data, signals[sig], 0);                                      \
   }
 
-FORWARD_CLICKED(change_theme_clicked, SIGNAL_CHANGE_THEME_CLICKED)
+FORWARD_CLICKED(change_wallpaper_clicked, SIGNAL_CHANGE_WALLPAPER_CLICKED)
 FORWARD_CLICKED(weather_clicked, SIGNAL_WEATHER_CLICKED)
 FORWARD_CLICKED(terminal_clicked, SIGNAL_TERMINAL_CLICKED)
 FORWARD_CLICKED(memory_clicked, SIGNAL_MEMORY_CLICKED)
@@ -161,7 +161,7 @@ static void top_bar_init(TopBar *self) {
 #define CONNECT(widget, signal, callback)                                      \
   g_signal_connect(widget, signal, G_CALLBACK(callback), self)
 
-  CONNECT(self->change_theme, "clicked", change_theme_clicked);
+  CONNECT(self->change_wallpaper, "clicked", change_wallpaper_clicked);
   CONNECT(self->weather, "clicked", weather_clicked);
   CONNECT(self->terminal, "clicked", terminal_clicked);
   CONNECT(self->memory, "clicked", memory_clicked);
@@ -192,7 +192,7 @@ static void top_bar_class_init(TopBarClass *klass) {
       g_signal_new(name, G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL, \
                    NULL, NULL, G_TYPE_NONE, 0)
 
-  SIGNAL_CLICKED(SIGNAL_CHANGE_THEME_CLICKED, "change-theme-clicked");
+  SIGNAL_CLICKED(SIGNAL_CHANGE_WALLPAPER_CLICKED, "change-wallpaper-clicked");
   SIGNAL_CLICKED(SIGNAL_WEATHER_CLICKED, "weather-clicked");
   SIGNAL_CLICKED(SIGNAL_TERMINAL_CLICKED, "terminal-clicked");
   SIGNAL_CLICKED(SIGNAL_MEMORY_CLICKED, "memory-clicked");
@@ -217,7 +217,7 @@ static void top_bar_class_init(TopBarClass *klass) {
   gtk_widget_class_bind_template_callback(widget_class, format_memory_label);
   gtk_widget_class_bind_template_callback(widget_class, format_clock_label);
   gtk_widget_class_bind_template_callback(widget_class, format_network_speed);
-  gtk_widget_class_bind_template_child(widget_class, TopBar, change_theme);
+  gtk_widget_class_bind_template_child(widget_class, TopBar, change_wallpaper);
   gtk_widget_class_bind_template_child(widget_class, TopBar, weather);
   gtk_widget_class_bind_template_child(widget_class, TopBar, terminal);
   gtk_widget_class_bind_template_child(widget_class, TopBar, bluetooth);

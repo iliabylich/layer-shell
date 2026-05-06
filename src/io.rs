@@ -286,8 +286,8 @@ impl IO {
             Command::SpawnSystemMonitor => {
                 spawn(&self.config.open_system_monitor);
             }
-            Command::ChangeTheme => {
-                spawn(&self.config.change_theme);
+            Command::ChangeWallpaper => {
+                spawn(&self.config.change_wallpaper);
             }
 
             Command::TriggerTray { uuid } => {
@@ -319,7 +319,7 @@ fn try_spawn(cmd: &str) -> Result<()> {
     let mut cmd = cmd.split_whitespace();
     let first = cmd.next().context("command can't be parsed")?;
     let home = std::env::var("HOME").context("no $HOME")?;
-    let rest = cmd.map(|arg| arg.replace("~", &home)).collect::<Vec<_>>();
+    let rest = cmd.map(|arg| arg.replace('~', &home)).collect::<Vec<_>>();
 
     Command::new(first)
         .args(rest)
