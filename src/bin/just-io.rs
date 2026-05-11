@@ -2,11 +2,11 @@ use layer_shell_io::{Event, io_handle_readable, io_init, io_wait_readable};
 
 extern "C" fn on_event(event: *const Event) {
     let event = unsafe { &*event };
-    log::info!("{event:?}");
+    log::trace!(target: "just-io", "{event:?}");
 }
 
 fn main() -> Result<(), ()> {
-    io_init(on_event, false);
+    io_init(on_event);
 
     loop {
         // log::info!("Waiting...");

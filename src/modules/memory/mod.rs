@@ -5,7 +5,7 @@ use crate::{
     sansio::{FileReader, Satisfy, Wants},
     user_data::ModuleId,
 };
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use parser::Parser;
 
 mod parser;
@@ -31,17 +31,25 @@ impl FallibleModule for Memory {
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        let Some(buf) = self.reader.try_satisfy(satisfy, res)? else {
-            return Ok(None);
-        };
-        let (used, total) = Parser::parse(buf).context("parse error")?;
+        match satisfy {
+            Satisfy::OpenAt => {
+                self.reader.satisfy_open(res)?;
+                Ok(None)
+            }
 
-        EventQueue::push_back(Event::Memory { used, total });
-        Ok(None)
+            Satisfy::Read => {
+                let buf = self.reader.satisfy_read(res)?;
+                let (used, total) = Parser::parse(buf).context("parse error")?;
+                EventQueue::push_back(Event::Memory { used, total });
+                Ok(None)
+            }
+
+            _ => bail!("Memory module only suports OpenAt and Read"),
+        }
     }
 
     fn try_tick(&mut self, _tick: u64) -> Result<()> {
-        self.reader.tick();
+        self.reader.satisfy_tick();
         Ok(())
     }
 }

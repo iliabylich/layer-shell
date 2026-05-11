@@ -12,7 +12,7 @@ use crate::{
     },
     sansio::{Https, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::{DedupModule, InfallibleModule, Logger},
+    utils::{DedupModule, InfallibleModule},
 };
 use anyhow::{Context, Result};
 
@@ -34,15 +34,14 @@ pub(crate) struct IO {
     coordinates: Option<(f64, f64)>,
     weather: InfallibleModule<Weather>,
 
-    cpu: InfallibleModule<CPU>,
-    memory: InfallibleModule<Memory>,
+    cpu: InfallibleModule<DedupModule<CPU>>,
+    memory: InfallibleModule<DedupModule<Memory>>,
 
     caps_lock: InfallibleModule<CapsLock>,
     niri: InfallibleModule<Niri>,
 
     on_event: extern "C" fn(event: *const Event),
     running: bool,
-    logging_enabled: bool,
 }
 
 macro_rules! schedule {
@@ -54,6 +53,7 @@ macro_rules! schedule {
                 log::error!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
                 std::process::exit(1);
             }
+            log::trace!(target: module_id.as_str(), "Wants {wants:?}");
             $io_uring.schedule(module_id, wants);
         }
     }};
@@ -61,7 +61,7 @@ macro_rules! schedule {
 
 impl IO {
     pub(crate) fn init() -> Result<()> {
-        Logger::init()?;
+        env_logger::try_init()?;
         Https::init()?;
         SessionDBus::init();
         SystemDBus::init();
@@ -73,10 +73,7 @@ impl IO {
         self.io_uring.deinit();
     }
 
-    pub(crate) fn new(
-        on_event: extern "C" fn(event: *const Event),
-        logging_enabled: bool,
-    ) -> Result<Self> {
+    pub(crate) fn new(on_event: extern "C" fn(event: *const Event)) -> Result<Self> {
         let config = Config::read()?;
         let io_config = Box::leak(Box::new(IOConfig::try_from(&config)?));
 
@@ -98,15 +95,14 @@ impl IO {
             coordinates: None,
             weather: InfallibleModule::new(Weather::new()),
 
-            cpu: InfallibleModule::new(CPU::new()),
-            memory: InfallibleModule::new(Memory::new()),
+            cpu: InfallibleModule::new(DedupModule::new(CPU::new())),
+            memory: InfallibleModule::new(DedupModule::new(Memory::new())),
 
             caps_lock: InfallibleModule::new(CapsLock::new()?),
             niri: InfallibleModule::new(Niri::new()?),
 
             on_event,
             running: true,
-            logging_enabled,
         };
 
         this.start();
@@ -152,6 +148,7 @@ impl IO {
 
             let UserData { module_id, op, .. } = UserData::try_from(user_data)?;
             let satisfy = Satisfy::try_from(op)?;
+            log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?} {res}");
 
             macro_rules! satisfy {
                 ($module:expr) => {
@@ -247,9 +244,7 @@ impl IO {
         self.io_uring.submit_if_dirty();
 
         while let Some(event) = EventQueue::pop_front() {
-            if self.logging_enabled {
-                log::info!(target: "IO", "{event:?}");
-            }
+            log::info!(target: "IO", "{event:?}");
             (self.on_event)(&raw const event);
         }
 

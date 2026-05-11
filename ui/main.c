@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
   g_signal_connect(obj, signal, G_CALLBACK(callback), data)
 
   setenv("GSK_RENDERER", "cairo", true);
-  io_init(event_received, true);
+  io_init(event_received);
   config = io_get_config();
 
   app = gtk_application_new("org.me.LayerShell", G_APPLICATION_DEFAULT_FLAGS);

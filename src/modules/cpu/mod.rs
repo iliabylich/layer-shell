@@ -5,7 +5,7 @@ use crate::{
     sansio::{FileReader, Satisfy, Wants},
     user_data::ModuleId,
 };
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use parser::{CoreUsage, Parser};
 
 mod parser;
@@ -34,21 +34,31 @@ impl FallibleModule for CPU {
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        let Some(buf) = self.reader.try_satisfy(satisfy, res)? else {
-            return Ok(None);
-        };
-        let prev = self.state.take();
-        let next = Parser::parse(buf).context("parse error")?;
+        match satisfy {
+            Satisfy::OpenAt => {
+                self.reader.satisfy_open(res)?;
+                Ok(None)
+            }
 
-        let usage_per_core = diff(prev.as_deref(), &next)?.into();
-        self.state = Some(next);
-        EventQueue::push_back(Event::CpuUsage { usage_per_core });
+            Satisfy::Read => {
+                let buf = self.reader.satisfy_read(res)?;
 
-        Ok(None)
+                let prev = self.state.take();
+                let next = Parser::parse(buf).context("parse error")?;
+
+                let usage_per_core = diff(prev.as_deref(), &next)?.into();
+                self.state = Some(next);
+                EventQueue::push_back(Event::CpuUsage { usage_per_core });
+
+                Ok(None)
+            }
+
+            _ => bail!("CPU module only supports OpenAt and Read"),
+        }
     }
 
     fn try_tick(&mut self, _tick: u64) -> Result<()> {
-        self.reader.tick();
+        self.reader.satisfy_tick();
         Ok(())
     }
 }
