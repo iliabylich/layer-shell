@@ -1,8 +1,5 @@
-use crate::{
-    sansio::{Satisfy, Wants},
-    utils::ArrayWriter,
-};
-use anyhow::{Context, Result, bail, ensure};
+use crate::{sansio::Wants, utils::ArrayWriter};
+use anyhow::{Context, Result, ensure};
 use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
@@ -13,16 +10,11 @@ pub(crate) struct UnixSocketOneshotWriter {
     bytes_read: usize,
     fd: i32,
     state: State,
+    seq: u64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
-    ReadyTo(Action),
-    WaitingFor(Action),
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Action {
     Socket,
     Connect,
     Write,
@@ -43,105 +35,116 @@ impl UnixSocketOneshotWriter {
             write_buflen,
             bytes_read: 0,
             fd: -1,
-            state: State::ReadyTo(Action::Socket),
+            state: State::Socket,
+            seq: 0,
         })
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Wants {
         match self.state {
-            State::ReadyTo(Action::Socket) => {
-                self.state = State::WaitingFor(Action::Socket);
-                Some(Wants::Socket {
-                    domain: AF_UNIX,
-                    r#type: SOCK_STREAM,
-                    seq: 42,
-                })
-            }
+            State::Socket => Wants::Socket {
+                domain: AF_UNIX,
+                r#type: SOCK_STREAM,
+                seq: self.seq,
+            },
 
-            State::ReadyTo(Action::Connect) => {
-                self.state = State::WaitingFor(Action::Connect);
-                Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&raw const self.addr).cast::<sockaddr>(),
-                    addrlen: size_of::<sockaddr_un>() as u32,
-                    seq: 42,
-                })
-            }
+            State::Connect => Wants::Connect {
+                fd: self.fd,
+                addr: (&raw const self.addr).cast::<sockaddr>(),
+                addrlen: size_of::<sockaddr_un>() as u32,
+                seq: self.seq,
+            },
 
-            State::ReadyTo(Action::Write) => {
-                self.state = State::WaitingFor(Action::Write);
+            State::Write => {
                 // SAFETY: write_buflen is guaranteed not to exceed buf's len
                 let buf = unsafe { self.buf.get_unchecked(..self.write_buflen) };
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                    seq: 42,
-                })
+                    seq: self.seq,
+                }
             }
 
-            State::ReadyTo(Action::Read) => {
-                self.state = State::WaitingFor(Action::Read);
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
-                    seq: 42,
-                })
-            }
+            State::Read => Wants::Read {
+                fd: self.fd,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
+                seq: self.seq,
+            },
 
-            State::ReadyTo(Action::Close) => {
-                self.state = State::WaitingFor(Action::Close);
-                Some(Wants::Close {
-                    fd: self.fd,
-                    seq: 42,
-                })
-            }
-
-            State::WaitingFor(_) => None,
+            State::Close => Wants::Close {
+                fd: self.fd,
+                seq: self.seq,
+            },
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<&[u8]>> {
-        match (self.state, satisfy) {
-            (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
-                ensure!(res >= 0, "socket failed: {res}");
-                self.fd = res;
-                self.state = State::ReadyTo(Action::Connect);
-                Ok(None)
-            }
+    pub(crate) fn satisfy_socket(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Socket,
+            "malformed state: expected Socket, got {:?}",
+            self.state
+        );
 
-            (State::WaitingFor(Action::Connect), Satisfy::Connect) => {
-                ensure!(res >= 0, "connect failed: {res}");
-                self.state = State::ReadyTo(Action::Write);
-                Ok(None)
-            }
+        ensure!(res >= 0, "socket failed: {res}");
+        self.fd = res;
+        self.state = State::Connect;
+        self.seq += 1;
+        Ok(())
+    }
 
-            (State::WaitingFor(Action::Write), Satisfy::Write) => {
-                ensure!(res > 0, "write failed: {res}");
-                self.state = State::ReadyTo(Action::Read);
-                Ok(None)
-            }
+    pub(crate) fn satisfy_connect(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Connect,
+            "malformed state: expected Connect, got {:?}",
+            self.state
+        );
 
-            (State::WaitingFor(Action::Read), Satisfy::Read) => {
-                self.bytes_read = usize::try_from(res).context("read failed")?;
-                self.state = State::ReadyTo(Action::Close);
-                Ok(None)
-            }
+        ensure!(res >= 0, "connect failed: {res}");
+        self.state = State::Write;
+        self.seq += 1;
+        Ok(())
+    }
 
-            (State::WaitingFor(Action::Close), Satisfy::Close) => {
-                ensure!(res >= 0, "close failed: {res}");
-                Ok(Some(
-                    self.buf
-                        .get(..self.bytes_read)
-                        .context("buf is too short")?,
-                ))
-            }
+    pub(crate) fn satisfy_write(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Write,
+            "malformed state: expected Write, got {:?}",
+            self.state
+        );
 
-            (state, satisfy) => {
-                bail!("malformed state: {state:?} vs {satisfy:?}")
-            }
-        }
+        ensure!(res > 0, "write failed: {res}");
+        self.state = State::Read;
+        self.seq += 1;
+        Ok(())
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn satisfy_read(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Write,
+            "malformed state: expected Write, got {:?}",
+            self.state
+        );
+
+        self.bytes_read = usize::try_from(res).context("read failed")?;
+        self.state = State::Close;
+        self.seq += 1;
+        Ok(())
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn satisfy_close(&mut self, res: i32) -> Result<&[u8]> {
+        ensure!(
+            self.state == State::Close,
+            "malformed state: expected Close, got {:?}",
+            self.state
+        );
+
+        ensure!(res >= 0, "close failed: {res}");
+        self.seq += 1;
+        self.buf.get(..self.bytes_read).context("buf is too short")
     }
 
     pub(crate) const fn fd(&self) -> i32 {

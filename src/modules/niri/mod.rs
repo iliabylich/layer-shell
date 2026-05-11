@@ -94,7 +94,7 @@ impl FallibleModule for Niri {
 
     fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
-            State::Writer(writer) => writer.wants(),
+            State::Writer(writer) => Some(writer.wants()),
             State::Reader(reader) => Some(reader.wants()),
             State::Dummy => None,
         }
@@ -102,15 +102,20 @@ impl FallibleModule for Niri {
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
         match &mut self.state {
-            State::Writer(writer) => {
-                writer.satisfy(satisfy, res)?;
+            State::Writer(writer) => match satisfy {
+                Satisfy::Socket => writer.satisfy_socket(res)?,
 
-                if matches!(satisfy, Satisfy::Write) {
+                Satisfy::Connect => writer.satisfy_connect(res)?,
+
+                Satisfy::Write => {
+                    writer.satisfy_write(res)?;
                     self.state = State::Reader(Box::new(UnixSocketReader::new_connected_from_fd(
                         writer.fd(),
                     )));
                 }
-            }
+
+                _ => bail!("Niri writer only accepts Socket, Connect and Write, got: {satisfy:?}"),
+            },
 
             State::Reader(reader) => match satisfy {
                 Satisfy::Socket => reader.satisfy_socket(res)?,
