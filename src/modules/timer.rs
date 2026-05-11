@@ -10,10 +10,10 @@ pub(crate) struct Timer {
 }
 
 impl Timer {
-    pub(crate) fn new() -> Result<Self> {
-        Ok(Self {
-            timerfd: TimerFd::new()?,
-        })
+    pub(crate) fn new() -> Self {
+        Self {
+            timerfd: TimerFd::new(),
+        }
     }
 }
 
@@ -22,7 +22,7 @@ impl FallibleModule for Timer {
     type Output = u64;
 
     fn wants(&mut self) -> Option<Wants> {
-        self.timerfd.wants()
+        Some(self.timerfd.wants())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {

@@ -6,36 +6,25 @@ pub(crate) struct TimerFd {
     fd: i32,
     buf: [u8; 8],
     ticks: u64,
-    state: State,
-}
-
-enum State {
-    ReadyToRead,
-    WaitingForRead,
+    seq: u64,
 }
 
 impl TimerFd {
-    pub(crate) fn new() -> Result<Self> {
-        Ok(Self {
-            fd: create_timer()?,
+    pub(crate) fn new() -> Self {
+        Self {
+            fd: create_timer(),
             buf: [0; _],
             ticks: 0,
-            state: State::ReadyToRead,
-        })
+            seq: 0,
+        }
     }
 
-    pub(crate) const fn wants(&mut self) -> Option<Wants> {
-        match self.state {
-            State::ReadyToRead => {
-                self.state = State::WaitingForRead;
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
-                    seq: 42,
-                })
-            }
-            State::WaitingForRead => None,
+    pub(crate) const fn wants(&mut self) -> Wants {
+        Wants::Read {
+            fd: self.fd,
+            buf: self.buf.as_mut_ptr(),
+            len: self.buf.len(),
+            seq: self.seq,
         }
     }
 
@@ -48,7 +37,7 @@ impl TimerFd {
 
                 let ticks = self.ticks;
                 self.ticks = self.ticks.saturating_add(expirations);
-                self.state = State::ReadyToRead;
+                self.seq += 1;
 
                 Ok(ticks)
             }
@@ -58,14 +47,16 @@ impl TimerFd {
     }
 }
 
-fn create_timer() -> Result<i32> {
+fn create_timer() -> i32 {
     let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
-    ensure!(
-        fd != -1,
-        "timerfd_create returned -1: {}",
-        std::io::Error::last_os_error()
-    );
+    if fd == -1 {
+        log::error!(
+            "timerfd_create returned -1: {}",
+            std::io::Error::last_os_error()
+        );
+        std::process::exit(1);
+    }
 
     let timer_spec = itimerspec {
         it_interval: timespec {
@@ -79,11 +70,14 @@ fn create_timer() -> Result<i32> {
     };
 
     let res = unsafe { timerfd_settime(fd, 0, &raw const timer_spec, core::ptr::null_mut()) };
-    ensure!(
-        res != -1,
-        "timerfd_settime returned -1: {}",
-        std::io::Error::last_os_error()
-    );
 
-    Ok(fd)
+    if res == -1 {
+        log::error!(
+            "timerfd_settime returned -1: {}",
+            std::io::Error::last_os_error()
+        );
+        std::process::exit(1);
+    }
+
+    fd
 }

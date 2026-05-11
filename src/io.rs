@@ -22,7 +22,7 @@ pub(crate) struct IO {
     config: Config,
     pub(crate) io_config: *const IOConfig,
 
-    timer: InfallibleModule<Timer>,
+    timer: InfallibleModule<DedupModule<Timer>>,
 
     session_dbus: InfallibleModule<DedupModule<SessionDBus>>,
     sound: Sound,
@@ -86,7 +86,7 @@ impl IO {
             config,
             io_config,
 
-            timer: InfallibleModule::new(Timer::new()?),
+            timer: InfallibleModule::new(DedupModule::new(Timer::new())),
 
             session_dbus: InfallibleModule::new(DedupModule::new(SessionDBus::new())),
             sound: Sound::new(),
