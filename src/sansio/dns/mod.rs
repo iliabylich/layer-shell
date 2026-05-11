@@ -2,8 +2,8 @@ mod name;
 mod request;
 mod response;
 
-use crate::sansio::{Satisfy, Wants};
-use anyhow::{Context, Result, bail, ensure};
+use crate::sansio::Wants;
+use anyhow::{Context, Result, ensure};
 use request::Request;
 use response::Response;
 
@@ -13,14 +13,8 @@ const TYPE_A: u16 = 1;
 const CLASS_IN: u16 = 1;
 const MAX_DNS_PACKET: usize = 512;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
-    ReadyTo(Action),
-    WaitingFor(Action),
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Action {
     Socket,
     Connect,
     Write,
@@ -30,6 +24,7 @@ enum Action {
 
 pub(crate) struct Dns {
     state: State,
+    seq: u64,
     fd: i32,
     addr: libc::sockaddr_in,
     buf: [u8; MAX_DNS_PACKET],
@@ -41,7 +36,8 @@ pub(crate) struct Dns {
 impl Dns {
     pub(crate) const fn new(domain: &'static [u8]) -> Self {
         Self {
-            state: State::ReadyTo(Action::Socket),
+            state: State::Socket,
+            seq: 0,
             fd: -1,
             addr: libc::sockaddr_in {
                 sin_family: libc::AF_INET as u16,
@@ -58,123 +54,134 @@ impl Dns {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Wants {
         match self.state {
-            State::ReadyTo(Action::Socket) => {
-                self.state = State::WaitingFor(Action::Socket);
-                Some(Wants::Socket {
-                    domain: libc::AF_INET,
-                    r#type: libc::SOCK_DGRAM,
-                    seq: 42,
-                })
-            }
+            State::Socket => Wants::Socket {
+                domain: libc::AF_INET,
+                r#type: libc::SOCK_DGRAM,
+                seq: self.seq,
+            },
 
-            State::ReadyTo(Action::Connect) => {
-                self.state = State::WaitingFor(Action::Connect);
-                Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&raw const self.addr).cast::<libc::sockaddr>(),
-                    addrlen: size_of::<libc::sockaddr_in>() as u32,
-                    seq: 42,
-                })
-            }
+            State::Connect => Wants::Connect {
+                fd: self.fd,
+                addr: (&raw const self.addr).cast::<libc::sockaddr>(),
+                addrlen: size_of::<libc::sockaddr_in>() as u32,
+                seq: self.seq,
+            },
 
-            State::ReadyTo(Action::Write) => {
-                self.state = State::WaitingFor(Action::Write);
+            State::Write => {
                 // SAFETY: len never exceeds buf's size
                 let buf = unsafe { self.buf.get_unchecked(self.pos..self.len) };
-                Some(Wants::Write {
+                Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
-                    seq: 42,
-                })
+                    seq: self.seq,
+                }
             }
 
-            State::ReadyTo(Action::Read) => {
-                self.state = State::WaitingFor(Action::Read);
+            State::Read => {
                 // SAFETY: len never exceeds buf's size
                 let buf = unsafe { self.buf.get_unchecked_mut(self.len..) };
-                Some(Wants::Read {
+                Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                    seq: 42,
-                })
+                    seq: self.seq,
+                }
             }
 
-            State::ReadyTo(Action::Close) => {
-                self.state = State::WaitingFor(Action::Close);
-                Some(Wants::Close {
-                    fd: self.fd,
-                    seq: 42,
-                })
-            }
-
-            State::WaitingFor(_) => None,
+            State::Close => Wants::Close {
+                fd: self.fd,
+                seq: self.seq,
+            },
         }
     }
 
-    pub(crate) fn try_satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<libc::sockaddr_in>> {
-        match (self.state, satisfy) {
-            (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
-                ensure!(res >= 0);
-                self.fd = res;
-                self.state = State::ReadyTo(Action::Connect);
-                Ok(None)
-            }
+    pub(crate) fn satisfy_socket(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Socket,
+            "malformed state, expected Socket, got {:?}",
+            self.state
+        );
 
-            (State::WaitingFor(Action::Connect), Satisfy::Connect) => {
-                ensure!(res >= 0);
+        ensure!(res >= 0);
+        self.fd = res;
+        self.state = State::Connect;
+        self.seq += 1;
+        Ok(())
+    }
 
-                let mut buf = [0_u8; MAX_DNS_PACKET];
-                let len = Request::write(&mut buf, self.domain, TYPE_A);
+    pub(crate) fn satisfy_connect(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Connect,
+            "malformed state, expected Connect, got {:?}",
+            self.state
+        );
 
-                self.state = State::ReadyTo(Action::Write);
-                self.buf = buf;
-                self.len = len;
-                self.pos = 0;
-                Ok(None)
-            }
+        ensure!(res >= 0);
 
-            (State::WaitingFor(Action::Write), Satisfy::Write) => {
-                let bytes_written = usize::try_from(res).context("write failed")?;
+        let mut buf = [0_u8; MAX_DNS_PACKET];
+        let len = Request::write(&mut buf, self.domain, TYPE_A);
 
-                self.pos += bytes_written;
-                ensure!(self.pos <= self.len);
-                if self.pos == self.len {
-                    self.state = State::ReadyTo(Action::Read);
-                    self.buf = [0; _];
-                    self.len = 0;
-                }
+        self.state = State::Write;
+        self.seq += 1;
 
-                Ok(None)
-            }
+        self.buf = buf;
+        self.len = len;
+        self.pos = 0;
+        Ok(())
+    }
 
-            (State::WaitingFor(Action::Read), Satisfy::Read) => {
-                let bytes_read = usize::try_from(res).context("read failed")?;
+    pub(crate) fn satisfy_write(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Write,
+            "malformed state, expected Write, got {:?}",
+            self.state
+        );
 
-                self.len += bytes_read;
-                ensure!(self.len < MAX_DNS_PACKET);
+        let bytes_written = usize::try_from(res).context("write failed")?;
 
-                self.state = State::ReadyTo(Action::Close);
-                Ok(None)
-            }
-
-            (State::WaitingFor(Action::Close), Satisfy::Close) => {
-                ensure!(res >= 0);
-
-                let reply = Response::read(self.buf.get(..self.len).context("buf is too short")?)?;
-                Ok(Some(reply))
-            }
-
-            _ => {
-                bail!("malformed state {:?}", self.state)
-            }
+        self.pos += bytes_written;
+        self.seq += 1;
+        ensure!(self.pos <= self.len);
+        if self.pos == self.len {
+            self.state = State::Read;
+            self.buf = [0; _];
+            self.len = 0;
         }
+        Ok(())
+    }
+
+    pub(crate) fn satisfy_read(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Read,
+            "malformed state, expected Read, got {:?}",
+            self.state
+        );
+
+        let bytes_read = usize::try_from(res).context("read failed")?;
+
+        self.len += bytes_read;
+        self.seq += 1;
+        ensure!(self.len < MAX_DNS_PACKET);
+
+        self.state = State::Close;
+        Ok(())
+    }
+
+    pub(crate) fn satisfy_close(&mut self, res: i32) -> Result<(libc::sockaddr_in, u64)> {
+        ensure!(
+            self.state == State::Close,
+            "malformed state, expected Close, got {:?}",
+            self.state
+        );
+
+        ensure!(res >= 0);
+        self.seq += 1;
+
+        let mut addr = Response::read(self.buf.get(..self.len).context("buf is too short")?)?;
+        addr.sin_port = 443_u16.to_be();
+        Ok((addr, self.seq))
     }
 }

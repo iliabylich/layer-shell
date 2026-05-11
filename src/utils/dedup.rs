@@ -149,3 +149,17 @@ where
         self.module.try_tick(tick)
     }
 }
+
+impl<M> std::ops::Deref for DedupModule<M> {
+    type Target = M;
+
+    fn deref(&self) -> &Self::Target {
+        &self.module
+    }
+}
+
+impl<M> std::ops::DerefMut for DedupModule<M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.module
+    }
+}

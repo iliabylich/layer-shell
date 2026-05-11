@@ -8,7 +8,10 @@ pub(crate) struct InfallibleModule<M> {
     module: Option<M>,
 }
 
-impl<M: FallibleModule> InfallibleModule<M> {
+impl<M> InfallibleModule<M>
+where
+    M: FallibleModule,
+{
     const NAME: &str = M::MODULE_ID.as_str();
 
     pub(crate) const fn new(module: M) -> Self {
@@ -32,9 +35,9 @@ impl<M: FallibleModule> InfallibleModule<M> {
         }
     }
 
-    pub(crate) const fn inner(&mut self) -> Option<&mut M> {
-        self.module.as_mut()
-    }
+    // pub(crate) const fn inner(&mut self) -> Option<&mut M> {
+    //     self.module.as_mut()
+    // }
 
     pub(crate) fn tick(&mut self, tick: u64) {
         let Some(module) = self.module.as_mut() else {
@@ -50,5 +53,19 @@ impl<M: FallibleModule> InfallibleModule<M> {
     #[expect(clippy::unused_self)]
     pub(crate) const fn module_id(&self) -> ModuleId {
         M::MODULE_ID
+    }
+}
+
+impl<M> std::ops::Deref for InfallibleModule<M> {
+    type Target = Option<M>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.module
+    }
+}
+
+impl<M> std::ops::DerefMut for InfallibleModule<M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.module
     }
 }

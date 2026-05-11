@@ -30,9 +30,9 @@ pub(crate) struct IO {
     system_dbus: InfallibleModule<DedupModule<SystemDBus>>,
     network: Network,
 
-    location: InfallibleModule<Location>,
+    location: InfallibleModule<DedupModule<Location>>,
     coordinates: Option<(f64, f64)>,
-    weather: InfallibleModule<Weather>,
+    weather: InfallibleModule<DedupModule<Weather>>,
 
     cpu: InfallibleModule<DedupModule<CPU>>,
     memory: InfallibleModule<DedupModule<Memory>>,
@@ -91,9 +91,9 @@ impl IO {
             system_dbus: InfallibleModule::new(DedupModule::new(SystemDBus::new())),
             network: Network::new(),
 
-            location: InfallibleModule::new(Location::new()),
+            location: InfallibleModule::new(DedupModule::new(Location::new())),
             coordinates: None,
-            weather: InfallibleModule::new(Weather::new()),
+            weather: InfallibleModule::new(DedupModule::new(Weather::new())),
 
             cpu: InfallibleModule::new(DedupModule::new(CPU::new())),
             memory: InfallibleModule::new(DedupModule::new(Memory::new())),
@@ -160,7 +160,7 @@ impl IO {
                 ModuleId::GeoLocation => {
                     if let Some((lat, lng)) = satisfy!(self.location) {
                         self.coordinates = Some((lat, lng));
-                        if let Some(weather) = self.weather.inner() {
+                        if let Some(weather) = self.weather.as_mut() {
                             weather.setup(lat, lng);
                         }
                         schedule!(self.weather, &mut self.io_uring);

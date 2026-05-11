@@ -48,6 +48,7 @@ impl std::fmt::Debug for State {
 
 pub(crate) struct Https {
     state: State,
+    seq: u64,
     addr: sockaddr_in,
     fd: i32,
     request: Vec<u8>,
@@ -65,6 +66,7 @@ impl Https {
 
         Self {
             state: State::Dns(Box::new(Dns::new(domain.as_bytes()))),
+            seq: 0,
             addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
             fd: -1,
             request: request.into_bytes(),
@@ -84,14 +86,14 @@ impl Https {
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
-            State::Dns(dns) => dns.wants(),
+            State::Dns(dns) => Some(dns.wants()),
 
             State::ReadyTo(Action::Socket) => {
                 self.state = State::WaitingFor(Action::Socket);
                 Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_STREAM,
-                    seq: 42,
+                    seq: self.seq,
                 })
             }
 
@@ -101,7 +103,7 @@ impl Https {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast(),
                     addrlen: size_of::<sockaddr_in>() as u32,
-                    seq: 42,
+                    seq: self.seq,
                 })
             }
 
@@ -113,7 +115,7 @@ impl Https {
                 self.state = State::WaitingFor(Action::Close);
                 Some(Wants::Close {
                     fd: self.fd,
-                    seq: 42,
+                    seq: self.seq,
                 })
             }
 
@@ -127,32 +129,42 @@ impl Https {
         res: i32,
     ) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
-            (State::Dns(dns), _) => {
-                if let Some(mut addr) = dns.try_satisfy(satisfy, res)? {
-                    addr.sin_port = 443_u16.to_be();
+            (State::Dns(dns), _) => match satisfy {
+                Satisfy::Socket => dns.satisfy_socket(res)?,
+                Satisfy::Connect => dns.satisfy_connect(res)?,
+                Satisfy::Write => dns.satisfy_write(res)?,
+                Satisfy::Read => dns.satisfy_read(res)?,
+                Satisfy::Close => {
+                    let (addr, seq) = dns.satisfy_close(res)?;
                     self.addr = addr;
+                    self.seq = seq;
                     self.state = State::ReadyTo(Action::Socket);
                 }
-            }
+                Satisfy::OpenAt => bail!("DNS module doesn't support Satisfy::{satisfy:?}"),
+            },
 
             (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
                 ensure!(res >= 0, "OpenSsl::Socket failed: {res}");
                 self.fd = res;
+                self.seq += 1;
                 self.state = State::ReadyTo(Action::Connect);
             }
 
             (State::WaitingFor(Action::Connect), Satisfy::Connect) => {
                 ensure!(res >= 0, "OpenSsl::Connect failed: {res}");
 
-                self.state = State::Handshaking(OpenSslHandshake::new(self.fd, self.domain)?);
+                self.seq += 1;
+                self.state =
+                    State::Handshaking(OpenSslHandshake::new(self.fd, self.domain, self.seq)?);
             }
 
             (State::Handshaking(handshake), Satisfy::Read | Satisfy::Write) => {
-                if let Some(state) = handshake.satisfy(satisfy, res)? {
+                if let Some((state, seq)) = handshake.satisfy(satisfy, res)? {
                     self.state = State::ReadWrite(OpenSslReadWrite::new(
                         self.fd,
                         state,
                         self.request.clone(),
+                        seq,
                     )?);
                 }
             }
