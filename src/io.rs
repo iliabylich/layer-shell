@@ -37,8 +37,8 @@ pub(crate) struct IO {
     cpu: InfallibleModule<DedupModule<CPU>>,
     memory: InfallibleModule<DedupModule<Memory>>,
 
-    caps_lock: InfallibleModule<CapsLock>,
-    niri: InfallibleModule<Niri>,
+    caps_lock: InfallibleModule<DedupModule<CapsLock>>,
+    niri: InfallibleModule<DedupModule<Niri>>,
 
     on_event: extern "C" fn(event: *const Event),
     running: bool,
@@ -98,8 +98,8 @@ impl IO {
             cpu: InfallibleModule::new(DedupModule::new(CPU::new())),
             memory: InfallibleModule::new(DedupModule::new(Memory::new())),
 
-            caps_lock: InfallibleModule::new(CapsLock::new()?),
-            niri: InfallibleModule::new(Niri::new()?),
+            caps_lock: InfallibleModule::new(DedupModule::new(CapsLock::new())),
+            niri: InfallibleModule::new(DedupModule::new(Niri::new())),
 
             on_event,
             running: true,

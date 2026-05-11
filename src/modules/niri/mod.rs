@@ -7,7 +7,7 @@ use crate::{
     user_data::ModuleId,
     utils::StringRef,
 };
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};
 
 mod buffer;
@@ -15,6 +15,7 @@ mod buffer;
 enum State {
     Writer(Box<UnixSocketOneshotWriter>),
     Reader(Box<UnixSocketReader>),
+    Dummy,
 }
 
 pub(crate) struct Niri {
@@ -24,7 +25,14 @@ pub(crate) struct Niri {
 }
 
 impl Niri {
-    pub(crate) fn new() -> Result<Self> {
+    pub(crate) fn new() -> Self {
+        Self::try_new().unwrap_or_else(|err| {
+            log::error!("{err:?}");
+            Self::dummy()
+        })
+    }
+
+    fn try_new() -> Result<Self> {
         let path = std::env::var("NIRI_SOCKET").context("no $NIRI_SOCKET")?;
 
         let addr = new_unix_socket(path.as_bytes())?;
@@ -36,6 +44,14 @@ impl Niri {
             buffer: Buffer::new(),
             layouts: vec![],
         })
+    }
+
+    const fn dummy() -> Self {
+        Self {
+            state: State::Dummy,
+            buffer: Buffer::new(),
+            layouts: vec![],
+        }
     }
 
     fn process(&mut self, buf: &[u8]) -> Result<()> {
@@ -79,7 +95,8 @@ impl FallibleModule for Niri {
     fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
             State::Writer(writer) => writer.wants(),
-            State::Reader(reader) => reader.wants(),
+            State::Reader(reader) => Some(reader.wants()),
+            State::Dummy => None,
         }
     }
 
@@ -94,13 +111,22 @@ impl FallibleModule for Niri {
                     )));
                 }
             }
-            State::Reader(reader) => {
-                let Some((buf, len)) = reader.try_satisfy(satisfy, res)? else {
-                    return Ok(None);
-                };
-                let buf = buf.get(..len).context("buf is too short")?;
-                self.process(buf)?;
-            }
+
+            State::Reader(reader) => match satisfy {
+                Satisfy::Socket => reader.satisfy_socket(res)?,
+
+                Satisfy::Connect => reader.satisfy_connect(res)?,
+
+                Satisfy::Read => {
+                    let (buf, len) = reader.satisfy_read(res)?;
+                    let buf = buf.get(..len).context("buf is too short")?;
+                    self.process(buf)?;
+                }
+
+                _ => bail!("Niri reader only accepts Socket, Connect and Read, got: {satisfy:?}"),
+            },
+
+            State::Dummy => {}
         }
 
         Ok(None)

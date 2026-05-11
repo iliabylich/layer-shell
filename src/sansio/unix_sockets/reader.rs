@@ -1,15 +1,9 @@
-use crate::sansio::{Satisfy, Wants};
-use anyhow::{Context, Result, bail, ensure};
+use crate::sansio::Wants;
+use anyhow::{Context, Result, ensure};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
-    ReadyTo(Action),
-    WaitingFor(Action),
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Action {
     Socket,
     Connect,
     Read,
@@ -20,6 +14,7 @@ pub(crate) struct UnixSocketReader {
     fd: i32,
     buf: [u8; 1_024],
     state: State,
+    seq: u64,
 }
 
 impl UnixSocketReader {
@@ -28,15 +23,19 @@ impl UnixSocketReader {
             addr,
             fd: -1,
             buf: [0; _],
-            state: State::ReadyTo(Action::Socket),
+            state: State::Socket,
+            seq: 0,
         }
     }
 
     pub(crate) const fn new_connected_from_fd(fd: i32) -> Self {
-        let mut this = Self::dummy();
-        this.fd = fd;
-        this.state = State::ReadyTo(Action::Read);
-        this
+        Self {
+            addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
+            fd,
+            buf: [0; _],
+            state: State::Read,
+            seq: 0,
+        }
     }
 
     pub(crate) const fn dummy() -> Self {
@@ -44,76 +43,75 @@ impl UnixSocketReader {
             addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
             fd: -1,
             buf: [0; _],
-            state: State::ReadyTo(Action::Socket),
+            state: State::Socket,
+            seq: 0,
         }
     }
 
-    pub(crate) const fn wants(&mut self) -> Option<Wants> {
+    pub(crate) const fn wants(&mut self) -> Wants {
         match self.state {
-            State::ReadyTo(Action::Socket) => {
-                self.state = State::WaitingFor(Action::Socket);
-                Some(Wants::Socket {
-                    domain: AF_UNIX,
-                    r#type: SOCK_STREAM,
-                    seq: 42,
-                })
-            }
+            State::Socket => Wants::Socket {
+                domain: AF_UNIX,
+                r#type: SOCK_STREAM,
+                seq: self.seq,
+            },
 
-            State::ReadyTo(Action::Connect) => {
-                self.state = State::WaitingFor(Action::Connect);
-                Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&raw const self.addr).cast::<sockaddr>(),
-                    addrlen: size_of::<sockaddr_un>() as u32,
-                    seq: 42,
-                })
-            }
+            State::Connect => Wants::Connect {
+                fd: self.fd,
+                addr: (&raw const self.addr).cast::<sockaddr>(),
+                addrlen: size_of::<sockaddr_un>() as u32,
+                seq: self.seq,
+            },
 
-            State::ReadyTo(Action::Read) => {
-                self.state = State::WaitingFor(Action::Read);
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
-                    seq: 42,
-                })
-            }
-
-            State::WaitingFor(_) => None,
+            State::Read => Wants::Read {
+                fd: self.fd,
+                buf: self.buf.as_mut_ptr(),
+                len: self.buf.len(),
+                seq: self.seq,
+            },
         }
     }
 
-    pub(crate) fn try_satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<([u8; 1_024], usize)>> {
-        match (self.state, satisfy) {
-            (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
-                ensure!(res >= 0, "Socket failed: {res}");
-                self.fd = res;
-                self.state = State::ReadyTo(Action::Connect);
-                Ok(None)
-            }
+    pub(crate) fn satisfy_socket(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Socket,
+            "malformed state: expected Socket, got {:?}",
+            self.state
+        );
 
-            (State::WaitingFor(Action::Connect), Satisfy::Connect) => {
-                ensure!(res >= 0, "Connect failed: {res}");
-                self.state = State::ReadyTo(Action::Read);
-                Ok(None)
-            }
+        ensure!(res >= 0, "Socket failed: {res}");
+        self.fd = res;
+        self.state = State::Connect;
+        self.seq += 1;
+        Ok(())
+    }
 
-            (State::WaitingFor(Action::Read), Satisfy::Read) => {
-                let bytes_read = usize::try_from(res).context("Read failed")?;
-                ensure!(bytes_read != 0, "EOF");
-                let buf = self.buf;
-                self.buf = [0; _];
-                self.state = State::ReadyTo(Action::Read);
-                Ok(Some((buf, bytes_read)))
-            }
+    pub(crate) fn satisfy_connect(&mut self, res: i32) -> Result<()> {
+        ensure!(
+            self.state == State::Connect,
+            "malformed state: expected Connect, got {:?}",
+            self.state
+        );
 
-            (state, satisfy) => {
-                bail!("malformed state: {state:?} vs {satisfy:?}");
-            }
-        }
+        ensure!(res >= 0, "Connect failed: {res}");
+        self.state = State::Read;
+        self.seq += 1;
+        Ok(())
+    }
+
+    pub(crate) fn satisfy_read(&mut self, res: i32) -> Result<([u8; 1_024], usize)> {
+        ensure!(
+            self.state == State::Read,
+            "malformed state: expected Read, got {:?}",
+            self.state
+        );
+
+        let bytes_read = usize::try_from(res).context("Read failed")?;
+        ensure!(bytes_read != 0, "EOF");
+        let buf = self.buf;
+        self.buf = [0; _];
+        self.seq += 1;
+
+        Ok((buf, bytes_read))
     }
 }
