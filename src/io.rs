@@ -7,12 +7,12 @@ use crate::{
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
-        CPU, CapsLock, Clock, Control, ControlRequest, InfallibleModule, Location, Memory, Network,
-        Niri, SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
+        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, Niri,
+        SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
     },
     sansio::{Https, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::Logger,
+    utils::{DedupModule, InfallibleModule, Logger},
 };
 use anyhow::{Context, Result};
 
@@ -24,10 +24,10 @@ pub(crate) struct IO {
 
     timer: InfallibleModule<Timer>,
 
-    session_dbus: InfallibleModule<SessionDBus>,
+    session_dbus: InfallibleModule<DedupModule<SessionDBus>>,
     sound: Sound,
     tray: Tray,
-    system_dbus: InfallibleModule<SystemDBus>,
+    system_dbus: InfallibleModule<DedupModule<SystemDBus>>,
     network: Network,
 
     location: InfallibleModule<Location>,
@@ -48,6 +48,7 @@ pub(crate) struct IO {
 macro_rules! schedule {
     ($module:expr, $io_uring:expr) => {{
         let module_id = $module.module_id();
+
         if let Some(wants) = $module.wants() {
             if let Some(wants_next) = $module.wants() {
                 log::error!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
@@ -87,10 +88,10 @@ impl IO {
 
             timer: InfallibleModule::new(Timer::new()?),
 
-            session_dbus: InfallibleModule::new(SessionDBus::new()),
+            session_dbus: InfallibleModule::new(DedupModule::new(SessionDBus::new())),
             sound: Sound::new(),
             tray: Tray::new(),
-            system_dbus: InfallibleModule::new(SystemDBus::new()),
+            system_dbus: InfallibleModule::new(DedupModule::new(SystemDBus::new())),
             network: Network::new(),
 
             location: InfallibleModule::new(Location::new()),

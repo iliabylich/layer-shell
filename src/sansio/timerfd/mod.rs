@@ -32,6 +32,7 @@ impl TimerFd {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
+                    seq: 42,
                 })
             }
             State::WaitingForRead => None,

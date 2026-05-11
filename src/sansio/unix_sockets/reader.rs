@@ -55,6 +55,7 @@ impl UnixSocketReader {
                 Some(Wants::Socket {
                     domain: AF_UNIX,
                     r#type: SOCK_STREAM,
+                    seq: 42,
                 })
             }
 
@@ -64,6 +65,7 @@ impl UnixSocketReader {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast::<sockaddr>(),
                     addrlen: size_of::<sockaddr_un>() as u32,
+                    seq: 42,
                 })
             }
 
@@ -73,6 +75,7 @@ impl UnixSocketReader {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
+                    seq: 42,
                 })
             }
 

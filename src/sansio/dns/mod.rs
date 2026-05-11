@@ -65,6 +65,7 @@ impl Dns {
                 Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_DGRAM,
+                    seq: 42,
                 })
             }
 
@@ -74,6 +75,7 @@ impl Dns {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast::<libc::sockaddr>(),
                     addrlen: size_of::<libc::sockaddr_in>() as u32,
+                    seq: 42,
                 })
             }
 
@@ -85,6 +87,7 @@ impl Dns {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
+                    seq: 42,
                 })
             }
 
@@ -96,12 +99,16 @@ impl Dns {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
+                    seq: 42,
                 })
             }
 
             State::ReadyTo(Action::Close) => {
                 self.state = State::WaitingFor(Action::Close);
-                Some(Wants::Close { fd: self.fd })
+                Some(Wants::Close {
+                    fd: self.fd,
+                    seq: 42,
+                })
             }
 
             State::WaitingFor(_) => None,

@@ -54,6 +54,7 @@ impl UnixSocketOneshotWriter {
                 Some(Wants::Socket {
                     domain: AF_UNIX,
                     r#type: SOCK_STREAM,
+                    seq: 42,
                 })
             }
 
@@ -63,6 +64,7 @@ impl UnixSocketOneshotWriter {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast::<sockaddr>(),
                     addrlen: size_of::<sockaddr_un>() as u32,
+                    seq: 42,
                 })
             }
 
@@ -74,6 +76,7 @@ impl UnixSocketOneshotWriter {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
+                    seq: 42,
                 })
             }
 
@@ -83,12 +86,16 @@ impl UnixSocketOneshotWriter {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
+                    seq: 42,
                 })
             }
 
             State::ReadyTo(Action::Close) => {
                 self.state = State::WaitingFor(Action::Close);
-                Some(Wants::Close { fd: self.fd })
+                Some(Wants::Close {
+                    fd: self.fd,
+                    seq: 42,
+                })
             }
 
             State::WaitingFor(_) => None,

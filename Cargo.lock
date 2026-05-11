@@ -192,9 +192,9 @@ checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
 name = "mini-sansio-dbus"
-version = "1.2.1"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ada09d5ce43c935b99d303d1b2fffb09ec307d43ba4bc84b5b531a596323e4b"
+checksum = "bcf55260fc4c55fc933b92aaceb35eb40c945f479a897248d6a00629a49c8cbd"
 dependencies = [
  "libc",
 ]

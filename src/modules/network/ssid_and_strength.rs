@@ -18,7 +18,7 @@ pub(crate) struct SsidAndStrengthEvent {
 }
 
 impl SsidAndStrength {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             oneshot: GET.with_data(()),
             subscription: SUBSCRIPTION,

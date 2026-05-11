@@ -91,6 +91,7 @@ impl Https {
                 Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_STREAM,
+                    seq: 42,
                 })
             }
 
@@ -100,6 +101,7 @@ impl Https {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast(),
                     addrlen: size_of::<sockaddr_in>() as u32,
+                    seq: 42,
                 })
             }
 
@@ -109,7 +111,10 @@ impl Https {
 
             State::ReadyTo(Action::Close) => {
                 self.state = State::WaitingFor(Action::Close);
-                Some(Wants::Close { fd: self.fd })
+                Some(Wants::Close {
+                    fd: self.fd,
+                    seq: 42,
+                })
             }
 
             State::WaitingFor(_) | State::Done => None,

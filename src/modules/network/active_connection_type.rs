@@ -11,7 +11,7 @@ pub(crate) struct ActiveConnectionType {
 }
 
 impl ActiveConnectionType {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             path: None,
             oneshot: GET.with_data(()),

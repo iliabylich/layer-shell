@@ -42,6 +42,7 @@ impl<const N: usize> FileReader<N> {
                     path: self.path.as_ptr(),
                     flags: O_RDONLY,
                     mode: 0,
+                    seq: 42,
                 })
             }
 
@@ -51,6 +52,7 @@ impl<const N: usize> FileReader<N> {
                     fd: self.fd,
                     buf: self.buf.as_mut_ptr(),
                     len: self.buf.len(),
+                    seq: 42,
                 })
             }
 

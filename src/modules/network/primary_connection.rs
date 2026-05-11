@@ -26,7 +26,7 @@ impl From<StringRef> for PrimaryConnectionEvent {
 }
 
 impl PrimaryConnection {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             get: GET.with_data(()),
             subscription: SUBSCRIPTION,

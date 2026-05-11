@@ -95,6 +95,7 @@ impl OpenSslHandshake {
                     fd: self.fd,
                     buf: self.readbuf.as_mut_ptr(),
                     len: self.readbuf.len(),
+                    seq: 42,
                 })
             }
 
@@ -104,6 +105,7 @@ impl OpenSslHandshake {
                     fd: self.fd,
                     buf: self.writebuf.as_ptr(),
                     len: self.writebuf.len(),
+                    seq: 42,
                 })
             }
 

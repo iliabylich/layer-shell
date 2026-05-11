@@ -1,4 +1,5 @@
 use anyhow::{Result, ensure};
+use mini_sansio_dbus::DBusSatisfy;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 
@@ -30,7 +31,7 @@ impl TryFrom<u8> for Satisfy {
     }
 }
 
-impl From<Satisfy> for mini_sansio_dbus::Satisfy {
+impl From<Satisfy> for DBusSatisfy {
     fn from(satisfy: Satisfy) -> Self {
         match satisfy {
             Satisfy::Socket => Self::Socket,

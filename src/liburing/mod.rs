@@ -121,22 +121,24 @@ impl IoUring {
 
     pub(crate) fn schedule(&mut self, module_id: ModuleId, wants: Wants) {
         match wants {
-            Wants::Socket { domain, r#type } => {
+            Wants::Socket { domain, r#type, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_socket(domain, r#type, 0, 0);
                 sqe.set_user_data(UserData::new(module_id, Satisfy::Socket));
             }
-            Wants::Connect { fd, addr, addrlen } => {
+            Wants::Connect {
+                fd, addr, addrlen, ..
+            } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_connect(fd, addr, addrlen);
                 sqe.set_user_data(UserData::new(module_id, Satisfy::Connect));
             }
-            Wants::Read { fd, buf, len } => {
+            Wants::Read { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_read(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
             }
-            Wants::Write { fd, buf, len } => {
+            Wants::Write { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_write(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
@@ -147,6 +149,7 @@ impl IoUring {
                 readlen,
                 writebuf,
                 writelen,
+                ..
             } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_read(fd, readbuf, readlen);
@@ -161,12 +164,13 @@ impl IoUring {
                 path,
                 flags,
                 mode,
+                ..
             } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_openat(dfd, path, flags, mode);
                 sqe.set_user_data(UserData::new(module_id, Satisfy::OpenAt));
             }
-            Wants::Close { fd } => {
+            Wants::Close { fd, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_close(fd);
                 sqe.set_user_data(UserData::new(module_id, Satisfy::Close));

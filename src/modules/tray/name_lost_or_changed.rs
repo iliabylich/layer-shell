@@ -10,7 +10,7 @@ pub(crate) struct NameLostOrNameOwnerChanged {
 }
 
 impl NameLostOrNameOwnerChanged {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             name_changed: SUBSCRIBE.with_data(()),
         }
