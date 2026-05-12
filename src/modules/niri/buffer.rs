@@ -1,6 +1,7 @@
-use anyhow::Result;
-use serde::Deserialize;
-use serde_json::Value;
+use anyhow::{Context as _, Result};
+use jzon::JsonValue;
+
+use crate::utils::get_json;
 
 pub(crate) struct Buffer {
     queue: Vec<u8>,
@@ -31,19 +32,50 @@ impl Buffer {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub(crate) enum NiriEvent {
     KeyboardLayoutsChanged { keyboard_layouts: KeyboardLayouts },
     KeyboardLayoutSwitched { idx: usize },
 }
 
 impl NiriEvent {
-    fn parse(bytes: &[u8]) -> Result<Option<Self>> {
-        let value: Value = serde_json::from_slice(bytes)?;
-        let Ok(event) = serde_json::from_value::<Self>(value) else {
+    fn from_json(bytes: &[u8]) -> Result<Option<Self>> {
+        let s = std::str::from_utf8(bytes)?;
+        let json: JsonValue = jzon::parse(s)?;
+
+        let event = if json.has_key("KeyboardLayoutsChanged") {
+            Self::parse_keyboard_layouts_changed(&json)
+                .context("malformed KeyboardLayoutsChanged event")?
+        } else if json.has_key("KeyboardLayoutSwitched") {
+            Self::parse_keyword_layout_switched(&json)
+                .context("malformed KeyboardLayoutSwitched event")?
+        } else {
             return Ok(None);
         };
+
         Ok(Some(event))
+    }
+
+    fn parse_keyboard_layouts_changed(json: &JsonValue) -> Result<Self> {
+        let keyboard_layouts_changed = get_json!(json, "KeyboardLayoutsChanged", as_object);
+        let keyboard_layouts = get_json!(keyboard_layouts_changed, "keyboard_layouts", as_object);
+        let names = get_json!(keyboard_layouts, "names", as_array)
+            .iter()
+            .map(|name| {
+                let name = name.as_str().context("names contains non-string")?;
+                Ok(name.to_string())
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let current_idx = get_json!(keyboard_layouts, "current_idx", as_usize);
+        Ok(Self::KeyboardLayoutsChanged {
+            keyboard_layouts: KeyboardLayouts { names, current_idx },
+        })
+    }
+
+    fn parse_keyword_layout_switched(json: &JsonValue) -> Result<Self> {
+        let keyboard_layout_switched = get_json!(json, "KeyboardLayoutSwitched", as_object);
+        let idx = get_json!(keyboard_layout_switched, "idx", as_usize);
+        Ok(Self::KeyboardLayoutSwitched { idx })
     }
 
     fn cut(bytes: &[u8]) -> Option<(Result<Option<Self>>, &[u8])> {
@@ -52,11 +84,11 @@ impl NiriEvent {
         let (pre, post) = bytes.split_at(nl_idx);
         let post = unsafe { post.get_unchecked(1..) };
 
-        Some((Self::parse(pre), post))
+        Some((Self::from_json(pre), post))
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub(crate) struct KeyboardLayouts {
     pub(crate) names: Vec<String>,
     pub(crate) current_idx: usize,

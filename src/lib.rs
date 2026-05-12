@@ -15,7 +15,6 @@
 #![expect(clippy::cast_possible_truncation)]
 #![expect(clippy::arithmetic_side_effects)]
 #![expect(clippy::too_many_lines)]
-#![expect(clippy::unsafe_derive_deserialize)]
 
 mod command;
 mod config;

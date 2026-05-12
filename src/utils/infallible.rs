@@ -35,10 +35,6 @@ where
         }
     }
 
-    // pub(crate) const fn inner(&mut self) -> Option<&mut M> {
-    //     self.module.as_mut()
-    // }
-
     pub(crate) fn tick(&mut self, tick: u64) {
         let Some(module) = self.module.as_mut() else {
             return;
