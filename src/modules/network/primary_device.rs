@@ -1,4 +1,7 @@
-use crate::{modules::SystemDBus, utils::StringRef};
+use crate::{
+    modules::SystemDBus,
+    utils::{StringRef, StringRefExt as _},
+};
 use anyhow::Context as _;
 use mini_sansio_dbus::{
     IncomingBody, IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall, Subscription,

@@ -5,7 +5,7 @@ use crate::{
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     unix_socket::new_unix_socket,
     user_data::ModuleId,
-    utils::StringRef,
+    utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};

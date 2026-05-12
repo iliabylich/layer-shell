@@ -1,4 +1,4 @@
-use crate::utils::StringRef;
+use crate::utils::{StringRef, StringRefExt as _};
 use anyhow::{Context as _, Result};
 
 #[expect(clippy::upper_case_acronyms)]

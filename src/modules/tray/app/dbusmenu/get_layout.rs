@@ -1,6 +1,6 @@
 use crate::{
     modules::{TrayItem, tray::uuid::UUID},
-    utils::StringRef,
+    utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context, Result};
 use mini_sansio_dbus::{

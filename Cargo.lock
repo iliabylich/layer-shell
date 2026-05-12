@@ -253,6 +253,7 @@ dependencies = [
  "openssl-sys",
  "serde",
  "serde_json",
+ "string-bath",
  "toml",
 ]
 
@@ -415,6 +416,12 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+
+[[package]]
+name = "string-bath"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "908755d5a5810620abfe5f9056956e41e9ca914b82a5aa97e4bf3fd398cdb033"
 
 [[package]]
 name = "syn"

@@ -6,7 +6,7 @@ use crate::{
             status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
         },
     },
-    utils::StringRef,
+    utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context as _, Result, ensure};
 use mini_sansio_dbus::{

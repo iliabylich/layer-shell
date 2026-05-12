@@ -1,6 +1,6 @@
 use crate::{
     modules::{SessionDBus, TrayIcon, TrayItem, tray::service::Service},
-    utils::StringRef,
+    utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context, Result};
 use dbusmenu::{

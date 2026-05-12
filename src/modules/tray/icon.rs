@@ -1,4 +1,7 @@
-use crate::{FFIArray, utils::StringRef};
+use crate::{
+    FFIArray,
+    utils::{StringRef, StringRefExt as _},
+};
 
 #[derive(Clone, Debug, Default)]
 #[repr(C)]

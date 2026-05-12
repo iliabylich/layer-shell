@@ -1,4 +1,7 @@
-use crate::{modules::SessionDBus, utils::StringRef};
+use crate::{
+    modules::SessionDBus,
+    utils::{StringRef, StringRefExt as _},
+};
 use anyhow::{Context, Result, bail, ensure};
 use mini_sansio_dbus::{
     IncomingMessage, MessageType, OutgoingMessage, destination_is, interface_is,

@@ -1,233 +1,24 @@
-use std::cell::Cell;
+use string_bath::StringPool;
 
 const SLOTS_COUNT: usize = 100;
+const STRING_LEN: usize = 256;
 
-#[derive(Debug)]
-struct StringPool {
-    slots: [Slot; SLOTS_COUNT],
+static mut STRING_POOL: StringPool<SLOTS_COUNT, STRING_LEN> = StringPool::new();
+
+/// cbindgen:ignore
+pub(crate) type StringRef = string_bath::StringRef<'static, STRING_LEN>;
+
+pub(crate) trait StringRefExt {
+    fn new(s: &str) -> Self;
 }
 
-static mut STRING_POOL: StringPool = StringPool::new();
-
-impl StringPool {
-    #[expect(clippy::large_stack_arrays)]
-    const fn new() -> Self {
-        Self {
-            slots: [const { Slot::empty() }; SLOTS_COUNT],
-        }
-    }
-
-    fn alloc(&mut self, s: &str) -> StringRef {
-        let Some(slot) = self.slots.iter_mut().find(|slot| slot.free) else {
-            for (idx, slot) in self.slots.iter().enumerate() {
-                log::error!("slot {idx}: {:?}", slot.as_str());
-            }
-            log::error!("not enough space in StringPool");
-            log::error!("{:?}", std::backtrace::Backtrace::force_capture());
-            std::process::exit(1);
-        };
-        slot.acquire(s);
-        StringRef { slot }
-    }
-}
-
-const MAX_STRING_LEN: usize = 256;
-
-#[derive(Debug)]
-#[repr(C)]
-struct Slot {
-    s: [u8; MAX_STRING_LEN],
-    len: usize,
-    refcount: Cell<u8>,
-    free: bool,
-}
-
-impl Slot {
-    const fn empty() -> Self {
-        Self {
-            s: [0; MAX_STRING_LEN],
-            len: 0,
-            refcount: Cell::new(0),
-            free: true,
-        }
-    }
-
-    fn acquire(&mut self, s: &str) {
-        if !self.free {
-            log::error!("bug: Slot in string pool is not free");
-            log::error!("{:?}", std::backtrace::Backtrace::force_capture());
-            std::process::exit(1)
-        }
-
-        if s.len() >= MAX_STRING_LEN {
-            log::error!(
-                "string is too long to be in a StringPool (len is {})",
-                s.len()
-            );
-            log::error!("{:?}", std::backtrace::Backtrace::force_capture());
-            std::process::exit(1);
-        }
-
-        let bytes = s.as_bytes();
+impl StringRefExt for StringRef {
+    fn new(s: &str) -> Self {
         unsafe {
-            self.s
-                .get_unchecked_mut(..bytes.len())
-                .copy_from_slice(bytes);
-        }
-        self.len = s.len();
-        self.free = false;
-        self.refcount = Cell::new(1);
-    }
-
-    const fn release(&mut self) {
-        self.s = [0; 256];
-        self.len = 0;
-        self.refcount = Cell::new(0);
-        self.free = true;
-    }
-
-    fn as_bytes(&self) -> &[u8] {
-        unsafe { self.s.get_unchecked(..self.len) }
-    }
-
-    fn as_str(&self) -> &str {
-        unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
-    }
-
-    fn addref(&self) {
-        self.refcount.update(|v| v + 1);
-    }
-
-    fn delref(&self) {
-        self.refcount.update(|v| v - 1);
-    }
-}
-
-pub struct StringRef {
-    slot: *mut Slot,
-}
-
-impl StringRef {
-    pub(crate) fn new(s: &str) -> Self {
-        unsafe { STRING_POOL.alloc(s) }
-    }
-
-    fn slot(&self) -> &Slot {
-        unsafe { &*self.slot }
-    }
-
-    fn slot_mut(&mut self) -> &mut Slot {
-        unsafe { &mut *self.slot }
-    }
-
-    pub(crate) fn as_bytes(&self) -> &[u8] {
-        self.slot().as_bytes()
-    }
-
-    pub(crate) fn as_str(&self) -> &str {
-        self.slot().as_str()
-    }
-}
-
-impl core::fmt::Debug for StringRef {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:?}", self.as_str())
-    }
-}
-
-impl core::fmt::Display for StringRef {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl PartialEq for StringRef {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_bytes() == other.as_bytes()
-    }
-}
-
-impl PartialEq<&str> for StringRef {
-    fn eq(&self, other: &&str) -> bool {
-        self.as_str() == *other
-    }
-}
-impl PartialEq<StringRef> for &str {
-    fn eq(&self, other: &StringRef) -> bool {
-        *self == other.as_str()
-    }
-}
-
-impl core::hash::Hash for StringRef {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.as_str().hash(state);
-    }
-}
-
-impl Eq for StringRef {}
-
-impl From<&str> for StringRef {
-    fn from(value: &str) -> Self {
-        Self::new(value)
-    }
-}
-
-impl Clone for StringRef {
-    fn clone(&self) -> Self {
-        self.slot().addref();
-        Self { slot: self.slot }
-    }
-}
-
-impl Drop for StringRef {
-    fn drop(&mut self) {
-        let slot = self.slot_mut();
-
-        slot.delref();
-        if slot.refcount.get() == 0 {
-            slot.release();
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_string_pool() {
-        let mut pool = StringPool::new();
-
-        let s1 = pool.alloc("foo");
-        assert!(!pool.slots[0].free);
-
-        let s2 = pool.alloc("bar");
-        assert!(!pool.slots[1].free);
-
-        drop(s2);
-        assert!(pool.slots[1].free);
-
-        drop(s1);
-        assert!(pool.slots[0].free);
-    }
-
-    #[test]
-    fn test_string_pool_reuse() {
-        let mut pool = StringPool::new();
-
-        for _ in 0..2 {
-            let strings = (0..SLOTS_COUNT)
-                .map(|_| pool.alloc("foo"))
-                .collect::<Vec<_>>();
-
-            for idx in 0..SLOTS_COUNT {
-                assert!(
-                    !pool.slots[idx].free,
-                    "expected slot at {idx} to be occupied"
-                );
-            }
-
-            drop(strings);
+            STRING_POOL.alloc(s).unwrap_or_else(|err| {
+                log::error!("{err}");
+                std::process::exit(1)
+            })
         }
     }
 }

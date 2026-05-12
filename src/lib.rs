@@ -37,7 +37,10 @@ use config::IOConfig;
 pub use event::Event;
 pub use ffi::FFIArray;
 
-use crate::{io::IO, utils::StringRef};
+use crate::{
+    io::IO,
+    utils::{StringRef, StringRefExt as _},
+};
 use anyhow::{Context as _, Result};
 
 static mut GLOBAL_IO: *mut IO = core::ptr::null_mut();

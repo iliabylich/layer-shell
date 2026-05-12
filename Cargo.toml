@@ -31,6 +31,7 @@ toml = { version = "1.1", default-features = false, features = [
 ] }
 mini-sansio-dbus = { version = "2.0.1" }
 openssl-sys = "0.9"
+string-bath = "0.2.0"
 
 [build-dependencies]
 cc = "1"

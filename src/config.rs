@@ -1,4 +1,4 @@
-use crate::utils::StringRef;
+use crate::utils::{StringRef, StringRefExt as _};
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
