@@ -111,45 +111,33 @@ fn config_dir() -> Result<PathBuf> {
 
 #[repr(C)]
 pub struct IOConfig {
-    pub ping: *mut *mut core::ffi::c_char,
+    pub ping: *mut StringRef,
     pub terminal: IOTerminal,
 }
+impl IOConfig {
+    pub(crate) fn new(config: &Config) -> *mut Self {
+        Box::leak(Box::new(Self {
+            ping: vec_of_string_to_null_terminated_c_array(&config.ping),
+            terminal: IOTerminal {
+                label: StringRef::new(&config.terminal.label),
+                command: vec_of_string_to_null_terminated_c_array(&config.terminal.command),
+            },
+        }))
+    }
+}
+
 #[repr(C)]
 pub struct IOTerminal {
     pub label: StringRef,
-    pub command: *mut *mut core::ffi::c_char,
+    pub command: *mut StringRef,
 }
 
-impl TryFrom<&Config> for IOConfig {
-    type Error = anyhow::Error;
-
-    fn try_from(config: &Config) -> Result<Self> {
-        Ok(Self {
-            ping: vec_of_string_to_null_terminated_c_array(&config.ping)?,
-            terminal: IOTerminal::try_from(&config.terminal)?,
-        })
-    }
-}
-
-impl TryFrom<&Terminal> for IOTerminal {
-    type Error = anyhow::Error;
-
-    fn try_from(terminal: &Terminal) -> Result<Self> {
-        Ok(Self {
-            label: StringRef::new(&terminal.label),
-            command: vec_of_string_to_null_terminated_c_array(&terminal.command)?,
-        })
-    }
-}
-
-fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> Result<*mut *mut core::ffi::c_char> {
-    let mut cmd = cmd
+fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> *mut StringRef {
+    let cmd = cmd
         .iter()
-        .map(|s| Ok(std::ffi::CString::new(s.clone().into_bytes())?.into_raw()))
-        .collect::<Result<Vec<_>>>()?;
-    cmd.push(core::ptr::null_mut());
-    let mut cmd = cmd.into_boxed_slice();
-    let ptr = cmd.as_mut_ptr();
-    core::mem::forget(cmd);
-    Ok(ptr)
+        .map(|s| StringRef::new(s))
+        .chain([StringRef::null()])
+        .collect::<Vec<_>>();
+    let (ptr, _, _) = cmd.into_raw_parts();
+    ptr
 }

@@ -75,7 +75,7 @@ impl IO {
 
     pub(crate) fn new(on_event: extern "C" fn(event: *const Event)) -> Result<Self> {
         let config = Config::read()?;
-        let io_config = Box::leak(Box::new(IOConfig::try_from(&config)?));
+        let io_config = IOConfig::new(&config);
 
         let mut this = Self {
             io_uring: IoUring::new(10, 0),

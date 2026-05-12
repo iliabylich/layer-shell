@@ -10,6 +10,7 @@ pub(crate) type StringRef = string_bath::StringRef<'static, STRING_LEN>;
 
 pub(crate) trait StringRefExt {
     fn new(s: &str) -> Self;
+    fn null() -> Self;
 }
 
 impl StringRefExt for StringRef {
@@ -20,5 +21,9 @@ impl StringRefExt for StringRef {
                 std::process::exit(1)
             })
         }
+    }
+
+    fn null() -> Self {
+        unsafe { core::mem::transmute(core::ptr::null_mut::<std::ffi::c_char>()) }
     }
 }
