@@ -1,7 +1,7 @@
 #include "bindings.h"
-#include "ui/caps_lock_overlay.h"
 #include "ui/css.h"
 #include "ui/gobject_helper.h"
+#include "ui/kb_mod_overlay.h"
 #include "ui/logger.h"
 #include "ui/ping_overlay.h"
 #include "ui/session_overlay.h"
@@ -23,7 +23,7 @@ GtkWidget *terminal_overlay;
 GtkWidget *ping_overlay;
 GtkWidget *session_overlay;
 GtkWidget *sound_overlay;
-GtkWidget *caps_lock_overlay;
+GtkWidget *kb_mod_overlay;
 
 const IO_IOConfig *config;
 IOModel *model;
@@ -102,8 +102,9 @@ static void event_received(const IO_Event *event) {
   case IO_Event_MuteChanged:
     SET("sound", "muted", event->mute_changed.muted);
     break;
-  case IO_Event_CapsLockToggled:
-    SET("caps-lock", "enabled", event->caps_lock_toggled.enabled);
+  case IO_Event_KbModToggled:
+    io_model_update_kb_mod(model, event->kb_mod_toggled.kind,
+                           event->kb_mod_toggled.enabled);
     break;
   case IO_Event_Exit:
     LOG("Received exit...");
@@ -114,6 +115,8 @@ static void event_received(const IO_Event *event) {
     remove_window(&terminal_overlay);
     remove_window(&ping_overlay);
     remove_window(&session_overlay);
+    remove_window(&sound_overlay);
+    remove_window(&kb_mod_overlay);
     g_application_quit(G_APPLICATION(app));
     LOG("Quit done.");
     exiting = true;
@@ -166,7 +169,7 @@ static void create_widgets() {
 #undef CONNECT
 
   sound_overlay = sound_overlay_new(app, model);
-  caps_lock_overlay = caps_lock_overlay_new(app, model);
+  kb_mod_overlay = kb_mod_overlay_new(app, model);
 
   g_unix_fd_add(io_as_raw_fd(), G_IO_IN, read_io_events, NULL);
   gtk_window_present(GTK_WINDOW(top_bar));

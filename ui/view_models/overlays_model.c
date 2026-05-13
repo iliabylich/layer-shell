@@ -8,7 +8,7 @@ struct _OverlaysModel {
   gboolean terminal;
   gboolean ping;
   gboolean sound;
-  gboolean caps_lock;
+  gboolean kb_mod;
 };
 
 G_DEFINE_TYPE(OverlaysModel, overlays_model, G_TYPE_OBJECT)
@@ -19,7 +19,7 @@ enum {
   PROP_TERMINAL,
   PROP_PING,
   PROP_SOUND,
-  PROP_CAPS_LOCK,
+  PROP_KB_MOD,
   N_PROPERTIES,
 };
 static GParamSpec *properties[N_PROPERTIES] = {0};
@@ -43,8 +43,8 @@ static void overlays_model_get_property(GObject *object, guint property_id,
   case PROP_SOUND:
     g_value_set_boolean(value, self->sound);
     break;
-  case PROP_CAPS_LOCK:
-    g_value_set_boolean(value, self->caps_lock);
+  case PROP_KB_MOD:
+    g_value_set_boolean(value, self->kb_mod);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -77,9 +77,9 @@ static void overlays_model_set_property(GObject *object, guint property_id,
     self->sound = g_value_get_boolean(value);
     g_object_notify_by_pspec(object, properties[PROP_SOUND]);
     break;
-  case PROP_CAPS_LOCK:
-    self->caps_lock = g_value_get_boolean(value);
-    g_object_notify_by_pspec(object, properties[PROP_CAPS_LOCK]);
+  case PROP_KB_MOD:
+    self->kb_mod = g_value_get_boolean(value);
+    g_object_notify_by_pspec(object, properties[PROP_KB_MOD]);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -93,7 +93,7 @@ static void overlays_model_init(OverlaysModel *self) {
   self->terminal = false;
   self->ping = false;
   self->sound = false;
-  self->caps_lock = false;
+  self->kb_mod = false;
 }
 
 static void overlays_model_class_init(OverlaysModelClass *klass) {
@@ -116,8 +116,8 @@ static void overlays_model_class_init(OverlaysModelClass *klass) {
   properties[PROP_SOUND] = g_param_spec_boolean(
       "sound", NULL, NULL, false,
       G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
-  properties[PROP_CAPS_LOCK] = g_param_spec_boolean(
-      "caps-lock", NULL, NULL, false,
+  properties[PROP_KB_MOD] = g_param_spec_boolean(
+      "kb-mod", NULL, NULL, false,
       G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 }

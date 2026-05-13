@@ -1,7 +1,7 @@
 #include "ui/view_models/io_model.h"
-#include "ui/view_models/caps_lock_model.h"
 #include "ui/view_models/clock_model.h"
 #include "ui/view_models/cpu_model.h"
+#include "ui/view_models/kb_mod_model.h"
 #include "ui/view_models/language_model.h"
 #include "ui/view_models/memory_model.h"
 #include "ui/view_models/network_model.h"
@@ -20,7 +20,7 @@ struct _IOModel {
   NetworkModel *network;
   OverlaysModel *overlays;
   SoundModel *sound;
-  CapsLockModel *caps_lock;
+  KbModModel *kb_mod;
   CpuModel *cpu;
   TrayModel *tray;
 };
@@ -36,7 +36,7 @@ enum {
   PROP_MEMORY,
   PROP_NETWORK,
   PROP_SOUND,
-  PROP_CAPS_LOCK,
+  PROP_KB_MOD,
   PROP_WEATHER,
   N_PROPERTIES,
 };
@@ -48,11 +48,10 @@ static void sound_overlay_visibility_changed(SoundModel *, gboolean visible,
   g_object_set(self->overlays, "sound", visible, NULL);
 }
 
-static void caps_lock_overlay_visibility_changed(CapsLockModel *,
-                                                 gboolean visible,
-                                                 gpointer data) {
+static void kb_mod_overlay_visibility_changed(KbModModel *, gboolean visible,
+                                              gpointer data) {
   IOModel *self = IO_MODEL(data);
-  g_object_set(self->overlays, "caps-lock", visible, NULL);
+  g_object_set(self->overlays, "kb-mod", visible, NULL);
 }
 
 static void io_model_get_property(GObject *object, guint property_id,
@@ -81,8 +80,8 @@ static void io_model_get_property(GObject *object, guint property_id,
   case PROP_SOUND:
     g_value_set_object(value, self->sound);
     break;
-  case PROP_CAPS_LOCK:
-    g_value_set_object(value, self->caps_lock);
+  case PROP_KB_MOD:
+    g_value_set_object(value, self->kb_mod);
     break;
   case PROP_WEATHER:
     g_value_set_object(value, self->weather);
@@ -111,7 +110,7 @@ static void io_model_finalize(GObject *object) {
   g_clear_object(&self->overlays);
   g_clear_object(&self->weather);
   g_clear_object(&self->sound);
-  g_clear_object(&self->caps_lock);
+  g_clear_object(&self->kb_mod);
   g_clear_object(&self->cpu);
   g_clear_object(&self->tray);
   G_OBJECT_CLASS(io_model_parent_class)->finalize(object);
@@ -125,7 +124,7 @@ static void io_model_init(IOModel *self) {
   self->network = network_model_new();
   self->overlays = overlays_model_new();
   self->sound = sound_model_new();
-  self->caps_lock = caps_lock_model_new();
+  self->kb_mod = kb_mod_model_new();
 
   self->cpu = cpu_model_new();
   self->tray = tray_model_new();
@@ -133,9 +132,9 @@ static void io_model_init(IOModel *self) {
   g_signal_connect_object(self->sound, "overlay-visibility-changed",
                           G_CALLBACK(sound_overlay_visibility_changed), self,
                           0);
-  g_signal_connect_object(self->caps_lock, "overlay-visibility-changed",
-                          G_CALLBACK(caps_lock_overlay_visibility_changed),
-                          self, 0);
+  g_signal_connect_object(self->kb_mod, "overlay-visibility-changed",
+                          G_CALLBACK(kb_mod_overlay_visibility_changed), self,
+                          0);
 }
 
 static void io_model_class_init(IOModelClass *klass) {
@@ -160,8 +159,8 @@ static void io_model_class_init(IOModelClass *klass) {
       "network", NULL, NULL, network_model_get_type(), G_PARAM_READABLE);
   properties[PROP_SOUND] = g_param_spec_object(
       "sound", NULL, NULL, sound_model_get_type(), G_PARAM_READABLE);
-  properties[PROP_CAPS_LOCK] = g_param_spec_object(
-      "caps-lock", NULL, NULL, caps_lock_model_get_type(), G_PARAM_READABLE);
+  properties[PROP_KB_MOD] = g_param_spec_object(
+      "kb-mod", NULL, NULL, kb_mod_model_get_type(), G_PARAM_READABLE);
   properties[PROP_WEATHER] = g_param_spec_object(
       "weather", NULL, NULL, weather_model_get_type(), G_PARAM_READABLE);
   g_object_class_install_properties(object_class, N_PROPERTIES, properties);
@@ -186,4 +185,9 @@ void io_model_tray_set_icon(IOModel *self, const char *service,
 void io_model_tray_set_menu(IOModel *self, const char *service,
                             IO_FFIArray_TrayItem items) {
   tray_model_update_menu(self->tray, service, items);
+}
+
+void io_model_update_kb_mod(IOModel *self, IO_KbModKind kind,
+                            gboolean enabled) {
+  kb_mod_model_update(self->kb_mod, kind, enabled);
 }

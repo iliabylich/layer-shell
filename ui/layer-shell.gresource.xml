@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/layer-shell">
-    <file preprocess="xml-stripblanks">caps_lock_overlay.ui</file>
+    <file preprocess="xml-stripblanks">kb_mod_overlay.ui</file>
     <file preprocess="xml-stripblanks">ping_overlay.ui</file>
     <file preprocess="xml-stripblanks">session_overlay.ui</file>
     <file preprocess="xml-stripblanks">sound_overlay.ui</file>

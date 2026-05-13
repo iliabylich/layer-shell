@@ -1,9 +1,9 @@
 sources += files(
-    'view_models/caps_lock_model.c',
     'view_models/clock_model.c',
     'view_models/cpu_item.c',
     'view_models/cpu_model.c',
     'view_models/io_model.c',
+    'view_models/kb_mod_model.c',
     'view_models/language_model.c',
     'view_models/memory_model.c',
     'view_models/network_model.c',
@@ -15,9 +15,9 @@ sources += files(
     'view_models/weather_hour_item.c',
     'view_models/weather_model.c',
     'base_overlay.c',
-    'caps_lock_overlay.c',
     'css.c',
     'gobject_helper.c',
+    'kb_mod_overlay.c',
     'logger.c',
     'main.c',
     'ping_overlay.c',
@@ -32,7 +32,7 @@ sources += files(
 blueprints = custom_target(
     'blueprints',
     input: files(
-        'caps_lock_overlay.blp',
+        'kb_mod_overlay.blp',
         'ping_overlay.blp',
         'session_overlay.blp',
         'sound_overlay.blp',
@@ -41,7 +41,7 @@ blueprints = custom_target(
         'weather_overlay.blp',
     ),
     output: [
-        'caps_lock_overlay.ui',
+        'kb_mod_overlay.ui',
         'ping_overlay.ui',
         'session_overlay.ui',
         'sound_overlay.ui',

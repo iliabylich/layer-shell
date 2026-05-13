@@ -17,3 +17,5 @@ void io_model_tray_set_icon(IOModel *self, const char *service,
                             IO_TrayIcon icon);
 void io_model_tray_set_menu(IOModel *self, const char *service,
                             IO_FFIArray_TrayItem items);
+void io_model_update_kb_mod(IOModel *self, IO_KbModKind kind,
+                            gboolean enabled);
