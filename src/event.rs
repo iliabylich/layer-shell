@@ -1,8 +1,8 @@
 use crate::{
     ffi::FFIArray,
     modules::{
-        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, TrayIcon, TrayItem,
-        WeatherCode, WeatherOnDay, WeatherOnHour,
+        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind, TrayIcon,
+        TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour,
     },
     utils::StringRef,
 };
@@ -60,7 +60,8 @@ pub enum Event {
         service: StringRef,
     },
     ToggleSessionScreen,
-    CapsLockToggled {
+    KbModToggled {
+        kind: KbModKind,
         enabled: bool,
     },
     Exit,

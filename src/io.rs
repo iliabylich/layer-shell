@@ -7,8 +7,8 @@ use crate::{
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
-        CPU, CapsLock, Clock, Control, ControlRequest, Location, Memory, Network, Niri,
-        SessionDBus, Sound, SystemDBus, Timer, Tray, Weather,
+        CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, Network, Niri, SessionDBus,
+        Sound, SystemDBus, Timer, Tray, Weather,
     },
     sansio::{Https, Satisfy},
     user_data::{ModuleId, UserData},
@@ -37,7 +37,7 @@ pub(crate) struct IO {
     cpu: InfallibleModule<DedupModule<CPU>>,
     memory: InfallibleModule<DedupModule<Memory>>,
 
-    caps_lock: InfallibleModule<DedupModule<CapsLock>>,
+    kb_mod: InfallibleModule<DedupModule<KbMod>>,
     niri: InfallibleModule<DedupModule<Niri>>,
 
     on_event: extern "C" fn(event: *const Event),
@@ -98,7 +98,7 @@ impl IO {
             cpu: InfallibleModule::new(DedupModule::new(CPU::new())),
             memory: InfallibleModule::new(DedupModule::new(Memory::new())),
 
-            caps_lock: InfallibleModule::new(DedupModule::new(CapsLock::new())),
+            kb_mod: InfallibleModule::new(DedupModule::new(KbMod::new())),
             niri: InfallibleModule::new(DedupModule::new(Niri::new())),
 
             on_event,
@@ -116,7 +116,7 @@ impl IO {
         schedule!(self.location, &mut self.io_uring);
         schedule!(self.cpu, &mut self.io_uring);
         schedule!(self.memory, &mut self.io_uring);
-        schedule!(self.caps_lock, &mut self.io_uring);
+        schedule!(self.kb_mod, &mut self.io_uring);
         schedule!(self.niri, &mut self.io_uring);
 
         self.sound.init();
@@ -174,9 +174,9 @@ impl IO {
                     schedule!(self.weather, &mut self.io_uring);
                 }
 
-                ModuleId::CapsLock => {
-                    satisfy!(self.caps_lock);
-                    schedule!(self.caps_lock, &mut self.io_uring);
+                ModuleId::KbMod => {
+                    satisfy!(self.kb_mod);
+                    schedule!(self.kb_mod, &mut self.io_uring);
                 }
 
                 ModuleId::Niri => {

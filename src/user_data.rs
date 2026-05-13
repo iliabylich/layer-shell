@@ -7,7 +7,7 @@ pub(crate) enum ModuleId {
     Weather,
     GeoLocation,
 
-    CapsLock,
+    KbMod,
     Niri,
 
     SessionDBus,
@@ -26,7 +26,7 @@ impl ModuleId {
         match self {
             Self::Weather => "Weather",
             Self::GeoLocation => "GeoLocation",
-            Self::CapsLock => "CapsLock",
+            Self::KbMod => "KbMod",
             Self::Niri => "Niri",
             Self::SessionDBus => "SessionDBus",
             Self::SystemDBus => "SystemDBus",
