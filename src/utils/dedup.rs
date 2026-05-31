@@ -36,43 +36,45 @@ where
     const MODULE_ID: ModuleId = M::MODULE_ID;
     type Output = M::Output;
 
-    fn wants(&mut self) -> Option<Wants> {
-        let wants = self.module.wants()?;
+    fn wants(&mut self) -> Result<Option<Wants>> {
+        let Some(wants) = self.module.wants()? else {
+            return Ok(None);
+        };
 
         match wants {
             Wants::Socket { seq, .. } => {
                 if self.last_socket == Some(seq) {
-                    None
+                    Ok(None)
                 } else {
                     self.last_socket = Some(seq);
-                    Some(wants)
+                    Ok(Some(wants))
                 }
             }
 
             Wants::Connect { seq, .. } => {
                 if self.last_connect == Some(seq) {
-                    None
+                    Ok(None)
                 } else {
                     self.last_connect = Some(seq);
-                    Some(wants)
+                    Ok(Some(wants))
                 }
             }
 
             Wants::Read { seq, .. } => {
                 if self.last_read == Some(seq) {
-                    None
+                    Ok(None)
                 } else {
                     self.last_read = Some(seq);
-                    Some(wants)
+                    Ok(Some(wants))
                 }
             }
 
             Wants::Write { seq, .. } => {
                 if self.last_write == Some(seq) {
-                    None
+                    Ok(None)
                 } else {
                     self.last_write = Some(seq);
-                    Some(wants)
+                    Ok(Some(wants))
                 }
             }
 
@@ -96,7 +98,7 @@ where
                 }
 
                 match (read_is_new, write_is_new) {
-                    (true, true) => Some(Wants::ReadWrite {
+                    (true, true) => Ok(Some(Wants::ReadWrite {
                         fd,
                         readbuf,
                         readlen,
@@ -104,38 +106,38 @@ where
                         writebuf,
                         writelen,
                         writeseq,
-                    }),
-                    (true, false) => Some(Wants::Read {
+                    })),
+                    (true, false) => Ok(Some(Wants::Read {
                         fd,
                         buf: readbuf,
                         len: readlen,
                         seq: readseq,
-                    }),
-                    (false, true) => Some(Wants::Write {
+                    })),
+                    (false, true) => Ok(Some(Wants::Write {
                         fd,
                         buf: writebuf,
                         len: writelen,
                         seq: writeseq,
-                    }),
-                    (false, false) => None,
+                    })),
+                    (false, false) => Ok(None),
                 }
             }
 
             Wants::OpenAt { seq, .. } => {
                 if self.last_open_at == Some(seq) {
-                    None
+                    Ok(None)
                 } else {
                     self.last_open_at = Some(seq);
-                    Some(wants)
+                    Ok(Some(wants))
                 }
             }
 
             Wants::Close { seq, .. } => {
                 if self.last_close == Some(seq) {
-                    None
+                    Ok(None)
                 } else {
                     self.last_close = Some(seq);
-                    Some(wants)
+                    Ok(Some(wants))
                 }
             }
         }

@@ -40,43 +40,45 @@ impl UnixSocketOneshotWriter {
         })
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Result<Wants> {
         match self.state {
-            State::Socket => Wants::Socket {
+            State::Socket => Ok(Wants::Socket {
                 domain: AF_UNIX,
                 r#type: SOCK_STREAM,
                 seq: self.seq,
-            },
+            }),
 
-            State::Connect => Wants::Connect {
+            State::Connect => Ok(Wants::Connect {
                 fd: self.fd,
                 addr: (&raw const self.addr).cast::<sockaddr>(),
                 addrlen: size_of::<sockaddr_un>() as u32,
                 seq: self.seq,
-            },
+            }),
 
             State::Write => {
-                // SAFETY: write_buflen is guaranteed not to exceed buf's len
-                let buf = unsafe { self.buf.get_unchecked(..self.write_buflen) };
-                Wants::Write {
+                let buf = self
+                    .buf
+                    .get(..self.write_buflen)
+                    .context("malformed state")?;
+                Ok(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
                     seq: self.seq,
-                }
+                })
             }
 
-            State::Read => Wants::Read {
+            State::Read => Ok(Wants::Read {
                 fd: self.fd,
                 buf: self.buf.as_mut_ptr(),
                 len: self.buf.len(),
                 seq: self.seq,
-            },
+            }),
 
-            State::Close => Wants::Close {
+            State::Close => Ok(Wants::Close {
                 fd: self.fd,
                 seq: self.seq,
-            },
+            }),
         }
     }
 

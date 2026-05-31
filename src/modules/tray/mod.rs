@@ -1,10 +1,14 @@
-use crate::{Event, event_queue::EventQueue, modules::tray::app::TrayEvent};
+use crate::{
+    Event,
+    event_queue::EventQueue,
+    modules::{SessionDBus, tray::app::TrayEvent},
+    utils::{StringRef, StringRefExt},
+};
 use anyhow::Result;
 use app::App;
+use dbus::{IncomingMessage, messages::org_freedesktop_dbus::NameOwnerChangedSignal};
 pub use icon::{TrayIcon, TrayIconPixmap};
 pub use item::TrayItem;
-use mini_sansio_dbus::IncomingMessage;
-use name_lost_or_changed::NameLostOrNameOwnerChanged;
 use service::Service;
 use status_notifier_watcher::StatusNotifierWatcher;
 use std::collections::HashMap;
@@ -13,62 +17,65 @@ use uuid::UUID;
 mod app;
 mod icon;
 mod item;
-mod name_lost_or_changed;
 mod service;
 mod status_notifier_watcher;
-mod status_notifier_watcher_introspection;
 mod uuid;
 
 pub(crate) struct Tray {
-    status_notifier_watcher: StatusNotifierWatcher,
-    name_lost_or_changed: NameLostOrNameOwnerChanged,
     registry: HashMap<Service, App>,
 }
 
 impl Tray {
     pub(crate) fn new() -> Self {
         Self {
-            status_notifier_watcher: StatusNotifierWatcher::new(),
-            name_lost_or_changed: NameLostOrNameOwnerChanged::new(),
             registry: HashMap::new(),
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.status_notifier_watcher.init();
-        self.name_lost_or_changed.init();
+    pub(crate) fn init() -> Result<()> {
+        StatusNotifierWatcher::request_ksni_name()?;
+        NameOwnerChangedSignal::subscribe(&mut [0; 1_024], SessionDBus::queue())?;
+        Ok(())
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
-        if let Some(service) = self.status_notifier_watcher.on_message(message) {
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) {
+        if let Err(err) = self.try_handle(message) {
+            log::error!("{err:?}");
+        }
+    }
+
+    fn try_handle(&mut self, message: IncomingMessage<'_>) -> Result<()> {
+        if let Some(service) = StatusNotifierWatcher::handle_incoming_request(message)? {
             log::info!(target: "Tray", "Added {service:?}");
             let mut tray_app = App::new(service.clone());
-            tray_app.init();
+            tray_app.init()?;
             self.registry.insert(service, tray_app);
-            return;
+            return Ok(());
         }
 
-        if let Some(service) = NameLostOrNameOwnerChanged::on_message(message) {
+        if let Some(service) = NameOwnerChangedSignal::handle(message)? {
             let Some(key) = self
                 .registry
                 .keys()
                 .find(|s| s.name() == service || s.raw_address() == service)
                 .cloned()
             else {
-                return;
+                return Ok(());
             };
 
             let Some(mut tray_app) = self.registry.remove(&key) else {
-                return;
+                return Ok(());
             };
 
             log::info!(target: "Tray", "Removed {service}");
-            tray_app.reset();
-            EventQueue::push_back(Event::TrayAppRemoved { service });
+            tray_app.reset()?;
+            EventQueue::push_back(Event::TrayAppRemoved {
+                service: StringRef::new(service),
+            });
         }
 
         for (service, app) in &mut self.registry {
-            if let Some(event) = app.on_message(message) {
+            if let Some(event) = app.handle(message)? {
                 let service = service.name();
 
                 let event = match event {
@@ -89,6 +96,8 @@ impl Tray {
                 EventQueue::push_back(event);
             }
         }
+
+        Ok(())
     }
 
     fn try_trigger(&self, uuid: &str) -> Result<()> {

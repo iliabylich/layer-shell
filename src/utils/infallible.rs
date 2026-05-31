@@ -21,14 +21,21 @@ where
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.module.as_mut()?.wants()
+        match self.module.as_mut()?.wants() {
+            Ok(output) => output,
+            Err(err) => {
+                log::error!(target: Self::NAME, ".wants() returned an err, stopping. err: {err:?}");
+                self.module = None;
+                None
+            }
+        }
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<M::Output> {
         match self.module.as_mut()?.try_satisfy(satisfy, res) {
             Ok(output) => output,
             Err(err) => {
-                log::error!(target: Self::NAME, "crash, stopping. satisfy={satisfy:?}, res={res}, err: {err:?}");
+                log::error!(target: Self::NAME, ".satisfy() returned an errir, stopping. satisfy={satisfy:?}, res={res}, err: {err:?}");
                 self.module = None;
                 None
             }

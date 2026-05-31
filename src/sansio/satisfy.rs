@@ -1,5 +1,5 @@
 use anyhow::{Result, ensure};
-use mini_sansio_dbus::DBusSatisfy;
+use dbus::DBusSatisfy;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 

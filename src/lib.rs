@@ -11,10 +11,10 @@
 #![warn(clippy::arithmetic_side_effects)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
+#![allow(clippy::map_unwrap_or)]
 #![expect(clippy::redundant_pub_crate)]
 #![expect(clippy::cast_possible_truncation)]
 #![expect(clippy::arithmetic_side_effects)]
-#![expect(clippy::too_many_lines)]
 
 mod command;
 mod config;

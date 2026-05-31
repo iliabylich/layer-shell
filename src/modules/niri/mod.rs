@@ -92,11 +92,11 @@ impl FallibleModule for Niri {
     const MODULE_ID: ModuleId = ModuleId::Niri;
     type Output = ();
 
-    fn wants(&mut self) -> Option<Wants> {
+    fn wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Writer(writer) => Some(writer.wants()),
-            State::Reader(reader) => Some(reader.wants()),
-            State::Dummy => None,
+            State::Writer(writer) => Ok(Some(writer.wants()?)),
+            State::Reader(reader) => Ok(Some(reader.wants())),
+            State::Dummy => Ok(None),
         }
     }
 

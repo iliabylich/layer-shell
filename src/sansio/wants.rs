@@ -1,4 +1,4 @@
-use mini_sansio_dbus::DBusWants;
+use libc::sockaddr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Wants {
@@ -9,7 +9,7 @@ pub(crate) enum Wants {
     },
     Connect {
         fd: i32,
-        addr: *const libc::sockaddr,
+        addr: *const sockaddr,
         addrlen: u32,
         seq: u64,
     },
@@ -45,50 +45,4 @@ pub(crate) enum Wants {
         fd: i32,
         seq: u64,
     },
-}
-
-impl From<DBusWants> for Wants {
-    fn from(wants: DBusWants) -> Self {
-        match wants {
-            DBusWants::Socket {
-                domain,
-                r#type,
-                seq,
-            } => Self::Socket {
-                domain,
-                r#type,
-                seq,
-            },
-            DBusWants::Connect {
-                fd,
-                addr,
-                addrlen,
-                seq,
-            } => Self::Connect {
-                fd,
-                addr,
-                addrlen,
-                seq,
-            },
-            DBusWants::Read { fd, buf, len, seq } => Self::Read { fd, buf, len, seq },
-            DBusWants::Write { fd, buf, len, seq } => Self::Write { fd, buf, len, seq },
-            DBusWants::ReadWrite {
-                fd,
-                readbuf,
-                readlen,
-                readseq,
-                writebuf,
-                writelen,
-                writeseq,
-            } => Self::ReadWrite {
-                fd,
-                readbuf,
-                readlen,
-                readseq,
-                writebuf,
-                writelen,
-                writeseq,
-            },
-        }
-    }
 }

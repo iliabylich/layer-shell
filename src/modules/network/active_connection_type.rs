@@ -1,52 +1,40 @@
-use crate::{modules::SystemDBus, utils::StringRef};
-use anyhow::Context;
-use mini_sansio_dbus::{
-    IncomingBody, IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall,
-    messages::org_freedesktop_dbus::GetProperty, value_is,
+use crate::{
+    modules::SystemDBus,
+    utils::{StringRef, dbus::infallible_property::InfalliblePropertyGetAndSubscribe},
+};
+use dbus::{
+    IncomingMessage,
+    messages::network_manager::ActiveConnectionType as ActiveConnectionTypeProperty,
 };
 
 pub(crate) struct ActiveConnectionType {
+    inner: InfalliblePropertyGetAndSubscribe<ActiveConnectionTypeProperty<StringRef>>,
     path: Option<StringRef>,
-    oneshot: MethodCall<StringRef, bool, ()>,
 }
 
 impl ActiveConnectionType {
     pub(crate) const fn new() -> Self {
         Self {
+            inner: InfalliblePropertyGetAndSubscribe::new(SystemDBus::queue()),
             path: None,
-            oneshot: GET.with_data(()),
         }
     }
 
-    pub(crate) fn request(&mut self, path: StringRef) {
-        self.oneshot.send(path.clone(), SystemDBus::queue());
+    pub(crate) fn start(&mut self, path: StringRef) {
+        self.inner
+            .get_and_subscribe(ActiveConnectionTypeProperty::new(path.clone()));
         self.path = Some(path);
     }
 
-    pub(crate) const fn reset(&mut self) {
-        self.oneshot.reset();
+    pub(crate) fn stop(&mut self) {
+        self.inner.unsubscribe();
+        self.path = None;
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<(bool, StringRef)> {
-        let is_wireless = self.oneshot.try_recv(message).ok().flatten()?;
-        Some((is_wireless, self.path.clone()?))
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) -> Option<(bool, StringRef)> {
+        let type_ = self.inner.handle_reply_or_signal(message)?;
+        let is_wireless = type_.contains("wireless");
+        let path = self.path.as_ref()?.clone();
+        Some((is_wireless, path.clone()))
     }
 }
-
-const GET: IncompleteMethodCall<StringRef, bool, ()> =
-    MethodCall::new(&|path: StringRef, _data| {
-        GetProperty::build(
-            "org.freedesktop.NetworkManager",
-            path.as_str(),
-            "org.freedesktop.NetworkManager.Connection.Active",
-            "Type",
-        )
-    })
-    .try_process(&|mut body: IncomingBody<'_>, _data| {
-        let type_ = body.try_next()?.context("no Type in Body")?;
-        value_is!(type_, IncomingValue::Variant(type_));
-        let type_ = type_.materialize()?;
-        value_is!(type_, IncomingValue::String(type_));
-
-        Ok(type_.contains("wireless"))
-    });

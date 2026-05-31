@@ -26,8 +26,8 @@ impl FallibleModule for Memory {
     const MODULE_ID: ModuleId = ModuleId::Memory;
     type Output = ();
 
-    fn wants(&mut self) -> Option<Wants> {
-        self.reader.wants()
+    fn wants(&mut self) -> Result<Option<Wants>> {
+        Ok(self.reader.wants())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {

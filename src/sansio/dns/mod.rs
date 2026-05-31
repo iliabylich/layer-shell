@@ -54,47 +54,45 @@ impl Dns {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Wants {
+    pub(crate) fn wants(&mut self) -> Result<Wants> {
         match self.state {
-            State::Socket => Wants::Socket {
+            State::Socket => Ok(Wants::Socket {
                 domain: libc::AF_INET,
                 r#type: libc::SOCK_DGRAM,
                 seq: self.seq,
-            },
+            }),
 
-            State::Connect => Wants::Connect {
+            State::Connect => Ok(Wants::Connect {
                 fd: self.fd,
                 addr: (&raw const self.addr).cast::<libc::sockaddr>(),
                 addrlen: size_of::<libc::sockaddr_in>() as u32,
                 seq: self.seq,
-            },
+            }),
 
             State::Write => {
-                // SAFETY: len never exceeds buf's size
-                let buf = unsafe { self.buf.get_unchecked(self.pos..self.len) };
-                Wants::Write {
+                let buf = self.buf.get(self.pos..self.len).context("internal error")?;
+                Ok(Wants::Write {
                     fd: self.fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
                     seq: self.seq,
-                }
+                })
             }
 
             State::Read => {
-                // SAFETY: len never exceeds buf's size
-                let buf = unsafe { self.buf.get_unchecked_mut(self.len..) };
-                Wants::Read {
+                let buf = self.buf.get_mut(self.len..).context("internal error")?;
+                Ok(Wants::Read {
                     fd: self.fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
                     seq: self.seq,
-                }
+                })
             }
 
-            State::Close => Wants::Close {
+            State::Close => Ok(Wants::Close {
                 fd: self.fd,
                 seq: self.seq,
-            },
+            }),
         }
     }
 

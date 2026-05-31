@@ -1,5 +1,3 @@
-use mini_sansio_dbus::IncomingMessage;
-
 use crate::{
     modules::network::{
         active_connection_type::ActiveConnectionType,
@@ -7,6 +5,7 @@ use crate::{
     },
     utils::StringRef,
 };
+use dbus::IncomingMessage;
 
 #[derive(Default)]
 enum State {
@@ -22,6 +21,7 @@ pub(crate) struct WirelessConnection {
     state: State,
 }
 
+#[derive(Debug)]
 pub(crate) enum WirelessConnectionEvent {
     Connected(StringRef),
     Disconnected,
@@ -36,8 +36,8 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.primary_connection.init();
+    pub(crate) fn start(&mut self) {
+        self.primary_connection.start();
     }
 
     fn on_primary_connection_event(
@@ -46,12 +46,12 @@ impl WirelessConnection {
     ) -> Option<WirelessConnectionEvent> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
-                self.active_connection_type.request(path);
+                self.active_connection_type.start(path);
                 self.state = State::ConnectedAndHavePath;
                 None
             }
             PrimaryConnectionEvent::Disconnected => {
-                self.active_connection_type.reset();
+                self.active_connection_type.stop();
                 self.state = State::Disconnected;
                 Some(WirelessConnectionEvent::Disconnected)
             }
@@ -72,15 +72,15 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn on_message(
+    pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<WirelessConnectionEvent> {
-        if let Some(e) = self.primary_connection.on_message(message) {
+        if let Some(e) = self.primary_connection.handle(message) {
             return self.on_primary_connection_event(e);
         }
 
-        if let Some((is_wireless, path)) = self.active_connection_type.on_message(message) {
+        if let Some((is_wireless, path)) = self.active_connection_type.handle(message) {
             return Some(self.on_active_connection_type_received(is_wireless, path));
         }
 

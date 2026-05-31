@@ -48,12 +48,12 @@ impl FallibleModule for KbMod {
     const MODULE_ID: ModuleId = ModuleId::KbMod;
     type Output = ();
 
-    fn wants(&mut self) -> Option<Wants> {
+    fn wants(&mut self) -> Result<Option<Wants>> {
         if self.state == State::Dummy {
-            return None;
+            return Ok(None);
         }
 
-        Some(self.reader.wants())
+        Ok(Some(self.reader.wants()))
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
@@ -81,10 +81,8 @@ impl FallibleModule for KbMod {
                         return Ok(None);
                     }
                     let min = std::cmp::min(pending, bytes.len());
-                    // SAFETY: min <= pending
-                    let pending = unsafe { pending.unchecked_sub(min) };
-                    // SAFETY: min <= bytes.len()
-                    bytes = unsafe { bytes.get_unchecked(min..) };
+                    let pending = pending.checked_sub(min).context("malformed state")?;
+                    bytes = bytes.get(min..).context("malformed state")?;
 
                     if pending == 0 {
                         self.state = State::ReadingUpdates;

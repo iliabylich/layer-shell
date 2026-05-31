@@ -45,7 +45,7 @@ pub(crate) trait FallibleModule {
     const MODULE_ID: ModuleId;
     type Output;
 
-    fn wants(&mut self) -> Option<Wants>;
+    fn wants(&mut self) -> Result<Option<Wants>>;
     fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>>;
     fn try_tick(&mut self, _tick: u64) -> Result<()> {
         Ok(())

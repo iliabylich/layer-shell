@@ -14,8 +14,14 @@ impl Service {
     pub(crate) fn raw_address(&self) -> StringRef {
         self.raw_address.clone()
     }
+    pub(crate) fn raw_address_str(&self) -> &str {
+        self.raw_address.as_str()
+    }
 
     pub(crate) fn name(&self) -> StringRef {
         self.name.clone()
+    }
+    pub(crate) fn name_str(&self) -> &str {
+        self.name.as_str()
     }
 }

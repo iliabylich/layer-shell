@@ -1,45 +1,47 @@
 use crate::{
-    modules::{SessionDBus, TrayIcon, TrayItem, tray::service::Service},
-    utils::{StringRef, StringRefExt as _},
+    modules::{SessionDBus, TrayIcon, TrayIconPixmap, TrayItem, tray::service::Service},
+    utils::{
+        StringRef, StringRefExt as _, dbus::infallible_property::InfalliblePropertyGetAndSubscribe,
+    },
 };
-use anyhow::{Context, Result};
-use dbusmenu::{
-    GET_LAYOUT, SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED, SUBSCRIBE_TO_LAYOUT_UPDATED,
-    items_properties_updated_match_rule, layout_updated_match_rule,
-    parse_items_properties_updated_signal, parse_layout_updated_signal,
-};
-use ksni::{
-    GET_MENU_AND_ICON, MENU_AND_ICON_SUBSCRIPTION, SUBSCRIBE_TO_NEW_ICON, new_icon_match_rule,
-    parse_new_icon_signal,
-};
-use mini_sansio_dbus::{
-    IncomingMessage, MethodCall, OutgoingMessage, OutgoingValue, Subscription,
-    messages::org_freedesktop_dbus::RemoveMatch,
+use anyhow::Result;
+use dbus::{
+    EncodeError, IncomingMessage,
+    messages::sni_host::{
+        Event, IconName, IconPixmap, IconPixmapBytes, ItemsPropertiesUpdatedSignal,
+        LayoutUpdatedSignal, Menu, NewIconSignal,
+    },
+    messaging::reply_handler::ReplyHandler,
 };
 
-mod dbusmenu;
-mod ksni;
+mod state;
+use state::State;
+
+mod get_layout;
+use get_layout::{GetLayout, VecOfTrayItems};
 
 pub(crate) struct App {
     service: Service,
 
-    get_menu_and_icon: MethodCall<StringRef, (StringRef, TrayIcon), ()>,
-    subscribe_to_new_icon: MethodCall<StringRef, (), ()>,
-    menu_and_icon_subscription: Subscription<(Option<StringRef>, Option<TrayIcon>)>,
-    subscribe_to_layout_updated: MethodCall<(StringRef, StringRef), (), ()>,
-    subscribe_to_items_properties_updated: MethodCall<(StringRef, StringRef), (), ()>,
+    menu_prop: InfalliblePropertyGetAndSubscribe<Menu<StringRef>>,
+    icon_name_prop: InfalliblePropertyGetAndSubscribe<IconName<StringRef>>,
+    icon_pixmap_prop: InfalliblePropertyGetAndSubscribe<IconPixmap<StringRef, VecOfU8>>,
+
+    get_layout: Option<ReplyHandler<GetLayout>>,
 
     menu: StringRef,
-    get_layout: MethodCall<(StringRef, StringRef), Vec<TrayItem>, StringRef>,
-
     state: State,
 }
 
-enum State {
-    Nothing,
-    OnlyIcon(TrayIcon),
-    OnlyLayout(Vec<TrayItem>),
-    All,
+struct VecOfU8(Vec<u8>);
+impl IconPixmapBytes for VecOfU8 {
+    fn new() -> Self {
+        Self(vec![])
+    }
+
+    fn push(&mut self, v: u8) {
+        self.0.push(v);
+    }
 }
 
 #[derive(Debug)]
@@ -51,233 +53,171 @@ pub(crate) enum TrayEvent {
 
 impl App {
     pub(crate) fn new(service: Service) -> Self {
-        let service_name = service.name();
-
         Self {
             service,
-            get_menu_and_icon: GET_MENU_AND_ICON.with_data(()),
-            subscribe_to_new_icon: SUBSCRIBE_TO_NEW_ICON.with_data(()),
-            menu_and_icon_subscription: MENU_AND_ICON_SUBSCRIPTION,
-            subscribe_to_layout_updated: SUBSCRIBE_TO_LAYOUT_UPDATED.with_data(()),
-            subscribe_to_items_properties_updated: SUBSCRIBE_TO_ITEM_PROPERTIES_UPDATED
-                .with_data(()),
+
+            menu_prop: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
+            icon_name_prop: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
+            icon_pixmap_prop: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
+
+            get_layout: None,
 
             menu: StringRef::new(""),
-            get_layout: GET_LAYOUT.with_data(service_name),
-
             state: State::Nothing,
         }
     }
 
     fn schedule_request_props(&mut self) {
-        self.get_menu_and_icon.reset();
-        self.get_menu_and_icon
-            .send(self.service.name(), SessionDBus::queue());
+        self.menu_prop.get(Menu::new(self.service.name()));
+        self.icon_name_prop.get(IconName::new(self.service.name()));
+        self.icon_pixmap_prop
+            .get(IconPixmap::new(self.service.name()));
     }
 
-    pub(crate) fn init(&mut self) {
-        self.subscribe_to_new_icon
-            .send(self.service.name(), SessionDBus::queue());
-        self.get_menu_and_icon
-            .send(self.service.name(), SessionDBus::queue());
-        self.menu_and_icon_subscription.start(
-            "org.freedesktop.DBus",
-            "/StatusNotifierItem",
+    pub(crate) fn init(&mut self) -> Result<()> {
+        NewIconSignal::subscribe(
+            &mut [0; 1_024],
             SessionDBus::queue(),
-        );
+            self.service.name_str(),
+        )?;
+
+        self.menu_prop
+            .get_and_subscribe(Menu::new(self.service.name()));
+        self.icon_name_prop
+            .get_and_subscribe(IconName::new(self.service.name()));
+        self.icon_pixmap_prop
+            .get_and_subscribe(IconPixmap::new(self.service.name()));
+
+        Ok(())
     }
 
-    pub(crate) fn reset(&mut self) {
-        self.unsubscribe_matches();
-        self.subscribe_to_new_icon.reset();
-        self.get_menu_and_icon.reset();
-        self.menu_and_icon_subscription.reset(SessionDBus::queue());
-        self.get_layout.reset();
+    pub(crate) fn reset(&mut self) -> Result<()> {
+        let mut buf = [0; 1_024];
+
+        NewIconSignal::unsubscribe(&mut buf, SessionDBus::queue(), self.service.name_str())?;
+
+        self.menu_prop.unsubscribe();
+        self.icon_name_prop.unsubscribe();
+        self.icon_pixmap_prop.unsubscribe();
+
+        LayoutUpdatedSignal::unsubscribe(
+            &mut buf,
+            SessionDBus::queue(),
+            self.service.name_str(),
+            self.menu.as_str(),
+        )?;
+        ItemsPropertiesUpdatedSignal::unsubscribe(
+            &mut buf,
+            SessionDBus::queue(),
+            self.service.name_str(),
+            self.menu.as_str(),
+        )?;
+        Ok(())
     }
 
-    fn remove_match(rule: String) {
-        let message = RemoveMatch::build_from_rule(rule);
-        SessionDBus::queue().push_back(message);
+    fn schedule_get_layout(&mut self) -> Result<()> {
+        self.get_layout = Some(GetLayout::send(
+            &mut [0; 1_024],
+            SessionDBus::queue(),
+            self.service.name(),
+            self.menu.as_str(),
+        )?);
+        Ok(())
     }
 
-    fn unsubscribe_matches(&self) {
-        Self::remove_match(new_icon_match_rule(self.service.name().as_str()));
-
+    fn on_menu_received(&mut self, menu: &str) -> Result<()> {
         if self.menu != "" {
-            Self::remove_match(layout_updated_match_rule(
-                self.service.name().as_str(),
-                self.menu.as_str(),
-            ));
-            Self::remove_match(items_properties_updated_match_rule(
-                self.service.name().as_str(),
-                self.menu.as_str(),
-            ));
+            return Ok(());
         }
-    }
 
-    fn schedule_get_layout(&mut self) {
-        self.get_layout.reset();
-        self.get_layout.send(
-            (self.service.name(), self.menu.clone()),
+        self.menu = StringRef::new(menu);
+        let mut buf = [0; 1_024];
+        self.schedule_get_layout()?;
+        LayoutUpdatedSignal::subscribe(
+            &mut buf,
             SessionDBus::queue(),
-        );
-    }
-
-    fn on_menu_received(&mut self, menu: StringRef) {
-        if self.menu != "" {
-            return;
-        }
-
-        self.menu = menu;
-        self.schedule_get_layout();
-        self.subscribe_to_layout_updated.send(
-            (self.service.name(), self.menu.clone()),
+            self.service.name_str(),
+            menu,
+        )?;
+        ItemsPropertiesUpdatedSignal::subscribe(
+            &mut buf,
             SessionDBus::queue(),
-        );
-        self.subscribe_to_items_properties_updated.send(
-            (self.service.name(), self.menu.clone()),
-            SessionDBus::queue(),
-        );
+            self.service.name_str(),
+            menu,
+        )?;
+        Ok(())
     }
 
-    fn on_icon_received(&mut self, new_icon: TrayIcon) -> Option<TrayEvent> {
-        match &mut self.state {
-            State::Nothing => {
-                self.state = State::OnlyIcon(new_icon);
-                None
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) -> Result<Option<TrayEvent>> {
+        if let Some(menu) = self.menu_prop.handle_reply_or_signal(message) {
+            log::info!(target: "Tray", "Received menu {:?} - {menu:?}", self.service);
+            self.on_menu_received(menu)?;
+            Ok(None)
+        } else if let Some(name_or_path) = self.icon_name_prop.handle_reply_or_signal(message) {
+            if name_or_path.is_empty() {
+                Ok(None)
+            } else {
+                let icon = TrayIcon::detect_name_or_path(name_or_path);
+                log::info!(target: "Tray", "Received icon name {:?}", self.service);
+                let event = self.state.on_icon_received(icon);
+                Ok(event)
             }
-            State::OnlyIcon(icon) => {
-                *icon = new_icon;
-                None
-            }
-            State::OnlyLayout(layout) => {
-                let layout = core::mem::take(layout);
-                self.state = State::All;
-                Some(TrayEvent::Initialized(new_icon, layout))
-            }
-            State::All => Some(TrayEvent::IconUpdated(new_icon)),
-        }
-    }
-
-    fn on_layout_receieved(&mut self, new_layout: Vec<TrayItem>) -> Option<TrayEvent> {
-        match &mut self.state {
-            State::Nothing => {
-                self.state = State::OnlyLayout(new_layout);
-                None
-            }
-            State::OnlyIcon(icon) => {
-                let icon = core::mem::take(icon);
-                self.state = State::All;
-                Some(TrayEvent::Initialized(icon, new_layout))
-            }
-            State::OnlyLayout(layout) => {
-                *layout = new_layout;
-                None
-            }
-            State::All => Some(TrayEvent::MenuUpdated(new_layout)),
-        }
-    }
-
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) -> Option<TrayEvent> {
-        if let Some((menu, icon)) = self.get_menu_and_icon.try_recv(message).ok().flatten() {
-            log::info!(target: "Tray", "Received requested props for {:?}", self.service);
-
-            self.on_menu_received(menu);
-            return self.on_icon_received(icon);
-        }
-
-        if self.subscribe_to_new_icon.try_recv(message).ok().flatten() == Some(()) {
-            log::info!(target: "Tray", "Subscribed to NewIcon");
-            return None;
-        }
-
-        if let Some((_, icon)) = self.menu_and_icon_subscription.process(message) {
-            log::info!(target: "Tray", "Received updated props for {:?}", self.service);
-            if let Some(icon) = icon {
-                return self.on_icon_received(icon);
-            }
-        }
-
-        if let Some(layout) = self.get_layout.try_recv(message).ok().flatten() {
+        } else if let Some((width, height, VecOfU8(bytes))) =
+            self.icon_pixmap_prop.handle_reply_or_signal(message)
+        {
+            log::info!(target: "Tray", "Received icon pixmap {:?}", self.service);
+            let event = self
+                .state
+                .on_icon_received(TrayIcon::Pixmap(TrayIconPixmap {
+                    width,
+                    height,
+                    bytes: bytes.into(),
+                }));
+            Ok(event)
+        } else if let Some(get_layout) = &self.get_layout
+            && let Some(VecOfTrayItems(layout)) = get_layout.handle(message)?
+        {
             log::info!(target: "Tray", "Got layout");
-            return self.on_layout_receieved(layout);
-        }
-
-        if self
-            .subscribe_to_layout_updated
-            .try_recv(message)
-            .ok()
-            .flatten()
-            .is_some()
-        {
-            log::info!(target: "Tray", "Subscribed to LayoutUpdated");
-            return None;
-        }
-
-        if self
-            .subscribe_to_items_properties_updated
-            .try_recv(message)
-            .ok()
-            .flatten()
-            .is_some()
-        {
-            log::info!(target: "Tray", "Subscribed to ItemPropertiesUpdated");
-            return None;
-        }
-
-        if parse_new_icon_signal(message, self.service.raw_address().as_str()).is_ok() {
+            let event = self.state.on_layout_receieved(layout);
+            Ok(event)
+        } else if NewIconSignal::matches(message, self.service.raw_address_str()) {
             log::info!(target: "Tray", "Received NewIcon signal");
             self.schedule_request_props();
-            return None;
-        }
-
-        if parse_layout_updated_signal(
+            Ok(None)
+        } else if LayoutUpdatedSignal::matches(
             message,
-            self.service.raw_address().as_str(),
+            self.service.raw_address_str(),
             self.menu.as_str(),
-        )
-        .is_ok()
-        {
+        ) {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
-            self.schedule_get_layout();
-            return None;
-        }
-        if parse_items_properties_updated_signal(
+            self.schedule_get_layout()?;
+            Ok(None)
+        } else if ItemsPropertiesUpdatedSignal::matches(
             message,
-            self.service.raw_address().as_str(),
+            self.service.raw_address_str(),
             self.menu.as_str(),
-        )
-        .is_ok()
-        {
+        ) {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
-            self.schedule_get_layout();
-            return None;
+            self.schedule_get_layout()?;
+            Ok(None)
+        } else {
+            Ok(None)
         }
-
-        None
     }
 
-    pub(crate) fn trigger(&self, id: i32) -> Result<()> {
-        let timestamp = u32::try_from(chrono::Utc::now().timestamp())
-            .context("can't construct u32 from chrono timestamp")?;
+    pub(crate) fn trigger(&self, id: i32) -> Result<(), EncodeError> {
+        let timestamp =
+            u32::try_from(chrono::Utc::now().timestamp()).map_err(|_| EncodeError::ValueTooLong)?;
 
-        let message = OutgoingMessage::MethodCall {
-            destination: Some(self.service.name().to_string()),
-            path: self.menu.to_string(),
-            interface: Some(String::from("com.canonical.dbusmenu")),
-            serial: 0,
-            member: String::from("Event"),
-            sender: None,
-            unix_fds: None,
-            body: vec![
-                OutgoingValue::Int32(id),
-                OutgoingValue::String(String::from("clicked")),
-                OutgoingValue::Variant(Box::new(OutgoingValue::Int32(0))),
-                OutgoingValue::UInt32(timestamp),
-            ],
-        };
+        Event::send(
+            &mut [0; 1_024],
+            SessionDBus::queue(),
+            id,
+            timestamp,
+            self.service.name_str(),
+            self.menu.as_str(),
+        )?;
 
-        SessionDBus::queue().push_back(message);
         Ok(())
     }
 }

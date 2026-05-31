@@ -1,68 +1,62 @@
 use crate::{
-    modules::{
-        SessionDBus,
-        tray::{
-            service::Service,
-            status_notifier_watcher_introspection::StatusNotifierWatcherIntrospection,
-        },
-    },
+    modules::{SessionDBus, tray::service::Service},
     utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context as _, Result, ensure};
-use mini_sansio_dbus::{
-    IncomingMessage, IncomingValue, MessageType, OutgoingMessage, destination_is, interface_is,
-    messages::org_freedesktop_dbus::RequestName, path_is, value_is,
+use dbus::{
+    DBusError, IncomingMessage, IncomingValue, MessageType, destination_is, interface_is,
+    messages::{
+        EmptyMethodReturn, org_freedesktop_dbus::RequestName,
+        sni_host::StatusNotifierWatcherIntrospection,
+    },
+    messaging::DBusEncode,
+    path_is, value_is,
 };
 
-pub(crate) struct StatusNotifierWatcher {
-    reply_serial: Option<u32>,
-    introspection: StatusNotifierWatcherIntrospection,
+struct RequestNameOrgKdeStatusNotifierWatcher;
+impl DBusEncode for RequestNameOrgKdeStatusNotifierWatcher {
+    type Args<'a> = ();
+
+    fn encode<'a>((): Self::Args<'_>, buf: &'a mut [u8]) -> Result<&'a [u8], dbus::EncodeError> {
+        RequestName::encode(buf, "org.kde.StatusNotifierWatcher")
+    }
 }
 
+pub(crate) struct StatusNotifierWatcher;
+
 impl StatusNotifierWatcher {
-    pub(crate) const fn new() -> Self {
-        Self {
-            reply_serial: None,
-            introspection: StatusNotifierWatcherIntrospection::new(),
-        }
+    pub(crate) fn request_ksni_name() -> Result<(), DBusError> {
+        SessionDBus::queue().push_and_discard_reply::<RequestNameOrgKdeStatusNotifierWatcher>(())?;
+        Ok(())
     }
 
-    pub(crate) fn request(&mut self) {
-        let message = RequestName::build("org.kde.StatusNotifierWatcher");
-        self.reply_serial = Some(SessionDBus::queue().push_back(message));
+    fn reply_ok(serial: u32, destination: &str) -> Result<(), DBusError> {
+        let mut buf = [0; 1_024];
+        let buf = EmptyMethodReturn::encode(&mut buf, destination, serial)?;
+        SessionDBus::queue().push_raw_buf(buf);
+        Ok(())
     }
 
-    fn reply_ok(serial: u32, destination: &str) {
-        let reply = OutgoingMessage::new_method_return_no_body(serial, destination);
-        SessionDBus::queue().push_back(reply);
-    }
-
-    pub(crate) fn init(&mut self) {
-        self.request();
-    }
-
-    pub(crate) fn on_message(&self, message: IncomingMessage<'_>) -> Option<Service> {
-        if self.introspection.process_message(message) {
-            return None;
-        }
-
-        if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
+    pub(crate) fn handle_incoming_request(message: IncomingMessage<'_>) -> Result<Option<Service>> {
+        if StatusNotifierWatcherIntrospection::new().handle(SessionDBus::queue(), message)? {
+            Ok(None)
+        } else if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    Self::reply_ok(serial, sender);
-                    return Some(Service::new(
+                    Self::reply_ok(serial, sender)?;
+                    Ok(Some(Service::new(
                         StringRef::new(sender),
                         StringRef::new(address),
-                    ));
+                    )))
                 }
                 KSNIRequest::Other => {
-                    Self::reply_ok(serial, sender);
-                    return None;
+                    Self::reply_ok(serial, sender)?;
+                    Ok(None)
                 }
             }
+        } else {
+            Ok(None)
         }
-
-        None
     }
 }
 

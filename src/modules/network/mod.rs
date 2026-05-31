@@ -1,6 +1,6 @@
 use crate::{Event, event_queue::EventQueue};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
-use mini_sansio_dbus::IncomingMessage;
+use dbus::IncomingMessage;
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
 use speed::Speed;
 use ssid_and_strength::{SsidAndStrength, SsidAndStrengthEvent};
@@ -38,16 +38,16 @@ impl Network {
     }
 
     pub(crate) fn init(&mut self) {
-        self.wireless_connection.init();
+        self.wireless_connection.start();
     }
 
     fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent) {
         match e {
             WirelessConnectionEvent::Connected(path) => {
-                self.primary_device.init(path);
+                self.primary_device.start(path);
             }
             WirelessConnectionEvent::Disconnected => {
-                self.primary_device.reset();
+                self.primary_device.stop();
             }
         }
     }
@@ -55,14 +55,14 @@ impl Network {
     fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
-                self.active_access_point.init(path.clone());
+                self.active_access_point.start(path.clone());
                 self.speed.reset();
-                self.tx_rx.init(path);
+                self.tx_rx.start(path);
             }
             PrimaryDeviceEvent::Disconnected => {
-                self.active_access_point.reset();
+                self.active_access_point.stop();
                 self.speed.reset();
-                self.tx_rx.reset();
+                self.tx_rx.stop();
             }
         }
     }
@@ -70,10 +70,10 @@ impl Network {
     fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent) {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
-                self.ssid_and_strength.init(path);
+                self.ssid_and_strength.start(path);
             }
             ActiveAccessPointEvent::Disconnected => {
-                self.ssid_and_strength.reset();
+                self.ssid_and_strength.stop();
             }
         }
     }
@@ -92,38 +92,36 @@ impl Network {
 
     fn on_ssid_and_strength_event(e: SsidAndStrengthEvent) {
         if let Some(ssid) = e.ssid {
-            let event = Event::NetworkSsid { ssid };
-            EventQueue::push_back(event);
+            EventQueue::push_back(Event::NetworkSsid { ssid });
         }
 
         if let Some(strength) = e.strength {
-            let event = Event::NetworkStrength { strength };
-            EventQueue::push_back(event);
+            EventQueue::push_back(Event::NetworkStrength { strength });
         }
     }
 
-    pub(crate) fn on_message(&mut self, message: IncomingMessage<'_>) {
-        if let Some(e) = self.wireless_connection.on_message(message) {
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) {
+        if let Some(e) = self.wireless_connection.handle(message) {
             self.on_wireless_connection_event(e);
             return;
         }
 
-        if let Some(e) = self.primary_device.on_message(message) {
+        if let Some(e) = self.primary_device.handle(message) {
             self.on_primary_device_event(e);
             return;
         }
 
-        if let Some(e) = self.active_access_point.on_message(message) {
+        if let Some(e) = self.active_access_point.handle(message) {
             self.on_active_access_point_event(e);
             return;
         }
 
-        if let Some(e) = self.tx_rx.on_message(message) {
+        if let Some(e) = self.tx_rx.handle(message) {
             self.on_tx_rx_event(e);
             return;
         }
 
-        if let Some(e) = self.ssid_and_strength.on_message(message) {
+        if let Some(e) = self.ssid_and_strength.handle(message) {
             Self::on_ssid_and_strength_event(e);
         }
     }

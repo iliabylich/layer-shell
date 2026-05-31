@@ -1,17 +1,17 @@
 use crate::{
     modules::SystemDBus,
-    utils::{StringRef, StringRefExt as _},
+    utils::{
+        StringRef, StringRefExt as _, dbus::infallible_property::InfalliblePropertyGetAndSubscribe,
+    },
 };
-use anyhow::{Context as _, Result};
-use mini_sansio_dbus::{
-    IncomingArrayValue, IncomingBody, IncomingMessage, IncomingValue, IncompleteMethodCall,
-    MethodCall, Subscription, interface_is, messages::org_freedesktop_dbus::GetAllProperties,
-    path_is, value_is,
+use dbus::{
+    IncomingMessage,
+    messages::network_manager::{SSID, Strength},
 };
 
 pub(crate) struct SsidAndStrength {
-    oneshot: MethodCall<StringRef, SsidAndStrengthEvent, ()>,
-    subscription: Subscription<SsidAndStrengthEvent>,
+    ssid: InfalliblePropertyGetAndSubscribe<SSID<100, StringRef>>,
+    strength: InfalliblePropertyGetAndSubscribe<Strength<StringRef>>,
 }
 
 #[derive(Debug)]
@@ -23,105 +23,44 @@ pub(crate) struct SsidAndStrengthEvent {
 impl SsidAndStrength {
     pub(crate) const fn new() -> Self {
         Self {
-            oneshot: GET.with_data(()),
-            subscription: SUBSCRIPTION,
+            ssid: InfalliblePropertyGetAndSubscribe::new(SystemDBus::queue()),
+            strength: InfalliblePropertyGetAndSubscribe::new(SystemDBus::queue()),
         }
     }
 
-    pub(crate) fn reset(&mut self) {
-        self.subscription.reset(SystemDBus::queue());
-        self.oneshot.reset();
+    pub(crate) fn start(&mut self, path: StringRef) {
+        self.ssid.get_and_subscribe(SSID::new(path.clone()));
+        self.strength.get_and_subscribe(Strength::new(path));
     }
 
-    pub(crate) fn init(&mut self, path: StringRef) {
-        self.subscription.start(
-            "org.freedesktop.NetworkManager",
-            path.to_string(),
-            SystemDBus::queue(),
-        );
-        self.oneshot.send(path, SystemDBus::queue());
+    pub(crate) fn stop(&mut self) {
+        self.ssid.unsubscribe();
+        self.strength.unsubscribe();
     }
 
-    pub(crate) fn on_message(
-        &mut self,
-        message: IncomingMessage<'_>,
-    ) -> Option<SsidAndStrengthEvent> {
-        None.or_else(|| self.oneshot.try_recv(message).ok().flatten())
-            .or_else(|| self.subscription.process(message))
-    }
-}
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) -> Option<SsidAndStrengthEvent> {
+        let mut e = SsidAndStrengthEvent {
+            ssid: None,
+            strength: None,
+        };
 
-const GET: IncompleteMethodCall<StringRef, SsidAndStrengthEvent, ()> =
-    MethodCall::new(&|path: StringRef, _data| {
-        GetAllProperties::build(
-            "org.freedesktop.NetworkManager",
-            path.as_str(),
-            "org.freedesktop.NetworkManager.AccessPoint",
-        )
-    })
-    .try_process(&|mut body: IncomingBody<'_>, _data| {
-        let properties = body.try_next()?.context("no Properties in Body")?;
-        value_is!(properties, IncomingValue::Array(properties));
-        let (ssid, strength) = parse_properties(&properties)?;
+        if let Some((buf, len)) = self.ssid.handle_reply_or_signal(message) {
+            let Some(buf) = buf.get(..len) else {
+                log::error!("SSID property returned malformed data");
+                return None;
+            };
+            let ssid = String::from_utf8_lossy(buf).to_string();
+            e.ssid = Some(StringRef::new(&ssid));
+        }
 
-        let ssid = ssid.context("no Ssid")?;
-        let strength = strength.context("no Strength")?;
+        if let Some(strength) = self.strength.handle_reply_or_signal(message) {
+            e.strength = Some(strength);
+        }
 
-        Ok(SsidAndStrengthEvent {
-            ssid: Some(ssid),
-            strength: Some(strength),
-        })
-    });
-
-const SUBSCRIPTION: Subscription<SsidAndStrengthEvent> =
-    Subscription::new(&|mut body, path, subscribed_to| {
-        path_is!(path, subscribed_to);
-
-        let interface = body.try_next()?.context("no Interface in Body")?;
-        value_is!(interface, IncomingValue::String(interface));
-        interface_is!(interface, "org.freedesktop.NetworkManager.AccessPoint");
-
-        let properties = body.try_next()?.context("no Properties in Body")?;
-        value_is!(properties, IncomingValue::Array(properties));
-        let (ssid, strength) = parse_properties(&properties)?;
-
-        Ok(SsidAndStrengthEvent { ssid, strength })
-    });
-
-fn parse_properties(
-    properties: &IncomingArrayValue<'_>,
-) -> Result<(Option<StringRef>, Option<u8>)> {
-    let mut iter = properties.items_iter();
-    let mut ssid = None;
-    let mut strength = None;
-    while let Some(attribute) = iter.try_next()? {
-        value_is!(attribute, IncomingValue::DictEntry(attribute));
-        let (key, value) = attribute.key_value()?;
-        value_is!(key, IncomingValue::String(key));
-        value_is!(value, IncomingValue::Variant(value));
-
-        if key == "Ssid" {
-            let value = value.materialize()?;
-            let value = parse_ssid(value)?;
-            ssid = Some(value);
-        } else if key == "Strength" {
-            let value = value.materialize()?;
-            value_is!(value, IncomingValue::Byte(value));
-            strength = Some(value);
+        if e.ssid.is_some() || e.strength.is_some() {
+            Some(e)
+        } else {
+            None
         }
     }
-
-    Ok((ssid, strength))
-}
-
-fn parse_ssid(ssid: IncomingValue<'_>) -> Result<StringRef> {
-    value_is!(ssid, IncomingValue::Array(ssid));
-    let mut iter = ssid.items_iter();
-    let mut bytes = vec![];
-    while let Some(byte) = iter.try_next()? {
-        value_is!(byte, IncomingValue::Byte(byte));
-        bytes.push(byte);
-    }
-    let ssid = String::from_utf8_lossy(&bytes).to_string();
-    Ok(StringRef::new(ssid.as_str()))
 }

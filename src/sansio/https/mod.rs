@@ -84,42 +84,42 @@ impl Https {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Dns(dns) => Some(dns.wants()),
+            State::Dns(dns) => Ok(Some(dns.wants()?)),
 
             State::ReadyTo(Action::Socket) => {
                 self.state = State::WaitingFor(Action::Socket);
-                Some(Wants::Socket {
+                Ok(Some(Wants::Socket {
                     domain: libc::AF_INET,
                     r#type: libc::SOCK_STREAM,
                     seq: self.seq,
-                })
+                }))
             }
 
             State::ReadyTo(Action::Connect) => {
                 self.state = State::WaitingFor(Action::Connect);
-                Some(Wants::Connect {
+                Ok(Some(Wants::Connect {
                     fd: self.fd,
                     addr: (&raw const self.addr).cast(),
                     addrlen: size_of::<sockaddr_in>() as u32,
                     seq: self.seq,
-                })
+                }))
             }
 
-            State::Handshaking(handshake) => handshake.wants(),
+            State::Handshaking(handshake) => Ok(handshake.wants()),
 
-            State::ReadWrite(ready) => ready.wants(),
+            State::ReadWrite(ready) => Ok(ready.wants()),
 
             State::ReadyTo(Action::Close) => {
                 self.state = State::WaitingFor(Action::Close);
-                Some(Wants::Close {
+                Ok(Some(Wants::Close {
                     fd: self.fd,
                     seq: self.seq,
-                })
+                }))
             }
 
-            State::WaitingFor(_) | State::Done => None,
+            State::WaitingFor(_) | State::Done => Ok(None),
         }
     }
 

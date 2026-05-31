@@ -1,4 +1,5 @@
 mod array_writer;
+pub(crate) mod dbus;
 mod dedup;
 mod get_json;
 mod infallible;

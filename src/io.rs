@@ -63,8 +63,8 @@ impl IO {
     pub(crate) fn init() -> Result<()> {
         env_logger::try_init()?;
         Https::init()?;
-        SessionDBus::init();
-        SystemDBus::init();
+        SessionDBus::init()?;
+        SystemDBus::init()?;
         Ok(())
     }
 
@@ -105,12 +105,12 @@ impl IO {
             running: true,
         };
 
-        this.start();
+        this.start()?;
 
         Ok(this)
     }
 
-    fn start(&mut self) {
+    fn start(&mut self) -> Result<()> {
         schedule!(self.timer, &mut self.io_uring);
 
         schedule!(self.location, &mut self.io_uring);
@@ -119,15 +119,16 @@ impl IO {
         schedule!(self.kb_mod, &mut self.io_uring);
         schedule!(self.niri, &mut self.io_uring);
 
-        self.sound.init();
-        Control::init();
-        self.tray.init();
+        self.sound.start();
+        Control::init()?;
+        Tray::init()?;
         schedule!(self.session_dbus, &mut self.io_uring);
 
         self.network.init();
         schedule!(self.system_dbus, &mut self.io_uring);
 
         self.io_uring.submit_if_dirty();
+        Ok(())
     }
 
     fn on_control_req(req: ControlRequest) {
@@ -188,10 +189,10 @@ impl IO {
                     let message = satisfy!(self.session_dbus);
 
                     if let Some(message) = message {
-                        self.sound.on_message(message);
-                        self.tray.on_message(message);
+                        self.sound.handle(message);
+                        self.tray.handle(message);
 
-                        if let Some(req) = Control::on_message(message) {
+                        if let Some(req) = Control::handle(message) {
                             Self::on_control_req(req);
                         }
                     }
@@ -203,7 +204,7 @@ impl IO {
                     let message = satisfy!(self.system_dbus);
 
                     if let Some(message) = message {
-                        self.network.on_message(message);
+                        self.network.handle(message);
                     }
 
                     schedule!(self.system_dbus, &mut self.io_uring);

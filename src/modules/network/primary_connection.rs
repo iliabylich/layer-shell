@@ -1,16 +1,15 @@
 use crate::{
     modules::SystemDBus,
-    utils::{StringRef, StringRefExt as _},
+    utils::{
+        StringRef, StringRefExt as _, dbus::infallible_property::InfalliblePropertyGetAndSubscribe,
+    },
 };
-use anyhow::Context as _;
-use mini_sansio_dbus::{
-    IncomingMessage, IncomingValue, IncompleteMethodCall, MethodCall, Subscription, interface_is,
-    messages::org_freedesktop_dbus::GetProperty, path_is, value_is,
+use dbus::{
+    IncomingMessage, messages::network_manager::PrimaryConnection as PrimaryConnectionProperty,
 };
 
 pub(crate) struct PrimaryConnection {
-    get: MethodCall<(), StringRef, ()>,
-    subscription: Subscription<StringRef>,
+    inner: InfalliblePropertyGetAndSubscribe<PrimaryConnectionProperty>,
 }
 
 pub(crate) enum PrimaryConnectionEvent {
@@ -18,12 +17,12 @@ pub(crate) enum PrimaryConnectionEvent {
     Disconnected,
 }
 
-impl From<StringRef> for PrimaryConnectionEvent {
-    fn from(path: StringRef) -> Self {
+impl From<&str> for PrimaryConnectionEvent {
+    fn from(path: &str) -> Self {
         if path == "/" {
             Self::Disconnected
         } else {
-            Self::Connected(path)
+            Self::Connected(StringRef::new(path))
         }
     }
 }
@@ -31,70 +30,19 @@ impl From<StringRef> for PrimaryConnectionEvent {
 impl PrimaryConnection {
     pub(crate) const fn new() -> Self {
         Self {
-            get: GET.with_data(()),
-            subscription: SUBSCRIPTION,
+            inner: InfalliblePropertyGetAndSubscribe::new(SystemDBus::queue()),
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.get.send((), SystemDBus::queue());
-        self.subscription.start(
-            "org.freedesktop.NetworkManager",
-            "/org/freedesktop/NetworkManager",
-            SystemDBus::queue(),
-        );
+    pub(crate) fn start(&mut self) {
+        self.inner.get_and_subscribe(PrimaryConnectionProperty);
     }
 
-    pub(crate) fn on_message(
+    pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
     ) -> Option<PrimaryConnectionEvent> {
-        None.or_else(|| self.get.try_recv(message).ok().flatten())
-            .or_else(|| self.subscription.process(message))
-            .map(PrimaryConnectionEvent::from)
+        let path = self.inner.handle_reply_or_signal(message)?;
+        Some(PrimaryConnectionEvent::from(path))
     }
 }
-
-const GET: IncompleteMethodCall<(), StringRef, ()> = MethodCall::new(&|_input, _data| {
-    GetProperty::build(
-        "org.freedesktop.NetworkManager",
-        "/org/freedesktop/NetworkManager",
-        "org.freedesktop.NetworkManager",
-        "PrimaryConnection",
-    )
-})
-.try_process(&|mut body, _data| {
-    let path = body.try_next()?.context("empty Body")?;
-    value_is!(path, IncomingValue::Variant(path));
-    let path = path.materialize()?;
-    value_is!(path, IncomingValue::ObjectPath(path));
-    Ok(StringRef::new(path))
-});
-
-const SUBSCRIPTION: Subscription<StringRef> =
-    Subscription::new(&|mut body, path, _subscribed_to| {
-        path_is!(path, "/org/freedesktop/NetworkManager");
-
-        let interface = body.try_next()?.context("empty Body")?;
-        value_is!(interface, IncomingValue::String(interface));
-        interface_is!(interface, "org.freedesktop.NetworkManager");
-
-        let items = body.try_next()?.context("no items in Body")?;
-        value_is!(items, IncomingValue::Array(items));
-        let mut iter = items.items_iter();
-
-        while let Some(item) = iter.try_next()? {
-            value_is!(item, IncomingValue::DictEntry(dict_entry));
-            let (key, value) = dict_entry.key_value()?;
-            value_is!(key, IncomingValue::String(key));
-            value_is!(value, IncomingValue::Variant(value));
-
-            if key == "PrimaryConnection" {
-                let value = value.materialize()?;
-                value_is!(value, IncomingValue::ObjectPath(value));
-                return Ok(StringRef::new(value));
-            }
-        }
-
-        Err(anyhow::anyhow!("unrelated").into())
-    });
