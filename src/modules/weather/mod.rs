@@ -18,8 +18,14 @@ const HOST: &str = "api.open-meteo.com";
 
 pub(crate) enum Weather {
     WaitingForLocation,
-    Ready { lat: f64, lng: f64, https: Https },
-    Dead { latlng: Option<(f64, f64)> },
+    Ready {
+        lat: f64,
+        lng: f64,
+        https: Box<Https>,
+    },
+    Dead {
+        latlng: Option<(f64, f64)>,
+    },
 }
 
 impl Weather {
@@ -31,7 +37,7 @@ impl Weather {
         *self = Self::Ready {
             lat,
             lng,
-            https: Https::new(HttpRequest::get(HOST, path(lat, lng))),
+            https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)))),
         }
     }
 
@@ -101,7 +107,7 @@ impl FallibleModule for Weather {
             *self = Self::Ready {
                 lat,
                 lng,
-                https: Https::new(HttpRequest::get(HOST, path(lat, lng))),
+                https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)))),
             };
         }
 

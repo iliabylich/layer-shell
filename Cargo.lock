@@ -252,6 +252,7 @@ dependencies = [
  "libc",
  "log",
  "mini-sansio-dbus",
+ "mini-sansio-dns",
  "openssl-sys",
  "rustix",
  "string-bath",
@@ -280,6 +281,15 @@ name = "mini-sansio-dbus"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01e94fdfd36fa424d739eca57596371fd5e8688c0f342c0fe1198df9490f7622"
+dependencies = [
+ "rustix",
+]
+
+[[package]]
+name = "mini-sansio-dns"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "304dad48e5f6c6110766a6c3ae7054637bc4a3670d0713d4780b36b42fad6e13"
 dependencies = [
  "rustix",
 ]

@@ -35,7 +35,7 @@ where
         match self.module.as_mut()?.try_satisfy(satisfy, res) {
             Ok(output) => output,
             Err(err) => {
-                log::error!(target: Self::NAME, ".satisfy() returned an errir, stopping. satisfy={satisfy:?}, res={res}, err: {err:?}");
+                log::error!(target: Self::NAME, ".satisfy() returned an error, stopping. satisfy={satisfy:?}, res={res}, err: {err:?}");
                 self.module = None;
                 None
             }
