@@ -8,10 +8,12 @@ use anyhow::Result;
 use dbus::{
     EncodeError, IncomingMessage,
     messages::sni_host::{
-        Event, IconName, IconPixmap, IconPixmapBytes, ItemsPropertiesUpdatedSignal,
-        LayoutUpdatedSignal, Menu, NewIconSignal,
+        Event, EventArgs, IconName, IconPixmap, IconPixmapBytes, ItemsPropertiesUpdatedSignal,
+        ItemsPropertiesUpdatedSubscribe, ItemsPropertiesUpdatedUnsubscribe, LayoutUpdatedSignal,
+        LayoutUpdatedSubscribe, LayoutUpdatedUnsubscribe, Menu, NewIconSignal, NewIconSubscribe,
+        NewIconUnsubscribe,
     },
-    messaging::reply_handler::ReplyHandler,
+    messaging::{DBusEncode, reply_handler::ReplyHandler},
 };
 
 mod state;
@@ -75,11 +77,9 @@ impl App {
     }
 
     pub(crate) fn init(&mut self) -> Result<()> {
-        NewIconSignal::subscribe(
-            &mut [0; 1_024],
-            SessionDBus::queue(),
-            self.service.name_str(),
-        )?;
+        let mut bytes = [0; 1_024];
+        let buf = NewIconSubscribe::encode(self.service.name_str(), &mut bytes)?;
+        SessionDBus::queue().push_raw(buf);
 
         self.menu_prop
             .get_and_subscribe(Menu::new(self.service.name()));
@@ -92,36 +92,38 @@ impl App {
     }
 
     pub(crate) fn reset(&mut self) -> Result<()> {
-        let mut buf = [0; 1_024];
+        let mut bytes = [0; 1_024];
 
-        NewIconSignal::unsubscribe(&mut buf, SessionDBus::queue(), self.service.name_str())?;
+        let buf = NewIconUnsubscribe::encode(self.service.name_str(), &mut bytes)?;
+        SessionDBus::queue().push_raw(buf);
 
         self.menu_prop.unsubscribe();
         self.icon_name_prop.unsubscribe();
         self.icon_pixmap_prop.unsubscribe();
 
-        LayoutUpdatedSignal::unsubscribe(
-            &mut buf,
-            SessionDBus::queue(),
-            self.service.name_str(),
-            self.menu.as_str(),
+        let buf = LayoutUpdatedUnsubscribe::encode(
+            (self.service.name_str(), self.menu.as_str()),
+            &mut bytes,
         )?;
-        ItemsPropertiesUpdatedSignal::unsubscribe(
-            &mut buf,
-            SessionDBus::queue(),
-            self.service.name_str(),
-            self.menu.as_str(),
+        SessionDBus::queue().push_raw(buf);
+
+        let buf = ItemsPropertiesUpdatedUnsubscribe::encode(
+            (self.service.name_str(), self.menu.as_str()),
+            &mut bytes,
         )?;
+        SessionDBus::queue().push_raw(buf);
+
         Ok(())
     }
 
     fn schedule_get_layout(&mut self) -> Result<()> {
-        self.get_layout = Some(GetLayout::send(
-            &mut [0; 1_024],
-            SessionDBus::queue(),
-            self.service.name(),
-            self.menu.as_str(),
-        )?);
+        let mut buf = [0; 1_024];
+        let buf = GetLayout::encode((self.service.name_str(), self.menu.as_str()), &mut buf)?;
+
+        let message = GetLayout::new(self.service.name());
+        let serial = SessionDBus::queue().push_raw(buf);
+
+        self.get_layout = Some(ReplyHandler::new(serial, message));
         Ok(())
     }
 
@@ -131,20 +133,15 @@ impl App {
         }
 
         self.menu = StringRef::new(menu);
-        let mut buf = [0; 1_024];
+        let mut bytes = [0; 1_024];
         self.schedule_get_layout()?;
-        LayoutUpdatedSignal::subscribe(
-            &mut buf,
-            SessionDBus::queue(),
-            self.service.name_str(),
-            menu,
-        )?;
-        ItemsPropertiesUpdatedSignal::subscribe(
-            &mut buf,
-            SessionDBus::queue(),
-            self.service.name_str(),
-            menu,
-        )?;
+
+        let buf = LayoutUpdatedSubscribe::encode((self.service.name_str(), menu), &mut bytes)?;
+        SessionDBus::queue().push_raw(buf);
+
+        let buf =
+            ItemsPropertiesUpdatedSubscribe::encode((self.service.name_str(), menu), &mut bytes)?;
+        SessionDBus::queue().push_raw(buf);
         Ok(())
     }
 
@@ -208,15 +205,15 @@ impl App {
     pub(crate) fn trigger(&self, id: i32) -> Result<(), EncodeError> {
         let timestamp =
             u32::try_from(chrono::Utc::now().timestamp()).map_err(|_| EncodeError::ValueTooLong)?;
-
-        Event::send(
-            &mut [0; 1_024],
-            SessionDBus::queue(),
+        let args = EventArgs {
             id,
             timestamp,
-            self.service.name_str(),
-            self.menu.as_str(),
-        )?;
+            destination: self.service.name_str(),
+            path: self.menu.as_str(),
+        };
+        let mut buf = [0; 1_024];
+        let buf = Event::encode(args, &mut buf)?;
+        SessionDBus::queue().push_raw(buf);
 
         Ok(())
     }

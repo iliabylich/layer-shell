@@ -64,7 +64,7 @@ impl Configure {
     fn send(path: &str) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let encoded = RefreshRateMs::encode_set_property(&mut buf, path, 1_000)?;
-        SystemDBus::queue().push_raw_buf(encoded);
+        SystemDBus::queue().push_raw(encoded);
         Ok(())
     }
 }

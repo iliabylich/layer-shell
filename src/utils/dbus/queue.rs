@@ -10,7 +10,7 @@ pub(crate) struct DBusQueue {
 }
 
 impl OutgoingQueue for DBusQueue {
-    fn push_raw_buf(&mut self, message: &[u8]) -> u32 {
+    fn push_raw(&mut self, message: &[u8]) -> u32 {
         let serial = self.next_serial();
         let mut message = message.to_vec();
         if let Err(err) = DBusSerial::write_to_message(&mut message, serial) {
@@ -44,18 +44,13 @@ impl DBusQueue {
     }
 
     pub(crate) fn push_hello(&mut self) -> Result<(), EncodeError> {
-        self.push_and_discard_reply::<Hello>(())?;
+        let mut buf = [0; 1_024];
+        let buf = Hello::encode((), &mut buf)?;
+        self.push_raw(buf);
         Ok(())
     }
 
-    pub(crate) fn push_raw_buf(&mut self, buf: &[u8]) -> u32 {
-        OutgoingQueue::push_raw_buf(self, buf)
-    }
-
-    pub(crate) fn push_and_discard_reply<M>(&mut self, args: M::Args<'_>) -> Result<(), EncodeError>
-    where
-        M: DBusEncode,
-    {
-        OutgoingQueue::push_and_discard_reply::<1_024, M>(self, args)
+    pub(crate) fn push_raw(&mut self, buf: &[u8]) -> u32 {
+        OutgoingQueue::push_raw(self, buf)
     }
 }

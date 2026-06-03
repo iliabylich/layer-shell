@@ -6,7 +6,11 @@ use crate::{
 };
 use anyhow::Result;
 use app::App;
-use dbus::{IncomingMessage, messages::org_freedesktop_dbus::NameOwnerChangedSignal};
+use dbus::{
+    IncomingMessage,
+    messages::org_freedesktop_dbus::{NameOwnerChangedSignal, NameOwnerChangedSubscribe},
+    messaging::DBusEncode as _,
+};
 pub use icon::{TrayIcon, TrayIconPixmap};
 pub use item::TrayItem;
 use service::Service;
@@ -34,7 +38,10 @@ impl Tray {
 
     pub(crate) fn init() -> Result<()> {
         StatusNotifierWatcher::request_ksni_name()?;
-        NameOwnerChangedSignal::subscribe(&mut [0; 1_024], SessionDBus::queue())?;
+
+        let mut buf = [0; 1_024];
+        let buf = NameOwnerChangedSubscribe::encode((), &mut buf)?;
+        SessionDBus::queue().push_raw(buf);
         Ok(())
     }
 

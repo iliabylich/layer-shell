@@ -42,7 +42,7 @@ fn reply(destination: &str, reply_serial: u32) -> Result<()> {
     let mut buf = [0; 2_048];
     let encoded =
         IntrospectResponse::encode(&mut buf, reply_serial, destination, INTROSPECTION_XML)?;
-    SessionDBus::queue().push_raw_buf(encoded);
+    SessionDBus::queue().push_raw(encoded);
     Ok(())
 }
 

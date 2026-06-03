@@ -15,7 +15,7 @@ impl Control {
     pub(crate) fn init() -> Result<()> {
         let mut buf = [0; 1_024];
         let buf = RequestNameLayerShellControl::encode((), &mut buf)?;
-        SessionDBus::queue().push_raw_buf(buf);
+        SessionDBus::queue().push_raw(buf);
         Ok(())
     }
 

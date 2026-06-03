@@ -39,7 +39,8 @@ impl SystemDBus {
             .unwrap_or_else(|| String::from("/var/run/dbus/system_bus_socket"));
 
         Self {
-            conn: DBusConnection::new_system(&address).unwrap_or_else(|_| DBusConnection::dummy()),
+            conn: DBusConnection::new_with_address(&address)
+                .unwrap_or_else(|_| DBusConnection::dummy()),
             fd: None,
             sock_addr: None,
         }

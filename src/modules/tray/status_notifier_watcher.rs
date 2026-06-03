@@ -26,19 +26,23 @@ pub(crate) struct StatusNotifierWatcher;
 
 impl StatusNotifierWatcher {
     pub(crate) fn request_ksni_name() -> Result<(), DBusError> {
-        SessionDBus::queue().push_and_discard_reply::<RequestNameOrgKdeStatusNotifierWatcher>(())?;
+        let mut buf = [0; 1_024];
+        let buf = RequestNameOrgKdeStatusNotifierWatcher::encode((), &mut buf)?;
+        SessionDBus::queue().push_raw(buf);
         Ok(())
     }
 
     fn reply_ok(serial: u32, destination: &str) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let buf = EmptyMethodReturn::encode(&mut buf, destination, serial)?;
-        SessionDBus::queue().push_raw_buf(buf);
+        SessionDBus::queue().push_raw(buf);
         Ok(())
     }
 
     pub(crate) fn handle_incoming_request(message: IncomingMessage<'_>) -> Result<Option<Service>> {
-        if StatusNotifierWatcherIntrospection::new().handle(SessionDBus::queue(), message)? {
+        let mut buf = [0; 1_024];
+        if let Some(reply) = StatusNotifierWatcherIntrospection::new().handle(&mut buf, message)? {
+            SessionDBus::queue().push_raw(reply);
             Ok(None)
         } else if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {

@@ -1,14 +1,15 @@
 use crate::utils::dbus::queue::DBusQueue;
 use dbus::{
     DBusError, IncomingMessage,
-    messaging::property::{Property, PropertyGetAndSubscribe},
+    messaging::{property::Property, reply_handler::ReplyHandler},
 };
 
 pub(crate) struct InfalliblePropertyGetAndSubscribe<T>
 where
     T: Property,
 {
-    inner: Option<PropertyGetAndSubscribe<T>>,
+    property: Option<T>,
+    reply_handler: Option<ReplyHandler<T>>,
     q: &'static mut DBusQueue,
 }
 
@@ -17,24 +18,37 @@ where
     T: Property,
 {
     pub(crate) const fn new(q: &'static mut DBusQueue) -> Self {
-        Self { inner: None, q }
+        Self {
+            property: None,
+            reply_handler: None,
+            q,
+        }
     }
 
     fn try_get_and_subscribe(&mut self, property: T) -> Result<(), DBusError> {
-        self.inner = Some(PropertyGetAndSubscribe::get_and_subscribe(
-            property,
-            &mut [0; 1_024],
-            self.q,
-        )?);
+        let mut bytes = [0; 1_024];
+
+        let buf = property.encode_get(&mut bytes)?;
+        let serial = self.q.push_raw(buf);
+        let reply_handler = ReplyHandler::new(serial, property.clone());
+
+        let buf = property.encode_subscribe(&mut bytes)?;
+        self.q.push_raw(buf);
+
+        self.property = Some(property);
+        self.reply_handler = Some(reply_handler);
         Ok(())
     }
 
     fn try_get(&mut self, property: T) -> Result<(), DBusError> {
-        self.inner = Some(PropertyGetAndSubscribe::get(
-            property,
-            &mut [0; 1_024],
-            self.q,
-        )?);
+        let mut bytes = [0; 1_024];
+
+        let buf = property.encode_get(&mut bytes)?;
+        let serial = self.q.push_raw(buf);
+        let reply_handler = ReplyHandler::new(serial, property.clone());
+
+        self.property = Some(property);
+        self.reply_handler = Some(reply_handler);
         Ok(())
     }
 
@@ -53,20 +67,52 @@ where
     }
 
     pub(crate) fn subscribe(&mut self) {
-        let Some(inner) = self.inner.as_ref() else {
+        let Some(property) = self.property.as_ref() else {
             return;
         };
-        if let Err(err) = inner.subscribe(&mut [0; 1_024], self.q) {
-            log::error!("{err:?}");
+        let mut buf = [0; 1_024];
+        match property.encode_subscribe(&mut buf) {
+            Ok(buf) => {
+                self.q.push_raw(buf);
+            }
+            Err(err) => {
+                log::error!("{err:?}");
+            }
         }
     }
 
     pub(crate) fn unsubscribe(&mut self) {
-        let Some(inner) = self.inner.take() else {
+        let Some(property) = self.property.take() else {
             return;
         };
-        if let Err(err) = inner.unsubscribe(&mut [0; 1_024], self.q) {
-            log::error!("{err:?}");
+        let mut buf = [0; 1_024];
+        match property.encode_unsubscribe(&mut buf) {
+            Ok(buf) => {
+                self.q.push_raw(buf);
+            }
+            Err(err) => {
+                log::error!("{err:?}");
+            }
+        }
+    }
+
+    fn try_handle_reply_or_signal<'a>(
+        &self,
+        message: IncomingMessage<'a>,
+    ) -> Result<Option<T::Output<'a>>, DBusError> {
+        let Some(reply_handler) = self.reply_handler.as_ref() else {
+            return Ok(None);
+        };
+        let Some(property) = self.property.as_ref() else {
+            return Ok(None);
+        };
+
+        if let Some(out) = reply_handler.handle(message)? {
+            Ok(Some(out))
+        } else if let Some(out) = property.handle_signal(message)? {
+            Ok(Some(out))
+        } else {
+            Ok(None)
         }
     }
 
@@ -74,7 +120,7 @@ where
         &mut self,
         message: IncomingMessage<'a>,
     ) -> Option<T::Output<'a>> {
-        match self.inner.as_ref()?.handle_reply_or_signal(message) {
+        match self.try_handle_reply_or_signal(message) {
             Ok(Some(out)) => Some(out),
             Ok(None) => None,
             Err(err) => {

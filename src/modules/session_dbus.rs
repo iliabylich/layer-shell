@@ -40,7 +40,7 @@ impl SessionDBus {
 
         Ok(Self {
             fd: None,
-            conn: DBusConnection::new_session(address)?,
+            conn: DBusConnection::new_with_address(address)?,
             sock_addr: None,
         })
     }

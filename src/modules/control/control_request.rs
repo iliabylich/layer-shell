@@ -38,14 +38,14 @@ impl ControlRequest {
 fn reply_ok(destination: &str, reply_serial: u32) -> Result<()> {
     let mut buf = [0; 200];
     let encoded = EmptyMethodReturn::encode(&mut buf, destination, reply_serial)?;
-    SessionDBus::queue().push_raw_buf(encoded);
+    SessionDBus::queue().push_raw(encoded);
     Ok(())
 }
 
 fn reply_err(destination: &str, reply_serial: u32) -> Result<()> {
     let mut buf = [0; 200];
     let encoded = ErrorNoMethod::encode(&mut buf, destination, reply_serial)?;
-    SessionDBus::queue().push_raw_buf(encoded);
+    SessionDBus::queue().push_raw(encoded);
     Ok(())
 }
 
