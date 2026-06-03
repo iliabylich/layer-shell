@@ -287,12 +287,9 @@ dependencies = [
 
 [[package]]
 name = "mini-sansio-dns"
-version = "0.2.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "304dad48e5f6c6110766a6c3ae7054637bc4a3670d0713d4780b36b42fad6e13"
-dependencies = [
- "rustix",
-]
+checksum = "b2fae0cae65661e41b3447a5f7612e63cf20f9a4527f4384762cee7d8c4923c7"
 
 [[package]]
 name = "num-traits"

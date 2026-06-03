@@ -4,22 +4,21 @@ mod request;
 mod response;
 mod state;
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 
-use dns::{Dns, DnsRecordType, DnsWants};
 pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;
 
 use anyhow::{Context as _, Result, bail, ensure};
 use handshake::OpenSslHandshake;
-use libc::{sockaddr, sockaddr_in};
+use libc::sockaddr_in;
 use read_write::OpenSslReadWrite;
 use state::OpenSslState;
 
-use crate::sansio::{Satisfy, Wants};
+use crate::sansio::{DNS, Satisfy, Wants};
 
 enum State {
-    Dns(Box<Dns<'static>>),
+    Dns(DNS),
 
     ReadyTo(Action),
     WaitingFor(Action),
@@ -58,9 +57,6 @@ pub(crate) struct Https {
     request: Vec<u8>,
     domain: &'static str,
     response: Vec<u8>,
-
-    dns_server_fd: Option<i32>,
-    dns_server_sock_addr: Option<sockaddr_in>,
 }
 
 impl Https {
@@ -72,20 +68,13 @@ impl Https {
         let domain = request.host();
 
         Self {
-            state: State::Dns(Box::new(Dns::new(
-                domain,
-                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53),
-                DnsRecordType::A,
-            ))),
+            state: State::Dns(DNS::new(domain)),
             seq: 0,
             addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
             fd: -1,
             request: request.into_bytes(),
             domain,
             response: vec![],
-
-            dns_server_fd: None,
-            dns_server_sock_addr: None,
         }
     }
 
@@ -100,65 +89,7 @@ impl Https {
 
     pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Dns(dns) => match dns.wants() {
-                DnsWants::Socket {
-                    domain,
-                    r#type,
-                    seq,
-                } => Ok(Some(Wants::Socket {
-                    domain: domain.as_raw().into(),
-                    r#type: i32::try_from(r#type.as_raw()).context("malformed socket type")?,
-                    seq,
-                })),
-                DnsWants::Connect { addr, seq } => {
-                    self.dns_server_sock_addr = Some(
-                        socketaddr_to_sockaddr_in4(addr).context("received non ipv6 IP address")?,
-                    );
-                    let addr = self
-                        .dns_server_sock_addr
-                        .as_ref()
-                        .map(|addr| (&raw const *addr).cast::<sockaddr>())
-                        .unwrap_or_else(|| unreachable!("it is set 1 line above"));
-                    let fd = self
-                        .dns_server_fd
-                        .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-
-                    Ok(Some(Wants::Connect {
-                        fd,
-                        addr,
-                        addrlen: size_of::<sockaddr_in>() as u32,
-                        seq,
-                    }))
-                }
-                DnsWants::Read { buf, seq } => {
-                    let fd = self
-                        .dns_server_fd
-                        .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-                    Ok(Some(Wants::Read {
-                        fd,
-                        buf: buf.as_mut_ptr(),
-                        len: buf.len(),
-                        seq,
-                    }))
-                }
-                DnsWants::Write { buf, seq } => {
-                    let fd = self
-                        .dns_server_fd
-                        .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-                    Ok(Some(Wants::Write {
-                        fd,
-                        buf: buf.as_ptr(),
-                        len: buf.len(),
-                        seq,
-                    }))
-                }
-                DnsWants::Close { seq } => {
-                    let fd = self
-                        .dns_server_fd
-                        .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-                    Ok(Some(Wants::Close { fd, seq }))
-                }
-            },
+            State::Dns(dns) => dns.wants(),
 
             State::ReadyTo(Action::Socket) => {
                 self.state = State::WaitingFor(Action::Socket);
@@ -201,35 +132,15 @@ impl Https {
         res: i32,
     ) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
-            (State::Dns(dns), _) => match satisfy {
-                Satisfy::Socket => {
-                    ensure!(res >= 0, "DNS socket failed");
-                    self.dns_server_fd = Some(res);
-                    dns.satisfy_socket()?;
-                }
-                Satisfy::Connect => {
-                    ensure!(res >= 0, "DNS connect failed");
-                    dns.satisfy_connect()?;
-                }
-                Satisfy::Write => {
-                    let len = usize::try_from(res).context("DNS write failed")?;
-                    dns.satisfy_write(len)?;
-                }
-                Satisfy::Read => {
-                    let len = usize::try_from(res).context("DNS read failed")?;
-                    dns.satisfy_read(len)?;
-                }
-                Satisfy::Close => {
-                    ensure!(res >= 0);
-                    let (addr, seq) = dns.satisfy_close()?;
+            (State::Dns(dns), _) => {
+                if let Some((seq, addr)) = dns.try_satisfy(satisfy, res)? {
+                    self.state = State::ReadyTo(Action::Socket);
+                    self.seq = seq;
                     self.addr = socketaddr_to_sockaddr_in4(addr)
                         .context("DNS name wasn't resolved to IPv4")?;
                     self.addr.sin_port = 443_u16.to_be();
-                    self.seq = seq;
-                    self.state = State::ReadyTo(Action::Socket);
                 }
-                Satisfy::OpenAt => bail!("DNS module doesn't support Satisfy::{satisfy:?}"),
-            },
+            }
 
             (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
                 ensure!(res >= 0, "OpenSsl::Socket failed: {res}");

@@ -1,3 +1,4 @@
+mod dns;
 mod file_reader;
 mod https;
 mod satisfy;
@@ -5,6 +6,7 @@ mod timerfd;
 mod unix_sockets;
 mod wants;
 
+pub(crate) use dns::DNS;
 pub(crate) use file_reader::FileReader;
 pub(crate) use https::{HttpRequest, HttpResponse, Https};
 pub(crate) use satisfy::Satisfy;
