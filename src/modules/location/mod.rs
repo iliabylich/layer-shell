@@ -30,8 +30,8 @@ impl FallibleModule for Location {
         self.https.wants()
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        let Some(response) = self.https.try_satisfy(satisfy, res)? else {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
+        let Some(response) = self.https.try_satisfy(satisfy)? else {
             return Ok(None);
         };
         let location = LocationResponse::parse(&response)?;

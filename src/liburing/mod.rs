@@ -1,6 +1,6 @@
 pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use crate::{
-    sansio::{Satisfy, Wants},
+    sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
 use generated::{
@@ -124,24 +124,24 @@ impl IoUring {
             Wants::Socket { domain, r#type, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_socket(domain, r#type, 0, 0);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::Socket));
+                sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
             Wants::Connect {
                 fd, addr, addrlen, ..
             } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_connect(fd, addr, addrlen);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::Connect));
+                sqe.set_user_data(UserData::new(module_id, Op::Connect));
             }
             Wants::Read { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_read(fd, buf, len);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
+                sqe.set_user_data(UserData::new(module_id, Op::Read));
             }
             Wants::Write { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_write(fd, buf, len);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
+                sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::ReadWrite {
                 fd,
@@ -153,11 +153,11 @@ impl IoUring {
             } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_read(fd, readbuf, readlen);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::Read));
+                sqe.set_user_data(UserData::new(module_id, Op::Read));
 
                 let mut sqe = self.get_sqe();
                 sqe.prep_write(fd, writebuf, writelen);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::Write));
+                sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::OpenAt {
                 dfd,
@@ -168,12 +168,12 @@ impl IoUring {
             } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_openat(dfd, path, flags, mode);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::OpenAt));
+                sqe.set_user_data(UserData::new(module_id, Op::OpenAt));
             }
             Wants::Close { fd, .. } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_close(fd);
-                sqe.set_user_data(UserData::new(module_id, Satisfy::Close));
+                sqe.set_user_data(UserData::new(module_id, Op::Close));
             }
         }
     }

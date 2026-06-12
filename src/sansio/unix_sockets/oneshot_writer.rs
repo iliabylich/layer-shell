@@ -2,6 +2,7 @@ use crate::{sansio::Wants, utils::ArrayWriter};
 use anyhow::{Context, Result, ensure};
 use core::fmt::Write;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
+use std::os::fd::{AsRawFd, BorrowedFd};
 
 pub(crate) struct UnixSocketOneshotWriter {
     addr: sockaddr_un,
@@ -82,69 +83,65 @@ impl UnixSocketOneshotWriter {
         }
     }
 
-    pub(crate) fn satisfy_socket(&mut self, res: i32) -> Result<()> {
+    pub(crate) fn satisfy_socket(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
         ensure!(
             self.state == State::Socket,
             "malformed state: expected Socket, got {:?}",
             self.state
         );
 
-        ensure!(res >= 0, "socket failed: {res}");
-        self.fd = res;
+        self.fd = fd.as_raw_fd();
         self.state = State::Connect;
         self.seq += 1;
         Ok(())
     }
 
-    pub(crate) fn satisfy_connect(&mut self, res: i32) -> Result<()> {
+    pub(crate) fn satisfy_connect(&mut self) -> Result<()> {
         ensure!(
             self.state == State::Connect,
             "malformed state: expected Connect, got {:?}",
             self.state
         );
 
-        ensure!(res >= 0, "connect failed: {res}");
         self.state = State::Write;
         self.seq += 1;
         Ok(())
     }
 
-    pub(crate) fn satisfy_write(&mut self, res: i32) -> Result<()> {
+    pub(crate) fn satisfy_write(&mut self) -> Result<()> {
         ensure!(
             self.state == State::Write,
             "malformed state: expected Write, got {:?}",
             self.state
         );
 
-        ensure!(res > 0, "write failed: {res}");
         self.state = State::Read;
         self.seq += 1;
         Ok(())
     }
 
     #[expect(dead_code)]
-    pub(crate) fn satisfy_read(&mut self, res: i32) -> Result<()> {
+    pub(crate) fn satisfy_read(&mut self, bytes_read: usize) -> Result<()> {
         ensure!(
             self.state == State::Write,
             "malformed state: expected Write, got {:?}",
             self.state
         );
 
-        self.bytes_read = usize::try_from(res).context("read failed")?;
+        self.bytes_read = bytes_read;
         self.state = State::Close;
         self.seq += 1;
         Ok(())
     }
 
     #[expect(dead_code)]
-    pub(crate) fn satisfy_close(&mut self, res: i32) -> Result<&[u8]> {
+    pub(crate) fn satisfy_close(&mut self) -> Result<&[u8]> {
         ensure!(
             self.state == State::Close,
             "malformed state: expected Close, got {:?}",
             self.state
         );
 
-        ensure!(res >= 0, "close failed: {res}");
         self.seq += 1;
         self.buf.get(..self.bytes_read).context("buf is too short")
     }

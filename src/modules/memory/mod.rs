@@ -30,15 +30,17 @@ impl FallibleModule for Memory {
         Ok(self.reader.wants())
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
         match satisfy {
-            Satisfy::OpenAt => {
-                self.reader.satisfy_open(res)?;
+            Satisfy::OpenAt(res) => {
+                let fd = res?;
+                self.reader.satisfy_open(fd)?;
                 Ok(None)
             }
 
-            Satisfy::Read => {
-                let buf = self.reader.satisfy_read(res)?;
+            Satisfy::Read(res) => {
+                let bytes_read = res?;
+                let buf = self.reader.satisfy_read(bytes_read)?;
                 let (used, total) = Parser::parse(buf).context("parse error")?;
                 EventQueue::push_back(Event::Memory { used, total });
                 Ok(None)

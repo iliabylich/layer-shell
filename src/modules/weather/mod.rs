@@ -41,10 +41,10 @@ impl Weather {
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match self {
             Self::Ready { https, .. } => {
-                let Some(response) = https.try_satisfy(satisfy, res)? else {
+                let Some(response) = https.try_satisfy(satisfy)? else {
                     return Ok(());
                 };
                 let response = WeatherResponse::parse(&response)?;
@@ -77,13 +77,13 @@ impl FallibleModule for Weather {
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
         if matches!(self, Self::Dead { .. }) {
             return Ok(None);
         }
 
-        if let Err(err) = self.try_satisfy(satisfy, res) {
-            log::error!("Weather module crashed: {satisfy:?} {res} {err:?}");
+        if let Err(err) = self.try_satisfy(satisfy) {
+            log::error!("Weather module crashed: {err:?}");
             *self = Self::Dead {
                 latlng: self.latlng(),
             };

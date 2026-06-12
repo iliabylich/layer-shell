@@ -25,7 +25,7 @@ impl FallibleModule for Timer {
         Ok(Some(self.timerfd.wants()))
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        self.timerfd.satisfy(satisfy, res).map(Some)
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
+        self.timerfd.satisfy(satisfy).map(Some)
     }
 }

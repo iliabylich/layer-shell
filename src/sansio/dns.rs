@@ -1,11 +1,12 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-
-use anyhow::{Context as _, Result, bail, ensure};
+use crate::sansio::{Satisfy, Wants};
+use anyhow::{Context as _, Result, bail};
 use dns::{Dns, DnsRecordType, DnsWants};
 use libc::{sockaddr, sockaddr_in};
 use rustix::net::{AddressFamily, SocketType};
-
-use crate::sansio::{Satisfy, Wants};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    os::fd::AsRawFd,
+};
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct DNS {
@@ -109,50 +110,46 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<(u64, SocketAddr)>> {
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<(u64, SocketAddr)>> {
         self.seq += 1;
 
         match (&mut self.state, satisfy) {
-            (State::Socket, Satisfy::Socket) => {
-                ensure!(res >= 0, "DNS socket failed");
-                self.dns_server_fd = Some(res);
+            (State::Socket, Satisfy::Socket(res)) => {
+                let fd = res?;
+                self.dns_server_fd = Some(fd.as_raw_fd());
                 self.state = State::Connect;
                 Ok(None)
             }
 
-            (State::Connect, Satisfy::Connect) => {
-                ensure!(res >= 0, "DNS connect failed");
+            (State::Connect, Satisfy::Connect(res)) => {
+                res?;
                 self.state = State::ReadWrite(Box::new(Dns::new(self.domain, DnsRecordType::A)?));
                 Ok(None)
             }
 
-            (State::ReadWrite(inner), Satisfy::Write) => {
-                let len = usize::try_from(res).context("DNS write failed")?;
+            (State::ReadWrite(inner), Satisfy::Write(res)) => {
+                let len = res?;
                 inner.satisfy_write(len)?;
                 Ok(None)
             }
 
-            (State::ReadWrite(inner), Satisfy::Read) => {
-                let len = usize::try_from(res).context("DNS read failed")?;
+            (State::ReadWrite(inner), Satisfy::Read(res)) => {
+                let len = res?;
                 let (addr, _seq) = inner.satisfy_read(len)?;
                 self.state = State::Close;
                 self.output = Some(addr);
                 Ok(None)
             }
 
-            (State::Close, Satisfy::Close) => {
-                ensure!(res >= 0);
+            (State::Close, Satisfy::Close(res)) => {
+                res?;
                 let Some(output) = self.output.take() else {
                     return Ok(None);
                 };
                 Ok(Some((self.seq, output)))
             }
 
-            _ => bail!("malformed state: {:?} vs {satisfy:?}", self.state),
+            (_, satisfy) => bail!("malformed state: {:?} vs {satisfy:?}", self.state),
         }
     }
 }

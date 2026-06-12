@@ -134,12 +134,11 @@ impl OpenSslReadWrite {
         matches!(self.state, State::WaitingForRead | State::WaitingForWrite)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Vec<u8>>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Vec<u8>>> {
         self.seq += 1;
         match (self.state, satisfy) {
-            (State::WaitingForWrite, Satisfy::Write) => {
-                let bytes_written =
-                    usize::try_from(res).context("OpenSslReadWrite: write failed")?;
+            (State::WaitingForWrite, Satisfy::Write(res)) => {
+                let bytes_written = res?;
                 ensure!(
                     bytes_written == self.writebuf.len(),
                     "OpenSslReadWrite: write failed {bytes_written} != {}",
@@ -150,14 +149,16 @@ impl OpenSslReadWrite {
                 Ok(None)
             }
 
-            (State::WaitingForRead, Satisfy::Read) => {
-                let bytes_read = usize::try_from(res).context("OpenSslReadWrite: read failed")?;
+            (State::WaitingForRead, Satisfy::Read(res)) => {
+                let bytes_read = res?;
                 ensure!(bytes_read > 0, "OpenSslReadWrite: EOF");
                 let encrypted = self.readbuf.get(..bytes_read).context("buf is too short")?;
-                let written = unsafe { BIO_write(self.tls.rbio, encrypted.as_ptr().cast(), res) };
+                let bytes_read = i32::try_from(bytes_read).unwrap_or_else(|_| unreachable!());
+                let written =
+                    unsafe { BIO_write(self.tls.rbio, encrypted.as_ptr().cast(), bytes_read) };
                 ensure!(
-                    written == res,
-                    "OpenSslReadWrite: BIO_write failed: {written} != {res}"
+                    written == bytes_read,
+                    "OpenSslReadWrite: BIO_write failed: {written} != {bytes_read}"
                 );
 
                 let mut plaintext = [0_u8; 1_024];
@@ -203,7 +204,7 @@ impl OpenSslReadWrite {
                 }
             }
 
-            _ => bail!(
+            (_, satisfy) => bail!(
                 "OpenSslReadWrite: wrong Satisfy {satisfy:?} for state {:?}",
                 self.state
             ),

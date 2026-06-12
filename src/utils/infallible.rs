@@ -31,11 +31,11 @@ where
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Option<M::Output> {
-        match self.module.as_mut()?.try_satisfy(satisfy, res) {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<M::Output> {
+        match self.module.as_mut()?.try_satisfy(satisfy) {
             Ok(output) => output,
             Err(err) => {
-                log::error!(target: Self::NAME, ".satisfy() returned an error, stopping. satisfy={satisfy:?}, res={res}, err: {err:?}");
+                log::error!(target: Self::NAME, ".satisfy() returned an error, stopping. err: {err:?}");
                 self.module = None;
                 None
             }

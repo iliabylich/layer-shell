@@ -56,24 +56,27 @@ impl FallibleModule for KbMod {
         Ok(Some(self.reader.wants()))
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
         if self.state == State::Dummy {
             return Ok(None);
         }
 
         match satisfy {
-            Satisfy::Socket => {
-                self.reader.satisfy_socket(res)?;
+            Satisfy::Socket(res) => {
+                let fd = res?;
+                self.reader.satisfy_socket(fd)?;
                 Ok(None)
             }
 
-            Satisfy::Connect => {
-                self.reader.satisfy_connect(res)?;
+            Satisfy::Connect(res) => {
+                res?;
+                self.reader.satisfy_connect()?;
                 Ok(None)
             }
 
-            Satisfy::Read => {
-                let (buf, len) = self.reader.satisfy_read(res)?;
+            Satisfy::Read(res) => {
+                let bytes_read = res?;
+                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
                 let mut bytes = buf.get(..len).context("buf is too short")?;
 
                 if let State::WaitingForInitialBytes(pending) = self.state {

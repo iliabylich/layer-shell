@@ -119,31 +119,28 @@ impl OpenSslHandshake {
         matches!(self.state, State::WaitingForRead | State::WaitingForWrite)
     }
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<(Rc<OpenSslState>, u64)>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<(Rc<OpenSslState>, u64)>> {
         self.seq += 1;
 
         match (self.state, satisfy) {
-            (State::WaitingForRead, Satisfy::Read) => {
-                let bytes_read = usize::try_from(res).context("read failed")?;
+            (State::WaitingForRead, Satisfy::Read(res)) => {
+                let bytes_read = res?;
                 ensure!(bytes_read > 0, "OpenSslHandshake: EOF");
                 let received = self
                     .readbuf
                     .get(..bytes_read)
                     .context("readbuf is too short")?;
-                let written = unsafe { BIO_write(self.tls.rbio, received.as_ptr().cast(), res) };
+                let bytes_read = i32::try_from(bytes_read).unwrap_or_else(|_| unreachable!());
+                let written =
+                    unsafe { BIO_write(self.tls.rbio, received.as_ptr().cast(), bytes_read) };
                 ensure!(
-                    written == res,
-                    "OpenSslHandshake: read failed {written} != {res}"
+                    written == bytes_read,
+                    "OpenSslHandshake: read failed {written} != {bytes_read}"
                 );
             }
 
-            (State::WaitingForWrite, Satisfy::Write) => {
-                let bytes_written =
-                    usize::try_from(res).context("OpenSslHandshake: write failed")?;
+            (State::WaitingForWrite, Satisfy::Write(res)) => {
+                let bytes_written = res?;
                 ensure!(
                     bytes_written == self.writebuf.len(),
                     "OpenSslHandshake: write failed {bytes_written} != {}",
@@ -151,7 +148,7 @@ impl OpenSslHandshake {
                 );
             }
 
-            _ => bail!(
+            (_, satisfy) => bail!(
                 "OpenSslHandshake: wrong Satisfy {satisfy:?} for state {:?}",
                 self.state
             ),

@@ -66,10 +66,10 @@ impl FallibleModule for SessionDBus {
         self.state.wants(&self.address, readbuf(), queue())
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
         let mut state = DBusState::Disconnected;
         std::mem::swap(&mut self.state, &mut state);
-        let (state, message) = state.satisfy(satisfy, res, readbuf(), queue())?;
+        let (state, message) = state.satisfy(satisfy, readbuf(), queue())?;
         self.state = state;
         Ok(message)
     }

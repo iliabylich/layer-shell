@@ -143,8 +143,8 @@ where
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
-        self.module.try_satisfy(satisfy, res)
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
+        self.module.try_satisfy(satisfy)
     }
 
     fn try_tick(&mut self, tick: u64) -> Result<()> {

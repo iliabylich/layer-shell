@@ -1,6 +1,7 @@
 use crate::sansio::Wants;
-use anyhow::{Context, Result, ensure};
+use anyhow::{Result, ensure};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr, sockaddr_un};
+use std::os::fd::{AsRawFd, BorrowedFd};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -72,41 +73,38 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn satisfy_socket(&mut self, res: i32) -> Result<()> {
+    pub(crate) fn satisfy_socket(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
         ensure!(
             self.state == State::Socket,
             "malformed state: expected Socket, got {:?}",
             self.state
         );
 
-        ensure!(res >= 0, "Socket failed: {res}");
-        self.fd = res;
+        self.fd = fd.as_raw_fd();
         self.state = State::Connect;
         self.seq += 1;
         Ok(())
     }
 
-    pub(crate) fn satisfy_connect(&mut self, res: i32) -> Result<()> {
+    pub(crate) fn satisfy_connect(&mut self) -> Result<()> {
         ensure!(
             self.state == State::Connect,
             "malformed state: expected Connect, got {:?}",
             self.state
         );
 
-        ensure!(res >= 0, "Connect failed: {res}");
         self.state = State::Read;
         self.seq += 1;
         Ok(())
     }
 
-    pub(crate) fn satisfy_read(&mut self, res: i32) -> Result<([u8; 1_024], usize)> {
+    pub(crate) fn satisfy_read(&mut self, bytes_read: usize) -> Result<([u8; 1_024], usize)> {
         ensure!(
             self.state == State::Read,
             "malformed state: expected Read, got {:?}",
             self.state
         );
 
-        let bytes_read = usize::try_from(res).context("Read failed")?;
         ensure!(bytes_read != 0, "EOF");
         let buf = self.buf;
         self.buf = [0; _];

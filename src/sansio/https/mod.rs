@@ -4,12 +4,12 @@ mod request;
 mod response;
 mod state;
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, os::fd::AsRawFd};
 
 pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;
 
-use anyhow::{Context as _, Result, bail, ensure};
+use anyhow::{Context as _, Result, bail};
 use handshake::OpenSslHandshake;
 use libc::sockaddr_in;
 use read_write::OpenSslReadWrite;
@@ -126,14 +126,10 @@ impl Https {
         }
     }
 
-    pub(crate) fn try_satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        res: i32,
-    ) -> Result<Option<HttpResponse>> {
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
-            (State::Dns(dns), _) => {
-                if let Some((seq, addr)) = dns.try_satisfy(satisfy, res)? {
+            (State::Dns(dns), satisfy) => {
+                if let Some((seq, addr)) = dns.try_satisfy(satisfy)? {
                     self.state = State::ReadyTo(Action::Socket);
                     self.seq = seq;
                     self.addr = socketaddr_to_sockaddr_in4(addr)
@@ -142,23 +138,21 @@ impl Https {
                 }
             }
 
-            (State::WaitingFor(Action::Socket), Satisfy::Socket) => {
-                ensure!(res >= 0, "OpenSsl::Socket failed: {res}");
-                self.fd = res;
+            (State::WaitingFor(Action::Socket), Satisfy::Socket(res)) => {
+                self.fd = res?.as_raw_fd();
                 self.seq += 1;
                 self.state = State::ReadyTo(Action::Connect);
             }
 
-            (State::WaitingFor(Action::Connect), Satisfy::Connect) => {
-                ensure!(res >= 0, "OpenSsl::Connect failed: {res}");
-
+            (State::WaitingFor(Action::Connect), Satisfy::Connect(res)) => {
+                res?;
                 self.seq += 1;
                 self.state =
                     State::Handshaking(OpenSslHandshake::new(self.fd, self.domain, self.seq)?);
             }
 
-            (State::Handshaking(handshake), Satisfy::Read | Satisfy::Write) => {
-                if let Some((state, seq)) = handshake.satisfy(satisfy, res)? {
+            (State::Handshaking(handshake), satisfy) => {
+                if let Some((state, seq)) = handshake.satisfy(satisfy)? {
                     self.state = State::ReadWrite(OpenSslReadWrite::new(
                         self.fd,
                         state,
@@ -168,21 +162,21 @@ impl Https {
                 }
             }
 
-            (State::ReadWrite(ready), Satisfy::Read | Satisfy::Write) => {
-                if let Some(response) = ready.satisfy(satisfy, res)? {
+            (State::ReadWrite(ready), satisfy) => {
+                if let Some(response) = ready.satisfy(satisfy)? {
                     self.response = response;
                     self.state = State::ReadyTo(Action::Close);
                 }
             }
 
-            (State::WaitingFor(Action::Close), Satisfy::Close) => {
-                ensure!(res >= 0, "close failed: {res}");
+            (State::WaitingFor(Action::Close), Satisfy::Close(res)) => {
+                res?;
                 let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
                 self.state = State::Done;
                 return Ok(Some(response));
             }
 
-            _ => bail!("malformed state: {:?} vs {satisfy:?}", self.state),
+            (_, satisfy) => bail!("malformed state: {:?} vs {satisfy:?}", self.state),
         }
 
         Ok(None)

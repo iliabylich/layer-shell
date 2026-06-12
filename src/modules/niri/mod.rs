@@ -100,15 +100,22 @@ impl FallibleModule for Niri {
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<Option<Self::Output>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
         match &mut self.state {
             State::Writer(writer) => match satisfy {
-                Satisfy::Socket => writer.satisfy_socket(res)?,
+                Satisfy::Socket(res) => {
+                    let fd = res?;
+                    writer.satisfy_socket(fd)?;
+                }
 
-                Satisfy::Connect => writer.satisfy_connect(res)?,
+                Satisfy::Connect(res) => {
+                    res?;
+                    writer.satisfy_connect()?;
+                }
 
-                Satisfy::Write => {
-                    writer.satisfy_write(res)?;
+                Satisfy::Write(res) => {
+                    let _ = res?;
+                    writer.satisfy_write()?;
                     self.state = State::Reader(Box::new(UnixSocketReader::new_connected_from_fd(
                         writer.fd(),
                     )));
@@ -118,12 +125,19 @@ impl FallibleModule for Niri {
             },
 
             State::Reader(reader) => match satisfy {
-                Satisfy::Socket => reader.satisfy_socket(res)?,
+                Satisfy::Socket(res) => {
+                    let fd = res?;
+                    reader.satisfy_socket(fd)?;
+                }
 
-                Satisfy::Connect => reader.satisfy_connect(res)?,
+                Satisfy::Connect(res) => {
+                    res?;
+                    reader.satisfy_connect()?;
+                }
 
-                Satisfy::Read => {
-                    let (buf, len) = reader.satisfy_read(res)?;
+                Satisfy::Read(res) => {
+                    let bytes_read = res?;
+                    let (buf, len) = reader.satisfy_read(bytes_read)?;
                     let buf = buf.get(..len).context("buf is too short")?;
                     self.process(buf)?;
                 }

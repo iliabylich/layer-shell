@@ -1,7 +1,10 @@
 use crate::sansio::Wants;
 use anyhow::{Context as _, Result, ensure};
 use libc::{AT_FDCWD, O_RDONLY};
-use std::ffi::CStr;
+use std::{
+    ffi::CStr,
+    os::fd::{AsRawFd, BorrowedFd},
+};
 
 pub(crate) struct FileReader<const N: usize> {
     path: &'static CStr,
@@ -50,28 +53,26 @@ impl<const N: usize> FileReader<N> {
         }
     }
 
-    pub(crate) fn satisfy_open(&mut self, res: i32) -> Result<()> {
+    pub(crate) fn satisfy_open(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
         ensure!(
             self.state == State::Open,
             "malformed state: expected Open, got {:?}",
             self.state
         );
 
-        ensure!(res >= 0);
-        self.fd = res;
+        self.fd = fd.as_raw_fd();
         self.state = State::Read;
         self.seq += 1;
         Ok(())
     }
 
-    pub(crate) fn satisfy_read(&mut self, res: i32) -> Result<&[u8]> {
+    pub(crate) fn satisfy_read(&mut self, bytes_read: usize) -> Result<&[u8]> {
         ensure!(
             self.state == State::Read,
             "malformed state: expected Read, got {:?}",
             self.state
         );
 
-        let bytes_read = usize::try_from(res).context("read failed")?;
         let out = self.buf.get(..bytes_read).context("buffer is too short")?;
         self.state = State::Sleeping;
         self.seq += 1;

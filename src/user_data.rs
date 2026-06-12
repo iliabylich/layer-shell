@@ -1,6 +1,8 @@
 use anyhow::{Result, ensure};
 use core::cell::Cell;
 
+use crate::sansio::Op;
+
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum ModuleId {
@@ -59,7 +61,7 @@ impl TryFrom<u8> for ModuleId {
 #[repr(C, align(8))]
 pub(crate) struct UserData {
     pub(crate) module_id: ModuleId,
-    pub(crate) op: u8,
+    pub(crate) op: Op,
     pub(crate) req: u32,
 }
 const _: [u8; 8] = [0; size_of::<UserData>()];
@@ -74,10 +76,10 @@ fn next_request_id() -> u32 {
 }
 
 impl UserData {
-    pub(crate) fn new(module_id: ModuleId, op: impl Into<u8>) -> Self {
+    pub(crate) fn new(module_id: ModuleId, op: Op) -> Self {
         Self {
             module_id,
-            op: op.into(),
+            op,
             req: next_request_id(),
         }
     }
@@ -87,7 +89,7 @@ impl From<UserData> for u64 {
     fn from(user_data: UserData) -> Self {
         let mut bytes = [0_u8; 8];
         bytes[0] = user_data.module_id.into();
-        bytes[1] = user_data.op;
+        bytes[1] = user_data.op as u8;
         bytes[2..6].copy_from_slice(&user_data.req.to_le_bytes());
         Self::from_le_bytes(bytes)
     }
@@ -99,7 +101,7 @@ impl TryFrom<u64> for UserData {
     fn try_from(value: u64) -> Result<Self> {
         let bytes: [u8; 8] = value.to_le_bytes();
         let module_id = ModuleId::try_from(bytes[0])?;
-        let op = bytes[1];
+        let op = Op::try_from(bytes[1])?;
         let req = {
             let mut req = [0; 4];
             req.copy_from_slice(&bytes[2..6]);

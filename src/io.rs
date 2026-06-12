@@ -148,12 +148,12 @@ impl IO {
             let user_data = cqe.user_data();
 
             let UserData { module_id, op, .. } = UserData::try_from(user_data)?;
-            let satisfy = Satisfy::try_from(op)?;
-            log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?} {res}");
+            let satisfy = Satisfy::new(op, res);
+            log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?}");
 
             macro_rules! satisfy {
                 ($module:expr) => {
-                    $module.satisfy(satisfy, res)
+                    $module.satisfy(satisfy)
                 };
             }
 

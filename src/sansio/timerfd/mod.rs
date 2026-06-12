@@ -28,10 +28,10 @@ impl TimerFd {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, res: i32) -> Result<u64> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<u64> {
         match satisfy {
-            Satisfy::Read => {
-                let bytes_read = usize::try_from(res).context("TimerFd: read failed")?;
+            Satisfy::Read(len) => {
+                let bytes_read = len.context("TimerFd: read failed")?;
                 ensure!(bytes_read == self.buf.len());
                 let expirations = u64::from_ne_bytes(self.buf);
 

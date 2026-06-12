@@ -1,11 +1,11 @@
-use anyhow::{Context, Result, ensure};
+use anyhow::Result;
 use dbus::{
     DBusConnection, DBusConnector, DBusConnectorWants, DBusWantsRead, DBusWantsWrite,
     IncomingMessage,
 };
 use libc::{sockaddr, sockaddr_un};
 use rustix::net::{AddressFamily, SocketType};
-use std::os::fd::{AsRawFd as _, FromRawFd as _, OwnedFd};
+use std::os::fd::{AsRawFd as _, BorrowedFd};
 
 use crate::{
     sansio::{Satisfy, Wants},
@@ -15,14 +15,14 @@ use crate::{
 pub(crate) enum DBusState {
     WantsSocket,
     WantsConnect {
-        fd: OwnedFd,
+        fd: BorrowedFd<'static>,
     },
     Connecting {
-        fd: OwnedFd,
+        fd: BorrowedFd<'static>,
         connector: DBusConnector,
     },
     Ready {
-        fd: OwnedFd,
+        fd: BorrowedFd<'static>,
         connection: DBusConnection,
     },
     Disconnected,
@@ -96,19 +96,17 @@ impl DBusState {
     pub(crate) fn satisfy<'buf>(
         self,
         satisfy: Satisfy,
-        res: i32,
         readbuf: &'buf [u8],
         queue: &mut DBusQueue,
     ) -> Result<(Self, Option<IncomingMessage<'buf>>)> {
         match (self, satisfy) {
-            (Self::WantsSocket, Satisfy::Socket) => {
-                ensure!(res >= 0);
-                let fd = unsafe { OwnedFd::from_raw_fd(res) };
+            (Self::WantsSocket, Satisfy::Socket(res)) => {
+                let fd = res?;
                 Ok((Self::WantsConnect { fd }, None))
             }
 
-            (Self::WantsConnect { fd }, Satisfy::Connect) => {
-                ensure!(res >= 0);
+            (Self::WantsConnect { fd }, Satisfy::Connect(res)) => {
+                res?;
                 Ok((
                     Self::Connecting {
                         fd,
@@ -118,13 +116,13 @@ impl DBusState {
                 ))
             }
 
-            (Self::Connecting { fd, mut connector }, Satisfy::Read) => {
-                let len = usize::try_from(res).context("read failed")?;
+            (Self::Connecting { fd, mut connector }, Satisfy::Read(res)) => {
+                let len = res?;
                 connector.satisfy_read(len, readbuf)?;
                 Ok((Self::Connecting { fd, connector }, None))
             }
-            (Self::Connecting { fd, mut connector }, Satisfy::Write) => {
-                let len = usize::try_from(res).context("write failed")?;
+            (Self::Connecting { fd, mut connector }, Satisfy::Write(res)) => {
+                let len = res?;
                 if let Some(seq) = connector.satisfy_write(len)? {
                     Ok((
                         Self::Ready {
@@ -138,13 +136,13 @@ impl DBusState {
                 }
             }
 
-            (Self::Ready { fd, mut connection }, Satisfy::Read) => {
-                let len = usize::try_from(res).context("read failed")?;
+            (Self::Ready { fd, mut connection }, Satisfy::Read(res)) => {
+                let len = res?;
                 let message = connection.satisfy_read(len, readbuf)?;
                 Ok((Self::Ready { fd, connection }, message))
             }
-            (Self::Ready { fd, mut connection }, Satisfy::Write) => {
-                let len = usize::try_from(res).context("write failed")?;
+            (Self::Ready { fd, mut connection }, Satisfy::Write(res)) => {
+                let len = res?;
                 connection.satisfy_write(len, queue)?;
                 Ok((Self::Ready { fd, connection }, None))
             }
