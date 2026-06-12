@@ -1,5 +1,4 @@
 use anyhow::{Result, ensure};
-use dbus::DBusSatisfy;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 
@@ -28,17 +27,5 @@ impl TryFrom<u8> for Satisfy {
             "received malformed Satisfy from io_uring: {value}"
         );
         unsafe { Ok(core::mem::transmute::<u8, Self>(value)) }
-    }
-}
-
-impl From<Satisfy> for DBusSatisfy {
-    fn from(satisfy: Satisfy) -> Self {
-        match satisfy {
-            Satisfy::Socket => Self::Socket,
-            Satisfy::Connect => Self::Connect,
-            Satisfy::Write => Self::Write,
-            Satisfy::Read => Self::Read,
-            _ => unreachable!(),
-        }
     }
 }
