@@ -1,32 +1,27 @@
 use crate::sansio::Wants;
-use anyhow::{Context as _, Result, ensure};
-use libc::{AT_FDCWD, O_RDONLY};
-use std::{
-    ffi::CStr,
-    os::fd::{AsRawFd, BorrowedFd},
-};
+use anyhow::{Context as _, Result, bail, ensure};
+use rustix::fs::{CWD, Mode, OFlags};
+use std::os::fd::BorrowedFd;
 
 pub(crate) struct FileReader<const N: usize> {
-    path: &'static CStr,
-    fd: i32,
+    path: &'static str,
     state: State,
     buf: Box<[u8; N]>,
     seq: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 enum State {
-    Open,
-    Read,
-    Sleeping,
+    CanOpen,
+    CanRead { fd: BorrowedFd<'static> },
+    Sleeping { fd: BorrowedFd<'static> },
 }
 
 impl<const N: usize> FileReader<N> {
-    pub(crate) fn new(path: &'static CStr) -> Self {
+    pub(crate) fn new(path: &'static str) -> Self {
         Self {
             path,
-            fd: -1,
-            state: State::Open,
+            state: State::CanOpen,
             buf: Box::new([0; N]),
             seq: 0,
         }
@@ -34,54 +29,51 @@ impl<const N: usize> FileReader<N> {
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
         match self.state {
-            State::Open => Some(Wants::OpenAt {
-                dfd: AT_FDCWD,
-                path: self.path.as_ptr(),
-                flags: O_RDONLY,
-                mode: 0,
+            State::CanOpen => Some(Wants::OpenAt {
+                dfd: CWD,
+                path: self.path,
+                flags: OFlags::RDONLY,
+                mode: Mode::empty(),
                 seq: self.seq,
             }),
 
-            State::Read => Some(Wants::Read {
-                fd: self.fd,
+            State::CanRead { fd } => Some(Wants::Read {
+                fd,
                 buf: self.buf.as_mut_ptr(),
                 len: self.buf.len(),
                 seq: self.seq,
             }),
 
-            State::Sleeping => None,
+            State::Sleeping { .. } => None,
         }
     }
 
     pub(crate) fn satisfy_open(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
         ensure!(
-            self.state == State::Open,
+            matches!(self.state, State::CanOpen),
             "malformed state: expected Open, got {:?}",
             self.state
         );
 
-        self.fd = fd.as_raw_fd();
-        self.state = State::Read;
+        self.state = State::CanRead { fd };
         self.seq += 1;
         Ok(())
     }
 
     pub(crate) fn satisfy_read(&mut self, bytes_read: usize) -> Result<&[u8]> {
-        ensure!(
-            self.state == State::Read,
-            "malformed state: expected Read, got {:?}",
-            self.state
-        );
+        let State::CanRead { fd } = self.state else {
+            bail!("malformed state: expected Read, got {:?}", self.state)
+        };
 
         let out = self.buf.get(..bytes_read).context("buffer is too short")?;
-        self.state = State::Sleeping;
+        self.state = State::Sleeping { fd };
         self.seq += 1;
         Ok(out)
     }
 
     pub(crate) const fn satisfy_tick(&mut self) {
-        if matches!(self.state, State::Sleeping) {
-            self.state = State::Read;
+        if let State::Sleeping { fd } = self.state {
+            self.state = State::CanRead { fd };
             self.seq += 1;
         }
     }

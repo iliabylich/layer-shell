@@ -4,7 +4,7 @@ use openssl_sys::{
     BIO_ctrl, BIO_read, BIO_write, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
     SSL_ERROR_ZERO_RETURN, SSL_get_error, SSL_read, SSL_write,
 };
-use std::rc::Rc;
+use std::{os::fd::BorrowedFd, rc::Rc};
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -18,7 +18,6 @@ enum State {
 pub(crate) struct OpenSslReadWrite {
     state: State,
     seq: u64,
-    fd: i32,
 
     tls: Rc<OpenSslState>,
 
@@ -30,11 +29,10 @@ pub(crate) struct OpenSslReadWrite {
 }
 
 impl OpenSslReadWrite {
-    pub(crate) fn new(fd: i32, ssl: Rc<OpenSslState>, request: Vec<u8>, seq: u64) -> Result<Self> {
+    pub(crate) fn new(ssl: Rc<OpenSslState>, request: Vec<u8>, seq: u64) -> Result<Self> {
         let mut this = Self {
             state: State::ReadyToWrite,
             seq,
-            fd,
 
             tls: ssl,
 
@@ -105,12 +103,12 @@ impl OpenSslReadWrite {
         Ok(())
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, fd: BorrowedFd<'static>) -> Option<Wants> {
         match self.state {
             State::ReadyToRead => {
                 self.state = State::WaitingForRead;
                 Some(Wants::Read {
-                    fd: self.fd,
+                    fd,
                     buf: self.readbuf.as_mut_ptr(),
                     len: self.readbuf.len(),
                     seq: self.seq,
@@ -119,7 +117,7 @@ impl OpenSslReadWrite {
             State::ReadyToWrite => {
                 self.state = State::WaitingForWrite;
                 Some(Wants::Write {
-                    fd: self.fd,
+                    fd,
                     buf: self.writebuf.as_ptr(),
                     len: self.writebuf.len(),
                     seq: self.seq,

@@ -4,15 +4,15 @@ mod request;
 mod response;
 mod state;
 
-use std::{net::SocketAddr, os::fd::AsRawFd};
+use std::{net::SocketAddr, os::fd::BorrowedFd};
 
 pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Result, bail};
 use handshake::OpenSslHandshake;
-use libc::sockaddr_in;
 use read_write::OpenSslReadWrite;
+use rustix::net::{AddressFamily, SocketType};
 use state::OpenSslState;
 
 use crate::sansio::{DNS, Satisfy, Wants};
@@ -20,30 +20,50 @@ use crate::sansio::{DNS, Satisfy, Wants};
 enum State {
     Dns(DNS),
 
-    ReadyTo(Action),
-    WaitingFor(Action),
+    ReadyToSocket {
+        addr: SocketAddr,
+    },
+    WaitingForSocket {
+        addr: SocketAddr,
+    },
 
-    Handshaking(OpenSslHandshake),
-    ReadWrite(OpenSslReadWrite),
+    ReadyToConnect {
+        addr: SocketAddr,
+        fd: BorrowedFd<'static>,
+    },
+    WaitingForConnect {
+        fd: BorrowedFd<'static>,
+    },
+
+    Handshaking {
+        inner: OpenSslHandshake,
+        fd: BorrowedFd<'static>,
+    },
+    ReadWrite {
+        inner: OpenSslReadWrite,
+        fd: BorrowedFd<'static>,
+    },
+
+    ReadyToClose {
+        fd: BorrowedFd<'static>,
+    },
+    WaitingForClose,
 
     Done,
-}
-
-#[derive(Debug)]
-enum Action {
-    Socket,
-    Connect,
-    Close,
 }
 
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Dns(_) => write!(f, "Dns"),
-            Self::ReadyTo(action) => write!(f, "ReadyTo({action:?}"),
-            Self::WaitingFor(action) => write!(f, "WaitingFor({action:?}"),
-            Self::Handshaking(_) => write!(f, "Handshaking"),
-            Self::ReadWrite(_) => write!(f, "ReadWrite"),
+            Self::ReadyToSocket { .. } => write!(f, "ReadyToSocket"),
+            Self::WaitingForSocket { .. } => write!(f, "WaitingForSocket"),
+            Self::ReadyToConnect { .. } => write!(f, "ReadyToConnect"),
+            Self::WaitingForConnect { .. } => write!(f, "WaitingForConnect"),
+            Self::Handshaking { .. } => write!(f, "Handshaking"),
+            Self::ReadWrite { .. } => write!(f, "ReadWrite"),
+            Self::ReadyToClose { .. } => write!(f, "ReadyToClose"),
+            Self::WaitingForClose => write!(f, "WaitingForClose"),
             Self::Done => write!(f, "Done"),
         }
     }
@@ -52,8 +72,6 @@ impl std::fmt::Debug for State {
 pub(crate) struct Https {
     state: State,
     seq: u64,
-    addr: sockaddr_in,
-    fd: i32,
     request: Vec<u8>,
     domain: &'static str,
     response: Vec<u8>,
@@ -70,8 +88,6 @@ impl Https {
         Self {
             state: State::Dns(DNS::new(domain)),
             seq: 0,
-            addr: unsafe { std::mem::MaybeUninit::zeroed().assume_init() },
-            fd: -1,
             request: request.into_bytes(),
             domain,
             response: vec![],
@@ -80,10 +96,16 @@ impl Https {
 
     pub(crate) const fn is_waiting(&self) -> bool {
         match &self.state {
-            State::WaitingFor(_) => true,
-            State::Handshaking(handshake) => handshake.is_waiting(),
-            State::ReadWrite(read_write) => read_write.is_waiting(),
-            State::Dns(_) | State::ReadyTo(_) | State::Done => false,
+            State::WaitingForSocket { .. }
+            | State::WaitingForConnect { .. }
+            | State::WaitingForClose => true,
+            State::Handshaking { inner, .. } => inner.is_waiting(),
+            State::ReadWrite { inner, .. } => inner.is_waiting(),
+            State::Dns(_)
+            | State::ReadyToSocket { .. }
+            | State::ReadyToConnect { .. }
+            | State::ReadyToClose { .. }
+            | State::Done => false,
         }
     }
 
@@ -91,85 +113,88 @@ impl Https {
         match &mut self.state {
             State::Dns(dns) => dns.wants(),
 
-            State::ReadyTo(Action::Socket) => {
-                self.state = State::WaitingFor(Action::Socket);
+            State::ReadyToSocket { addr } => {
+                self.state = State::WaitingForSocket { addr: *addr };
                 Ok(Some(Wants::Socket {
-                    domain: libc::AF_INET,
-                    r#type: libc::SOCK_STREAM,
+                    domain: AddressFamily::INET,
+                    r#type: SocketType::STREAM,
                     seq: self.seq,
                 }))
             }
 
-            State::ReadyTo(Action::Connect) => {
-                self.state = State::WaitingFor(Action::Connect);
+            State::ReadyToConnect { addr, fd } => {
+                let addr = *addr;
+                let fd = *fd;
+                self.state = State::WaitingForConnect { fd };
                 Ok(Some(Wants::Connect {
-                    fd: self.fd,
-                    addr: (&raw const self.addr).cast(),
-                    addrlen: size_of::<sockaddr_in>() as u32,
+                    fd,
+                    addr: addr.into(),
                     seq: self.seq,
                 }))
             }
 
-            State::Handshaking(handshake) => Ok(handshake.wants()),
+            State::Handshaking { inner, fd } => Ok(inner.wants(*fd)),
 
-            State::ReadWrite(ready) => Ok(ready.wants()),
+            State::ReadWrite { inner, fd } => Ok(inner.wants(*fd)),
 
-            State::ReadyTo(Action::Close) => {
-                self.state = State::WaitingFor(Action::Close);
-                Ok(Some(Wants::Close {
-                    fd: self.fd,
-                    seq: self.seq,
-                }))
+            State::ReadyToClose { fd } => {
+                let fd = *fd;
+                self.state = State::WaitingForClose;
+                Ok(Some(Wants::Close { fd, seq: self.seq }))
             }
 
-            State::WaitingFor(_) | State::Done => Ok(None),
+            State::WaitingForSocket { .. }
+            | State::WaitingForConnect { .. }
+            | State::WaitingForClose
+            | State::Done => Ok(None),
         }
     }
 
     pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
             (State::Dns(dns), satisfy) => {
-                if let Some((seq, addr)) = dns.try_satisfy(satisfy)? {
-                    self.state = State::ReadyTo(Action::Socket);
+                if let Some((seq, mut addr)) = dns.try_satisfy(satisfy)? {
                     self.seq = seq;
-                    self.addr = socketaddr_to_sockaddr_in4(addr)
-                        .context("DNS name wasn't resolved to IPv4")?;
-                    self.addr.sin_port = 443_u16.to_be();
+                    addr.set_port(443);
+                    self.state = State::ReadyToSocket { addr };
                 }
             }
 
-            (State::WaitingFor(Action::Socket), Satisfy::Socket(res)) => {
-                self.fd = res?.as_raw_fd();
+            (State::WaitingForSocket { addr }, Satisfy::Socket(res)) => {
+                let fd = res?;
                 self.seq += 1;
-                self.state = State::ReadyTo(Action::Connect);
+                self.state = State::ReadyToConnect { addr: *addr, fd };
             }
 
-            (State::WaitingFor(Action::Connect), Satisfy::Connect(res)) => {
+            (State::WaitingForConnect { fd }, Satisfy::Connect(res)) => {
                 res?;
+                let fd = *fd;
                 self.seq += 1;
-                self.state =
-                    State::Handshaking(OpenSslHandshake::new(self.fd, self.domain, self.seq)?);
+                self.state = State::Handshaking {
+                    inner: OpenSslHandshake::new(self.domain, self.seq)?,
+                    fd,
+                };
             }
 
-            (State::Handshaking(handshake), satisfy) => {
-                if let Some((state, seq)) = handshake.satisfy(satisfy)? {
-                    self.state = State::ReadWrite(OpenSslReadWrite::new(
-                        self.fd,
-                        state,
-                        self.request.clone(),
-                        seq,
-                    )?);
+            (State::Handshaking { inner, fd }, satisfy) => {
+                if let Some((state, seq)) = inner.satisfy(satisfy)? {
+                    let fd = *fd;
+                    self.state = State::ReadWrite {
+                        inner: OpenSslReadWrite::new(state, self.request.clone(), seq)?,
+                        fd,
+                    };
                 }
             }
 
-            (State::ReadWrite(ready), satisfy) => {
-                if let Some(response) = ready.satisfy(satisfy)? {
+            (State::ReadWrite { inner, fd }, satisfy) => {
+                if let Some(response) = inner.satisfy(satisfy)? {
+                    let fd = *fd;
                     self.response = response;
-                    self.state = State::ReadyTo(Action::Close);
+                    self.state = State::ReadyToClose { fd };
                 }
             }
 
-            (State::WaitingFor(Action::Close), Satisfy::Close(res)) => {
+            (State::WaitingForClose, Satisfy::Close(res)) => {
                 res?;
                 let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
                 self.state = State::Done;
@@ -181,18 +206,4 @@ impl Https {
 
         Ok(None)
     }
-}
-
-const fn socketaddr_to_sockaddr_in4(addr: SocketAddr) -> Option<sockaddr_in> {
-    let SocketAddr::V4(addr) = addr else {
-        return None;
-    };
-
-    let mut sin: sockaddr_in = unsafe { std::mem::zeroed() };
-    sin.sin_family = libc::AF_INET as libc::sa_family_t;
-    sin.sin_port = addr.port().to_be();
-    sin.sin_addr = libc::in_addr {
-        s_addr: u32::from_ne_bytes(addr.ip().octets()),
-    };
-    Some(sin)
 }

@@ -1,17 +1,16 @@
 use crate::{
     modules::FallibleModule,
     sansio::{DBusState, Satisfy, Wants},
-    unix_socket::new_unix_socket,
     user_data::ModuleId,
     utils::dbus::queue::DBusQueue,
 };
 use anyhow::Result;
 use dbus::IncomingMessage;
-use libc::sockaddr_un;
+use rustix::net::SocketAddrUnix;
 
 pub(crate) struct SystemDBus {
     state: DBusState,
-    address: sockaddr_un,
+    address: SocketAddrUnix,
 }
 
 static mut READBUF: Vec<u8> = vec![];
@@ -32,14 +31,14 @@ impl SystemDBus {
     }
 
     fn try_new() -> Result<Self> {
-        let address = std::env::var("DBUS_SYSTEM_BUS_ADDRESS")
+        let path = std::env::var("DBUS_SYSTEM_BUS_ADDRESS")
             .ok()
             .and_then(|address| address.split_once('=').map(|(_, path)| path.to_string()))
             .unwrap_or_else(|| String::from("/var/run/dbus/system_bus_socket"));
 
         Ok(Self {
             state: DBusState::WantsSocket,
-            address: new_unix_socket(address.as_bytes())?,
+            address: SocketAddrUnix::new(path)?,
         })
     }
 

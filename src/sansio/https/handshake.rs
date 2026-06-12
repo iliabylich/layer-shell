@@ -4,7 +4,7 @@ use openssl_sys::{
     BIO_ctrl, BIO_read, BIO_write, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,
     SSL_get_error,
 };
-use std::rc::Rc;
+use std::{os::fd::BorrowedFd, rc::Rc};
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -18,7 +18,6 @@ enum State {
 pub(crate) struct OpenSslHandshake {
     state: State,
     seq: u64,
-    fd: i32,
 
     tls: Rc<OpenSslState>,
 
@@ -32,11 +31,10 @@ enum Progress {
 }
 
 impl OpenSslHandshake {
-    pub(crate) fn new(fd: i32, hostname: &str, seq: u64) -> Result<Self> {
+    pub(crate) fn new(hostname: &str, seq: u64) -> Result<Self> {
         let mut this = Self {
             state: State::ReadyToRead,
             seq,
-            fd,
 
             tls: OpenSslState::new(hostname)?,
 
@@ -89,12 +87,12 @@ impl OpenSslHandshake {
         Ok(())
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, fd: BorrowedFd<'static>) -> Option<Wants> {
         match self.state {
             State::ReadyToRead => {
                 self.state = State::WaitingForRead;
                 Some(Wants::Read {
-                    fd: self.fd,
+                    fd,
                     buf: self.readbuf.as_mut_ptr(),
                     len: self.readbuf.len(),
                     seq: self.seq,
@@ -104,7 +102,7 @@ impl OpenSslHandshake {
             State::ReadyToWrite => {
                 self.state = State::WaitingForWrite;
                 Some(Wants::Write {
-                    fd: self.fd,
+                    fd,
                     buf: self.writebuf.as_ptr(),
                     len: self.writebuf.len(),
                     seq: self.seq,

@@ -17,7 +17,7 @@ pub(crate) struct Memory {
 impl Memory {
     pub(crate) fn new() -> Self {
         Self {
-            reader: FileReader::new(c"/proc/meminfo"),
+            reader: FileReader::new("/proc/meminfo"),
         }
     }
 }

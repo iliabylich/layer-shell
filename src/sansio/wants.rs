@@ -1,32 +1,35 @@
-use libc::sockaddr;
+use rustix::{
+    fs::{Mode, OFlags},
+    net::{AddressFamily, SocketAddrAny, SocketType},
+};
+use std::os::fd::BorrowedFd;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub(crate) enum Wants {
     Socket {
-        domain: i32,
-        r#type: i32,
+        domain: AddressFamily,
+        r#type: SocketType,
         seq: u64,
     },
     Connect {
-        fd: i32,
-        addr: *const sockaddr,
-        addrlen: u32,
+        fd: BorrowedFd<'static>,
+        addr: SocketAddrAny,
         seq: u64,
     },
     Read {
-        fd: i32,
+        fd: BorrowedFd<'static>,
         buf: *mut u8,
         len: usize,
         seq: u64,
     },
     Write {
-        fd: i32,
+        fd: BorrowedFd<'static>,
         buf: *const u8,
         len: usize,
         seq: u64,
     },
     ReadWrite {
-        fd: i32,
+        fd: BorrowedFd<'static>,
         readbuf: *mut u8,
         readlen: usize,
         readseq: u64,
@@ -35,14 +38,14 @@ pub(crate) enum Wants {
         writeseq: u64,
     },
     OpenAt {
-        dfd: i32,
-        path: *const core::ffi::c_char,
-        flags: i32,
-        mode: u32,
+        dfd: BorrowedFd<'static>,
+        path: &'static str,
+        flags: OFlags,
+        mode: Mode,
         seq: u64,
     },
     Close {
-        fd: i32,
+        fd: BorrowedFd<'static>,
         seq: u64,
     },
 }

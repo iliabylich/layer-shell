@@ -3,10 +3,10 @@ use crate::{
     event_queue::EventQueue,
     modules::FallibleModule,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    unix_socket::new_unix_socket,
     user_data::ModuleId,
 };
 use anyhow::{Context, Result, bail};
+use rustix::net::SocketAddrUnix;
 
 pub(crate) struct KbMod {
     reader: UnixSocketReader,
@@ -29,9 +29,8 @@ impl KbMod {
     }
 
     fn try_new() -> Result<Self> {
-        let addr = new_unix_socket(b"/run/kb-mod-monitor.sock")?;
         Ok(Self {
-            reader: UnixSocketReader::new(addr),
+            reader: UnixSocketReader::new(SocketAddrUnix::new("/run/kb-mod-monitor.sock")?),
             state: State::WaitingForInitialBytes(2),
         })
     }
@@ -53,7 +52,7 @@ impl FallibleModule for KbMod {
             return Ok(None);
         }
 
-        Ok(Some(self.reader.wants()))
+        Ok(self.reader.wants())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {

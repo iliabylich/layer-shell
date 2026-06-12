@@ -3,9 +3,8 @@ use dbus::{
     DBusConnection, DBusConnector, DBusConnectorWants, DBusWantsRead, DBusWantsWrite,
     IncomingMessage,
 };
-use libc::{sockaddr, sockaddr_un};
-use rustix::net::{AddressFamily, SocketType};
-use std::os::fd::{AsRawFd as _, BorrowedFd};
+use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
+use std::os::fd::BorrowedFd;
 
 use crate::{
     sansio::{Satisfy, Wants},
@@ -31,32 +30,30 @@ pub(crate) enum DBusState {
 impl DBusState {
     pub(crate) fn wants(
         &mut self,
-        address: &sockaddr_un,
+        addr: &SocketAddrUnix,
         readbuf: &mut [u8],
         queue: &DBusQueue,
     ) -> Result<Option<Wants>> {
         match self {
             Self::WantsSocket => Ok(Some(Wants::Socket {
-                domain: i32::from(AddressFamily::UNIX.as_raw()),
-                r#type: i32::try_from(SocketType::STREAM.as_raw())
-                    .unwrap_or_else(|_| unreachable!()),
+                domain: AddressFamily::UNIX,
+                r#type: SocketType::STREAM,
                 seq: 0,
             })),
             Self::WantsConnect { fd } => Ok(Some(Wants::Connect {
-                fd: fd.as_raw_fd(),
-                addr: (&raw const *address).cast::<sockaddr>(),
-                addrlen: size_of::<sockaddr_un>() as u32,
+                fd: *fd,
+                addr: addr.clone().into(),
                 seq: 1,
             })),
             Self::Connecting { fd, connector } => match connector.wants(readbuf)? {
                 DBusConnectorWants::Read { buf, seq } => Ok(Some(Wants::Read {
-                    fd: fd.as_raw_fd(),
+                    fd: *fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
                     seq,
                 })),
                 DBusConnectorWants::Write { buf, seq } => Ok(Some(Wants::Write {
-                    fd: fd.as_raw_fd(),
+                    fd: *fd,
                     buf: buf.as_ptr(),
                     len: buf.len(),
                     seq,
@@ -73,7 +70,7 @@ impl DBusState {
                         seq: writeseq,
                     }),
                 ) => Ok(Some(Wants::ReadWrite {
-                    fd: fd.as_raw_fd(),
+                    fd: *fd,
                     readbuf: readbuf.as_mut_ptr(),
                     readlen: readbuf.len(),
                     readseq,
@@ -82,7 +79,7 @@ impl DBusState {
                     writeseq,
                 })),
                 (DBusWantsRead { buf, seq }, None) => Ok(Some(Wants::Read {
-                    fd: fd.as_raw_fd(),
+                    fd: *fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
                     seq,

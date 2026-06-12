@@ -24,7 +24,7 @@ openssl-sys = "0.9"
 string-bath = "0.2.1"
 jzon = "0.12"
 boml = "2.0"
-rustix = { version = "1.1.4", features = ["net"] }
+rustix = { version = "1.1.4", features = ["net", "fs"] }
 
 [build-dependencies]
 cc = "1"

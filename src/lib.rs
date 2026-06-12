@@ -26,7 +26,6 @@ mod io;
 mod liburing;
 mod modules;
 mod sansio;
-mod unix_socket;
 mod user_data;
 mod utils;
 

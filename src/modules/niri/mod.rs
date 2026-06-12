@@ -3,12 +3,12 @@ use crate::{
     event_queue::EventQueue,
     modules::FallibleModule,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
-    unix_socket::new_unix_socket,
     user_data::ModuleId,
     utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};
+use rustix::net::SocketAddrUnix;
 
 mod buffer;
 
@@ -34,8 +34,8 @@ impl Niri {
 
     fn try_new() -> Result<Self> {
         let path = std::env::var("NIRI_SOCKET").context("no $NIRI_SOCKET")?;
+        let addr = SocketAddrUnix::new(path)?;
 
-        let addr = new_unix_socket(path.as_bytes())?;
         Ok(Self {
             state: State::Writer(Box::new(UnixSocketOneshotWriter::new(
                 addr,
@@ -94,8 +94,8 @@ impl FallibleModule for Niri {
 
     fn wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Writer(writer) => Ok(Some(writer.wants()?)),
-            State::Reader(reader) => Ok(Some(reader.wants())),
+            State::Writer(writer) => Ok(writer.wants()),
+            State::Reader(reader) => Ok(reader.wants()),
             State::Dummy => Ok(None),
         }
     }
@@ -117,7 +117,7 @@ impl FallibleModule for Niri {
                     let _ = res?;
                     writer.satisfy_write()?;
                     self.state = State::Reader(Box::new(UnixSocketReader::new_connected_from_fd(
-                        writer.fd(),
+                        writer.fd()?,
                     )));
                 }
 

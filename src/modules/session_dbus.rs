@@ -1,17 +1,16 @@
 use crate::{
     modules::FallibleModule,
     sansio::{DBusState, Satisfy, Wants},
-    unix_socket::new_unix_socket,
     user_data::ModuleId,
     utils::dbus::queue::DBusQueue,
 };
 use anyhow::{Context, Result};
 use dbus::IncomingMessage;
-use libc::sockaddr_un;
+use rustix::net::SocketAddrUnix;
 
 pub(crate) struct SessionDBus {
     state: DBusState,
-    address: sockaddr_un,
+    addr: SocketAddrUnix,
 }
 
 static mut READBUF: Vec<u8> = vec![];
@@ -33,13 +32,13 @@ impl SessionDBus {
 
     fn try_new() -> Result<Self> {
         let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
-        let (_, address) = address
+        let (_, path) = address
             .split_once('=')
             .context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
 
         Ok(Self {
             state: DBusState::WantsSocket,
-            address: new_unix_socket(address.as_bytes())?,
+            addr: SocketAddrUnix::new(path)?,
         })
     }
 
@@ -48,7 +47,7 @@ impl SessionDBus {
             log::error!(target: Self::MODULE_ID.as_str(), "{err:?}");
             Self {
                 state: DBusState::Disconnected,
-                address: unsafe { core::mem::zeroed() },
+                addr: unsafe { core::mem::zeroed() },
             }
         })
     }
@@ -63,7 +62,7 @@ impl FallibleModule for SessionDBus {
     type Output = IncomingMessage<'static>;
 
     fn wants(&mut self) -> Result<Option<Wants>> {
-        self.state.wants(&self.address, readbuf(), queue())
+        self.state.wants(&self.addr, readbuf(), queue())
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {

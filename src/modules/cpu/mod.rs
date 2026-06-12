@@ -19,7 +19,7 @@ pub(crate) struct CPU {
 impl CPU {
     pub(crate) fn new() -> Self {
         Self {
-            reader: FileReader::new(c"/proc/stat"),
+            reader: FileReader::new("/proc/stat"),
             state: None,
         }
     }

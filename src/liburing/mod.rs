@@ -9,7 +9,13 @@ use generated::{
     __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
 };
 use libc::{ETIME, strerror};
-use std::mem::MaybeUninit;
+use rustix::net::SocketAddrAny;
+use std::{
+    collections::{HashMap, HashSet},
+    ffi::CString,
+    mem::MaybeUninit,
+    os::fd::AsRawFd,
+};
 
 mod cqe;
 #[expect(
@@ -43,6 +49,8 @@ static mut NOTIMEOUT: __kernel_timespec = __kernel_timespec {
 pub(crate) struct IoUring {
     ring: io_uring,
     dirty: bool,
+    socket_addr_cache: HashSet<Box<SocketAddrAny>>,
+    string_cache: HashMap<&'static str, CString>,
 }
 
 impl IoUring {
@@ -50,7 +58,12 @@ impl IoUring {
         let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
         let errno = unsafe { __liburing_queue_init(entries, &raw mut ring, flags) };
         checkerr(errno);
-        Self { ring, dirty: false }
+        Self {
+            ring,
+            dirty: false,
+            socket_addr_cache: HashSet::new(),
+            string_cache: HashMap::new(),
+        }
     }
 
     fn get_sqe(&mut self) -> Sqe {
@@ -123,24 +136,34 @@ impl IoUring {
         match wants {
             Wants::Socket { domain, r#type, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_socket(domain, r#type, 0, 0);
+                sqe.prep_socket(
+                    i32::from(domain.as_raw()),
+                    i32::try_from(r#type.as_raw()).unwrap_or_else(|_| unreachable!()),
+                    0,
+                    0,
+                );
                 sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
-            Wants::Connect {
-                fd, addr, addrlen, ..
-            } => {
+            Wants::Connect { fd, addr, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_connect(fd, addr, addrlen);
+                if !self.socket_addr_cache.contains(&addr) {
+                    self.socket_addr_cache.insert(Box::new(addr.clone()));
+                }
+                let addr = self
+                    .socket_addr_cache
+                    .get(&addr)
+                    .unwrap_or_else(|| unreachable!());
+                sqe.prep_connect(fd.as_raw_fd(), addr.as_ptr().cast(), addr.addr_len());
                 sqe.set_user_data(UserData::new(module_id, Op::Connect));
             }
             Wants::Read { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_read(fd, buf, len);
+                sqe.prep_read(fd.as_raw_fd(), buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
             }
             Wants::Write { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_write(fd, buf, len);
+                sqe.prep_write(fd.as_raw_fd(), buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::ReadWrite {
@@ -152,11 +175,11 @@ impl IoUring {
                 ..
             } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_read(fd, readbuf, readlen);
+                sqe.prep_read(fd.as_raw_fd(), readbuf, readlen);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
 
                 let mut sqe = self.get_sqe();
-                sqe.prep_write(fd, writebuf, writelen);
+                sqe.prep_write(fd.as_raw_fd(), writebuf, writelen);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::OpenAt {
@@ -167,12 +190,26 @@ impl IoUring {
                 ..
             } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_openat(dfd, path, flags, mode);
+                if !self.string_cache.contains_key(path) {
+                    self.string_cache
+                        .insert(path, CString::new(path).unwrap_or_else(|_| unreachable!()));
+                }
+                let path = self
+                    .string_cache
+                    .get(path)
+                    .unwrap_or_else(|| unreachable!());
+
+                sqe.prep_openat(
+                    dfd.as_raw_fd(),
+                    path.as_ptr(),
+                    i32::try_from(flags.bits()).unwrap_or_else(|_| unreachable!()),
+                    mode.bits(),
+                );
                 sqe.set_user_data(UserData::new(module_id, Op::OpenAt));
             }
             Wants::Close { fd, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_close(fd);
+                sqe.prep_close(fd.as_raw_fd());
                 sqe.set_user_data(UserData::new(module_id, Op::Close));
             }
         }
