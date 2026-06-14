@@ -1,11 +1,19 @@
-use crate::{Event, event_queue::EventQueue};
+use crate::{
+    Event,
+    event_queue::EventQueue,
+    utils::{StringRef, StringRefExt},
+};
 
 pub(crate) struct Clock;
 
 impl Clock {
     pub(crate) fn tick() {
-        EventQueue::push_back(Event::Clock {
-            unix_seconds: chrono::Local::now().timestamp(),
-        });
+        let now = StringRef::new(
+            &chrono::Local::now()
+                .format("%H:%M:%S | %b %d | %a")
+                .to_string(),
+        );
+
+        EventQueue::push_back(Event::Time { now });
     }
 }

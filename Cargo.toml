@@ -18,7 +18,7 @@ env_logger = { version = "0.11", default-features = false, features = [
 ] }
 libc = "0.2"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-dbus = { package = "mini-sansio-dbus", version = "5.0.0" }
+dbus = { package = "mini-sansio-dbus", version = "5.0.1" }
 dns = { package = "mini-sansio-dns", version = "1.0.0" }
 openssl-sys = "0.9"
 string-bath = "0.2.1"

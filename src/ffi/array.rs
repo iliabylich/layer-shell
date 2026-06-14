@@ -1,6 +1,6 @@
 #[repr(C)]
 pub struct FFIArray<T> {
-    pub ptr: *mut T,
+    pub ptr: *const T,
     pub len: usize,
 }
 
@@ -26,7 +26,7 @@ where
 
 impl<T> From<FFIArray<T>> for Vec<T> {
     fn from(array: FFIArray<T>) -> Self {
-        let vec = unsafe { Self::from_raw_parts(array.ptr, array.len, array.len) };
+        let vec = unsafe { Self::from_raw_parts(array.ptr.cast_mut(), array.len, array.len) };
         std::mem::forget(array);
         vec
     }
@@ -35,7 +35,7 @@ impl<T> From<FFIArray<T>> for Vec<T> {
 impl<T> Drop for FFIArray<T> {
     fn drop(&mut self) {
         unsafe {
-            drop(Vec::from_raw_parts(self.ptr, self.len, self.len));
+            drop(Vec::from_raw_parts(self.ptr.cast_mut(), self.len, self.len));
         }
     }
 }
@@ -45,7 +45,7 @@ where
     T: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let vec = unsafe { Vec::from_raw_parts(self.ptr, self.len, self.len) };
+        let vec = unsafe { Vec::from_raw_parts(self.ptr.cast_mut(), self.len, self.len) };
         f.debug_list().entries(&vec).finish()?;
         std::mem::forget(vec);
         Ok(())
@@ -57,7 +57,7 @@ where
     T: Clone,
 {
     fn clone(&self) -> Self {
-        let vec = unsafe { Vec::from_raw_parts(self.ptr, self.len, self.len) };
+        let vec = unsafe { Vec::from_raw_parts(self.ptr.cast_mut(), self.len, self.len) };
         let clone = vec.clone();
         std::mem::forget(vec);
         Self::from(clone)

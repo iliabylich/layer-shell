@@ -18,12 +18,11 @@ rustlib = custom_target(
     build_by_default: true,
     console: true,
 )
-sources += rustlib
 
 cbindgen = find_program('cbindgen', version: '>= 0.28')
 
 bindings = custom_target(
-    'bindings.h',
+    'bindings.hpp',
     command: [
         cbindgen,
         '--config', files('cbindgen.toml'),
@@ -31,8 +30,7 @@ bindings = custom_target(
         '--output', '@OUTPUT@',
         '@SOURCE_ROOT@',
     ],
-    output: 'bindings.h',
+    output: 'bindings.hpp',
     build_always_stale: true,
     build_by_default: true,
 )
-sources += bindings

@@ -63,7 +63,10 @@ fn map_panic_to_exit_with_error<T>(f: impl core::panic::UnwindSafe + FnOnce() ->
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event)) {
+pub extern "C" fn io_init(
+    callback: extern "C" fn(event: *const Event, *mut std::ffi::c_void),
+    data: *mut std::ffi::c_void,
+) {
     if unsafe { !GLOBAL_IO.is_null() } {
         eprintln!("io_init() has been already called");
         std::process::exit(1);
@@ -72,7 +75,7 @@ pub extern "C" fn io_init(on_event: extern "C" fn(event: *const Event)) {
     map_panic_to_exit_with_error(|| {
         IO::init()?;
         unsafe {
-            GLOBAL_IO = Box::into_raw(Box::new(IO::new(on_event)?));
+            GLOBAL_IO = Box::into_raw(Box::new(IO::new((callback, data))?));
         }
         Ok(())
     });

@@ -17,7 +17,7 @@ compile:
 
 dev:
     @just compile
-    ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=lsan.supp ./builddir/layer-shell
+    ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=lsan.supp ./builddir/ui/layer-shell
 
 clean:
     rm -rf builddir
@@ -50,6 +50,6 @@ test-install:
     tree -C test-install
 
 format:
-    clang-format -i ui/*.c
-    clang-format -i ui/*.h
+    clang-format -i ui/*.cpp
+    clang-format -i ui/*.hpp
     cargo fmt

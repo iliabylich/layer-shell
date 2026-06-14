@@ -1,4 +1,4 @@
-use crate::{Event, event_queue::EventQueue};
+use crate::{Event, event_queue::EventQueue, utils::StringRef};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use dbus::IncomingMessage;
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
@@ -23,6 +23,9 @@ pub(crate) struct Network {
     tx_rx: TxRx,
     speed: Speed,
     ssid_and_strength: SsidAndStrength,
+
+    last_ssid: Option<StringRef>,
+    last_strength: Option<u8>,
 }
 
 impl Network {
@@ -34,6 +37,8 @@ impl Network {
             tx_rx: TxRx::new(),
             speed: Speed::new(),
             ssid_and_strength: SsidAndStrength::new(),
+            last_ssid: None,
+            last_strength: None,
         }
     }
 
@@ -90,13 +95,28 @@ impl Network {
         }
     }
 
-    fn on_ssid_and_strength_event(e: SsidAndStrengthEvent) {
-        if let Some(ssid) = e.ssid {
-            EventQueue::push_back(Event::NetworkSsid { ssid });
+    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
+        let mut got_diff = false;
+
+        if let Some(ssid) = e.ssid
+            && self.last_ssid != Some(ssid.clone())
+        {
+            self.last_ssid = Some(ssid);
+            got_diff = true;
         }
 
-        if let Some(strength) = e.strength {
-            EventQueue::push_back(Event::NetworkStrength { strength });
+        if let Some(strength) = e.strength
+            && self.last_strength != Some(strength)
+        {
+            self.last_strength = Some(strength);
+            got_diff = true;
+        }
+
+        if got_diff
+            && let Some(ssid) = self.last_ssid.clone()
+            && let Some(strength) = self.last_strength
+        {
+            EventQueue::push_back(Event::NetworkSsidAndStrength { ssid, strength });
         }
     }
 
@@ -122,7 +142,7 @@ impl Network {
         }
 
         if let Some(e) = self.ssid_and_strength.handle(message) {
-            Self::on_ssid_and_strength_event(e);
+            self.on_ssid_and_strength_event(e);
         }
     }
 }

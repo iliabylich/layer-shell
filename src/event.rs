@@ -19,8 +19,8 @@ pub enum Event {
     CpuUsage {
         usage_per_core: FFIArray<u8>,
     },
-    Clock {
-        unix_seconds: i64,
+    Time {
+        now: StringRef,
     },
     Language {
         lang: StringRef,
@@ -31,10 +31,8 @@ pub enum Event {
         hourly_forecast: [WeatherOnHour; HOURLY_WEATHER_FORECAST_LENGTH],
         daily_forecast: [WeatherOnDay; DAILY_WEATHER_FORECAST_LENGTH],
     },
-    NetworkSsid {
+    NetworkSsidAndStrength {
         ssid: StringRef,
-    },
-    NetworkStrength {
         strength: u8,
     },
     UploadSpeed {
@@ -65,13 +63,7 @@ pub enum Event {
         enabled: bool,
     },
     Exit,
-    VolumeChanged {
-        volume: u32,
-    },
-    MuteChanged {
-        muted: bool,
-    },
-    InitialSound {
+    Sound {
         volume: u32,
         muted: bool,
     },

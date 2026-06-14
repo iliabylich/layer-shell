@@ -277,9 +277,9 @@ checksum = "953f07c43838f8e6f9758cab68bf5bed85465e7587ebe0b823f1bcd81978ad3a"
 
 [[package]]
 name = "mini-sansio-dbus"
-version = "5.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a37ccee308a96942a0d461052a913bcb90782fedfb09f223749dba1ab6a15dab"
+checksum = "ba85699922b8c4df5cc522fd1aaa9d8b562dfd2b4b334bc510e5ed021eb288eb"
 
 [[package]]
 name = "mini-sansio-dns"

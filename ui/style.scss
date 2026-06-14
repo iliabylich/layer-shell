@@ -1,0 +1,225 @@
+$white: #e1e4d5;
+$black: #1f201e;
+$green-light: #5a614f;
+$green-dark: #424938;
+$green-darkest: #44483d;
+$disabled-menu-text-color: #ff5555;
+$icon-size: 18px;
+
+@mixin Widget($clickable: true) {
+  background-color: $black;
+  border: 2px solid $green-light;
+  border-radius: 10px;
+
+  @if $clickable {
+
+    &:hover,
+    &:pressed,
+    &:open {
+      background-color: $green-light;
+    }
+  }
+}
+
+@mixin ButtonWidget {
+  @include Widget($clickable: true);
+  padding: 0 10px;
+}
+
+@mixin IconWidget {
+  @include Widget($clickable: true);
+  font-size: $icon-size;
+  padding: 0 5px;
+  min-width: 32px;
+}
+
+@mixin LabelWidget {
+  @include Widget($clickable: false);
+  padding: 0 10px;
+}
+
+@mixin hide-menu-arrow {
+  &::menu-indicator {
+    background-image: none;
+    width: 0;
+  }
+}
+
+QWidget {
+  background-color: transparent;
+  border: none;
+  color: $white;
+  font: 12px 'Inter Nerd Font Propo';
+}
+
+#TopBarOverlay {
+  #ChangeWallpaper {
+    @include IconWidget();
+  }
+
+  #Tray {
+    @include LabelWidget();
+    padding: 0;
+
+    QToolButton {
+      background-color: transparent;
+      border: none;
+      padding: 0 4px;
+
+      @include hide-menu-arrow();
+    }
+  }
+
+  #Weather {
+    @include ButtonWidget();
+    min-width: 160px;
+  }
+
+  #Terminal {
+    @include ButtonWidget();
+  }
+
+  #Language {
+    @include LabelWidget();
+    min-width: 30px;
+  }
+
+  #Cpu {
+    @include LabelWidget();
+  }
+
+  #Memory {
+    @include ButtonWidget();
+    min-width: 112px;
+  }
+
+  #Network {
+    @include ButtonWidget();
+    @include hide-menu-arrow();
+    min-width: 330px;
+
+    #NetworkName {
+      min-width: 150px;
+    }
+
+    #NetworkIcon {
+      font-size: $icon-size;
+    }
+
+    #NetworkSpeed {
+      min-width: 50px;
+    }
+
+    #NetworkSeparator {
+      background-color: $green-light;
+      border: none;
+    }
+  }
+
+  #Bluetooth {
+    @include IconWidget();
+  }
+
+  #Time {
+    @include LabelWidget();
+    font-family: 'AdwaitaMono Nerd Font Mono';
+    min-width: 150px;
+  }
+
+  #Power {
+    @include IconWidget();
+  }
+}
+
+@mixin Overlay {
+  background-color: $black;
+  border: 2px solid $green-light;
+  border-radius: 10px;
+}
+
+#TerminalOverlay {
+  @include Overlay();
+}
+
+#WeatherOverlay {
+  @include Overlay();
+
+  QLabel {
+    padding: 5px;
+  }
+
+  #icon {
+    font-size: $icon-size;
+  }
+}
+
+#SessionOverlay {
+  .SessionButton {
+    background-color: $black;
+    border: 2px solid $green-light;
+    border-radius: 10px;
+    color: $white;
+    font-size: 18px;
+    padding: 0 10px;
+    min-height: 50px;
+    min-width: 250px;
+
+    &:hover {
+      background-color: $green-light;
+    }
+  }
+}
+
+#soundOverlay {
+  @include Overlay();
+
+  #soundIcon {
+    font-size: 30px;
+    min-width: 30px;
+  }
+}
+
+#kbModOverlay {
+  @include Overlay();
+
+  #kbModIcon {
+    font-size: 30px;
+    min-width: 30px;
+  }
+
+  #kbModStatus {
+    font-size: 20px;
+    min-width: 200px;
+  }
+}
+
+QMenu {
+  background-color: $green-dark;
+  border: 2px solid $green-light;
+
+  &::item {
+    padding: 10px 28px 10px 10px;
+    border-bottom: 1px solid $green-light;
+
+    &:selected {
+      background-color: $green-light;
+      color: $black;
+    }
+
+    &:disabled {
+      background-color: $green-darkest;
+      color: $disabled-menu-text-color;
+    }
+  }
+
+  &::separator {
+    height: 5px;
+    background-color: $green-light;
+    margin: 0;
+  }
+
+  &::indicator {
+    width: 14px;
+    height: 14px;
+  }
+}

@@ -6,7 +6,7 @@
 
 # Dependencies
 
-Rust, GTK4, meson, sassc.
+Rust, Qt, meson, sassc.
 
 # Building for development
 
@@ -30,10 +30,4 @@ $ meson setup builddir --buildtype=release --prefix=$PWD/installation-dir
 $ meson compile -C builddir
 $ meson install -C builddir
 $ tree installation-dir
-installation-dir
-├── bin
-│   └── layer-shell
-└── lib
-    └── x86_64-linux-gnu
-        └── liblayer_shell_io.so
 ```

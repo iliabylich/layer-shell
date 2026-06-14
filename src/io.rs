@@ -40,7 +40,10 @@ pub(crate) struct IO {
     kb_mod: InfallibleModule<DedupModule<KbMod>>,
     niri: InfallibleModule<DedupModule<Niri>>,
 
-    on_event: extern "C" fn(event: *const Event),
+    on_event: (
+        extern "C" fn(event: *const Event, *mut std::ffi::c_void),
+        *mut std::ffi::c_void,
+    ),
     running: bool,
 }
 
@@ -73,7 +76,12 @@ impl IO {
         self.io_uring.deinit();
     }
 
-    pub(crate) fn new(on_event: extern "C" fn(event: *const Event)) -> Result<Self> {
+    pub(crate) fn new(
+        on_event: (
+            extern "C" fn(event: *const Event, *mut std::ffi::c_void),
+            *mut std::ffi::c_void,
+        ),
+    ) -> Result<Self> {
         let config = Config::read()?;
         let io_config = IOConfig::new(&config);
 
@@ -246,7 +254,8 @@ impl IO {
 
         while let Some(event) = EventQueue::pop_front() {
             log::info!(target: "IO", "{event:?}");
-            (self.on_event)(&raw const event);
+            let (callback, data) = self.on_event;
+            (callback)(&raw const event, data);
         }
 
         Ok(())

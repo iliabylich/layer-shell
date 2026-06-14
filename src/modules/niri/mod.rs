@@ -75,10 +75,20 @@ impl Niri {
             self.layouts = layouts;
         }
         if let Some(current_layout_idx) = current_layout_idx {
-            let lang = self
+            let mut lang = self
                 .layouts
                 .get(current_layout_idx)
-                .context("no such layout idx")?;
+                .context("no such layout idx")?
+                .as_str();
+
+            if lang == "English (US)" {
+                lang = "EN";
+            } else if lang == "Polish" {
+                lang = "PL";
+            } else {
+                lang = "??";
+            }
+
             EventQueue::push_back(Event::Language {
                 lang: StringRef::new(lang),
             });

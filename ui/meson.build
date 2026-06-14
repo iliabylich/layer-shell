@@ -1,68 +1,87 @@
-sources += files(
-    'view_models/clock_model.c',
-    'view_models/cpu_item.c',
-    'view_models/cpu_model.c',
-    'view_models/io_model.c',
-    'view_models/kb_mod_model.c',
-    'view_models/language_model.c',
-    'view_models/memory_model.c',
-    'view_models/network_model.c',
-    'view_models/overlays_model.c',
-    'view_models/sound_model.c',
-    'view_models/tray_app_item.c',
-    'view_models/tray_model.c',
-    'view_models/weather_day_item.c',
-    'view_models/weather_hour_item.c',
-    'view_models/weather_model.c',
-    'base_overlay.c',
-    'css.c',
-    'gobject_helper.c',
-    'kb_mod_overlay.c',
-    'logger.c',
-    'main.c',
-    'ping_overlay.c',
-    'session_overlay.c',
-    'sound_overlay.c',
-    'terminal_overlay.c',
-    'top_bar.c',
-    'weather_helper.c',
-    'weather_overlay.c',
+qt6_dep = dependency(
+    'qt6',
+    modules: [
+        'Core',
+        'Gui',
+        'Widgets',
+    ],
 )
 
-blueprints = custom_target(
-    'blueprints',
-    input: files(
-        'kb_mod_overlay.blp',
-        'ping_overlay.blp',
-        'session_overlay.blp',
-        'sound_overlay.blp',
-        'terminal_overlay.blp',
-        'top_bar.blp',
-        'weather_overlay.blp',
+cpp = meson.get_compiler('cpp')
+layershellqt_dep = cpp.find_library('LayerShellQtInterface')
+
+qtermwidget_dep = dependency('qtermwidget6')
+
+qt6 = import('qt6')
+qt6_sources = qt6.preprocess(
+    moc_headers: files(
+        'KbModOverlay.hpp',
+        'Overlay.hpp',
+        'SessionOverlay.hpp',
+        'SoundOverlay.hpp',
+        'TerminalOverlay.hpp',
+        'TopBar.hpp',
+        'Tray.hpp',
+        'UiModel.hpp',
+        'WeatherOverlay.hpp',
     ),
-    output: [
-        'kb_mod_overlay.ui',
-        'ping_overlay.ui',
-        'session_overlay.ui',
-        'sound_overlay.ui',
-        'terminal_overlay.ui',
-        'top_bar.ui',
-        'weather_overlay.ui',
-    ],
-    command: [
-        find_program('blueprint-compiler'),
-        'batch-compile',
-        '@OUTDIR@',
-        '@CURRENT_SOURCE_DIR@',
-        '@INPUT@',
-    ],
+    dependencies: [qt6_dep],
 )
 
-sources += gnome.compile_resources(
-    'layer-shell-resources',
-    'layer-shell.gresource.xml',
-    source_dir: meson.current_build_dir(),
-    dependencies: blueprints,
+xxd = find_program('xxd')
+xxd = generator(
+    xxd,
+    output: '@PLAINNAME@.xxd',
+    arguments: ['-n', '@PLAINNAME@', '-i', '@INPUT@', '@OUTPUT@'],
 )
 
-subdir('css')
+sassc = find_program('sassc')
+sassc = generator(
+    sassc,
+    output: '@PLAINNAME@',
+    arguments: ['@INPUT@', '@OUTPUT@'],
+)
+
+if get_option('buildtype') == 'debug'
+    asan_options = ['-fsanitize=address']
+else
+    asan_options = []
+endif
+
+executable(
+    'layer-shell',
+    [
+        files(
+            'Config.cpp',
+            'Event.cpp',
+            'KbModOverlay.cpp',
+            'Overlay.cpp',
+            'SessionOverlay.cpp',
+            'SoundOverlay.cpp',
+            'TerminalOverlay.cpp',
+            'TopBar.cpp',
+            'Tray.cpp',
+            'UiModel.cpp',
+            'WeatherOverlay.cpp',
+            'main.cpp',
+        ),
+        qt6_sources,
+        xxd.process(
+            sassc.process('style.scss'),
+        ),
+        rustlib,
+        bindings,
+    ],
+    cpp_args: asan_options,
+    dependencies: [
+        qt6_dep,
+        layershellqt_dep,
+        qtermwidget_dep,
+        dependency('liburing'),
+        dependency('openssl'),
+    ],
+    include_directories: include_directories('..'),
+    install: true,
+    install_dir: join_paths(get_option('prefix'), get_option('bindir')),
+    link_args: asan_options,
+)
