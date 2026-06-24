@@ -79,6 +79,7 @@ impl IoUring {
     fn submit(&mut self) {
         let errno = unsafe { __liburing_submit(&raw mut self.ring) };
         checkerr(errno);
+        self.dirty = false;
     }
 
     pub(crate) fn submit_if_dirty(&mut self) {
@@ -90,6 +91,7 @@ impl IoUring {
     pub(crate) fn submit_and_wait(&mut self, n: usize) {
         let errno = unsafe { __liburing_submit_and_wait(&raw mut self.ring, n as u32) };
         checkerr(errno);
+        self.dirty = false;
     }
 
     #[allow(dead_code)]

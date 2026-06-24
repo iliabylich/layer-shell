@@ -11,6 +11,7 @@ pub(crate) struct OpenSslState {
     pub(crate) ssl: *mut SSL,
     pub(crate) rbio: *mut BIO,
     pub(crate) wbio: *mut BIO,
+    _hostname: CString,
 }
 
 struct Ctx(*mut SSL_CTX);
@@ -54,7 +55,12 @@ impl OpenSslState {
 
         unsafe { SSL_set_connect_state(ssl) };
 
-        Ok(Rc::new(Self { ssl, rbio, wbio }))
+        Ok(Rc::new(Self {
+            ssl,
+            rbio,
+            wbio,
+            _hostname: hostname,
+        }))
     }
 }
 

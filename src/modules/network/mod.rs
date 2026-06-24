@@ -95,6 +95,7 @@ impl Network {
         }
     }
 
+    #[expect(clippy::useless_let_if_seq)]
     fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
         let mut got_diff = false;
 

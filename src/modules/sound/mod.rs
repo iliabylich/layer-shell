@@ -22,6 +22,8 @@ impl State {
     const fn new() -> Self {
         Self::Partial(None, None)
     }
+
+    #[expect(clippy::useless_let_if_seq)]
     fn got(&mut self, new_volume: Option<u32>, new_muted: Option<bool>) {
         match self {
             Self::Partial(prev_volume, prev_muted) => {
