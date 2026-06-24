@@ -146,6 +146,10 @@ impl App {
     }
 
     pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) -> Result<Option<TrayEvent>> {
+        if message.sender != Some(self.service.raw_address_str()) {
+            return Ok(None);
+        }
+
         if let Some(menu) = self.menu_prop.handle_reply_or_signal(message) {
             log::info!(target: "Tray", "Received menu {:?} - {menu:?}", self.service);
             self.on_menu_received(menu)?;
