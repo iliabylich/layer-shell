@@ -1,18 +1,17 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::FallibleModule,
     sansio::{FileReader, Satisfy, Wants},
-    user_data::ModuleId,
 };
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 use parser::{CoreUsage, Parser};
 
 mod parser;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct CPU {
-    reader: FileReader<1_024>,
+    reader: FileReader,
+    buf: Box<[u8; 1_024]>,
     state: Option<Vec<CoreUsage>>,
 }
 
@@ -20,48 +19,38 @@ impl CPU {
     pub(crate) fn new() -> Self {
         Self {
             reader: FileReader::new("/proc/stat"),
+            buf: Box::new([0; _]),
             state: None,
         }
     }
-}
 
-impl FallibleModule for CPU {
-    const MODULE_ID: ModuleId = ModuleId::CPU;
-    type Output = ();
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
-        Ok(self.reader.wants())
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
+        self.reader.wants(&mut *self.buf)
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
-        match satisfy {
-            Satisfy::OpenAt(res) => {
-                let fd = res?;
-                self.reader.satisfy_open(fd)?;
-                Ok(None)
-            }
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
+        let Some(buf) = self.reader.satisfy(satisfy, &*self.buf) else {
+            return Ok(());
+        };
 
-            Satisfy::Read(res) => {
-                let bytes_read = res?;
-                let buf = self.reader.satisfy_read(bytes_read)?;
+        let prev = self.state.take();
+        let next = Parser::parse(buf).context("parse error")?;
 
-                let prev = self.state.take();
-                let next = Parser::parse(buf).context("parse error")?;
+        let usage_per_core = diff(prev.as_deref(), &next)?.into();
+        self.state = Some(next);
+        EventQueue::push_back(Event::CpuUsage { usage_per_core });
+        Ok(())
+    }
 
-                let usage_per_core = diff(prev.as_deref(), &next)?.into();
-                self.state = Some(next);
-                EventQueue::push_back(Event::CpuUsage { usage_per_core });
-
-                Ok(None)
-            }
-
-            _ => bail!("CPU module only supports OpenAt and Read"),
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Err(err) = self.try_satisfy(satisfy) {
+            log::error!("{err:?}");
+            self.reader.stop();
         }
     }
 
-    fn try_tick(&mut self, _tick: u64) -> Result<()> {
-        self.reader.satisfy_tick();
-        Ok(())
+    pub(crate) const fn tick(&mut self) {
+        self.reader.tick();
     }
 }
 

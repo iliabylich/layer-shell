@@ -34,20 +34,3 @@ pub use weather::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherCode, WeatherOnDay,
     WeatherOnHour,
 };
-
-use crate::{
-    sansio::{Satisfy, Wants},
-    user_data::ModuleId,
-};
-use anyhow::Result;
-
-pub(crate) trait FallibleModule {
-    const MODULE_ID: ModuleId;
-    type Output;
-
-    fn wants(&mut self) -> Result<Option<Wants>>;
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>>;
-    fn try_tick(&mut self, _tick: u64) -> Result<()> {
-        Ok(())
-    }
-}

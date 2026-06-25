@@ -1,5 +1,3 @@
-use std::os::fd::AsRawFd;
-
 use crate::{
     Event,
     command::Command,
@@ -12,33 +10,33 @@ use crate::{
     },
     sansio::{Https, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::{DedupModule, InfallibleModule},
 };
 use anyhow::{Context, Result};
+use std::os::fd::AsRawFd;
 
 pub(crate) struct IO {
-    io_uring: IoUring,
+    ring: IoUring,
 
     config: Config,
     pub(crate) io_config: *const IOConfig,
 
-    timer: InfallibleModule<DedupModule<Timer>>,
+    timer: Timer,
 
-    session_dbus: InfallibleModule<DedupModule<SessionDBus>>,
+    session_dbus: SessionDBus,
     sound: Sound,
     tray: Tray,
-    system_dbus: InfallibleModule<DedupModule<SystemDBus>>,
+    system_dbus: SystemDBus,
     network: Network,
 
-    location: InfallibleModule<DedupModule<Location>>,
+    location: Location,
     coordinates: Option<(f64, f64)>,
-    weather: InfallibleModule<DedupModule<Weather>>,
+    weather: Weather,
 
-    cpu: InfallibleModule<DedupModule<CPU>>,
-    memory: InfallibleModule<DedupModule<Memory>>,
+    cpu: CPU,
+    memory: Memory,
 
-    kb_mod: InfallibleModule<DedupModule<KbMod>>,
-    niri: InfallibleModule<DedupModule<Niri>>,
+    kb_mod: KbMod,
+    niri: Niri,
 
     on_event: (
         extern "C" fn(event: *const Event, *mut std::ffi::c_void),
@@ -48,8 +46,8 @@ pub(crate) struct IO {
 }
 
 macro_rules! schedule {
-    ($module:expr, $io_uring:expr) => {{
-        let module_id = $module.module_id();
+    ($module_id:ident, $module:expr, $io_uring:expr) => {{
+        let module_id = ModuleId::$module_id;
 
         if let Some(wants) = $module.wants() {
             if let Some(wants_next) = $module.wants() {
@@ -73,7 +71,7 @@ impl IO {
 
     pub(crate) fn stop(&mut self) {
         self.running = false;
-        self.io_uring.deinit();
+        self.ring.deinit();
     }
 
     pub(crate) fn new(
@@ -86,28 +84,28 @@ impl IO {
         let io_config = IOConfig::new(&config);
 
         let mut this = Self {
-            io_uring: IoUring::new(10, 0),
+            ring: IoUring::new(10, 0),
 
             config,
             io_config,
 
-            timer: InfallibleModule::new(DedupModule::new(Timer::new())),
+            timer: Timer::new(),
 
-            session_dbus: InfallibleModule::new(DedupModule::new(SessionDBus::new())),
+            session_dbus: SessionDBus::new(),
             sound: Sound::new(),
             tray: Tray::new(),
-            system_dbus: InfallibleModule::new(DedupModule::new(SystemDBus::new())),
+            system_dbus: SystemDBus::new(),
             network: Network::new(),
 
-            location: InfallibleModule::new(DedupModule::new(Location::new())),
+            location: Location::new(),
             coordinates: None,
-            weather: InfallibleModule::new(DedupModule::new(Weather::new())),
+            weather: Weather::new(),
 
-            cpu: InfallibleModule::new(DedupModule::new(CPU::new())),
-            memory: InfallibleModule::new(DedupModule::new(Memory::new())),
+            cpu: CPU::new(),
+            memory: Memory::new(),
 
-            kb_mod: InfallibleModule::new(DedupModule::new(KbMod::new())),
-            niri: InfallibleModule::new(DedupModule::new(Niri::new())),
+            kb_mod: KbMod::new(),
+            niri: Niri::new(),
 
             on_event,
             running: true,
@@ -119,23 +117,23 @@ impl IO {
     }
 
     fn start(&mut self) -> Result<()> {
-        schedule!(self.timer, &mut self.io_uring);
+        schedule!(Timer, self.timer, &mut self.ring);
 
-        schedule!(self.location, &mut self.io_uring);
-        schedule!(self.cpu, &mut self.io_uring);
-        schedule!(self.memory, &mut self.io_uring);
-        schedule!(self.kb_mod, &mut self.io_uring);
-        schedule!(self.niri, &mut self.io_uring);
+        schedule!(GeoLocation, self.location, &mut self.ring);
+        schedule!(CPU, self.cpu, &mut self.ring);
+        schedule!(Memory, self.memory, &mut self.ring);
+        schedule!(KbMod, self.kb_mod, &mut self.ring);
+        schedule!(Niri, self.niri, &mut self.ring);
 
         self.sound.start();
         Control::init()?;
         Tray::init()?;
-        schedule!(self.session_dbus, &mut self.io_uring);
+        schedule!(SessionDBus, self.session_dbus, &mut self.ring);
 
         self.network.init();
-        schedule!(self.system_dbus, &mut self.io_uring);
+        schedule!(SystemDBus, self.system_dbus, &mut self.ring);
 
-        self.io_uring.submit_if_dirty();
+        self.ring.submit_if_dirty();
         Ok(())
     }
 
@@ -151,7 +149,7 @@ impl IO {
             return Ok(());
         }
 
-        while let Some(cqe) = self.io_uring.try_get_cqe() {
+        while let Some(cqe) = self.ring.try_get_cqe() {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
@@ -169,28 +167,26 @@ impl IO {
                 ModuleId::GeoLocation => {
                     if let Some((lat, lng)) = satisfy!(self.location) {
                         self.coordinates = Some((lat, lng));
-                        if let Some(weather) = self.weather.as_mut() {
-                            weather.setup(lat, lng);
-                        }
-                        schedule!(self.weather, &mut self.io_uring);
+                        self.weather.setup(lat, lng);
+                        schedule!(Weather, self.weather, &mut self.ring);
                     } else {
-                        schedule!(self.location, &mut self.io_uring);
+                        schedule!(GeoLocation, self.location, &mut self.ring);
                     }
                 }
 
                 ModuleId::Weather => {
                     satisfy!(self.weather);
-                    schedule!(self.weather, &mut self.io_uring);
+                    schedule!(Weather, self.weather, &mut self.ring);
                 }
 
                 ModuleId::KbMod => {
                     satisfy!(self.kb_mod);
-                    schedule!(self.kb_mod, &mut self.io_uring);
+                    schedule!(KbMod, self.kb_mod, &mut self.ring);
                 }
 
                 ModuleId::Niri => {
                     satisfy!(self.niri);
-                    schedule!(self.niri, &mut self.io_uring);
+                    schedule!(Niri, self.niri, &mut self.ring);
                 }
 
                 ModuleId::SessionDBus => {
@@ -205,7 +201,7 @@ impl IO {
                         }
                     }
 
-                    schedule!(self.session_dbus, &mut self.io_uring);
+                    schedule!(SessionDBus, self.session_dbus, &mut self.ring);
                 }
 
                 ModuleId::SystemDBus => {
@@ -215,42 +211,42 @@ impl IO {
                         self.network.handle(message);
                     }
 
-                    schedule!(self.system_dbus, &mut self.io_uring);
+                    schedule!(SystemDBus, self.system_dbus, &mut self.ring);
                 }
 
                 ModuleId::CPU => {
                     satisfy!(self.cpu);
-                    schedule!(self.cpu, &mut self.io_uring);
+                    schedule!(CPU, self.cpu, &mut self.ring);
                 }
                 ModuleId::Memory => {
                     satisfy!(self.memory);
-                    schedule!(self.memory, &mut self.io_uring);
+                    schedule!(Memory, self.memory, &mut self.ring);
                 }
                 ModuleId::Timer => {
                     if let Some(tick) = satisfy!(self.timer) {
-                        schedule!(self.timer, &mut self.io_uring);
+                        schedule!(Timer, self.timer, &mut self.ring);
 
                         Clock::tick();
 
                         self.weather.tick(tick);
-                        schedule!(self.weather, &mut self.io_uring);
+                        schedule!(Weather, self.weather, &mut self.ring);
 
-                        self.cpu.tick(tick);
-                        schedule!(self.cpu, &mut self.io_uring);
+                        self.cpu.tick();
+                        schedule!(CPU, self.cpu, &mut self.ring);
 
-                        self.memory.tick(tick);
-                        schedule!(self.memory, &mut self.io_uring);
+                        self.memory.tick();
+                        schedule!(Memory, self.memory, &mut self.ring);
 
                         self.sound.tick(tick);
-                        schedule!(self.session_dbus, &mut self.io_uring);
+                        schedule!(SessionDBus, self.session_dbus, &mut self.ring);
                     }
                 }
             }
 
-            self.io_uring.cqe_seen(cqe);
+            self.ring.cqe_seen(cqe);
         }
 
-        self.io_uring.submit_if_dirty();
+        self.ring.submit_if_dirty();
 
         while let Some(event) = EventQueue::pop_front() {
             log::info!(target: "IO", "{event:?}");
@@ -262,7 +258,7 @@ impl IO {
     }
 
     pub(crate) fn wait_readable(&mut self) {
-        self.io_uring.submit_and_wait(1);
+        self.ring.submit_and_wait(1);
     }
 
     pub(crate) fn process_command(&mut self, cmd: Command) {
@@ -298,17 +294,17 @@ impl IO {
 
             Command::TriggerTray { uuid } => {
                 self.tray.trigger(uuid.as_str());
-                schedule!(self.session_dbus, &mut self.io_uring);
+                schedule!(SessionDBus, self.session_dbus, &mut self.ring);
             }
         }
 
-        self.io_uring.submit_if_dirty();
+        self.ring.submit_if_dirty();
     }
 }
 
 impl AsRawFd for IO {
     fn as_raw_fd(&self) -> i32 {
-        self.io_uring.as_raw_fd()
+        self.ring.as_raw_fd()
     }
 }
 

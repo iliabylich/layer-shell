@@ -1,9 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::FallibleModule,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
-    user_data::ModuleId,
     utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context, Result, bail};
@@ -96,21 +94,16 @@ impl Niri {
 
         Ok(())
     }
-}
 
-impl FallibleModule for Niri {
-    const MODULE_ID: ModuleId = ModuleId::Niri;
-    type Output = ();
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
-            State::Writer(writer) => Ok(writer.wants()),
-            State::Reader(reader) => Ok(reader.wants()),
-            State::Dummy => Ok(None),
+            State::Writer(writer) => writer.wants(),
+            State::Reader(reader) => reader.wants(),
+            State::Dummy => None,
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match &mut self.state {
             State::Writer(writer) => match satisfy {
                 Satisfy::Socket(res) => {
@@ -158,6 +151,13 @@ impl FallibleModule for Niri {
             State::Dummy => {}
         }
 
-        Ok(None)
+        Ok(())
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Err(err) = self.try_satisfy(satisfy) {
+            log::error!("{err:?}");
+            self.state = State::Dummy;
+        }
     }
 }

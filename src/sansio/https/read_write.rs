@@ -17,7 +17,6 @@ enum State {
 
 pub(crate) struct OpenSslReadWrite {
     state: State,
-    seq: u64,
 
     tls: Rc<OpenSslState>,
 
@@ -29,10 +28,9 @@ pub(crate) struct OpenSslReadWrite {
 }
 
 impl OpenSslReadWrite {
-    pub(crate) fn new(ssl: Rc<OpenSslState>, request: Vec<u8>, seq: u64) -> Result<Self> {
+    pub(crate) fn new(ssl: Rc<OpenSslState>, request: Vec<u8>) -> Result<Self> {
         let mut this = Self {
             state: State::ReadyToWrite,
-            seq,
 
             tls: ssl,
 
@@ -111,7 +109,6 @@ impl OpenSslReadWrite {
                     fd,
                     buf: self.readbuf.as_mut_ptr(),
                     len: self.readbuf.len(),
-                    seq: self.seq,
                 })
             }
             State::ReadyToWrite => {
@@ -120,7 +117,6 @@ impl OpenSslReadWrite {
                     fd,
                     buf: self.writebuf.as_ptr(),
                     len: self.writebuf.len(),
-                    seq: self.seq,
                 })
             }
 
@@ -133,7 +129,6 @@ impl OpenSslReadWrite {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Vec<u8>>> {
-        self.seq += 1;
         match (self.state, satisfy) {
             (State::WaitingForWrite, Satisfy::Write(res)) => {
                 let bytes_written = res?;

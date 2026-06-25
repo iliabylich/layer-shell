@@ -1,6 +1,6 @@
 use crate::sansio::{Satisfy, Wants};
-use anyhow::{Context as _, Result, bail};
-use dns::{Dns, DnsRecordType, DnsWants};
+use anyhow::{Result, bail};
+use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};
 use rustix::net::{AddressFamily, SocketType};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -11,137 +11,180 @@ use std::{
 pub(crate) struct DNS {
     state: State,
     domain: &'static str,
-    dns_server_fd: Option<BorrowedFd<'static>>,
-    seq: u64,
     output: Option<SocketAddr>,
+    buf: Box<[u8; MAX_DNS_PACKET_LEN]>,
 }
 
 const DNS_SERVER_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53);
 
 enum State {
-    Socket,
-    Connect,
-    ReadWrite(Box<Dns>),
-    Close,
+    CanSocket,
+    WaitingForSocket,
+
+    CanConnect { fd: BorrowedFd<'static> },
+    WaitingForConnect { fd: BorrowedFd<'static> },
+
+    CanWrite { dns: Dns, fd: BorrowedFd<'static> },
+    WaitingForWrite { dns: Dns, fd: BorrowedFd<'static> },
+
+    CanRead { dns: Dns, fd: BorrowedFd<'static> },
+    WaitingForRead { dns: Dns, fd: BorrowedFd<'static> },
+
+    CanClose { fd: BorrowedFd<'static> },
+    WaitingForClose,
+
+    Stopped,
 }
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Socket => write!(f, "Socket"),
-            Self::Connect => write!(f, "Connect"),
-            Self::ReadWrite(_) => write!(f, "ReadWrite"),
-            Self::Close => write!(f, "Close"),
+            Self::CanSocket => write!(f, "CanSocket"),
+            Self::WaitingForSocket => write!(f, "WaitingForSocket"),
+            Self::CanConnect { .. } => write!(f, "CanConnect"),
+            Self::WaitingForConnect { .. } => write!(f, "WaitingForConnect"),
+            Self::CanWrite { .. } => write!(f, "CanWrite"),
+            Self::WaitingForWrite { .. } => write!(f, "WaitingForWrite"),
+            Self::CanRead { .. } => write!(f, "CanRead"),
+            Self::WaitingForRead { .. } => write!(f, "WaitingForRead"),
+            Self::CanClose { .. } => write!(f, "CanClose"),
+            Self::WaitingForClose => write!(f, "WaitingForClose"),
+            Self::Stopped => write!(f, "Stopped"),
         }
     }
 }
 
 impl DNS {
-    pub(crate) const fn new(domain: &'static str) -> Self {
+    pub(crate) fn new(domain: &'static str) -> Self {
         Self {
-            state: State::Socket,
+            state: State::CanSocket,
             domain,
-            dns_server_fd: None,
-            seq: 0,
             output: None,
+            buf: Box::new([0; _]),
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
-        match &mut self.state {
-            State::Socket => Ok(Some(Wants::Socket {
-                domain: AddressFamily::INET,
-                r#type: SocketType::DGRAM,
-                seq: self.seq,
-            })),
-
-            State::Connect => {
-                let fd = self
-                    .dns_server_fd
-                    .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-
-                Ok(Some(Wants::Connect {
-                    fd,
-                    addr: DNS_SERVER_ADDR.into(),
-                    seq: self.seq,
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
+        match self.state {
+            State::CanSocket => {
+                self.state = State::WaitingForSocket;
+                Ok(Some(Wants::Socket {
+                    domain: AddressFamily::INET,
+                    r#type: SocketType::DGRAM,
                 }))
             }
 
-            State::ReadWrite(inner) => {
-                match inner.wants()?.context("DNS doesn't want anything")? {
-                    DnsWants::Read { buf, seq } => {
-                        let fd = self
-                            .dns_server_fd
-                            .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-                        Ok(Some(Wants::Read {
-                            fd,
-                            buf: buf.as_mut_ptr(),
-                            len: buf.len(),
-                            seq,
-                        }))
-                    }
-                    DnsWants::Write { buf, seq } => {
-                        let fd = self
-                            .dns_server_fd
-                            .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-                        Ok(Some(Wants::Write {
-                            fd,
-                            buf: buf.as_ptr(),
-                            len: buf.len(),
-                            seq,
-                        }))
-                    }
-                }
+            State::CanConnect { fd } => {
+                self.state = State::WaitingForConnect { fd };
+                Ok(Some(Wants::Connect {
+                    fd,
+                    addr: DNS_SERVER_ADDR.into(),
+                }))
             }
 
-            State::Close => {
-                let fd = self
-                    .dns_server_fd
-                    .unwrap_or_else(|| unreachable!("FD must be set at this point, bug"));
-                Ok(Some(Wants::Close { fd, seq: self.seq }))
+            State::CanWrite { mut dns, fd } => {
+                let Some(DnsWants::Write { buf, .. }) = dns.wants(&mut self.buf)? else {
+                    bail!("DNS at state CanWrite must want Write")
+                };
+                self.state = State::WaitingForWrite { dns, fd };
+                Ok(Some(Wants::Write {
+                    fd,
+                    buf: buf.as_ptr(),
+                    len: buf.len(),
+                }))
+            }
+
+            State::CanRead { mut dns, fd } => {
+                let Some(DnsWants::Read { buf, .. }) = dns.wants(&mut self.buf)? else {
+                    bail!("DNS at state CanRead must want Read")
+                };
+                self.state = State::WaitingForRead { dns, fd };
+                Ok(Some(Wants::Read {
+                    fd,
+                    buf: buf.as_mut_ptr(),
+                    len: buf.len(),
+                }))
+            }
+
+            State::CanClose { fd } => {
+                self.state = State::WaitingForClose;
+                Ok(Some(Wants::Close { fd }))
+            }
+
+            State::WaitingForSocket
+            | State::WaitingForConnect { .. }
+            | State::WaitingForWrite { .. }
+            | State::WaitingForRead { .. }
+            | State::WaitingForClose
+            | State::Stopped => Ok(None),
+        }
+    }
+
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
+        match self.try_wants() {
+            Ok(wants) => wants,
+            Err(err) => {
+                log::error!("{err:?}");
+                self.state = State::Stopped;
+                None
             }
         }
     }
 
-    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<(u64, SocketAddr)>> {
-        self.seq += 1;
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<SocketAddr>> {
+        let mut state = State::Stopped;
+        std::mem::swap(&mut self.state, &mut state);
 
-        match (&mut self.state, satisfy) {
-            (State::Socket, Satisfy::Socket(res)) => {
+        match (state, satisfy) {
+            (State::WaitingForSocket, Satisfy::Socket(res)) => {
                 let fd = res?;
-                self.dns_server_fd = Some(fd);
-                self.state = State::Connect;
+                self.state = State::CanConnect { fd };
                 Ok(None)
             }
 
-            (State::Connect, Satisfy::Connect(res)) => {
+            (State::WaitingForConnect { fd }, Satisfy::Connect(res)) => {
                 res?;
-                self.state = State::ReadWrite(Box::new(Dns::new(self.domain, DnsRecordType::A)?));
+                self.state = State::CanWrite {
+                    dns: Dns::new(self.domain, DnsRecordType::A, &mut self.buf)?,
+                    fd,
+                };
                 Ok(None)
             }
 
-            (State::ReadWrite(inner), Satisfy::Write(res)) => {
+            (State::WaitingForWrite { mut dns, fd }, Satisfy::Write(res)) => {
                 let len = res?;
-                inner.satisfy_write(len)?;
+                dns.satisfy_write(len, &mut self.buf)?;
+                self.state = State::CanRead { dns, fd };
                 Ok(None)
             }
 
-            (State::ReadWrite(inner), Satisfy::Read(res)) => {
+            (State::WaitingForRead { mut dns, fd }, Satisfy::Read(res)) => {
                 let len = res?;
-                let (addr, _seq) = inner.satisfy_read(len)?;
-                self.state = State::Close;
+                let (addr, _seq) = dns.satisfy_read(len, &self.buf)?;
+                self.state = State::CanClose { fd };
                 self.output = Some(addr);
                 Ok(None)
             }
 
-            (State::Close, Satisfy::Close(res)) => {
+            (State::WaitingForClose, Satisfy::Close(res)) => {
                 res?;
                 let Some(output) = self.output.take() else {
                     return Ok(None);
                 };
-                Ok(Some((self.seq, output)))
+                Ok(Some(output))
             }
 
             (_, satisfy) => bail!("malformed state: {:?} vs {satisfy:?}", self.state),
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<SocketAddr> {
+        match self.try_satisfy(satisfy) {
+            Ok(addr) => addr,
+            Err(err) => {
+                log::error!("{err:?}");
+                self.state = State::Stopped;
+                None
+            }
         }
     }
 }

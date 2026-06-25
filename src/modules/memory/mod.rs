@@ -1,57 +1,48 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::FallibleModule,
     sansio::{FileReader, Satisfy, Wants},
-    user_data::ModuleId,
 };
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 use parser::Parser;
 
 mod parser;
 
 pub(crate) struct Memory {
-    reader: FileReader<1_024>,
+    reader: FileReader,
+    buf: Box<[u8; 1_024]>,
 }
 
 impl Memory {
     pub(crate) fn new() -> Self {
         Self {
             reader: FileReader::new("/proc/meminfo"),
-        }
-    }
-}
-
-impl FallibleModule for Memory {
-    const MODULE_ID: ModuleId = ModuleId::Memory;
-    type Output = ();
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
-        Ok(self.reader.wants())
-    }
-
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
-        match satisfy {
-            Satisfy::OpenAt(res) => {
-                let fd = res?;
-                self.reader.satisfy_open(fd)?;
-                Ok(None)
-            }
-
-            Satisfy::Read(res) => {
-                let bytes_read = res?;
-                let buf = self.reader.satisfy_read(bytes_read)?;
-                let (used, total) = Parser::parse(buf).context("parse error")?;
-                EventQueue::push_back(Event::Memory { used, total });
-                Ok(None)
-            }
-
-            _ => bail!("Memory module only suports OpenAt and Read"),
+            buf: Box::new([0; _]),
         }
     }
 
-    fn try_tick(&mut self, _tick: u64) -> Result<()> {
-        self.reader.satisfy_tick();
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
+        self.reader.wants(&mut *self.buf)
+    }
+
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
+        let Some(buf) = self.reader.satisfy(satisfy, &*self.buf) else {
+            return Ok(());
+        };
+
+        let (used, total) = Parser::parse(buf).context("parse error")?;
+        EventQueue::push_back(Event::Memory { used, total });
         Ok(())
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Err(err) = self.try_satisfy(satisfy) {
+            log::error!("{err:?}");
+            self.reader.stop();
+        }
+    }
+
+    pub(crate) const fn tick(&mut self) {
+        self.reader.tick();
     }
 }

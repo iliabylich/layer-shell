@@ -1,80 +1,98 @@
-use crate::sansio::Wants;
-use anyhow::{Context as _, Result, bail, ensure};
+use crate::sansio::{Satisfy, Wants};
+use anyhow::{Context as _, Result, bail};
 use rustix::fs::{CWD, Mode, OFlags};
 use std::os::fd::BorrowedFd;
 
-pub(crate) struct FileReader<const N: usize> {
+pub(crate) struct FileReader {
     path: &'static str,
     state: State,
-    buf: Box<[u8; N]>,
-    seq: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum State {
     CanOpen,
+    WaitingForOpen,
     CanRead { fd: BorrowedFd<'static> },
+    WaitingForRead { fd: BorrowedFd<'static> },
     Sleeping { fd: BorrowedFd<'static> },
+    Dead,
 }
 
-impl<const N: usize> FileReader<N> {
-    pub(crate) fn new(path: &'static str) -> Self {
+impl FileReader {
+    pub(crate) const fn new(path: &'static str) -> Self {
         Self {
             path,
             state: State::CanOpen,
-            buf: Box::new([0; N]),
-            seq: 0,
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) const fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
         match self.state {
-            State::CanOpen => Some(Wants::OpenAt {
-                dfd: CWD,
-                path: self.path,
-                flags: OFlags::RDONLY,
-                mode: Mode::empty(),
-                seq: self.seq,
-            }),
+            State::CanOpen => {
+                self.state = State::WaitingForOpen;
+                Some(Wants::OpenAt {
+                    dfd: CWD,
+                    path: self.path,
+                    flags: OFlags::RDONLY,
+                    mode: Mode::empty(),
+                })
+            }
 
-            State::CanRead { fd } => Some(Wants::Read {
-                fd,
-                buf: self.buf.as_mut_ptr(),
-                len: self.buf.len(),
-                seq: self.seq,
-            }),
+            State::CanRead { fd } => {
+                self.state = State::WaitingForRead { fd };
+                Some(Wants::Read {
+                    fd,
+                    buf: buf.as_mut_ptr(),
+                    len: buf.len(),
+                })
+            }
 
-            State::Sleeping { .. } => None,
+            State::WaitingForOpen
+            | State::WaitingForRead { .. }
+            | State::Sleeping { .. }
+            | State::Dead => None,
         }
     }
 
-    pub(crate) fn satisfy_open(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
-        ensure!(
-            matches!(self.state, State::CanOpen),
-            "malformed state: expected Open, got {:?}",
-            self.state
-        );
+    fn try_satisfy<'a>(&mut self, satisfy: Satisfy, buf: &'a [u8]) -> Result<Option<&'a [u8]>> {
+        match (self.state, satisfy) {
+            (State::WaitingForOpen, Satisfy::OpenAt(fd)) => {
+                let fd = fd?;
+                self.state = State::CanRead { fd };
+                Ok(None)
+            }
 
-        self.state = State::CanRead { fd };
-        self.seq += 1;
-        Ok(())
+            (State::WaitingForRead { fd }, Satisfy::Read(bytes_read)) => {
+                let bytes_read = bytes_read?;
+                let out = buf.get(..bytes_read).context("buffer is too short")?;
+                self.state = State::Sleeping { fd };
+                Ok(Some(out))
+            }
+
+            (state, satisfy) => {
+                bail!("malformed FileReader state: {state:?} for {satisfy:?}");
+            }
+        }
     }
 
-    pub(crate) fn satisfy_read(&mut self, bytes_read: usize) -> Result<&[u8]> {
-        let State::CanRead { fd } = self.state else {
-            bail!("malformed state: expected Read, got {:?}", self.state)
-        };
-
-        let out = self.buf.get(..bytes_read).context("buffer is too short")?;
-        self.state = State::Sleeping { fd };
-        self.seq += 1;
-        Ok(out)
+    pub(crate) fn satisfy<'a>(&mut self, satisfy: Satisfy, buf: &'a [u8]) -> Option<&'a [u8]> {
+        match self.try_satisfy(satisfy, buf) {
+            Ok(buf) => buf,
+            Err(err) => {
+                log::error!("{err:?}");
+                self.state = State::Dead;
+                None
+            }
+        }
     }
 
-    pub(crate) const fn satisfy_tick(&mut self) {
+    pub(crate) const fn stop(&mut self) {
+        self.state = State::Dead;
+    }
+
+    pub(crate) const fn tick(&mut self) {
         if let State::Sleeping { fd } = self.state {
             self.state = State::CanRead { fd };
-            self.seq += 1;
         }
     }
 }

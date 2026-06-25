@@ -17,7 +17,6 @@ enum State {
 
 pub(crate) struct OpenSslHandshake {
     state: State,
-    seq: u64,
 
     tls: Rc<OpenSslState>,
 
@@ -31,10 +30,9 @@ enum Progress {
 }
 
 impl OpenSslHandshake {
-    pub(crate) fn new(hostname: &str, seq: u64) -> Result<Self> {
+    pub(crate) fn new(hostname: &str) -> Result<Self> {
         let mut this = Self {
             state: State::ReadyToRead,
-            seq,
 
             tls: OpenSslState::new(hostname)?,
 
@@ -95,7 +93,6 @@ impl OpenSslHandshake {
                     fd,
                     buf: self.readbuf.as_mut_ptr(),
                     len: self.readbuf.len(),
-                    seq: self.seq,
                 })
             }
 
@@ -105,7 +102,6 @@ impl OpenSslHandshake {
                     fd,
                     buf: self.writebuf.as_ptr(),
                     len: self.writebuf.len(),
-                    seq: self.seq,
                 })
             }
 
@@ -117,9 +113,7 @@ impl OpenSslHandshake {
         matches!(self.state, State::WaitingForRead | State::WaitingForWrite)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<(Rc<OpenSslState>, u64)>> {
-        self.seq += 1;
-
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Rc<OpenSslState>>> {
         match (self.state, satisfy) {
             (State::WaitingForRead, Satisfy::Read(res)) => {
                 let bytes_read = res?;
@@ -153,7 +147,7 @@ impl OpenSslHandshake {
         }
 
         match self.determine_state()? {
-            Progress::Done => Ok(Some((Rc::clone(&self.tls), self.seq))),
+            Progress::Done => Ok(Some(Rc::clone(&self.tls))),
             Progress::NextState(state) => {
                 self.state = state;
                 Ok(None)

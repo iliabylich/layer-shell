@@ -147,10 +147,10 @@ Event::KbModToggled::KbModToggled(const IO_Event::IO_KbModToggled_Body &data)
   case IO_KbModKind::NumLock:
     kind = Event::KbModToggled::Kind::NumLock;
     break;
+  default:
+    qDebug() << "unknown IO_KbModKind " << static_cast<int>(data.kind) << "\n";
+    std::abort();
   }
-
-  qDebug() << "unknown IO_KbModKind " << static_cast<int>(data.kind) << "\n";
-  std::abort();
 }
 Event::Sound::Sound(const IO_Event::IO_Sound_Body &data)
     : volume(data.volume), muted(data.muted) {}

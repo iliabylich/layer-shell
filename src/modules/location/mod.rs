@@ -1,9 +1,4 @@
-use crate::{
-    modules::FallibleModule,
-    sansio::{HttpRequest, Https, Satisfy, Wants},
-    user_data::ModuleId,
-};
-use anyhow::Result;
+use crate::sansio::{HttpRequest, Https, Satisfy, Wants};
 use response::LocationResponse;
 
 mod response;
@@ -20,21 +15,21 @@ impl Location {
             https: Https::new(HttpRequest::get(HOST, "/".to_string())),
         }
     }
-}
 
-impl FallibleModule for Location {
-    const MODULE_ID: ModuleId = ModuleId::GeoLocation;
-    type Output = (f64, f64);
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         self.https.wants()
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
-        let Some(response) = self.https.try_satisfy(satisfy)? else {
-            return Ok(None);
-        };
-        let location = LocationResponse::parse(&response)?;
-        Ok(Some(location))
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<(f64, f64)> {
+        let response = self.https.satisfy(satisfy)?;
+
+        match LocationResponse::parse(&response) {
+            Ok(location) => Some(location),
+            Err(err) => {
+                log::error!("{err:?}");
+                self.https.stop();
+                None
+            }
+        }
     }
 }

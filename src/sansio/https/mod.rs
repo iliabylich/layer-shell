@@ -20,14 +20,14 @@ use crate::sansio::{DNS, Satisfy, Wants};
 enum State {
     Dns(DNS),
 
-    ReadyToSocket {
+    CanSocket {
         addr: SocketAddr,
     },
     WaitingForSocket {
         addr: SocketAddr,
     },
 
-    ReadyToConnect {
+    CanConnect {
         addr: SocketAddr,
         fd: BorrowedFd<'static>,
     },
@@ -44,34 +44,33 @@ enum State {
         fd: BorrowedFd<'static>,
     },
 
-    ReadyToClose {
+    CanClose {
         fd: BorrowedFd<'static>,
     },
     WaitingForClose,
 
-    Done,
+    Stopped,
 }
 
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Dns(_) => write!(f, "Dns"),
-            Self::ReadyToSocket { .. } => write!(f, "ReadyToSocket"),
+            Self::CanSocket { .. } => write!(f, "CanSocket"),
             Self::WaitingForSocket { .. } => write!(f, "WaitingForSocket"),
-            Self::ReadyToConnect { .. } => write!(f, "ReadyToConnect"),
+            Self::CanConnect { .. } => write!(f, "CanConnect"),
             Self::WaitingForConnect { .. } => write!(f, "WaitingForConnect"),
             Self::Handshaking { .. } => write!(f, "Handshaking"),
             Self::ReadWrite { .. } => write!(f, "ReadWrite"),
-            Self::ReadyToClose { .. } => write!(f, "ReadyToClose"),
+            Self::CanClose { .. } => write!(f, "CanClose"),
             Self::WaitingForClose => write!(f, "WaitingForClose"),
-            Self::Done => write!(f, "Done"),
+            Self::Stopped => write!(f, "Stopped"),
         }
     }
 }
 
 pub(crate) struct Https {
     state: State,
-    seq: u64,
     request: Vec<u8>,
     domain: &'static str,
     response: Vec<u8>,
@@ -87,7 +86,6 @@ impl Https {
 
         Self {
             state: State::Dns(DNS::new(domain)),
-            seq: 0,
             request: request.into_bytes(),
             domain,
             response: vec![],
@@ -102,85 +100,80 @@ impl Https {
             State::Handshaking { inner, .. } => inner.is_waiting(),
             State::ReadWrite { inner, .. } => inner.is_waiting(),
             State::Dns(_)
-            | State::ReadyToSocket { .. }
-            | State::ReadyToConnect { .. }
-            | State::ReadyToClose { .. }
-            | State::Done => false,
+            | State::CanSocket { .. }
+            | State::CanConnect { .. }
+            | State::CanClose { .. }
+            | State::Stopped => false,
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         match &mut self.state {
             State::Dns(dns) => dns.wants(),
 
-            State::ReadyToSocket { addr } => {
+            State::CanSocket { addr } => {
                 self.state = State::WaitingForSocket { addr: *addr };
-                Ok(Some(Wants::Socket {
+                Some(Wants::Socket {
                     domain: AddressFamily::INET,
                     r#type: SocketType::STREAM,
-                    seq: self.seq,
-                }))
+                })
             }
 
-            State::ReadyToConnect { addr, fd } => {
+            State::CanConnect { addr, fd } => {
                 let addr = *addr;
                 let fd = *fd;
                 self.state = State::WaitingForConnect { fd };
-                Ok(Some(Wants::Connect {
+                Some(Wants::Connect {
                     fd,
                     addr: addr.into(),
-                    seq: self.seq,
-                }))
+                })
             }
 
-            State::Handshaking { inner, fd } => Ok(inner.wants(*fd)),
+            State::Handshaking { inner, fd } => inner.wants(*fd),
 
-            State::ReadWrite { inner, fd } => Ok(inner.wants(*fd)),
+            State::ReadWrite { inner, fd } => inner.wants(*fd),
 
-            State::ReadyToClose { fd } => {
+            State::CanClose { fd } => {
                 let fd = *fd;
                 self.state = State::WaitingForClose;
-                Ok(Some(Wants::Close { fd, seq: self.seq }))
+                Some(Wants::Close { fd })
             }
 
             State::WaitingForSocket { .. }
             | State::WaitingForConnect { .. }
             | State::WaitingForClose
-            | State::Done => Ok(None),
+            | State::Stopped => None,
         }
     }
 
-    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<HttpResponse>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
             (State::Dns(dns), satisfy) => {
-                if let Some((seq, mut addr)) = dns.try_satisfy(satisfy)? {
-                    self.seq = seq;
+                if let Some(mut addr) = dns.satisfy(satisfy) {
                     addr.set_port(443);
-                    self.state = State::ReadyToSocket { addr };
+                    self.state = State::CanSocket { addr };
                 }
             }
 
             (State::WaitingForSocket { addr }, Satisfy::Socket(res)) => {
                 let fd = res?;
-                self.seq += 1;
-                self.state = State::ReadyToConnect { addr: *addr, fd };
+                self.state = State::CanConnect { addr: *addr, fd };
             }
 
             (State::WaitingForConnect { fd }, Satisfy::Connect(res)) => {
                 res?;
                 let fd = *fd;
-                self.seq += 1;
                 self.state = State::Handshaking {
-                    inner: OpenSslHandshake::new(self.domain, self.seq)?,
+                    inner: OpenSslHandshake::new(self.domain)?,
                     fd,
                 };
             }
 
             (State::Handshaking { inner, fd }, satisfy) => {
-                if let Some((state, seq)) = inner.satisfy(satisfy)? {
+                if let Some(state) = inner.satisfy(satisfy)? {
                     let fd = *fd;
                     self.state = State::ReadWrite {
-                        inner: OpenSslReadWrite::new(state, self.request.clone(), seq)?,
+                        inner: OpenSslReadWrite::new(state, self.request.clone())?,
                         fd,
                     };
                 }
@@ -190,14 +183,14 @@ impl Https {
                 if let Some(response) = inner.satisfy(satisfy)? {
                     let fd = *fd;
                     self.response = response;
-                    self.state = State::ReadyToClose { fd };
+                    self.state = State::CanClose { fd };
                 }
             }
 
             (State::WaitingForClose, Satisfy::Close(res)) => {
                 res?;
                 let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
-                self.state = State::Done;
+                self.state = State::Stopped;
                 return Ok(Some(response));
             }
 
@@ -205,5 +198,20 @@ impl Https {
         }
 
         Ok(None)
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<HttpResponse> {
+        match self.try_satisfy(satisfy) {
+            Ok(res) => res,
+            Err(err) => {
+                log::error!("{err:?}");
+                self.state = State::Stopped;
+                None
+            }
+        }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        self.state = State::Stopped;
     }
 }

@@ -1,7 +1,5 @@
 use crate::{
-    modules::FallibleModule,
     sansio::{DBusState, Satisfy, Wants},
-    user_data::ModuleId,
     utils::dbus::queue::DBusQueue,
 };
 use anyhow::{Context, Result};
@@ -37,14 +35,14 @@ impl SessionDBus {
             .context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
 
         Ok(Self {
-            state: DBusState::WantsSocket,
+            state: DBusState::CanSocket,
             addr: SocketAddrUnix::new(path)?,
         })
     }
 
     pub(crate) fn new() -> Self {
         Self::try_new().unwrap_or_else(|err| {
-            log::error!(target: Self::MODULE_ID.as_str(), "{err:?}");
+            log::error!(target: "SessionDBus", "{err:?}");
             Self {
                 state: DBusState::Disconnected,
                 addr: unsafe { core::mem::zeroed() },
@@ -55,21 +53,14 @@ impl SessionDBus {
     pub(crate) const fn queue() -> &'static mut DBusQueue {
         queue()
     }
-}
 
-impl FallibleModule for SessionDBus {
-    const MODULE_ID: ModuleId = ModuleId::SessionDBus;
-    type Output = IncomingMessage<'static>;
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         self.state.wants(&self.addr, readbuf(), queue())
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
-        let mut state = DBusState::Disconnected;
-        std::mem::swap(&mut self.state, &mut state);
-        let (state, message) = state.satisfy(satisfy, readbuf(), queue())?;
-        self.state = state;
-        Ok(message)
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<IncomingMessage<'static>> {
+        let message;
+        (self.state, message) = self.state.satisfy(satisfy, readbuf(), queue());
+        message
     }
 }

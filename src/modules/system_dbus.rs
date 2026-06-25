@@ -1,7 +1,5 @@
 use crate::{
-    modules::FallibleModule,
     sansio::{DBusState, Satisfy, Wants},
-    user_data::ModuleId,
     utils::dbus::queue::DBusQueue,
 };
 use anyhow::Result;
@@ -10,7 +8,7 @@ use rustix::net::SocketAddrUnix;
 
 pub(crate) struct SystemDBus {
     state: DBusState,
-    address: SocketAddrUnix,
+    addr: SocketAddrUnix,
 }
 
 static mut READBUF: Vec<u8> = vec![];
@@ -37,17 +35,17 @@ impl SystemDBus {
             .unwrap_or_else(|| String::from("/var/run/dbus/system_bus_socket"));
 
         Ok(Self {
-            state: DBusState::WantsSocket,
-            address: SocketAddrUnix::new(path)?,
+            state: DBusState::CanSocket,
+            addr: SocketAddrUnix::new(path)?,
         })
     }
 
     pub(crate) fn new() -> Self {
         Self::try_new().unwrap_or_else(|err| {
-            log::error!(target: Self::MODULE_ID.as_str(), "{err:?}");
+            log::error!(target: "SystemDBus", "{err:?}");
             Self {
                 state: DBusState::Disconnected,
-                address: unsafe { core::mem::zeroed() },
+                addr: unsafe { core::mem::zeroed() },
             }
         })
     }
@@ -55,21 +53,14 @@ impl SystemDBus {
     pub(crate) const fn queue() -> &'static mut DBusQueue {
         queue()
     }
-}
 
-impl FallibleModule for SystemDBus {
-    const MODULE_ID: ModuleId = ModuleId::SystemDBus;
-    type Output = IncomingMessage<'static>;
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
-        self.state.wants(&self.address, readbuf(), queue())
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
+        self.state.wants(&self.addr, readbuf(), queue())
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
-        let mut state = DBusState::Disconnected;
-        std::mem::swap(&mut self.state, &mut state);
-        let (state, message) = state.satisfy(satisfy, readbuf(), queue())?;
-        self.state = state;
-        Ok(message)
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<IncomingMessage<'static>> {
+        let message;
+        (self.state, message) = self.state.satisfy(satisfy, readbuf(), queue());
+        message
     }
 }

@@ -1,9 +1,8 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::{FallibleModule, weather::weather_response::WeatherResponse},
+    modules::weather::weather_response::WeatherResponse,
     sansio::{HttpRequest, Https, Satisfy, Wants},
-    user_data::ModuleId,
 };
 use anyhow::Result;
 pub use weather_code::WeatherCode;
@@ -41,10 +40,18 @@ impl Weather {
         }
     }
 
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
+        match self {
+            Self::Ready { https, .. } => https.wants(),
+
+            Self::WaitingForLocation | Self::Dead { .. } => None,
+        }
+    }
+
     fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match self {
             Self::Ready { https, .. } => {
-                let Some(response) = https.try_satisfy(satisfy)? else {
+                let Some(response) = https.satisfy(satisfy) else {
                     return Ok(());
                 };
                 let response = WeatherResponse::parse(&response)?;
@@ -56,6 +63,15 @@ impl Weather {
         }
     }
 
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Err(err) = self.try_satisfy(satisfy) {
+            log::error!("{err:?}");
+            *self = Self::Dead {
+                latlng: self.latlng(),
+            };
+        }
+    }
+
     const fn latlng(&self) -> Option<(f64, f64)> {
         match self {
             Self::WaitingForLocation => None,
@@ -63,44 +79,16 @@ impl Weather {
             Self::Dead { latlng } => *latlng,
         }
     }
-}
 
-impl FallibleModule for Weather {
-    const MODULE_ID: ModuleId = ModuleId::Weather;
-    type Output = ();
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
-        match self {
-            Self::Ready { https, .. } => https.wants(),
-
-            Self::WaitingForLocation | Self::Dead { .. } => Ok(None),
-        }
-    }
-
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
-        if matches!(self, Self::Dead { .. }) {
-            return Ok(None);
-        }
-
-        if let Err(err) = self.try_satisfy(satisfy) {
-            log::error!("Weather module crashed: {err:?}");
-            *self = Self::Dead {
-                latlng: self.latlng(),
-            };
-        }
-
-        Ok(None)
-    }
-
-    fn try_tick(&mut self, tick: u64) -> Result<()> {
+    pub(crate) fn tick(&mut self, tick: u64) {
         if !tick.is_multiple_of(60) {
-            return Ok(());
+            return;
         }
 
         if let Self::Ready { https, .. } = self
             && https.is_waiting()
         {
-            return Ok(());
+            return;
         }
 
         if let Some((lat, lng)) = self.latlng() {
@@ -110,8 +98,6 @@ impl FallibleModule for Weather {
                 https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)))),
             };
         }
-
-        Ok(())
     }
 }
 

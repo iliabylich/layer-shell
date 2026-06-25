@@ -1,9 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    modules::FallibleModule,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    user_data::ModuleId,
 };
 use anyhow::{Context, Result, bail};
 use rustix::net::SocketAddrUnix;
@@ -41,36 +39,31 @@ impl KbMod {
             state: State::Dummy,
         }
     }
-}
 
-impl FallibleModule for KbMod {
-    const MODULE_ID: ModuleId = ModuleId::KbMod;
-    type Output = ();
-
-    fn wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self) -> Option<Wants> {
         if self.state == State::Dummy {
-            return Ok(None);
+            return None;
         }
 
-        Ok(self.reader.wants())
+        self.reader.wants()
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Self::Output>> {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         if self.state == State::Dummy {
-            return Ok(None);
+            return Ok(());
         }
 
         match satisfy {
             Satisfy::Socket(res) => {
                 let fd = res?;
                 self.reader.satisfy_socket(fd)?;
-                Ok(None)
+                Ok(())
             }
 
             Satisfy::Connect(res) => {
                 res?;
                 self.reader.satisfy_connect()?;
-                Ok(None)
+                Ok(())
             }
 
             Satisfy::Read(res) => {
@@ -80,7 +73,7 @@ impl FallibleModule for KbMod {
 
                 if let State::WaitingForInitialBytes(pending) = self.state {
                     if bytes.is_empty() {
-                        return Ok(None);
+                        return Ok(());
                     }
                     let min = std::cmp::min(pending, bytes.len());
                     let pending = pending.checked_sub(min).context("malformed state")?;
@@ -90,7 +83,7 @@ impl FallibleModule for KbMod {
                         self.state = State::ReadingUpdates;
                     } else {
                         self.state = State::WaitingForInitialBytes(pending);
-                        return Ok(None);
+                        return Ok(());
                     }
                 }
 
@@ -101,17 +94,24 @@ impl FallibleModule for KbMod {
                             b'1' => (KbModKind::CapsLock, true),
                             b'2' => (KbModKind::NumLock, false),
                             b'3' => (KbModKind::NumLock, true),
-                            _ => return Ok(None),
+                            _ => return Ok(()),
                         };
 
                         EventQueue::push_back(Event::KbModToggled { kind, enabled });
                     }
                 }
 
-                Ok(None)
+                Ok(())
             }
 
             _ => bail!("KbMod only accepts Socket, Connect and Read, got: {satisfy:?}"),
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Err(err) = self.try_satisfy(satisfy) {
+            log::error!("{err:?}");
+            self.reader.stop();
         }
     }
 }

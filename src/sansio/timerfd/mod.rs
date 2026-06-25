@@ -7,7 +7,14 @@ pub(crate) struct TimerFd {
     fd: BorrowedFd<'static>,
     buf: [u8; 8],
     ticks: u64,
-    seq: u64,
+    state: State,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum State {
+    CanRead,
+    WaitingForRead,
+    Dead,
 }
 
 impl TimerFd {
@@ -16,34 +23,55 @@ impl TimerFd {
             fd: create_timer(),
             buf: [0; _],
             ticks: 0,
-            seq: 0,
+            state: State::CanRead,
         }
     }
 
-    pub(crate) const fn wants(&mut self) -> Wants {
-        Wants::Read {
-            fd: self.fd,
-            buf: self.buf.as_mut_ptr(),
-            len: self.buf.len(),
-            seq: self.seq,
+    pub(crate) const fn wants(&mut self) -> Option<Wants> {
+        match self.state {
+            State::CanRead => {
+                self.state = State::WaitingForRead;
+
+                Some(Wants::Read {
+                    fd: self.fd,
+                    buf: self.buf.as_mut_ptr(),
+                    len: self.buf.len(),
+                })
+            }
+            State::WaitingForRead | State::Dead => None,
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<u64> {
-        match satisfy {
-            Satisfy::Read(len) => {
+    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<u64>> {
+        match (self.state, satisfy) {
+            (State::Dead, _) => Ok(None),
+
+            (State::WaitingForRead, Satisfy::Read(len)) => {
                 let bytes_read = len.context("TimerFd: read failed")?;
                 ensure!(bytes_read == self.buf.len());
                 let expirations = u64::from_ne_bytes(self.buf);
 
                 let ticks = self.ticks;
                 self.ticks = self.ticks.saturating_add(expirations);
-                self.seq += 1;
+                self.state = State::CanRead;
 
-                Ok(ticks)
+                Ok(Some(ticks))
             }
 
-            unsupported => bail!("unexpected satisfy for TimerFd: {unsupported:?}"),
+            (state, unsupported) => {
+                bail!("unexpected satisfy for TimerFd in {state:?}: {unsupported:?}")
+            }
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<u64> {
+        match self.try_satisfy(satisfy) {
+            Ok(ticks) => ticks,
+            Err(err) => {
+                log::error!("{err:?}");
+                self.state = State::Dead;
+                None
+            }
         }
     }
 }

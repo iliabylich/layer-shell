@@ -31,14 +31,13 @@ enum State {
 }
 
 impl State {
-    fn wants(self, seq: u64, buf: &mut [u8]) -> (Self, Option<Wants>) {
+    fn wants(self, buf: &mut [u8]) -> (Self, Option<Wants>) {
         match self {
             Self::ReadyToSocket { addr } => (
                 Self::WaitingForSocket { addr },
                 Some(Wants::Socket {
                     domain: AddressFamily::UNIX,
                     r#type: SocketType::STREAM,
-                    seq,
                 }),
             ),
 
@@ -47,7 +46,6 @@ impl State {
                 Some(Wants::Connect {
                     fd,
                     addr: addr.into(),
-                    seq,
                 }),
             ),
 
@@ -57,7 +55,6 @@ impl State {
                     fd,
                     buf: buf.as_mut_ptr(),
                     len: buf.len(),
-                    seq,
                 }),
             ),
 
@@ -65,10 +62,10 @@ impl State {
         }
     }
 
-    fn wants_in_place(&mut self, seq: u64, buf: &mut [u8]) -> Option<Wants> {
+    fn wants_in_place(&mut self, buf: &mut [u8]) -> Option<Wants> {
         let mut this = Self::Disconnected;
         std::mem::swap(self, &mut this);
-        let (next, wants) = this.wants(seq, buf);
+        let (next, wants) = this.wants(buf);
         *self = next;
         wants
     }
@@ -77,7 +74,6 @@ impl State {
 pub(crate) struct UnixSocketReader {
     buf: [u8; 1_024],
     state: State,
-    seq: u64,
 }
 
 impl UnixSocketReader {
@@ -85,7 +81,6 @@ impl UnixSocketReader {
         Self {
             buf: [0; _],
             state: State::ReadyToSocket { addr },
-            seq: 0,
         }
     }
 
@@ -93,7 +88,6 @@ impl UnixSocketReader {
         Self {
             buf: [0; _],
             state: State::ReadyToRead { fd },
-            seq: 0,
         }
     }
 
@@ -101,12 +95,11 @@ impl UnixSocketReader {
         Self {
             buf: [0; _],
             state: State::Disconnected,
-            seq: 0,
         }
     }
 
     pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.state.wants_in_place(self.seq, &mut self.buf)
+        self.state.wants_in_place(&mut self.buf)
     }
 
     pub(crate) fn satisfy_socket(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
@@ -118,7 +111,6 @@ impl UnixSocketReader {
             addr: addr.clone(),
             fd,
         };
-        self.seq += 1;
         Ok(())
     }
 
@@ -128,7 +120,6 @@ impl UnixSocketReader {
         };
 
         self.state = State::ReadyToRead { fd: *fd };
-        self.seq += 1;
         Ok(())
     }
 
@@ -140,9 +131,12 @@ impl UnixSocketReader {
         ensure!(bytes_read != 0, "EOF");
         let buf = self.buf;
         self.buf = [0; _];
-        self.seq += 1;
         self.state = State::ReadyToRead { fd: *fd };
 
         Ok((buf, bytes_read))
+    }
+
+    pub(crate) const fn stop(&mut self) {
+        self.state = State::Disconnected;
     }
 }
