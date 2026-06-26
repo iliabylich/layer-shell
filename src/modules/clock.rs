@@ -7,13 +7,13 @@ use crate::{
 pub(crate) struct Clock;
 
 impl Clock {
-    pub(crate) fn tick() {
+    pub(crate) fn tick(events: &mut EventQueue) {
         let now = StringRef::new(
             &chrono::Local::now()
                 .format("%H:%M:%S | %b %d | %a")
                 .to_string(),
         );
 
-        EventQueue::push_back(Event::Time { now });
+        events.push_back(Event::Time { now });
     }
 }

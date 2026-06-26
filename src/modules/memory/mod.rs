@@ -25,18 +25,18 @@ impl Memory {
         self.reader.wants(&mut *self.buf)
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         let Some(buf) = self.reader.satisfy(satisfy, &*self.buf) else {
             return Ok(());
         };
 
         let (used, total) = Parser::parse(buf).context("parse error")?;
-        EventQueue::push_back(Event::Memory { used, total });
+        events.push_back(Event::Memory { used, total });
         Ok(())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
-        if let Err(err) = self.try_satisfy(satisfy) {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
+        if let Err(err) = self.try_satisfy(satisfy, events) {
             log::error!("{err:?}");
             self.reader.stop();
         }

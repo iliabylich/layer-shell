@@ -48,7 +48,7 @@ impl KbMod {
         self.reader.wants()
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         if self.state == State::Dummy {
             return Ok(());
         }
@@ -97,7 +97,7 @@ impl KbMod {
                             _ => return Ok(()),
                         };
 
-                        EventQueue::push_back(Event::KbModToggled { kind, enabled });
+                        events.push_back(Event::KbModToggled { kind, enabled });
                     }
                 }
 
@@ -108,8 +108,8 @@ impl KbMod {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
-        if let Err(err) = self.try_satisfy(satisfy) {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
+        if let Err(err) = self.try_satisfy(satisfy, events) {
             log::error!("{err:?}");
             self.reader.stop();
         }

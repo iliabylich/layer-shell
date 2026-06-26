@@ -1,4 +1,7 @@
-use crate::sansio::{HttpRequest, Https, Satisfy, Wants};
+use crate::{
+    event_queue::EventQueue,
+    sansio::{HttpRequest, Https, Satisfy, Wants},
+};
 use response::LocationResponse;
 
 mod response;
@@ -20,7 +23,11 @@ impl Location {
         self.https.wants()
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<(f64, f64)> {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        _events: &mut EventQueue,
+    ) -> Option<(f64, f64)> {
         let response = self.https.satisfy(satisfy)?;
 
         match LocationResponse::parse(&response) {

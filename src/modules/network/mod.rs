@@ -83,20 +83,20 @@ impl Network {
         }
     }
 
-    fn on_tx_rx_event(&mut self, e: TxRxEvent) {
+    fn on_tx_rx_event(&mut self, e: TxRxEvent, events: &mut EventQueue) {
         if let Some(tx) = e.tx {
             let event = self.speed.update_tx(tx);
-            EventQueue::push_back(event);
+            events.push_back(event);
         }
 
         if let Some(rx) = e.rx {
             let event = self.speed.update_rx(rx);
-            EventQueue::push_back(event);
+            events.push_back(event);
         }
     }
 
     #[expect(clippy::useless_let_if_seq)]
-    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent) {
+    fn on_ssid_and_strength_event(&mut self, e: SsidAndStrengthEvent, events: &mut EventQueue) {
         let mut got_diff = false;
 
         if let Some(ssid) = e.ssid
@@ -117,11 +117,11 @@ impl Network {
             && let Some(ssid) = self.last_ssid.clone()
             && let Some(strength) = self.last_strength
         {
-            EventQueue::push_back(Event::NetworkSsidAndStrength { ssid, strength });
+            events.push_back(Event::NetworkSsidAndStrength { ssid, strength });
         }
     }
 
-    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) {
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>, events: &mut EventQueue) {
         if let Some(e) = self.wireless_connection.handle(message) {
             self.on_wireless_connection_event(e);
             return;
@@ -138,12 +138,12 @@ impl Network {
         }
 
         if let Some(e) = self.tx_rx.handle(message) {
-            self.on_tx_rx_event(e);
+            self.on_tx_rx_event(e, events);
             return;
         }
 
         if let Some(e) = self.ssid_and_strength.handle(message) {
-            self.on_ssid_and_strength_event(e);
+            self.on_ssid_and_strength_event(e, events);
         }
     }
 }

@@ -28,7 +28,7 @@ impl CPU {
         self.reader.wants(&mut *self.buf)
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         let Some(buf) = self.reader.satisfy(satisfy, &*self.buf) else {
             return Ok(());
         };
@@ -38,12 +38,12 @@ impl CPU {
 
         let usage_per_core = diff(prev.as_deref(), &next)?.into();
         self.state = Some(next);
-        EventQueue::push_back(Event::CpuUsage { usage_per_core });
+        events.push_back(Event::CpuUsage { usage_per_core });
         Ok(())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
-        if let Err(err) = self.try_satisfy(satisfy) {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
+        if let Err(err) = self.try_satisfy(satisfy, events) {
             log::error!("{err:?}");
             self.reader.stop();
         }

@@ -52,12 +52,12 @@ impl Niri {
         }
     }
 
-    fn process(&mut self, buf: &[u8]) -> Result<()> {
-        let events = self.buffer.push(buf)?;
+    fn process(&mut self, buf: &[u8], events: &mut EventQueue) -> Result<()> {
+        let niri_events = self.buffer.push(buf)?;
         let mut layouts = None;
         let mut current_layout_idx = None;
 
-        for event in events {
+        for event in niri_events {
             match event {
                 NiriEvent::KeyboardLayoutsChanged { keyboard_layouts } => {
                     layouts = Some(keyboard_layouts.names);
@@ -87,7 +87,7 @@ impl Niri {
                 lang = "??";
             }
 
-            EventQueue::push_back(Event::Language {
+            events.push_back(Event::Language {
                 lang: StringRef::new(lang),
             });
         }
@@ -103,7 +103,7 @@ impl Niri {
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         match &mut self.state {
             State::Writer(writer) => match satisfy {
                 Satisfy::Socket(res) => {
@@ -142,7 +142,7 @@ impl Niri {
                     let bytes_read = res?;
                     let (buf, len) = reader.satisfy_read(bytes_read)?;
                     let buf = buf.get(..len).context("buf is too short")?;
-                    self.process(buf)?;
+                    self.process(buf, events)?;
                 }
 
                 _ => bail!("Niri reader only accepts Socket, Connect and Read, got: {satisfy:?}"),
@@ -154,8 +154,8 @@ impl Niri {
         Ok(())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
-        if let Err(err) = self.try_satisfy(satisfy) {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
+        if let Err(err) = self.try_satisfy(satisfy, events) {
             log::error!("{err:?}");
             self.state = State::Dummy;
         }

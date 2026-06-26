@@ -45,13 +45,13 @@ impl Tray {
         Ok(())
     }
 
-    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) {
-        if let Err(err) = self.try_handle(message) {
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>, events: &mut EventQueue) {
+        if let Err(err) = self.try_handle(message, events) {
             log::error!("{err:?}");
         }
     }
 
-    fn try_handle(&mut self, message: IncomingMessage<'_>) -> Result<()> {
+    fn try_handle(&mut self, message: IncomingMessage<'_>, events: &mut EventQueue) -> Result<()> {
         if let Some(service) = StatusNotifierWatcher::handle_incoming_request(message)? {
             log::info!(target: "Tray", "Added {service:?}");
             let mut tray_app = App::new(service.clone());
@@ -76,7 +76,7 @@ impl Tray {
 
             log::info!(target: "Tray", "Removed {service}");
             tray_app.reset()?;
-            EventQueue::push_back(Event::TrayAppRemoved {
+            events.push_back(Event::TrayAppRemoved {
                 service: StringRef::new(service),
             });
         }
@@ -100,7 +100,7 @@ impl Tray {
                         items: layout.into(),
                     },
                 };
-                EventQueue::push_back(event);
+                events.push_back(event);
             }
         }
 

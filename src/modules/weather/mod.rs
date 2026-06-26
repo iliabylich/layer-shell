@@ -48,7 +48,7 @@ impl Weather {
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         match self {
             Self::Ready { https, .. } => {
                 let Some(response) = https.satisfy(satisfy) else {
@@ -56,15 +56,15 @@ impl Weather {
                 };
                 let response = WeatherResponse::parse(&response)?;
                 let event = Event::try_from(response)?;
-                EventQueue::push_back(event);
+                events.push_back(event);
                 Ok(())
             }
             Self::Dead { .. } | Self::WaitingForLocation => Ok(()),
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) {
-        if let Err(err) = self.try_satisfy(satisfy) {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
+        if let Err(err) = self.try_satisfy(satisfy, events) {
             log::error!("{err:?}");
             *self = Self::Dead {
                 latlng: self.latlng(),

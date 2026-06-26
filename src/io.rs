@@ -12,10 +12,11 @@ use crate::{
     user_data::{ModuleId, UserData},
 };
 use anyhow::{Context, Result};
-use std::os::fd::AsRawFd;
+use std::{assert_matches, os::fd::AsRawFd};
 
 pub(crate) struct IO {
     ring: IoUring,
+    event_queue: EventQueue,
 
     config: Config,
     pub(crate) io_config: *const IOConfig,
@@ -47,14 +48,11 @@ pub(crate) struct IO {
 
 macro_rules! schedule {
     ($module_id:ident, $module:expr, $io_uring:expr) => {{
-        let module_id = ModuleId::$module_id;
-
         if let Some(wants) = $module.wants() {
-            if let Some(wants_next) = $module.wants() {
-                log::error!("Module {module_id:?} wants {wants_next:?} after {wants:?}");
-                std::process::exit(1);
-            }
+            let module_id = ModuleId::$module_id;
             log::trace!(target: module_id.as_str(), "Wants {wants:?}");
+            assert_matches!($module.wants(), None, "module {module_id:?} returned non-None twice in a row from wants()");
+
             $io_uring.schedule(module_id, wants);
         }
     }};
@@ -85,6 +83,7 @@ impl IO {
 
         let mut this = Self {
             ring: IoUring::new(10, 0),
+            event_queue: EventQueue::new(),
 
             config,
             io_config,
@@ -137,8 +136,8 @@ impl IO {
         Ok(())
     }
 
-    fn on_control_req(req: ControlRequest) {
-        EventQueue::push_back(match req {
+    fn on_control_req(&mut self, req: ControlRequest) {
+        self.event_queue.push_back(match req {
             ControlRequest::Exit => Event::Exit,
             ControlRequest::ToggleSessionScreen => Event::ToggleSessionScreen,
         });
@@ -159,7 +158,7 @@ impl IO {
 
             macro_rules! satisfy {
                 ($module:expr) => {
-                    $module.satisfy(satisfy)
+                    $module.satisfy(satisfy, &mut self.event_queue)
                 };
             }
 
@@ -193,11 +192,11 @@ impl IO {
                     let message = satisfy!(self.session_dbus);
 
                     if let Some(message) = message {
-                        self.sound.handle(message);
-                        self.tray.handle(message);
+                        self.sound.handle(message, &mut self.event_queue);
+                        self.tray.handle(message, &mut self.event_queue);
 
                         if let Some(req) = Control::handle(message) {
-                            Self::on_control_req(req);
+                            self.on_control_req(req);
                         }
                     }
 
@@ -208,7 +207,7 @@ impl IO {
                     let message = satisfy!(self.system_dbus);
 
                     if let Some(message) = message {
-                        self.network.handle(message);
+                        self.network.handle(message, &mut self.event_queue);
                     }
 
                     schedule!(SystemDBus, self.system_dbus, &mut self.ring);
@@ -226,7 +225,7 @@ impl IO {
                     if let Some(tick) = satisfy!(self.timer) {
                         schedule!(Timer, self.timer, &mut self.ring);
 
-                        Clock::tick();
+                        Clock::tick(&mut self.event_queue);
 
                         self.weather.tick(tick);
                         schedule!(Weather, self.weather, &mut self.ring);
@@ -248,7 +247,7 @@ impl IO {
 
         self.ring.submit_if_dirty();
 
-        while let Some(event) = EventQueue::pop_front() {
+        while let Some(event) = self.event_queue.pop_front() {
             log::info!(target: "IO", "{event:?}");
             let (callback, data) = self.on_event;
             (callback)(&raw const event, data);

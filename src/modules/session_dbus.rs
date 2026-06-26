@@ -1,4 +1,5 @@
 use crate::{
+    event_queue::EventQueue,
     sansio::{DBusState, Satisfy, Wants},
     utils::dbus::queue::DBusQueue,
 };
@@ -58,7 +59,11 @@ impl SessionDBus {
         self.state.wants(&self.addr, readbuf(), queue())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<IncomingMessage<'static>> {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        _events: &mut EventQueue,
+    ) -> Option<IncomingMessage<'static>> {
         let message;
         (self.state, message) = self.state.satisfy(satisfy, readbuf(), queue());
         message

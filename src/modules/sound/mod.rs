@@ -24,7 +24,7 @@ impl State {
     }
 
     #[expect(clippy::useless_let_if_seq)]
-    fn got(&mut self, new_volume: Option<u32>, new_muted: Option<bool>) {
+    fn got(&mut self, new_volume: Option<u32>, new_muted: Option<bool>, events: &mut EventQueue) {
         match self {
             Self::Partial(prev_volume, prev_muted) => {
                 let volume = new_volume.or(*prev_volume);
@@ -52,7 +52,7 @@ impl State {
                     changed = true;
                 }
                 if changed {
-                    EventQueue::push_back(Event::Sound {
+                    events.push_back(Event::Sound {
                         volume: *volume,
                         muted: *muted,
                     });
@@ -77,11 +77,11 @@ impl Sound {
         self.muted.get_and_subscribe(Muted);
     }
 
-    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) {
+    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>, events: &mut EventQueue) {
         let volume = self.volume.handle_reply_or_signal(message);
         let muted = self.muted.handle_reply_or_signal(message);
 
-        self.state.got(volume, muted);
+        self.state.got(volume, muted, events);
     }
 
     pub(crate) fn tick(&mut self, tick: u64) {
