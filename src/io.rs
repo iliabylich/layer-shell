@@ -30,7 +30,6 @@ pub(crate) struct IO {
     network: Network,
 
     location: Location,
-    coordinates: Option<(f64, f64)>,
     weather: Weather,
 
     cpu: CPU,
@@ -97,7 +96,6 @@ impl IO {
             network: Network::new(),
 
             location: Location::new(),
-            coordinates: None,
             weather: Weather::new(),
 
             cpu: CPU::new(),
@@ -165,7 +163,6 @@ impl IO {
             match module_id {
                 ModuleId::GeoLocation => {
                     if let Some((lat, lng)) = satisfy!(self.location) {
-                        self.coordinates = Some((lat, lng));
                         self.weather.setup(lat, lng);
                         schedule!(Weather, self.weather, &mut self.ring);
                     } else {
