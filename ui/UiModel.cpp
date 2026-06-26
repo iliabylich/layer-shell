@@ -206,35 +206,37 @@ QString sound(uint32_t volume, bool muted) {
 } // namespace fmt
 
 UiModel::UiModel(QObject *parent) : QObject(parent) {
-  io_init(eventReceived, this);
+  io = io_init(eventReceived, this);
 
   io_notifier_ =
-      new QSocketNotifier(io_as_raw_fd(), QSocketNotifier::Read, this);
+      new QSocketNotifier(io_as_raw_fd(io), QSocketNotifier::Read, this);
   connect(io_notifier_, &QSocketNotifier::activated, this,
-          [] { io_handle_readable(); });
+          [this] { io_handle_readable(io); });
 }
 
-UiModel::~UiModel() { io_deinit(); }
+void *UiModel::getIO() const { return io; }
 
-void UiModel::changeWallpaper() { io_change_wallpaper(); }
+UiModel::~UiModel() { io_deinit(io); }
 
-void UiModel::lock() { io_lock(); }
+void UiModel::changeWallpaper() { io_change_wallpaper(io); }
 
-void UiModel::logout() { io_logout(); }
+void UiModel::lock() { io_lock(io); }
 
-void UiModel::reboot() { io_reboot(); }
+void UiModel::logout() { io_logout(io); }
 
-void UiModel::shutdown() { io_shutdown(); }
+void UiModel::reboot() { io_reboot(io); }
 
-void UiModel::spawnBluetoothEditor() { io_spawn_bluetooh_editor(); }
+void UiModel::shutdown() { io_shutdown(io); }
 
-void UiModel::spawnWifiEditor() { io_spawn_wifi_editor(); }
+void UiModel::spawnBluetoothEditor() { io_spawn_bluetooh_editor(io); }
 
-void UiModel::spawnSystemMonitor() { io_spawn_system_monitor(); }
+void UiModel::spawnWifiEditor() { io_spawn_wifi_editor(io); }
+
+void UiModel::spawnSystemMonitor() { io_spawn_system_monitor(io); }
 
 void UiModel::triggerTrayItem(const QString &uuid) {
   QByteArray bytes = uuid.toUtf8();
-  io_trigger_tray(bytes.constData());
+  io_trigger_tray(io, bytes.constData());
 }
 
 void UiModel::eventReceived(const IO_Event *event, void *data) {

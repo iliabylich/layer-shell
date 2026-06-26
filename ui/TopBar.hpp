@@ -8,7 +8,7 @@ class TopBar : public Overlay {
   Q_OBJECT
 
 public:
-  explicit TopBar(UiModel *model);
+  explicit TopBar(UiModel *model, void *io);
 
 Q_SIGNALS:
   void weatherClicked();

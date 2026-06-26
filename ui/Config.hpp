@@ -5,7 +5,7 @@
 
 class Config {
 public:
-  static QStringList getTerminalCommand();
-  static QStringList getPingCommand();
-  static QString getTerminalLabel();
+  static QStringList getTerminalCommand(void *io);
+  static QStringList getPingCommand(void *io);
+  static QString getTerminalLabel(void *io);
 };

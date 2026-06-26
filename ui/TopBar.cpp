@@ -80,7 +80,8 @@ public:
 
 class Terminal : public __Button {
 public:
-  explicit Terminal(TopBar *parent) : __Button(Config::getTerminalLabel()) {
+  explicit Terminal(TopBar *parent, void *io)
+      : __Button(Config::getTerminalLabel(io)) {
     setObjectName("Terminal");
 
     QObject::connect(this, &Terminal::clicked, parent,
@@ -207,7 +208,7 @@ public:
   }
 };
 
-TopBar::TopBar(UiModel *model) : Overlay(model), model(model) {
+TopBar::TopBar(UiModel *model, void *io) : Overlay(model), model(model) {
   setObjectName("TopBarOverlay");
   setFixedHeight(TopBarHeight);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -226,7 +227,7 @@ TopBar::TopBar(UiModel *model) : Overlay(model), model(model) {
   auto *weather = new Weather(model, this);
   layout->addWidget(weather);
 
-  auto *terminal = new Terminal(this);
+  auto *terminal = new Terminal(this, io);
   layout->addWidget(terminal);
 
   auto *language = new Language(model);

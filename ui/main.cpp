@@ -23,12 +23,12 @@ int main(int argc, char **argv) {
   SessionOverlay session_overlay(model);
   SoundOverlay sound_overlay(model);
   TerminalOverlay terminal_overlay(model, "LayerShell/Terminal",
-                                   Config::getTerminalCommand());
+                                   Config::getTerminalCommand(model->getIO()));
   TerminalOverlay ping_overlay(model, "LayerShell/Ping",
-                               Config::getPingCommand());
+                               Config::getPingCommand(model->getIO()));
   WeatherOverlay weather_overlay(model);
 
-  TopBar top_bar(model);
+  TopBar top_bar(model, model->getIO());
 
   QObject::connect(&top_bar, &TopBar::weatherClicked, &weather_overlay,
                    &WeatherOverlay::toggle);
@@ -40,5 +40,9 @@ int main(int argc, char **argv) {
                    &SessionOverlay::toggle);
   QObject::connect(model, &UiModel::exitRequested, &app, &QApplication::quit);
 
-  return QApplication::exec();
+  int status = QApplication::exec();
+
+  delete model;
+
+  return status;
 }

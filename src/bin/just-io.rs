@@ -6,14 +6,14 @@ extern "C" fn on_event(event: *const Event, _data: *mut std::ffi::c_void) {
 }
 
 fn main() -> Result<(), ()> {
-    io_init(on_event, std::ptr::null_mut());
+    let io = io_init(on_event, std::ptr::null_mut());
 
     loop {
         // log::info!("Waiting...");
-        io_wait_readable();
+        io_wait_readable(io);
         // log::info!("Wait finished...");
 
         // log::info!("Processing...");
-        io_handle_readable();
+        io_handle_readable(io);
     }
 }
