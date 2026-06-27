@@ -1,5 +1,4 @@
 use crate::{
-    event_queue::EventQueue,
     sansio::{DBusState, Satisfy, Wants},
     utils::dbus::queue::DBusQueue,
 };
@@ -12,11 +11,6 @@ pub(crate) struct SystemDBus {
     addr: SocketAddrUnix,
 }
 
-static mut READBUF: Vec<u8> = vec![];
-fn readbuf() -> &'static mut Vec<u8> {
-    unsafe { &mut READBUF }
-}
-
 static mut QUEUE: DBusQueue = DBusQueue::new();
 const fn queue() -> &'static mut DBusQueue {
     unsafe { &mut QUEUE }
@@ -25,7 +19,6 @@ const fn queue() -> &'static mut DBusQueue {
 impl SystemDBus {
     pub(crate) fn init() -> Result<()> {
         queue().push_hello()?;
-        readbuf().resize(400 * 1_024, 0);
         Ok(())
     }
 
@@ -55,17 +48,17 @@ impl SystemDBus {
         queue()
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.state.wants(&self.addr, readbuf(), queue())
+    pub(crate) fn wants(&mut self, readbuf: &mut Vec<u8>) -> Option<Wants> {
+        self.state.wants(&self.addr, readbuf, queue())
     }
 
-    pub(crate) fn satisfy(
+    pub(crate) fn satisfy<'r>(
         &mut self,
         satisfy: Satisfy,
-        _events: &mut EventQueue,
-    ) -> Option<IncomingMessage<'static>> {
+        readbuf: &'r [u8],
+    ) -> Option<IncomingMessage<'r>> {
         let message;
-        (self.state, message) = self.state.satisfy(satisfy, readbuf(), queue());
+        (self.state, message) = self.state.satisfy(satisfy, readbuf, queue());
         message
     }
 }

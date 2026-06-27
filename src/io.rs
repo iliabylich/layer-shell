@@ -24,9 +24,12 @@ pub(crate) struct IO {
     timer: Timer,
 
     session_dbus: SessionDBus,
+    session_dbus_readbuf: Vec<u8>,
     sound: Sound,
     tray: Tray,
+
     system_dbus: SystemDBus,
+    system_dbus_readbuf: Vec<u8>,
     network: Network,
 
     location: Location,
@@ -78,9 +81,12 @@ impl IO {
             timer: Timer::new(),
 
             session_dbus: SessionDBus::new(),
+            session_dbus_readbuf: vec![0; 400 * 1_024],
             sound: Sound::new(),
             tray: Tray::new(),
+
             system_dbus: SystemDBus::new(),
+            system_dbus_readbuf: vec![0; 400 * 1_024],
             network: Network::new(),
 
             location: Location::new(),
@@ -329,16 +335,21 @@ impl IO {
 
 impl IO {
     fn schedule_session_dbus(&mut self) {
-        let Some(wants) = self.session_dbus.wants() else {
+        let Some(wants) = self.session_dbus.wants(&mut self.session_dbus_readbuf) else {
             return;
         };
         log::trace!(target: "SessionDBus", "{wants:?}");
-        assert_matches!(self.session_dbus.wants(), None);
+        assert_matches!(
+            self.session_dbus.wants(&mut self.session_dbus_readbuf),
+            None
+        );
         self.ring.schedule(ModuleId::SessionDBus, wants);
     }
 
     fn satisfy_session_dbus(&mut self, satisfy: Satisfy) {
-        let message = self.session_dbus.satisfy(satisfy, &mut self.events);
+        let message = self
+            .session_dbus
+            .satisfy(satisfy, &self.session_dbus_readbuf);
 
         if let Some(message) = message {
             self.sound.handle(message, &mut self.events);
@@ -355,16 +366,16 @@ impl IO {
 
 impl IO {
     fn schedule_system_dbus(&mut self) {
-        let Some(wants) = self.system_dbus.wants() else {
+        let Some(wants) = self.system_dbus.wants(&mut self.system_dbus_readbuf) else {
             return;
         };
         log::trace!(target: "SystemDBus", "{wants:?}");
-        assert_matches!(self.system_dbus.wants(), None);
+        assert_matches!(self.system_dbus.wants(&mut self.system_dbus_readbuf), None);
         self.ring.schedule(ModuleId::SystemDBus, wants);
     }
 
     fn satisfy_system_dbus(&mut self, satisfy: Satisfy) {
-        let message = self.system_dbus.satisfy(satisfy, &mut self.events);
+        let message = self.system_dbus.satisfy(satisfy, &self.system_dbus_readbuf);
 
         if let Some(message) = message {
             self.network.handle(message, &mut self.events);
