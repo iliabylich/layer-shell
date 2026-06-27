@@ -1,6 +1,6 @@
 use crate::{
     sansio::{DBusState, Satisfy, Wants},
-    utils::dbus::queue::DBusQueue,
+    utils::dbus::queue::SystemDBusQueue,
 };
 use anyhow::Result;
 use dbus::IncomingMessage;
@@ -34,7 +34,11 @@ impl SystemDBus {
         })
     }
 
-    pub(crate) fn wants(&mut self, readbuf: &mut Vec<u8>, queue: &DBusQueue) -> Option<Wants> {
+    pub(crate) fn wants(
+        &mut self,
+        readbuf: &mut Vec<u8>,
+        queue: &SystemDBusQueue,
+    ) -> Option<Wants> {
         self.state.wants(&self.addr, readbuf, queue)
     }
 
@@ -42,7 +46,7 @@ impl SystemDBus {
         &mut self,
         satisfy: Satisfy,
         readbuf: &'r [u8],
-        queue: &mut DBusQueue,
+        queue: &mut SystemDBusQueue,
     ) -> Option<IncomingMessage<'r>> {
         let message;
         (self.state, message) = self.state.satisfy(satisfy, readbuf, queue);

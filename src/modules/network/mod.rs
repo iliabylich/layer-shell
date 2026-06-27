@@ -1,7 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    utils::{StringRef, dbus::queue::DBusQueue},
+    utils::{StringRef, dbus::queue::SystemDBusQueue},
 };
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use dbus::IncomingMessage;
@@ -46,11 +46,15 @@ impl Network {
         }
     }
 
-    pub(crate) fn init(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn init(&mut self, q: &mut SystemDBusQueue) {
         self.wireless_connection.start(q);
     }
 
-    fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent, q: &mut DBusQueue) {
+    fn on_wireless_connection_event(
+        &mut self,
+        e: WirelessConnectionEvent,
+        q: &mut SystemDBusQueue,
+    ) {
         match e {
             WirelessConnectionEvent::Connected(path) => {
                 self.primary_device.start(path, q);
@@ -61,7 +65,7 @@ impl Network {
         }
     }
 
-    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent, q: &mut DBusQueue) {
+    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent, q: &mut SystemDBusQueue) {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
                 self.active_access_point.start(path.clone(), q);
@@ -76,7 +80,7 @@ impl Network {
         }
     }
 
-    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent, q: &mut DBusQueue) {
+    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent, q: &mut SystemDBusQueue) {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
                 self.ssid_and_strength.start(path, q);
@@ -129,7 +133,7 @@ impl Network {
         &mut self,
         message: IncomingMessage<'_>,
         events: &mut EventQueue,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) {
         if let Some(e) = self.wireless_connection.handle(message, q) {
             self.on_wireless_connection_event(e, q);

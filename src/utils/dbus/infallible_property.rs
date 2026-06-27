@@ -1,6 +1,5 @@
-use crate::utils::dbus::queue::DBusQueue;
 use dbus::{
-    DBusError, IncomingMessage,
+    DBusError, IncomingMessage, OutgoingQueue,
     messaging::{property::Property, reply_handler::ReplyHandler},
 };
 
@@ -23,7 +22,11 @@ where
         }
     }
 
-    fn try_get_and_subscribe(&mut self, property: T, q: &mut DBusQueue) -> Result<(), DBusError> {
+    fn try_get_and_subscribe(
+        &mut self,
+        property: T,
+        q: &mut impl OutgoingQueue,
+    ) -> Result<(), DBusError> {
         let mut bytes = [0; 1_024];
 
         let buf = property.encode_get(&mut bytes)?;
@@ -38,7 +41,7 @@ where
         Ok(())
     }
 
-    fn try_get(&mut self, property: T, q: &mut DBusQueue) -> Result<(), DBusError> {
+    fn try_get(&mut self, property: T, q: &mut impl OutgoingQueue) -> Result<(), DBusError> {
         let mut bytes = [0; 1_024];
 
         let buf = property.encode_get(&mut bytes)?;
@@ -50,14 +53,14 @@ where
         Ok(())
     }
 
-    pub(crate) fn get_and_subscribe(&mut self, property: T, q: &mut DBusQueue) {
+    pub(crate) fn get_and_subscribe(&mut self, property: T, q: &mut impl OutgoingQueue) {
         if let Err(err) = self.try_get_and_subscribe(property, q) {
             log::error!("{err:?}");
             self.unsubscribe(q);
         }
     }
 
-    pub(crate) fn get(&mut self, property: T, q: &mut DBusQueue) {
+    pub(crate) fn get(&mut self, property: T, q: &mut impl OutgoingQueue) {
         if let Err(err) = self.try_get(property, q) {
             log::error!("{err:?}");
             self.unsubscribe(q);
@@ -65,7 +68,7 @@ where
     }
 
     #[expect(dead_code)]
-    pub(crate) fn subscribe(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn subscribe(&mut self, q: &mut impl OutgoingQueue) {
         let Some(property) = self.property.as_ref() else {
             return;
         };
@@ -80,7 +83,7 @@ where
         }
     }
 
-    pub(crate) fn unsubscribe(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn unsubscribe(&mut self, q: &mut impl OutgoingQueue) {
         let Some(property) = self.property.take() else {
             return;
         };
@@ -118,7 +121,7 @@ where
     pub(crate) fn handle_reply_or_signal<'a>(
         &mut self,
         message: IncomingMessage<'a>,
-        q: &mut DBusQueue,
+        q: &mut impl OutgoingQueue,
     ) -> Option<T::Output<'a>> {
         match self.try_handle_reply_or_signal(message) {
             Ok(Some(out)) => Some(out),

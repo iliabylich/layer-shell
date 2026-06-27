@@ -1,6 +1,6 @@
 use crate::{
     modules::tray::service::Service,
-    utils::{StringRef, StringRefExt as _, dbus::queue::DBusQueue},
+    utils::{StringRef, StringRefExt as _, dbus::queue::SessionDBusQueue},
 };
 use anyhow::{Context as _, Result, ensure};
 use dbus::{
@@ -25,14 +25,14 @@ impl DBusEncode for RequestNameOrgKdeStatusNotifierWatcher {
 pub(crate) struct StatusNotifierWatcher;
 
 impl StatusNotifierWatcher {
-    pub(crate) fn request_ksni_name(q: &mut DBusQueue) -> Result<(), DBusError> {
+    pub(crate) fn request_ksni_name(q: &mut SessionDBusQueue) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let buf = RequestNameOrgKdeStatusNotifierWatcher::encode((), &mut buf)?;
         q.push_raw(buf);
         Ok(())
     }
 
-    fn reply_ok(serial: u32, destination: &str, q: &mut DBusQueue) -> Result<(), DBusError> {
+    fn reply_ok(serial: u32, destination: &str, q: &mut SessionDBusQueue) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let buf = EmptyMethodReturn::encode(&mut buf, destination, serial)?;
         q.push_raw(buf);
@@ -41,7 +41,7 @@ impl StatusNotifierWatcher {
 
     pub(crate) fn handle_incoming_request(
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SessionDBusQueue,
     ) -> Result<Option<Service>> {
         let mut buf = [0; 1_024];
         if let Some(reply) = StatusNotifierWatcherIntrospection::new().handle(&mut buf, message)? {

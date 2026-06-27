@@ -1,6 +1,6 @@
 use crate::utils::{
     StringRef,
-    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
+    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SystemDBusQueue},
 };
 use dbus::{
     IncomingMessage,
@@ -20,13 +20,13 @@ impl ActiveConnectionType {
         }
     }
 
-    pub(crate) fn start(&mut self, path: StringRef, q: &mut DBusQueue) {
+    pub(crate) fn start(&mut self, path: StringRef, q: &mut SystemDBusQueue) {
         self.inner
             .get_and_subscribe(ActiveConnectionTypeProperty::new(path.clone()), q);
         self.path = Some(path);
     }
 
-    pub(crate) fn stop(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn stop(&mut self, q: &mut SystemDBusQueue) {
         self.inner.unsubscribe(q);
         self.path = None;
     }
@@ -34,7 +34,7 @@ impl ActiveConnectionType {
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) -> Option<(bool, StringRef)> {
         let type_ = self.inner.handle_reply_or_signal(message, q)?;
         let is_wireless = type_.contains("wireless");

@@ -2,7 +2,7 @@ use crate::{
     Event,
     event_queue::EventQueue,
     modules::tray::app::TrayEvent,
-    utils::{StringRef, StringRefExt, dbus::queue::DBusQueue},
+    utils::{StringRef, StringRefExt, dbus::queue::SessionDBusQueue},
 };
 use anyhow::Result;
 use app::App;
@@ -36,7 +36,7 @@ impl Tray {
         }
     }
 
-    pub(crate) fn init(q: &mut DBusQueue) -> Result<()> {
+    pub(crate) fn init(q: &mut SessionDBusQueue) -> Result<()> {
         StatusNotifierWatcher::request_ksni_name(q)?;
 
         let mut buf = [0; 1_024];
@@ -49,7 +49,7 @@ impl Tray {
         &mut self,
         message: IncomingMessage<'_>,
         events: &mut EventQueue,
-        q: &mut DBusQueue,
+        q: &mut SessionDBusQueue,
     ) {
         if let Err(err) = self.try_handle(message, events, q) {
             log::error!("{err:?}");
@@ -60,7 +60,7 @@ impl Tray {
         &mut self,
         message: IncomingMessage<'_>,
         events: &mut EventQueue,
-        q: &mut DBusQueue,
+        q: &mut SessionDBusQueue,
     ) -> Result<()> {
         if let Some(service) = StatusNotifierWatcher::handle_incoming_request(message, q)? {
             log::info!(target: "Tray", "Added {service:?}");
@@ -117,7 +117,7 @@ impl Tray {
         Ok(())
     }
 
-    fn try_trigger(&self, uuid: &str, q: &mut DBusQueue) -> Result<()> {
+    fn try_trigger(&self, uuid: &str, q: &mut SessionDBusQueue) -> Result<()> {
         let Ok((service, id)) = UUID::decode(uuid) else {
             log::error!("malformed UUID: {uuid:?}");
             return Ok(());
@@ -142,7 +142,7 @@ impl Tray {
         Ok(())
     }
 
-    pub(crate) fn trigger(&self, uuid: &str, q: &mut DBusQueue) {
+    pub(crate) fn trigger(&self, uuid: &str, q: &mut SessionDBusQueue) {
         if let Err(err) = self.try_trigger(uuid, q) {
             log::error!("{err:?}");
         }

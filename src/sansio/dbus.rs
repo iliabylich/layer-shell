@@ -1,15 +1,12 @@
 use anyhow::{Result, bail};
 use dbus::{
     DBusConnection, DBusConnector, DBusConnectorWants, DBusWantsRead, DBusWantsWrite,
-    IncomingMessage,
+    IncomingMessage, OutgoingQueue,
 };
 use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
 use std::os::fd::BorrowedFd;
 
-use crate::{
-    sansio::{Satisfy, Wants},
-    utils::dbus::queue::DBusQueue,
-};
+use crate::sansio::{Satisfy, Wants};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum DBusState {
@@ -57,7 +54,7 @@ impl DBusState {
         &mut self,
         addr: &SocketAddrUnix,
         readbuf: &mut [u8],
-        queue: &DBusQueue,
+        queue: &impl OutgoingQueue,
     ) -> Result<Option<Wants>> {
         match *self {
             Self::CanSocket => {
@@ -152,7 +149,7 @@ impl DBusState {
         &mut self,
         addr: &SocketAddrUnix,
         readbuf: &mut [u8],
-        queue: &DBusQueue,
+        queue: &impl OutgoingQueue,
     ) -> Option<Wants> {
         match self.try_wants(addr, readbuf, queue) {
             Ok(wants) => wants,
@@ -168,7 +165,7 @@ impl DBusState {
         self,
         satisfy: Satisfy,
         readbuf: &'buf [u8],
-        queue: &mut DBusQueue,
+        queue: &mut impl OutgoingQueue,
     ) -> Result<(Self, Option<IncomingMessage<'buf>>)> {
         match (self, satisfy) {
             (Self::WaitingForSocket, Satisfy::Socket(res)) => {
@@ -238,7 +235,7 @@ impl DBusState {
         self,
         satisfy: Satisfy,
         readbuf: &'buf [u8],
-        queue: &mut DBusQueue,
+        queue: &mut impl OutgoingQueue,
     ) -> (Self, Option<IncomingMessage<'buf>>) {
         match self.try_satisfy(satisfy, readbuf, queue) {
             Ok(out) => out,

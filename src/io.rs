@@ -10,7 +10,7 @@ use crate::{
     },
     sansio::{Https, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::dbus::queue::DBusQueue,
+    utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
 };
 use anyhow::{Context, Result};
 use std::{assert_matches, os::fd::AsRawFd};
@@ -26,13 +26,13 @@ pub(crate) struct IO {
 
     session_dbus: SessionDBus,
     session_dbus_readbuf: Vec<u8>,
-    session_dbus_queue: DBusQueue,
+    session_dbus_queue: SessionDBusQueue,
     sound: Sound,
     tray: Tray,
 
     system_dbus: SystemDBus,
     system_dbus_readbuf: Vec<u8>,
-    system_dbus_queue: DBusQueue,
+    system_dbus_queue: SystemDBusQueue,
     network: Network,
 
     location: Location,
@@ -72,34 +72,59 @@ impl IO {
         let config = Config::read()?;
         let io_config = IOConfig::new(&config);
 
+        let ring = IoUring::new(10, 0);
+        let events = EventQueue::new();
+
+        let timer = Timer::new();
+
+        let session_dbus = SessionDBus::new();
+        let session_dbus_readbuf = vec![0; 400 * 1_024];
+        let session_dbus_queue = SessionDBusQueue::new();
+        let sound = Sound::new();
+        let tray = Tray::new();
+
+        let system_dbus = SystemDBus::new();
+        let system_dbus_readbuf = vec![0; 400 * 1_024];
+        let system_dbus_queue = SystemDBusQueue::new();
+        let network = Network::new();
+
+        let location = Location::new();
+        let weather = Weather::new();
+
+        let cpu = CPU::new();
+        let memory = Memory::new();
+
+        let kb_mod = KbMod::new();
+        let niri = Niri::new();
+
         let mut this = Self {
-            ring: IoUring::new(10, 0),
-            events: EventQueue::new(),
+            ring,
+            events,
 
             config,
             io_config,
 
-            timer: Timer::new(),
+            timer,
 
-            session_dbus: SessionDBus::new(),
-            session_dbus_readbuf: vec![0; 400 * 1_024],
-            session_dbus_queue: DBusQueue::new(),
-            sound: Sound::new(),
-            tray: Tray::new(),
+            session_dbus,
+            session_dbus_readbuf,
+            session_dbus_queue,
+            sound,
+            tray,
 
-            system_dbus: SystemDBus::new(),
-            system_dbus_readbuf: vec![0; 400 * 1_024],
-            system_dbus_queue: DBusQueue::new(),
-            network: Network::new(),
+            system_dbus,
+            system_dbus_readbuf,
+            system_dbus_queue,
+            network,
 
-            location: Location::new(),
-            weather: Weather::new(),
+            location,
+            weather,
 
-            cpu: CPU::new(),
-            memory: Memory::new(),
+            cpu,
+            memory,
 
-            kb_mod: KbMod::new(),
-            niri: Niri::new(),
+            kb_mod,
+            niri,
 
             on_event,
             running: true,

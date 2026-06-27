@@ -1,4 +1,4 @@
-use crate::utils::{StringRef, StringRefExt as _, dbus::queue::DBusQueue};
+use crate::utils::{StringRef, StringRefExt as _, dbus::queue::SessionDBusQueue};
 use anyhow::Result;
 use dbus::{
     IncomingMessage,
@@ -8,7 +8,7 @@ use dbus::{
 pub(crate) struct Introspection;
 
 impl Introspection {
-    pub(crate) fn handle(message: IncomingMessage<'_>, q: &mut DBusQueue) -> Result<bool> {
+    pub(crate) fn handle(message: IncomingMessage<'_>, q: &mut SessionDBusQueue) -> Result<bool> {
         let Some((sender, serial)) = parse_request(message) else {
             return Ok(false);
         };
@@ -35,7 +35,7 @@ fn parse_request(message: IncomingMessage) -> Option<(StringRef, u32)> {
     Some((StringRef::new(sender), serial))
 }
 
-fn reply(destination: &str, reply_serial: u32, q: &mut DBusQueue) -> Result<()> {
+fn reply(destination: &str, reply_serial: u32, q: &mut SessionDBusQueue) -> Result<()> {
     let mut buf = [0; 2_048];
     let encoded =
         IntrospectResponse::encode(&mut buf, reply_serial, destination, INTROSPECTION_XML)?;

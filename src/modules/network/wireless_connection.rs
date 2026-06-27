@@ -3,7 +3,7 @@ use crate::{
         active_connection_type::ActiveConnectionType,
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
     },
-    utils::{StringRef, dbus::queue::DBusQueue},
+    utils::{StringRef, dbus::queue::SystemDBusQueue},
 };
 use dbus::IncomingMessage;
 
@@ -36,14 +36,14 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn start(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn start(&mut self, q: &mut SystemDBusQueue) {
         self.primary_connection.start(q);
     }
 
     fn on_primary_connection_event(
         &mut self,
         e: PrimaryConnectionEvent,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) -> Option<WirelessConnectionEvent> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
@@ -76,7 +76,7 @@ impl WirelessConnection {
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) -> Option<WirelessConnectionEvent> {
         if let Some(e) = self.primary_connection.handle(message, q) {
             return self.on_primary_connection_event(e, q);

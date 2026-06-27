@@ -1,6 +1,6 @@
 use crate::utils::{
     StringRef,
-    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
+    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SystemDBusQueue},
 };
 use dbus::{
     DBusError, IncomingMessage,
@@ -26,7 +26,7 @@ impl TxRx {
         }
     }
 
-    pub(crate) fn start(&mut self, path: StringRef, q: &mut DBusQueue) {
+    pub(crate) fn start(&mut self, path: StringRef, q: &mut SystemDBusQueue) {
         if let Err(err) = Configure::send(path.as_str(), q) {
             log::error!("{err:?}");
             return;
@@ -35,7 +35,7 @@ impl TxRx {
         self.rx.get_and_subscribe(RxBytes::new(path), q);
     }
 
-    pub(crate) fn stop(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn stop(&mut self, q: &mut SystemDBusQueue) {
         self.tx.unsubscribe(q);
         self.rx.unsubscribe(q);
     }
@@ -43,7 +43,7 @@ impl TxRx {
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) -> Option<TxRxEvent> {
         let mut e = TxRxEvent { tx: None, rx: None };
 
@@ -65,7 +65,7 @@ impl TxRx {
 
 struct Configure;
 impl Configure {
-    fn send(path: &str, q: &mut DBusQueue) -> Result<(), DBusError> {
+    fn send(path: &str, q: &mut SystemDBusQueue) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let encoded = RefreshRateMs::encode_set_property(&mut buf, path, 1_000)?;
         q.push_raw(encoded);

@@ -1,6 +1,6 @@
 use crate::utils::{
     StringRef, StringRefExt as _,
-    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
+    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SystemDBusQueue},
 };
 use dbus::{
     IncomingMessage, messages::network_manager::PrimaryConnection as PrimaryConnectionProperty,
@@ -32,14 +32,14 @@ impl PrimaryConnection {
         }
     }
 
-    pub(crate) fn start(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn start(&mut self, q: &mut SystemDBusQueue) {
         self.inner.get_and_subscribe(PrimaryConnectionProperty, q);
     }
 
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) -> Option<PrimaryConnectionEvent> {
         let path = self.inner.handle_reply_or_signal(message, q)?;
         Some(PrimaryConnectionEvent::from(path))

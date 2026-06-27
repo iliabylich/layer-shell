@@ -2,7 +2,7 @@ use crate::{
     modules::{TrayIcon, TrayIconPixmap, TrayItem, tray::service::Service},
     utils::{
         StringRef, StringRefExt as _,
-        dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
+        dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SessionDBusQueue},
     },
 };
 use anyhow::Result;
@@ -70,7 +70,7 @@ impl App {
         }
     }
 
-    fn schedule_request_props(&mut self, q: &mut DBusQueue) {
+    fn schedule_request_props(&mut self, q: &mut SessionDBusQueue) {
         self.menu_prop.get(Menu::new(self.service.name()), q);
         self.icon_name_prop
             .get(IconName::new(self.service.name()), q);
@@ -78,7 +78,7 @@ impl App {
             .get(IconPixmap::new(self.service.name()), q);
     }
 
-    pub(crate) fn init(&mut self, q: &mut DBusQueue) -> Result<()> {
+    pub(crate) fn init(&mut self, q: &mut SessionDBusQueue) -> Result<()> {
         let mut bytes = [0; 1_024];
         let buf = NewIconSubscribe::encode(self.service.name_str(), &mut bytes)?;
         q.push_raw(buf);
@@ -93,7 +93,7 @@ impl App {
         Ok(())
     }
 
-    pub(crate) fn reset(&mut self, q: &mut DBusQueue) -> Result<()> {
+    pub(crate) fn reset(&mut self, q: &mut SessionDBusQueue) -> Result<()> {
         let mut bytes = [0; 1_024];
 
         let buf = NewIconUnsubscribe::encode(self.service.name_str(), &mut bytes)?;
@@ -118,7 +118,7 @@ impl App {
         Ok(())
     }
 
-    fn schedule_get_layout(&mut self, q: &mut DBusQueue) -> Result<()> {
+    fn schedule_get_layout(&mut self, q: &mut SessionDBusQueue) -> Result<()> {
         let mut buf = [0; 1_024];
         let buf = GetLayout::encode((self.service.name_str(), self.menu.as_str()), &mut buf)?;
 
@@ -129,7 +129,7 @@ impl App {
         Ok(())
     }
 
-    fn on_menu_received(&mut self, menu: &str, q: &mut DBusQueue) -> Result<()> {
+    fn on_menu_received(&mut self, menu: &str, q: &mut SessionDBusQueue) -> Result<()> {
         if self.menu != "" {
             return Ok(());
         }
@@ -150,7 +150,7 @@ impl App {
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SessionDBusQueue,
     ) -> Result<Option<TrayEvent>> {
         if message.sender != Some(self.service.raw_address_str()) {
             return Ok(None);
@@ -212,7 +212,7 @@ impl App {
         }
     }
 
-    pub(crate) fn trigger(&self, id: i32, q: &mut DBusQueue) -> Result<(), EncodeError> {
+    pub(crate) fn trigger(&self, id: i32, q: &mut SessionDBusQueue) -> Result<(), EncodeError> {
         let timestamp =
             u32::try_from(chrono::Utc::now().timestamp()).map_err(|_| EncodeError::ValueTooLong)?;
         let args = EventArgs {

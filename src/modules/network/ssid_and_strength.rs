@@ -1,6 +1,6 @@
 use crate::utils::{
     StringRef, StringRefExt as _,
-    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
+    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SystemDBusQueue},
 };
 use dbus::{
     IncomingMessage,
@@ -26,12 +26,12 @@ impl SsidAndStrength {
         }
     }
 
-    pub(crate) fn start(&mut self, path: StringRef, q: &mut DBusQueue) {
+    pub(crate) fn start(&mut self, path: StringRef, q: &mut SystemDBusQueue) {
         self.ssid.get_and_subscribe(SSID::new(path.clone()), q);
         self.strength.get_and_subscribe(Strength::new(path), q);
     }
 
-    pub(crate) fn stop(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn stop(&mut self, q: &mut SystemDBusQueue) {
         self.ssid.unsubscribe(q);
         self.strength.unsubscribe(q);
     }
@@ -39,7 +39,7 @@ impl SsidAndStrength {
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) -> Option<SsidAndStrengthEvent> {
         let mut e = SsidAndStrengthEvent {
             ssid: None,

@@ -1,6 +1,6 @@
 use crate::utils::{
     StringRef, StringRefExt as _,
-    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
+    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SystemDBusQueue},
 };
 use dbus::{IncomingMessage, messages::network_manager::PrimaryDevice as PrimaryDeviceProperty};
 
@@ -30,19 +30,19 @@ impl PrimaryDevice {
         }
     }
 
-    pub(crate) fn start(&mut self, path: StringRef, q: &mut DBusQueue) {
+    pub(crate) fn start(&mut self, path: StringRef, q: &mut SystemDBusQueue) {
         self.inner
             .get_and_subscribe(PrimaryDeviceProperty::new(path), q);
     }
 
-    pub(crate) fn stop(&mut self, q: &mut DBusQueue) {
+    pub(crate) fn stop(&mut self, q: &mut SystemDBusQueue) {
         self.inner.unsubscribe(q);
     }
 
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
-        q: &mut DBusQueue,
+        q: &mut SystemDBusQueue,
     ) -> Option<PrimaryDeviceEvent> {
         let path = self.inner.handle_reply_or_signal(message, q)?;
         Some(PrimaryDeviceEvent::from(path))
