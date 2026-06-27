@@ -10,7 +10,7 @@ use rustix::net::SocketAddrUnix;
 
 pub(crate) enum KbMod {
     Running {
-        reader: UnixSocketReader,
+        reader: Box<UnixSocketReader>,
         bytes_to_drop: usize,
     },
     Stopped,
@@ -26,7 +26,9 @@ impl KbMod {
 
     fn try_new() -> Result<Self> {
         Ok(Self::Running {
-            reader: UnixSocketReader::new(SocketAddrUnix::new("/run/kb-mod-monitor.sock")?),
+            reader: Box::new(UnixSocketReader::new(SocketAddrUnix::new(
+                "/run/kb-mod-monitor.sock",
+            )?)),
             bytes_to_drop: 2,
         })
     }

@@ -28,8 +28,8 @@ impl Memory {
 
     pub(crate) const fn tick(&mut self) {
         match self {
-            Memory::Running { reader, .. } => reader.tick(),
-            Memory::Stopped => todo!(),
+            Self::Running { reader, .. } => reader.tick(),
+            Self::Stopped => todo!(),
         }
     }
 }
@@ -40,8 +40,8 @@ impl TryWantsTrySatisfy for Memory {
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {
         match self {
-            Memory::Running { reader, buf } => Ok(reader.wants(&mut **buf)),
-            Memory::Stopped => Ok(None),
+            Self::Running { reader, buf } => Ok(reader.wants(&mut **buf)),
+            Self::Stopped => Ok(None),
         }
     }
 

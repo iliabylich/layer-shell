@@ -23,15 +23,15 @@ impl TryWantsTrySatisfy for Timer {
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {
         match self {
-            Timer::Running(timerfd) => Ok(timerfd.wants()),
-            Timer::Stopped => Ok(None),
+            Self::Running(timerfd) => Ok(timerfd.wants()),
+            Self::Stopped => Ok(None),
         }
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, _events: &mut EventQueue) -> Result<Self::Output> {
         match self {
-            Timer::Running(timerfd) => timerfd.try_satisfy(satisfy),
-            Timer::Stopped => Ok(None),
+            Self::Running(timerfd) => timerfd.try_satisfy(satisfy),
+            Self::Stopped => Ok(None),
         }
     }
 }

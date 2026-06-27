@@ -31,8 +31,8 @@ impl CPU {
 
     pub(crate) const fn tick(&mut self) {
         match self {
-            CPU::Running { reader, .. } => reader.tick(),
-            CPU::Stopped => todo!(),
+            Self::Running { reader, .. } => reader.tick(),
+            Self::Stopped => todo!(),
         }
     }
 }
@@ -43,8 +43,8 @@ impl TryWantsTrySatisfy for CPU {
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {
         match self {
-            CPU::Running { reader, buf, .. } => Ok(reader.wants(&mut **buf)),
-            CPU::Stopped => Ok(None),
+            Self::Running { reader, buf, .. } => Ok(reader.wants(&mut **buf)),
+            Self::Stopped => Ok(None),
         }
     }
 

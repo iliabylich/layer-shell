@@ -68,7 +68,7 @@ where
     }
 
     #[expect(dead_code)]
-    pub(crate) fn subscribe(&mut self, q: &mut impl OutgoingQueue) {
+    pub(crate) fn subscribe(&self, q: &mut impl OutgoingQueue) {
         let Some(property) = self.property.as_ref() else {
             return;
         };

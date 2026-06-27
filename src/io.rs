@@ -88,7 +88,7 @@ impl IO {
         schedule_session_dbus(
             &mut session_dbus,
             &mut session_dbus_readbuf,
-            &mut session_dbus_queue,
+            &session_dbus_queue,
             &mut ring,
         );
 
@@ -99,7 +99,7 @@ impl IO {
         schedule_system_dbus(
             &mut system_dbus,
             &mut system_dbus_readbuf,
-            &mut system_dbus_queue,
+            &system_dbus_queue,
             &mut ring,
         );
 
@@ -227,7 +227,7 @@ impl IO {
                 schedule_session_dbus(
                     &mut self.session_dbus,
                     &mut self.session_dbus_readbuf,
-                    &mut self.session_dbus_queue,
+                    &self.session_dbus_queue,
                     &mut self.ring,
                 );
             }
@@ -258,7 +258,7 @@ generate_simple_schedule_impl!(schedule_niri, Niri);
 fn schedule_session_dbus(
     module: &mut SessionDBus,
     readbuf: &mut [u8],
-    queue: &mut SessionDBusQueue,
+    queue: &SessionDBusQueue,
     ring: &mut IoUring,
 ) {
     let Some(wants) = module.wants(readbuf, queue) else {
@@ -271,7 +271,7 @@ fn schedule_session_dbus(
 fn schedule_system_dbus(
     module: &mut SystemDBus,
     readbuf: &mut [u8],
-    queue: &mut SystemDBusQueue,
+    queue: &SystemDBusQueue,
     ring: &mut IoUring,
 ) {
     let Some(wants) = module.wants(readbuf, queue) else {
@@ -313,7 +313,7 @@ impl IO {
             schedule_session_dbus(
                 &mut self.session_dbus,
                 &mut self.session_dbus_readbuf,
-                &mut self.session_dbus_queue,
+                &self.session_dbus_queue,
                 &mut self.ring,
             );
         }
@@ -359,7 +359,7 @@ impl IO {
         schedule_session_dbus(
             &mut self.session_dbus,
             &mut self.session_dbus_readbuf,
-            &mut self.session_dbus_queue,
+            &self.session_dbus_queue,
             &mut self.ring,
         );
     }
@@ -381,7 +381,7 @@ impl IO {
         schedule_system_dbus(
             &mut self.system_dbus,
             &mut self.system_dbus_readbuf,
-            &mut self.system_dbus_queue,
+            &self.system_dbus_queue,
             &mut self.ring,
         );
     }
