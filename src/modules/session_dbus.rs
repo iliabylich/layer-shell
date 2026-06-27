@@ -59,6 +59,7 @@ impl SessionDBus {
         self.state.wants(&self.addr, readbuf(), queue())
     }
 
+    #[must_use]
     pub(crate) fn satisfy(
         &mut self,
         satisfy: Satisfy,

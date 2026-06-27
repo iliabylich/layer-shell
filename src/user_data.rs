@@ -16,7 +16,7 @@ pub(crate) enum ModuleId {
     SystemDBus,
 
     #[expect(clippy::upper_case_acronyms)]
-    CPU,
+    Cpu,
     Memory,
     Timer,
 }
@@ -32,7 +32,7 @@ impl ModuleId {
             Self::Niri => "Niri",
             Self::SessionDBus => "SessionDBus",
             Self::SystemDBus => "SystemDBus",
-            Self::CPU => "CPU",
+            Self::Cpu => "CPU",
             Self::Memory => "Memory",
             Self::Timer => "Timer",
         }
