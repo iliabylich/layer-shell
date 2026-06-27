@@ -176,13 +176,13 @@ impl IO {
             log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?}");
 
             match module_id {
-                ModuleId::GeoLocation => self.satisfy_location(satisfy),
+                ModuleId::Location => self.satisfy_location(satisfy),
                 ModuleId::Weather => self.satisfy_weather(satisfy),
                 ModuleId::KbMod => self.satisfy_kb_mod(satisfy),
                 ModuleId::Niri => self.satisfy_niri(satisfy),
                 ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy),
                 ModuleId::SystemDBus => self.satisfy_system_dbus(satisfy),
-                ModuleId::Cpu => self.satisfy_cpu(satisfy),
+                ModuleId::CPU => self.satisfy_cpu(satisfy),
                 ModuleId::Memory => self.satisfy_memory(satisfy),
                 ModuleId::Timer => self.satisfy_timer(satisfy),
             }
@@ -236,62 +236,26 @@ impl IO {
     }
 }
 
-fn schedule_timer(module: &mut Timer, ring: &mut IoUring) {
-    let Some(wants) = module.wants() else {
-        return;
+macro_rules! generate_simple_schedule_impl {
+    ($fn:ident, $module:ident) => {
+        fn $fn(module: &mut $module, ring: &mut IoUring) {
+            let Some(wants) = module.wants() else {
+                return;
+            };
+            log::trace!(target: stringify!($module), "{wants:?}");
+            assert_matches!(module.wants(), None);
+            ring.schedule(ModuleId::$module, wants);
+        }
     };
-    log::trace!(target: "Timer", "{wants:?}");
-    assert_matches!(module.wants(), None);
-    ring.schedule(ModuleId::Timer, wants);
 }
-fn schedule_location(module: &mut Location, ring: &mut IoUring) {
-    let Some(wants) = module.wants() else {
-        return;
-    };
-    log::trace!(target: "Location", "{wants:?}");
-    assert_matches!(module.wants(), None);
-    ring.schedule(ModuleId::GeoLocation, wants);
-}
-fn schedule_weather(module: &mut Weather, ring: &mut IoUring) {
-    let Some(wants) = module.wants() else {
-        return;
-    };
-    log::trace!(target: "Weather", "{wants:?}");
-    assert_matches!(module.wants(), None);
-    ring.schedule(ModuleId::Weather, wants);
-}
-fn schedule_cpu(module: &mut CPU, ring: &mut IoUring) {
-    let Some(wants) = module.wants() else {
-        return;
-    };
-    log::trace!(target: "CPU", "{wants:?}");
-    assert_matches!(module.wants(), None);
-    ring.schedule(ModuleId::Cpu, wants);
-}
-fn schedule_memory(memory: &mut Memory, ring: &mut IoUring) {
-    let Some(wants) = memory.wants() else {
-        return;
-    };
-    log::trace!(target: "Memory", "{wants:?}");
-    assert_matches!(memory.wants(), None);
-    ring.schedule(ModuleId::Memory, wants);
-}
-fn schedule_kb_mod(module: &mut KbMod, ring: &mut IoUring) {
-    let Some(wants) = module.wants() else {
-        return;
-    };
-    log::trace!(target: "KbMod", "{wants:?}");
-    assert_matches!(module.wants(), None);
-    ring.schedule(ModuleId::KbMod, wants);
-}
-fn schedule_niri(module: &mut Niri, ring: &mut IoUring) {
-    let Some(wants) = module.wants() else {
-        return;
-    };
-    log::trace!(target: "Niri", "{wants:?}");
-    assert_matches!(module.wants(), None);
-    ring.schedule(ModuleId::Niri, wants);
-}
+
+generate_simple_schedule_impl!(schedule_timer, Timer);
+generate_simple_schedule_impl!(schedule_location, Location);
+generate_simple_schedule_impl!(schedule_weather, Weather);
+generate_simple_schedule_impl!(schedule_cpu, CPU);
+generate_simple_schedule_impl!(schedule_memory, Memory);
+generate_simple_schedule_impl!(schedule_kb_mod, KbMod);
+generate_simple_schedule_impl!(schedule_niri, Niri);
 
 fn schedule_session_dbus(
     module: &mut SessionDBus,
@@ -318,6 +282,17 @@ fn schedule_system_dbus(
     log::trace!(target: "SystemDBus", "{wants:?}");
     assert_matches!(module.wants(readbuf, queue), None);
     ring.schedule(ModuleId::SystemDBus, wants);
+}
+
+macro_rules! generate_simple_satisfy_impl {
+    ($fn:ident, $module:ident, $schedule:ident) => {
+        impl IO {
+            fn $fn(&mut self, satisfy: Satisfy) {
+                self.$module.satisfy(satisfy, &mut self.events);
+                $schedule(&mut self.$module, &mut self.ring);
+            }
+        }
+    };
 }
 
 impl IO {
@@ -358,40 +333,11 @@ impl IO {
     }
 }
 
-impl IO {
-    fn satisfy_weather(&mut self, satisfy: Satisfy) {
-        self.weather.satisfy(satisfy, &mut self.events);
-        schedule_weather(&mut self.weather, &mut self.ring);
-    }
-}
-
-impl IO {
-    fn satisfy_cpu(&mut self, satisfy: Satisfy) {
-        self.cpu.satisfy(satisfy, &mut self.events);
-        schedule_cpu(&mut self.cpu, &mut self.ring);
-    }
-}
-
-impl IO {
-    fn satisfy_memory(&mut self, satisfy: Satisfy) {
-        self.memory.satisfy(satisfy, &mut self.events);
-        schedule_memory(&mut self.memory, &mut self.ring);
-    }
-}
-
-impl IO {
-    fn satisfy_kb_mod(&mut self, satisfy: Satisfy) {
-        self.kb_mod.satisfy(satisfy, &mut self.events);
-        schedule_kb_mod(&mut self.kb_mod, &mut self.ring);
-    }
-}
-
-impl IO {
-    fn satisfy_niri(&mut self, satisfy: Satisfy) {
-        self.niri.satisfy(satisfy, &mut self.events);
-        schedule_niri(&mut self.niri, &mut self.ring);
-    }
-}
+generate_simple_satisfy_impl!(satisfy_weather, weather, schedule_weather);
+generate_simple_satisfy_impl!(satisfy_cpu, cpu, schedule_cpu);
+generate_simple_satisfy_impl!(satisfy_memory, memory, schedule_memory);
+generate_simple_satisfy_impl!(satisfy_kb_mod, kb_mod, schedule_kb_mod);
+generate_simple_satisfy_impl!(satisfy_niri, niri, schedule_niri);
 
 impl IO {
     fn satisfy_session_dbus(&mut self, satisfy: Satisfy) {

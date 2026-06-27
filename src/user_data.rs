@@ -7,7 +7,7 @@ use crate::sansio::Op;
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum ModuleId {
     Weather,
-    GeoLocation,
+    Location,
 
     KbMod,
     Niri,
@@ -16,7 +16,7 @@ pub(crate) enum ModuleId {
     SystemDBus,
 
     #[expect(clippy::upper_case_acronyms)]
-    Cpu,
+    CPU,
     Memory,
     Timer,
 }
@@ -27,12 +27,12 @@ impl ModuleId {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
             Self::Weather => "Weather",
-            Self::GeoLocation => "GeoLocation",
+            Self::Location => "Location",
             Self::KbMod => "KbMod",
             Self::Niri => "Niri",
             Self::SessionDBus => "SessionDBus",
             Self::SystemDBus => "SystemDBus",
-            Self::Cpu => "CPU",
+            Self::CPU => "CPU",
             Self::Memory => "Memory",
             Self::Timer => "Timer",
         }
