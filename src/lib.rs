@@ -17,6 +17,7 @@
 #![expect(clippy::cast_possible_truncation)]
 #![expect(clippy::arithmetic_side_effects)]
 
+mod actor;
 mod command;
 mod config;
 mod event;

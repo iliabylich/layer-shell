@@ -1,24 +1,43 @@
 use crate::{
+    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     sansio::{Satisfy, TimerFd, Wants},
+    user_data::ModuleId,
 };
+use anyhow::Result;
 
-pub(crate) struct Timer {
-    timerfd: TimerFd,
+pub(crate) enum Timer {
+    Running(TimerFd),
+    Stopped,
 }
 
 impl Timer {
     pub(crate) fn new() -> Self {
-        Self {
-            timerfd: TimerFd::new(),
+        Self::Running(TimerFd::new())
+    }
+}
+
+impl TryWantsTrySatisfy for Timer {
+    const ID: ModuleId = ModuleId::Timer;
+    type Output = Option<u64>;
+
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
+        match self {
+            Timer::Running(timerfd) => Ok(timerfd.wants()),
+            Timer::Stopped => Ok(None),
         }
     }
 
-    pub(crate) const fn wants(&mut self) -> Option<Wants> {
-        self.timerfd.wants()
+    fn try_satisfy(&mut self, satisfy: Satisfy, _events: &mut EventQueue) -> Result<Self::Output> {
+        match self {
+            Timer::Running(timerfd) => timerfd.try_satisfy(satisfy),
+            Timer::Stopped => Ok(None),
+        }
     }
+}
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, _events: &mut EventQueue) -> Option<u64> {
-        self.timerfd.satisfy(satisfy)
+impl CanStop for Timer {
+    fn stopped(&mut self) -> Self {
+        Self::Stopped
     }
 }

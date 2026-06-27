@@ -49,7 +49,7 @@ enum State {
     },
     WaitingForClose,
 
-    Stopped,
+    Finished,
 }
 
 impl std::fmt::Debug for State {
@@ -64,7 +64,7 @@ impl std::fmt::Debug for State {
             Self::ReadWrite { .. } => write!(f, "ReadWrite"),
             Self::CanClose { .. } => write!(f, "CanClose"),
             Self::WaitingForClose => write!(f, "WaitingForClose"),
-            Self::Stopped => write!(f, "Stopped"),
+            Self::Finished => write!(f, "Stopped"),
         }
     }
 }
@@ -103,53 +103,53 @@ impl Https {
             | State::CanSocket { .. }
             | State::CanConnect { .. }
             | State::CanClose { .. }
-            | State::Stopped => false,
+            | State::Finished => false,
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn try_wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Dns(dns) => dns.wants(),
+            State::Dns(dns) => dns.try_wants(),
 
             State::CanSocket { addr } => {
                 self.state = State::WaitingForSocket { addr: *addr };
-                Some(Wants::Socket {
+                Ok(Some(Wants::Socket {
                     domain: AddressFamily::INET,
                     r#type: SocketType::STREAM,
-                })
+                }))
             }
 
             State::CanConnect { addr, fd } => {
                 let addr = *addr;
                 let fd = *fd;
                 self.state = State::WaitingForConnect { fd };
-                Some(Wants::Connect {
+                Ok(Some(Wants::Connect {
                     fd,
                     addr: addr.into(),
-                })
+                }))
             }
 
-            State::Handshaking { inner, fd } => inner.wants(*fd),
+            State::Handshaking { inner, fd } => Ok(inner.wants(*fd)),
 
-            State::ReadWrite { inner, fd } => inner.wants(*fd),
+            State::ReadWrite { inner, fd } => Ok(inner.wants(*fd)),
 
             State::CanClose { fd } => {
                 let fd = *fd;
                 self.state = State::WaitingForClose;
-                Some(Wants::Close { fd })
+                Ok(Some(Wants::Close { fd }))
             }
 
             State::WaitingForSocket { .. }
             | State::WaitingForConnect { .. }
             | State::WaitingForClose
-            | State::Stopped => None,
+            | State::Finished => Ok(None),
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<HttpResponse>> {
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<HttpResponse>> {
         match (&mut self.state, satisfy) {
             (State::Dns(dns), satisfy) => {
-                if let Some(mut addr) = dns.satisfy(satisfy) {
+                if let Some(mut addr) = dns.try_satisfy(satisfy)? {
                     addr.set_port(443);
                     self.state = State::CanSocket { addr };
                 }
@@ -190,7 +190,7 @@ impl Https {
             (State::WaitingForClose, Satisfy::Close(res)) => {
                 res?;
                 let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
-                self.state = State::Stopped;
+                self.state = State::Finished;
                 return Ok(Some(response));
             }
 
@@ -198,20 +198,5 @@ impl Https {
         }
 
         Ok(None)
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<HttpResponse> {
-        match self.try_satisfy(satisfy) {
-            Ok(res) => res,
-            Err(err) => {
-                log::error!("{err:?}");
-                self.state = State::Stopped;
-                None
-            }
-        }
-    }
-
-    pub(crate) fn stop(&mut self) {
-        self.state = State::Stopped;
     }
 }

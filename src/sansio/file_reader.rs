@@ -15,7 +15,6 @@ enum State {
     CanRead { fd: BorrowedFd<'static> },
     WaitingForRead { fd: BorrowedFd<'static> },
     Sleeping { fd: BorrowedFd<'static> },
-    Dead,
 }
 
 impl FileReader {
@@ -47,14 +46,15 @@ impl FileReader {
                 })
             }
 
-            State::WaitingForOpen
-            | State::WaitingForRead { .. }
-            | State::Sleeping { .. }
-            | State::Dead => None,
+            State::WaitingForOpen | State::WaitingForRead { .. } | State::Sleeping { .. } => None,
         }
     }
 
-    fn try_satisfy<'a>(&mut self, satisfy: Satisfy, buf: &'a [u8]) -> Result<Option<&'a [u8]>> {
+    pub(crate) fn try_satisfy<'a>(
+        &mut self,
+        satisfy: Satisfy,
+        buf: &'a [u8],
+    ) -> Result<Option<&'a [u8]>> {
         match (self.state, satisfy) {
             (State::WaitingForOpen, Satisfy::OpenAt(fd)) => {
                 let fd = fd?;
@@ -73,21 +73,6 @@ impl FileReader {
                 bail!("malformed FileReader state: {state:?} for {satisfy:?}");
             }
         }
-    }
-
-    pub(crate) fn satisfy<'a>(&mut self, satisfy: Satisfy, buf: &'a [u8]) -> Option<&'a [u8]> {
-        match self.try_satisfy(satisfy, buf) {
-            Ok(buf) => buf,
-            Err(err) => {
-                log::error!("{err:?}");
-                self.state = State::Dead;
-                None
-            }
-        }
-    }
-
-    pub(crate) const fn stop(&mut self) {
-        self.state = State::Dead;
     }
 
     pub(crate) const fn tick(&mut self) {

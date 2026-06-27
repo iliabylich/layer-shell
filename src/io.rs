@@ -1,5 +1,6 @@
 use crate::{
     Event,
+    actor::WantsSatisfy,
     command::Command,
     config::{Config, IOConfig},
     event_queue::EventQueue,
@@ -239,12 +240,9 @@ impl IO {
 macro_rules! generate_simple_schedule_impl {
     ($fn:ident, $module:ident) => {
         fn $fn(module: &mut $module, ring: &mut IoUring) {
-            let Some(wants) = module.wants() else {
-                return;
+            if let Some(wants) = module.wants() {
+                ring.schedule(ModuleId::$module, wants);
             };
-            log::trace!(target: stringify!($module), "{wants:?}");
-            assert_matches!(module.wants(), None);
-            ring.schedule(ModuleId::$module, wants);
         }
     };
 }
@@ -325,7 +323,7 @@ impl IO {
 impl IO {
     fn satisfy_location(&mut self, satisfy: Satisfy) {
         if let Some((lat, lng)) = self.location.satisfy(satisfy, &mut self.events) {
-            self.weather.setup(lat, lng);
+            self.weather.start(lat, lng);
             schedule_weather(&mut self.weather, &mut self.ring);
         } else {
             schedule_location(&mut self.location, &mut self.ring);

@@ -14,7 +14,6 @@ pub(crate) struct TimerFd {
 enum State {
     CanRead,
     WaitingForRead,
-    Dead,
 }
 
 impl TimerFd {
@@ -38,14 +37,12 @@ impl TimerFd {
                     len: self.buf.len(),
                 })
             }
-            State::WaitingForRead | State::Dead => None,
+            State::WaitingForRead => None,
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<u64>> {
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<u64>> {
         match (self.state, satisfy) {
-            (State::Dead, _) => Ok(None),
-
             (State::WaitingForRead, Satisfy::Read(len)) => {
                 let bytes_read = len.context("TimerFd: read failed")?;
                 ensure!(bytes_read == self.buf.len());
@@ -60,17 +57,6 @@ impl TimerFd {
 
             (state, unsupported) => {
                 bail!("unexpected satisfy for TimerFd in {state:?}: {unsupported:?}")
-            }
-        }
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<u64> {
-        match self.try_satisfy(satisfy) {
-            Ok(ticks) => ticks,
-            Err(err) => {
-                log::error!("{err:?}");
-                self.state = State::Dead;
-                None
             }
         }
     }

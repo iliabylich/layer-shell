@@ -33,7 +33,7 @@ enum State {
     CanClose { fd: BorrowedFd<'static> },
     WaitingForClose,
 
-    Stopped,
+    Finished,
 }
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,7 +48,7 @@ impl std::fmt::Debug for State {
             Self::WaitingForRead { .. } => write!(f, "WaitingForRead"),
             Self::CanClose { .. } => write!(f, "CanClose"),
             Self::WaitingForClose => write!(f, "WaitingForClose"),
-            Self::Stopped => write!(f, "Stopped"),
+            Self::Finished => write!(f, "Stopped"),
         }
     }
 }
@@ -63,7 +63,7 @@ impl DNS {
         }
     }
 
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn try_wants(&mut self) -> Result<Option<Wants>> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
@@ -115,23 +115,12 @@ impl DNS {
             | State::WaitingForWrite { .. }
             | State::WaitingForRead { .. }
             | State::WaitingForClose
-            | State::Stopped => Ok(None),
+            | State::Finished => Ok(None),
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self.try_wants() {
-            Ok(wants) => wants,
-            Err(err) => {
-                log::error!("{err:?}");
-                self.state = State::Stopped;
-                None
-            }
-        }
-    }
-
-    fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<SocketAddr>> {
-        let mut state = State::Stopped;
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<SocketAddr>> {
+        let mut state = State::Finished;
         std::mem::swap(&mut self.state, &mut state);
 
         match (state, satisfy) {
@@ -174,17 +163,6 @@ impl DNS {
             }
 
             (_, satisfy) => bail!("malformed state: {:?} vs {satisfy:?}", self.state),
-        }
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Option<SocketAddr> {
-        match self.try_satisfy(satisfy) {
-            Ok(addr) => addr,
-            Err(err) => {
-                log::error!("{err:?}");
-                self.state = State::Stopped;
-                None
-            }
         }
     }
 }

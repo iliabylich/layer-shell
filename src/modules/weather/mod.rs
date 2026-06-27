@@ -1,8 +1,10 @@
 use crate::{
     Event,
+    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     modules::weather::weather_response::WeatherResponse,
     sansio::{HttpRequest, Https, Satisfy, Wants},
+    user_data::ModuleId,
 };
 use anyhow::Result;
 pub use weather_code::WeatherCode;
@@ -22,7 +24,7 @@ pub(crate) enum Weather {
         lng: f64,
         https: Box<Https>,
     },
-    Dead {
+    Stopped {
         latlng: Option<(f64, f64)>,
     },
 }
@@ -32,7 +34,7 @@ impl Weather {
         Self::WaitingForLocation
     }
 
-    pub(crate) fn setup(&mut self, lat: f64, lng: f64) {
+    pub(crate) fn start(&mut self, lat: f64, lng: f64) {
         *self = Self::Ready {
             lat,
             lng,
@@ -40,43 +42,11 @@ impl Weather {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        match self {
-            Self::Ready { https, .. } => https.wants(),
-
-            Self::WaitingForLocation | Self::Dead { .. } => None,
-        }
-    }
-
-    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
-        match self {
-            Self::Ready { https, .. } => {
-                let Some(response) = https.satisfy(satisfy) else {
-                    return Ok(());
-                };
-                let response = WeatherResponse::parse(&response)?;
-                let event = Event::try_from(response)?;
-                events.push_back(event);
-                Ok(())
-            }
-            Self::Dead { .. } | Self::WaitingForLocation => Ok(()),
-        }
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
-        if let Err(err) = self.try_satisfy(satisfy, events) {
-            log::error!("{err:?}");
-            *self = Self::Dead {
-                latlng: self.latlng(),
-            };
-        }
-    }
-
     const fn latlng(&self) -> Option<(f64, f64)> {
         match self {
             Self::WaitingForLocation => None,
             Self::Ready { lat, lng, .. } => Some((*lat, *lng)),
-            Self::Dead { latlng } => *latlng,
+            Self::Stopped { latlng } => *latlng,
         }
     }
 
@@ -97,6 +67,41 @@ impl Weather {
                 lng,
                 https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)))),
             };
+        }
+    }
+}
+
+impl TryWantsTrySatisfy for Weather {
+    const ID: ModuleId = ModuleId::Weather;
+    type Output = ();
+
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
+        match self {
+            Self::Ready { https, .. } => https.try_wants(),
+            Self::WaitingForLocation | Self::Stopped { .. } => Ok(None),
+        }
+    }
+
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<Self::Output> {
+        match self {
+            Self::Ready { https, .. } => {
+                let Some(response) = https.try_satisfy(satisfy)? else {
+                    return Ok(());
+                };
+                let response = WeatherResponse::parse(&response)?;
+                let event = Event::try_from(response)?;
+                events.push_back(event);
+                Ok(())
+            }
+            Self::Stopped { .. } | Self::WaitingForLocation => Ok(()),
+        }
+    }
+}
+
+impl CanStop for Weather {
+    fn stopped(&mut self) -> Self {
+        Self::Stopped {
+            latlng: self.latlng(),
         }
     }
 }

@@ -1,104 +1,97 @@
 use crate::{
     Event,
+    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     sansio::{Satisfy, UnixSocketReader, Wants},
+    user_data::ModuleId,
 };
 use anyhow::{Context, Result, bail};
 use rustix::net::SocketAddrUnix;
 
-pub(crate) struct KbMod {
-    reader: UnixSocketReader,
-    state: State,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum State {
-    WaitingForInitialBytes(usize),
-    ReadingUpdates,
-    Dummy,
+pub(crate) enum KbMod {
+    Running {
+        reader: UnixSocketReader,
+        bytes_to_drop: usize,
+    },
+    Stopped,
 }
 
 impl KbMod {
     pub(crate) fn new() -> Self {
         Self::try_new().unwrap_or_else(|err| {
             log::error!("{err:?}");
-            Self::dummy()
+            Self::stopped()
         })
     }
 
     fn try_new() -> Result<Self> {
-        Ok(Self {
+        Ok(Self::Running {
             reader: UnixSocketReader::new(SocketAddrUnix::new("/run/kb-mod-monitor.sock")?),
-            state: State::WaitingForInitialBytes(2),
+            bytes_to_drop: 2,
         })
     }
 
-    const fn dummy() -> Self {
-        Self {
-            reader: UnixSocketReader::dummy(),
-            state: State::Dummy,
+    const fn stopped() -> Self {
+        Self::Stopped
+    }
+}
+
+impl TryWantsTrySatisfy for KbMod {
+    const ID: ModuleId = ModuleId::KbMod;
+    type Output = ();
+
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
+        match self {
+            Self::Running { reader, .. } => Ok(reader.wants()),
+            Self::Stopped => Ok(None),
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        if self.state == State::Dummy {
-            return None;
-        }
-
-        self.reader.wants()
-    }
-
-    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
-        if self.state == State::Dummy {
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<Self::Output> {
+        let Self::Running {
+            reader,
+            bytes_to_drop,
+        } = self
+        else {
             return Ok(());
-        }
+        };
 
         match satisfy {
             Satisfy::Socket(res) => {
                 let fd = res?;
-                self.reader.satisfy_socket(fd)?;
+                reader.satisfy_socket(fd)?;
                 Ok(())
             }
 
             Satisfy::Connect(res) => {
                 res?;
-                self.reader.satisfy_connect()?;
+                reader.satisfy_connect()?;
                 Ok(())
             }
 
             Satisfy::Read(res) => {
                 let bytes_read = res?;
-                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
+                let (buf, len) = reader.satisfy_read(bytes_read)?;
                 let mut bytes = buf.get(..len).context("buf is too short")?;
 
-                if let State::WaitingForInitialBytes(pending) = self.state {
-                    if bytes.is_empty() {
-                        return Ok(());
-                    }
-                    let min = std::cmp::min(pending, bytes.len());
-                    let pending = pending.checked_sub(min).context("malformed state")?;
-                    bytes = bytes.get(min..).context("malformed state")?;
-
-                    if pending == 0 {
-                        self.state = State::ReadingUpdates;
-                    } else {
-                        self.state = State::WaitingForInitialBytes(pending);
-                        return Ok(());
-                    }
+                if *bytes_to_drop > 0 && !bytes.is_empty() {
+                    let to_drop = std::cmp::min(bytes.len(), *bytes_to_drop);
+                    *bytes_to_drop = bytes_to_drop
+                        .checked_sub(to_drop)
+                        .unwrap_or_else(|| unreachable!());
+                    bytes = bytes.get(to_drop..).unwrap_or_else(|| unreachable!());
                 }
 
-                if self.state == State::ReadingUpdates {
-                    for byte in bytes {
-                        let (kind, enabled) = match *byte {
-                            b'0' => (KbModKind::CapsLock, false),
-                            b'1' => (KbModKind::CapsLock, true),
-                            b'2' => (KbModKind::NumLock, false),
-                            b'3' => (KbModKind::NumLock, true),
-                            _ => return Ok(()),
-                        };
+                for byte in bytes {
+                    let (kind, enabled) = match *byte {
+                        b'0' => (KbModKind::CapsLock, false),
+                        b'1' => (KbModKind::CapsLock, true),
+                        b'2' => (KbModKind::NumLock, false),
+                        b'3' => (KbModKind::NumLock, true),
+                        _ => return Ok(()),
+                    };
 
-                        events.push_back(Event::KbModToggled { kind, enabled });
-                    }
+                    events.push_back(Event::KbModToggled { kind, enabled });
                 }
 
                 Ok(())
@@ -107,12 +100,11 @@ impl KbMod {
             _ => bail!("KbMod only accepts Socket, Connect and Read, got: {satisfy:?}"),
         }
     }
+}
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
-        if let Err(err) = self.try_satisfy(satisfy, events) {
-            log::error!("{err:?}");
-            self.reader.stop();
-        }
+impl CanStop for KbMod {
+    fn stopped(&mut self) -> Self {
+        Self::Stopped
     }
 }
 

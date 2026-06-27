@@ -1,7 +1,9 @@
 use crate::{
     Event,
+    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
+    user_data::ModuleId,
     utils::{StringRef, StringRefExt as _},
 };
 use anyhow::{Context, Result, bail};
@@ -13,7 +15,7 @@ mod buffer;
 enum State {
     Writer(Box<UnixSocketOneshotWriter>),
     Reader(Box<UnixSocketReader>),
-    Dummy,
+    Stopped,
 }
 
 pub(crate) struct Niri {
@@ -26,7 +28,7 @@ impl Niri {
     pub(crate) fn new() -> Self {
         Self::try_new().unwrap_or_else(|err| {
             log::error!("{err:?}");
-            Self::dummy()
+            Self::stopped()
         })
     }
 
@@ -44,9 +46,9 @@ impl Niri {
         })
     }
 
-    const fn dummy() -> Self {
+    const fn stopped() -> Self {
         Self {
-            state: State::Dummy,
+            state: State::Stopped,
             buffer: Buffer::new(),
             layouts: vec![],
         }
@@ -94,16 +96,21 @@ impl Niri {
 
         Ok(())
     }
+}
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+impl TryWantsTrySatisfy for Niri {
+    const ID: ModuleId = ModuleId::Niri;
+    type Output = ();
+
+    fn try_wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Writer(writer) => writer.wants(),
-            State::Reader(reader) => reader.wants(),
-            State::Dummy => None,
+            State::Writer(writer) => Ok(writer.wants()),
+            State::Reader(reader) => Ok(reader.wants()),
+            State::Stopped => Ok(None),
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<Self::Output> {
         match &mut self.state {
             State::Writer(writer) => match satisfy {
                 Satisfy::Socket(res) => {
@@ -148,16 +155,15 @@ impl Niri {
                 _ => bail!("Niri reader only accepts Socket, Connect and Read, got: {satisfy:?}"),
             },
 
-            State::Dummy => {}
+            State::Stopped => {}
         }
 
         Ok(())
     }
+}
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) {
-        if let Err(err) = self.try_satisfy(satisfy, events) {
-            log::error!("{err:?}");
-            self.state = State::Dummy;
-        }
+impl CanStop for Niri {
+    fn stopped(&mut self) -> Self {
+        Self::stopped()
     }
 }

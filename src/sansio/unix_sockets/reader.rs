@@ -26,8 +26,6 @@ enum State {
     WaitingForRead {
         fd: BorrowedFd<'static>,
     },
-
-    Disconnected,
 }
 
 impl State {
@@ -63,7 +61,7 @@ impl State {
     }
 
     fn wants_in_place(&mut self, buf: &mut [u8]) -> Option<Wants> {
-        let mut this = Self::Disconnected;
+        let mut this: Self = unsafe { core::mem::zeroed() };
         std::mem::swap(self, &mut this);
         let (next, wants) = this.wants(buf);
         *self = next;
@@ -88,13 +86,6 @@ impl UnixSocketReader {
         Self {
             buf: [0; _],
             state: State::ReadyToRead { fd },
-        }
-    }
-
-    pub(crate) const fn dummy() -> Self {
-        Self {
-            buf: [0; _],
-            state: State::Disconnected,
         }
     }
 
@@ -134,9 +125,5 @@ impl UnixSocketReader {
         self.state = State::ReadyToRead { fd: *fd };
 
         Ok((buf, bytes_read))
-    }
-
-    pub(crate) const fn stop(&mut self) {
-        self.state = State::Disconnected;
     }
 }
