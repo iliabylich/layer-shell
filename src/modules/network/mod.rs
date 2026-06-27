@@ -1,4 +1,8 @@
-use crate::{Event, event_queue::EventQueue, utils::StringRef};
+use crate::{
+    Event,
+    event_queue::EventQueue,
+    utils::{StringRef, dbus::queue::DBusQueue},
+};
 use active_access_point::{ActiveAccessPoint, ActiveAccessPointEvent};
 use dbus::IncomingMessage;
 use primary_device::{PrimaryDevice, PrimaryDeviceEvent};
@@ -42,43 +46,43 @@ impl Network {
         }
     }
 
-    pub(crate) fn init(&mut self) {
-        self.wireless_connection.start();
+    pub(crate) fn init(&mut self, q: &mut DBusQueue) {
+        self.wireless_connection.start(q);
     }
 
-    fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent) {
+    fn on_wireless_connection_event(&mut self, e: WirelessConnectionEvent, q: &mut DBusQueue) {
         match e {
             WirelessConnectionEvent::Connected(path) => {
-                self.primary_device.start(path);
+                self.primary_device.start(path, q);
             }
             WirelessConnectionEvent::Disconnected => {
-                self.primary_device.stop();
+                self.primary_device.stop(q);
             }
         }
     }
 
-    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent) {
+    fn on_primary_device_event(&mut self, e: PrimaryDeviceEvent, q: &mut DBusQueue) {
         match e {
             PrimaryDeviceEvent::Connected(path) => {
-                self.active_access_point.start(path.clone());
+                self.active_access_point.start(path.clone(), q);
                 self.speed.reset();
-                self.tx_rx.start(path);
+                self.tx_rx.start(path, q);
             }
             PrimaryDeviceEvent::Disconnected => {
-                self.active_access_point.stop();
+                self.active_access_point.stop(q);
                 self.speed.reset();
-                self.tx_rx.stop();
+                self.tx_rx.stop(q);
             }
         }
     }
 
-    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent) {
+    fn on_active_access_point_event(&mut self, e: ActiveAccessPointEvent, q: &mut DBusQueue) {
         match e {
             ActiveAccessPointEvent::Connected(path) => {
-                self.ssid_and_strength.start(path);
+                self.ssid_and_strength.start(path, q);
             }
             ActiveAccessPointEvent::Disconnected => {
-                self.ssid_and_strength.stop();
+                self.ssid_and_strength.stop(q);
             }
         }
     }
@@ -121,28 +125,33 @@ impl Network {
         }
     }
 
-    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>, events: &mut EventQueue) {
-        if let Some(e) = self.wireless_connection.handle(message) {
-            self.on_wireless_connection_event(e);
+    pub(crate) fn handle(
+        &mut self,
+        message: IncomingMessage<'_>,
+        events: &mut EventQueue,
+        q: &mut DBusQueue,
+    ) {
+        if let Some(e) = self.wireless_connection.handle(message, q) {
+            self.on_wireless_connection_event(e, q);
             return;
         }
 
-        if let Some(e) = self.primary_device.handle(message) {
-            self.on_primary_device_event(e);
+        if let Some(e) = self.primary_device.handle(message, q) {
+            self.on_primary_device_event(e, q);
             return;
         }
 
-        if let Some(e) = self.active_access_point.handle(message) {
-            self.on_active_access_point_event(e);
+        if let Some(e) = self.active_access_point.handle(message, q) {
+            self.on_active_access_point_event(e, q);
             return;
         }
 
-        if let Some(e) = self.tx_rx.handle(message) {
+        if let Some(e) = self.tx_rx.handle(message, q) {
             self.on_tx_rx_event(e, events);
             return;
         }
 
-        if let Some(e) = self.ssid_and_strength.handle(message) {
+        if let Some(e) = self.ssid_and_strength.handle(message, q) {
             self.on_ssid_and_strength_event(e, events);
         }
     }

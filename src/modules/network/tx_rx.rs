@@ -1,6 +1,6 @@
-use crate::{
-    modules::SystemDBus,
-    utils::{StringRef, dbus::infallible_property::InfalliblePropertyGetAndSubscribe},
+use crate::utils::{
+    StringRef,
+    dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
 };
 use dbus::{
     DBusError, IncomingMessage,
@@ -21,33 +21,37 @@ pub(crate) struct TxRxEvent {
 impl TxRx {
     pub(crate) const fn new() -> Self {
         Self {
-            tx: InfalliblePropertyGetAndSubscribe::new(SystemDBus::queue()),
-            rx: InfalliblePropertyGetAndSubscribe::new(SystemDBus::queue()),
+            tx: InfalliblePropertyGetAndSubscribe::new(),
+            rx: InfalliblePropertyGetAndSubscribe::new(),
         }
     }
 
-    pub(crate) fn start(&mut self, path: StringRef) {
-        if let Err(err) = Configure::send(path.as_str()) {
+    pub(crate) fn start(&mut self, path: StringRef, q: &mut DBusQueue) {
+        if let Err(err) = Configure::send(path.as_str(), q) {
             log::error!("{err:?}");
             return;
         }
-        self.tx.get_and_subscribe(TxBytes::new(path.clone()));
-        self.rx.get_and_subscribe(RxBytes::new(path));
+        self.tx.get_and_subscribe(TxBytes::new(path.clone()), q);
+        self.rx.get_and_subscribe(RxBytes::new(path), q);
     }
 
-    pub(crate) fn stop(&mut self) {
-        self.tx.unsubscribe();
-        self.rx.unsubscribe();
+    pub(crate) fn stop(&mut self, q: &mut DBusQueue) {
+        self.tx.unsubscribe(q);
+        self.rx.unsubscribe(q);
     }
 
-    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) -> Option<TxRxEvent> {
+    pub(crate) fn handle(
+        &mut self,
+        message: IncomingMessage<'_>,
+        q: &mut DBusQueue,
+    ) -> Option<TxRxEvent> {
         let mut e = TxRxEvent { tx: None, rx: None };
 
-        if let Some(tx) = self.tx.handle_reply_or_signal(message) {
+        if let Some(tx) = self.tx.handle_reply_or_signal(message, q) {
             e.tx = Some(tx);
         }
 
-        if let Some(rx) = self.rx.handle_reply_or_signal(message) {
+        if let Some(rx) = self.rx.handle_reply_or_signal(message, q) {
             e.rx = Some(rx);
         }
 
@@ -61,10 +65,10 @@ impl TxRx {
 
 struct Configure;
 impl Configure {
-    fn send(path: &str) -> Result<(), DBusError> {
+    fn send(path: &str, q: &mut DBusQueue) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let encoded = RefreshRateMs::encode_set_property(&mut buf, path, 1_000)?;
-        SystemDBus::queue().push_raw(encoded);
+        q.push_raw(encoded);
         Ok(())
     }
 }

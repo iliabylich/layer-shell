@@ -65,21 +65,25 @@ impl State {
 impl Sound {
     pub(crate) const fn new() -> Self {
         Self {
-            volume: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
-            muted: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
+            volume: InfalliblePropertyGetAndSubscribe::new(),
+            muted: InfalliblePropertyGetAndSubscribe::new(),
             state: State::new(),
             healthy: true,
         }
     }
 
     pub(crate) fn start(&mut self) {
-        self.volume.get_and_subscribe(Volume);
-        self.muted.get_and_subscribe(Muted);
+        self.volume.get_and_subscribe(Volume, SessionDBus::queue());
+        self.muted.get_and_subscribe(Muted, SessionDBus::queue());
     }
 
     pub(crate) fn handle(&mut self, message: IncomingMessage<'_>, events: &mut EventQueue) {
-        let volume = self.volume.handle_reply_or_signal(message);
-        let muted = self.muted.handle_reply_or_signal(message);
+        let volume = self
+            .volume
+            .handle_reply_or_signal(message, SessionDBus::queue());
+        let muted = self
+            .muted
+            .handle_reply_or_signal(message, SessionDBus::queue());
 
         self.state.got(volume, muted, events);
     }

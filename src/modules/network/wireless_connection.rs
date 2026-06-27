@@ -3,7 +3,7 @@ use crate::{
         active_connection_type::ActiveConnectionType,
         primary_connection::{PrimaryConnection, PrimaryConnectionEvent},
     },
-    utils::StringRef,
+    utils::{StringRef, dbus::queue::DBusQueue},
 };
 use dbus::IncomingMessage;
 
@@ -36,22 +36,23 @@ impl WirelessConnection {
         }
     }
 
-    pub(crate) fn start(&mut self) {
-        self.primary_connection.start();
+    pub(crate) fn start(&mut self, q: &mut DBusQueue) {
+        self.primary_connection.start(q);
     }
 
     fn on_primary_connection_event(
         &mut self,
         e: PrimaryConnectionEvent,
+        q: &mut DBusQueue,
     ) -> Option<WirelessConnectionEvent> {
         match e {
             PrimaryConnectionEvent::Connected(path) => {
-                self.active_connection_type.start(path);
+                self.active_connection_type.start(path, q);
                 self.state = State::ConnectedAndHavePath;
                 None
             }
             PrimaryConnectionEvent::Disconnected => {
-                self.active_connection_type.stop();
+                self.active_connection_type.stop(q);
                 self.state = State::Disconnected;
                 Some(WirelessConnectionEvent::Disconnected)
             }
@@ -75,12 +76,13 @@ impl WirelessConnection {
     pub(crate) fn handle(
         &mut self,
         message: IncomingMessage<'_>,
+        q: &mut DBusQueue,
     ) -> Option<WirelessConnectionEvent> {
-        if let Some(e) = self.primary_connection.handle(message) {
-            return self.on_primary_connection_event(e);
+        if let Some(e) = self.primary_connection.handle(message, q) {
+            return self.on_primary_connection_event(e, q);
         }
 
-        if let Some((is_wireless, path)) = self.active_connection_type.handle(message) {
+        if let Some((is_wireless, path)) = self.active_connection_type.handle(message, q) {
             return Some(self.on_active_connection_type_received(is_wireless, path));
         }
 

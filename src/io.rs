@@ -10,6 +10,7 @@ use crate::{
     },
     sansio::{Https, Satisfy},
     user_data::{ModuleId, UserData},
+    utils::dbus::queue::DBusQueue,
 };
 use anyhow::{Context, Result};
 use std::{assert_matches, os::fd::AsRawFd};
@@ -30,6 +31,7 @@ pub(crate) struct IO {
 
     system_dbus: SystemDBus,
     system_dbus_readbuf: Vec<u8>,
+    system_dbus_queue: DBusQueue,
     network: Network,
 
     location: Location,
@@ -53,7 +55,6 @@ impl IO {
         env_logger::try_init()?;
         Https::init()?;
         SessionDBus::init()?;
-        SystemDBus::init()?;
         Ok(())
     }
 
@@ -87,6 +88,7 @@ impl IO {
 
             system_dbus: SystemDBus::new(),
             system_dbus_readbuf: vec![0; 400 * 1_024],
+            system_dbus_queue: DBusQueue::new(),
             network: Network::new(),
 
             location: Location::new(),
@@ -121,7 +123,8 @@ impl IO {
         Tray::init()?;
         self.schedule_session_dbus();
 
-        self.network.init();
+        self.system_dbus_queue.push_hello()?;
+        self.network.init(&mut self.system_dbus_queue);
         self.schedule_system_dbus();
 
         self.ring.submit_if_dirty();
@@ -366,19 +369,31 @@ impl IO {
 
 impl IO {
     fn schedule_system_dbus(&mut self) {
-        let Some(wants) = self.system_dbus.wants(&mut self.system_dbus_readbuf) else {
+        let Some(wants) = self
+            .system_dbus
+            .wants(&mut self.system_dbus_readbuf, &self.system_dbus_queue)
+        else {
             return;
         };
         log::trace!(target: "SystemDBus", "{wants:?}");
-        assert_matches!(self.system_dbus.wants(&mut self.system_dbus_readbuf), None);
+        assert_matches!(
+            self.system_dbus
+                .wants(&mut self.system_dbus_readbuf, &self.system_dbus_queue),
+            None
+        );
         self.ring.schedule(ModuleId::SystemDBus, wants);
     }
 
     fn satisfy_system_dbus(&mut self, satisfy: Satisfy) {
-        let message = self.system_dbus.satisfy(satisfy, &self.system_dbus_readbuf);
+        let message = self.system_dbus.satisfy(
+            satisfy,
+            &self.system_dbus_readbuf,
+            &mut self.system_dbus_queue,
+        );
 
         if let Some(message) = message {
-            self.network.handle(message, &mut self.events);
+            self.network
+                .handle(message, &mut self.events, &mut self.system_dbus_queue);
         }
 
         self.schedule_system_dbus();

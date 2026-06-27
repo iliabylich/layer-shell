@@ -58,9 +58,9 @@ impl App {
         Self {
             service,
 
-            menu_prop: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
-            icon_name_prop: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
-            icon_pixmap_prop: InfalliblePropertyGetAndSubscribe::new(SessionDBus::queue()),
+            menu_prop: InfalliblePropertyGetAndSubscribe::new(),
+            icon_name_prop: InfalliblePropertyGetAndSubscribe::new(),
+            icon_pixmap_prop: InfalliblePropertyGetAndSubscribe::new(),
 
             get_layout: None,
 
@@ -70,10 +70,12 @@ impl App {
     }
 
     fn schedule_request_props(&mut self) {
-        self.menu_prop.get(Menu::new(self.service.name()));
-        self.icon_name_prop.get(IconName::new(self.service.name()));
+        self.menu_prop
+            .get(Menu::new(self.service.name()), SessionDBus::queue());
+        self.icon_name_prop
+            .get(IconName::new(self.service.name()), SessionDBus::queue());
         self.icon_pixmap_prop
-            .get(IconPixmap::new(self.service.name()));
+            .get(IconPixmap::new(self.service.name()), SessionDBus::queue());
     }
 
     pub(crate) fn init(&mut self) -> Result<()> {
@@ -82,11 +84,11 @@ impl App {
         SessionDBus::queue().push_raw(buf);
 
         self.menu_prop
-            .get_and_subscribe(Menu::new(self.service.name()));
+            .get_and_subscribe(Menu::new(self.service.name()), SessionDBus::queue());
         self.icon_name_prop
-            .get_and_subscribe(IconName::new(self.service.name()));
+            .get_and_subscribe(IconName::new(self.service.name()), SessionDBus::queue());
         self.icon_pixmap_prop
-            .get_and_subscribe(IconPixmap::new(self.service.name()));
+            .get_and_subscribe(IconPixmap::new(self.service.name()), SessionDBus::queue());
 
         Ok(())
     }
@@ -97,9 +99,9 @@ impl App {
         let buf = NewIconUnsubscribe::encode(self.service.name_str(), &mut bytes)?;
         SessionDBus::queue().push_raw(buf);
 
-        self.menu_prop.unsubscribe();
-        self.icon_name_prop.unsubscribe();
-        self.icon_pixmap_prop.unsubscribe();
+        self.menu_prop.unsubscribe(SessionDBus::queue());
+        self.icon_name_prop.unsubscribe(SessionDBus::queue());
+        self.icon_pixmap_prop.unsubscribe(SessionDBus::queue());
 
         let buf = LayoutUpdatedUnsubscribe::encode(
             (self.service.name_str(), self.menu.as_str()),
@@ -150,11 +152,17 @@ impl App {
             return Ok(None);
         }
 
-        if let Some(menu) = self.menu_prop.handle_reply_or_signal(message) {
+        if let Some(menu) = self
+            .menu_prop
+            .handle_reply_or_signal(message, SessionDBus::queue())
+        {
             log::info!(target: "Tray", "Received menu {:?} - {menu:?}", self.service);
             self.on_menu_received(menu)?;
             Ok(None)
-        } else if let Some(name_or_path) = self.icon_name_prop.handle_reply_or_signal(message) {
+        } else if let Some(name_or_path) = self
+            .icon_name_prop
+            .handle_reply_or_signal(message, SessionDBus::queue())
+        {
             if name_or_path.is_empty() {
                 Ok(None)
             } else {
@@ -163,8 +171,9 @@ impl App {
                 let event = self.state.on_icon_received(icon);
                 Ok(event)
             }
-        } else if let Some((width, height, VecOfU8(bytes))) =
-            self.icon_pixmap_prop.handle_reply_or_signal(message)
+        } else if let Some((width, height, VecOfU8(bytes))) = self
+            .icon_pixmap_prop
+            .handle_reply_or_signal(message, SessionDBus::queue())
         {
             log::info!(target: "Tray", "Received icon pixmap {:?}", self.service);
             let event = self
