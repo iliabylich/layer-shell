@@ -1,4 +1,4 @@
-use crate::modules::SessionDBus;
+use crate::utils::dbus::queue::DBusQueue;
 use anyhow::Result;
 pub(crate) use control_request::ControlRequest;
 use dbus::{IncomingMessage, messaging::DBusEncode};
@@ -12,15 +12,18 @@ mod request_name;
 pub(crate) struct Control;
 
 impl Control {
-    pub(crate) fn init() -> Result<()> {
+    pub(crate) fn init(q: &mut DBusQueue) -> Result<()> {
         let mut buf = [0; 1_024];
         let buf = RequestNameLayerShellControl::encode((), &mut buf)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
         Ok(())
     }
 
-    pub(crate) fn handle(message: IncomingMessage<'_>) -> Option<ControlRequest> {
-        match Self::try_handle(message) {
+    pub(crate) fn handle(
+        message: IncomingMessage<'_>,
+        q: &mut DBusQueue,
+    ) -> Option<ControlRequest> {
+        match Self::try_handle(message, q) {
             Ok(control_request) => control_request,
             Err(err) => {
                 log::error!("{err:?}");
@@ -29,11 +32,14 @@ impl Control {
         }
     }
 
-    fn try_handle(message: IncomingMessage<'_>) -> Result<Option<ControlRequest>> {
-        if Introspection::handle(message)? {
+    fn try_handle(
+        message: IncomingMessage<'_>,
+        q: &mut DBusQueue,
+    ) -> Result<Option<ControlRequest>> {
+        if Introspection::handle(message, q)? {
             Ok(None)
         } else {
-            ControlRequest::handle(message)
+            ControlRequest::handle(message, q)
         }
     }
 }

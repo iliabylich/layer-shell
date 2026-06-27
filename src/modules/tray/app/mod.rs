@@ -1,7 +1,8 @@
 use crate::{
-    modules::{SessionDBus, TrayIcon, TrayIconPixmap, TrayItem, tray::service::Service},
+    modules::{TrayIcon, TrayIconPixmap, TrayItem, tray::service::Service},
     utils::{
-        StringRef, StringRefExt as _, dbus::infallible_property::InfalliblePropertyGetAndSubscribe,
+        StringRef, StringRefExt as _,
+        dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
     },
 };
 use anyhow::Result;
@@ -69,100 +70,97 @@ impl App {
         }
     }
 
-    fn schedule_request_props(&mut self) {
-        self.menu_prop
-            .get(Menu::new(self.service.name()), SessionDBus::queue());
+    fn schedule_request_props(&mut self, q: &mut DBusQueue) {
+        self.menu_prop.get(Menu::new(self.service.name()), q);
         self.icon_name_prop
-            .get(IconName::new(self.service.name()), SessionDBus::queue());
+            .get(IconName::new(self.service.name()), q);
         self.icon_pixmap_prop
-            .get(IconPixmap::new(self.service.name()), SessionDBus::queue());
+            .get(IconPixmap::new(self.service.name()), q);
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
+    pub(crate) fn init(&mut self, q: &mut DBusQueue) -> Result<()> {
         let mut bytes = [0; 1_024];
         let buf = NewIconSubscribe::encode(self.service.name_str(), &mut bytes)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
 
         self.menu_prop
-            .get_and_subscribe(Menu::new(self.service.name()), SessionDBus::queue());
+            .get_and_subscribe(Menu::new(self.service.name()), q);
         self.icon_name_prop
-            .get_and_subscribe(IconName::new(self.service.name()), SessionDBus::queue());
+            .get_and_subscribe(IconName::new(self.service.name()), q);
         self.icon_pixmap_prop
-            .get_and_subscribe(IconPixmap::new(self.service.name()), SessionDBus::queue());
+            .get_and_subscribe(IconPixmap::new(self.service.name()), q);
 
         Ok(())
     }
 
-    pub(crate) fn reset(&mut self) -> Result<()> {
+    pub(crate) fn reset(&mut self, q: &mut DBusQueue) -> Result<()> {
         let mut bytes = [0; 1_024];
 
         let buf = NewIconUnsubscribe::encode(self.service.name_str(), &mut bytes)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
 
-        self.menu_prop.unsubscribe(SessionDBus::queue());
-        self.icon_name_prop.unsubscribe(SessionDBus::queue());
-        self.icon_pixmap_prop.unsubscribe(SessionDBus::queue());
+        self.menu_prop.unsubscribe(q);
+        self.icon_name_prop.unsubscribe(q);
+        self.icon_pixmap_prop.unsubscribe(q);
 
         let buf = LayoutUpdatedUnsubscribe::encode(
             (self.service.name_str(), self.menu.as_str()),
             &mut bytes,
         )?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
 
         let buf = ItemsPropertiesUpdatedUnsubscribe::encode(
             (self.service.name_str(), self.menu.as_str()),
             &mut bytes,
         )?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
 
         Ok(())
     }
 
-    fn schedule_get_layout(&mut self) -> Result<()> {
+    fn schedule_get_layout(&mut self, q: &mut DBusQueue) -> Result<()> {
         let mut buf = [0; 1_024];
         let buf = GetLayout::encode((self.service.name_str(), self.menu.as_str()), &mut buf)?;
 
         let message = GetLayout::new(self.service.name());
-        let serial = SessionDBus::queue().push_raw(buf);
+        let serial = q.push_raw(buf);
 
         self.get_layout = Some(ReplyHandler::new(serial, message));
         Ok(())
     }
 
-    fn on_menu_received(&mut self, menu: &str) -> Result<()> {
+    fn on_menu_received(&mut self, menu: &str, q: &mut DBusQueue) -> Result<()> {
         if self.menu != "" {
             return Ok(());
         }
 
         self.menu = StringRef::new(menu);
         let mut bytes = [0; 1_024];
-        self.schedule_get_layout()?;
+        self.schedule_get_layout(q)?;
 
         let buf = LayoutUpdatedSubscribe::encode((self.service.name_str(), menu), &mut bytes)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
 
         let buf =
             ItemsPropertiesUpdatedSubscribe::encode((self.service.name_str(), menu), &mut bytes)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
         Ok(())
     }
 
-    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>) -> Result<Option<TrayEvent>> {
+    pub(crate) fn handle(
+        &mut self,
+        message: IncomingMessage<'_>,
+        q: &mut DBusQueue,
+    ) -> Result<Option<TrayEvent>> {
         if message.sender != Some(self.service.raw_address_str()) {
             return Ok(None);
         }
 
-        if let Some(menu) = self
-            .menu_prop
-            .handle_reply_or_signal(message, SessionDBus::queue())
-        {
+        if let Some(menu) = self.menu_prop.handle_reply_or_signal(message, q) {
             log::info!(target: "Tray", "Received menu {:?} - {menu:?}", self.service);
-            self.on_menu_received(menu)?;
+            self.on_menu_received(menu, q)?;
             Ok(None)
-        } else if let Some(name_or_path) = self
-            .icon_name_prop
-            .handle_reply_or_signal(message, SessionDBus::queue())
-        {
+        } else if let Some(name_or_path) = self.icon_name_prop.handle_reply_or_signal(message, q) {
             if name_or_path.is_empty() {
                 Ok(None)
             } else {
@@ -171,9 +169,8 @@ impl App {
                 let event = self.state.on_icon_received(icon);
                 Ok(event)
             }
-        } else if let Some((width, height, VecOfU8(bytes))) = self
-            .icon_pixmap_prop
-            .handle_reply_or_signal(message, SessionDBus::queue())
+        } else if let Some((width, height, VecOfU8(bytes))) =
+            self.icon_pixmap_prop.handle_reply_or_signal(message, q)
         {
             log::info!(target: "Tray", "Received icon pixmap {:?}", self.service);
             let event = self
@@ -192,7 +189,7 @@ impl App {
             Ok(event)
         } else if NewIconSignal::matches(message, self.service.raw_address_str()) {
             log::info!(target: "Tray", "Received NewIcon signal");
-            self.schedule_request_props();
+            self.schedule_request_props(q);
             Ok(None)
         } else if LayoutUpdatedSignal::matches(
             message,
@@ -200,7 +197,7 @@ impl App {
             self.menu.as_str(),
         ) {
             log::info!(target: "Tray", "Received LayoutUpdated signal");
-            self.schedule_get_layout()?;
+            self.schedule_get_layout(q)?;
             Ok(None)
         } else if ItemsPropertiesUpdatedSignal::matches(
             message,
@@ -208,14 +205,14 @@ impl App {
             self.menu.as_str(),
         ) {
             log::info!(target: "Tray", "Received ItemsPropertiesUpdated signal");
-            self.schedule_get_layout()?;
+            self.schedule_get_layout(q)?;
             Ok(None)
         } else {
             Ok(None)
         }
     }
 
-    pub(crate) fn trigger(&self, id: i32) -> Result<(), EncodeError> {
+    pub(crate) fn trigger(&self, id: i32, q: &mut DBusQueue) -> Result<(), EncodeError> {
         let timestamp =
             u32::try_from(chrono::Utc::now().timestamp()).map_err(|_| EncodeError::ValueTooLong)?;
         let args = EventArgs {
@@ -226,7 +223,7 @@ impl App {
         };
         let mut buf = [0; 1_024];
         let buf = Event::encode(args, &mut buf)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
 
         Ok(())
     }

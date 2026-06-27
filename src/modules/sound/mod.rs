@@ -1,6 +1,7 @@
 use crate::{
-    Event, event_queue::EventQueue, modules::SessionDBus,
-    utils::dbus::infallible_property::InfalliblePropertyGetAndSubscribe,
+    Event,
+    event_queue::EventQueue,
+    utils::dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::DBusQueue},
 };
 use dbus::IncomingMessage;
 use properties::{Muted, Volume};
@@ -72,26 +73,27 @@ impl Sound {
         }
     }
 
-    pub(crate) fn start(&mut self) {
-        self.volume.get_and_subscribe(Volume, SessionDBus::queue());
-        self.muted.get_and_subscribe(Muted, SessionDBus::queue());
+    pub(crate) fn start(&mut self, q: &mut DBusQueue) {
+        self.volume.get_and_subscribe(Volume, q);
+        self.muted.get_and_subscribe(Muted, q);
     }
 
-    pub(crate) fn handle(&mut self, message: IncomingMessage<'_>, events: &mut EventQueue) {
-        let volume = self
-            .volume
-            .handle_reply_or_signal(message, SessionDBus::queue());
-        let muted = self
-            .muted
-            .handle_reply_or_signal(message, SessionDBus::queue());
+    pub(crate) fn handle(
+        &mut self,
+        message: IncomingMessage<'_>,
+        events: &mut EventQueue,
+        q: &mut DBusQueue,
+    ) {
+        let volume = self.volume.handle_reply_or_signal(message, q);
+        let muted = self.muted.handle_reply_or_signal(message, q);
 
         self.state.got(volume, muted, events);
     }
 
-    pub(crate) fn tick(&mut self, tick: u64) {
+    pub(crate) fn tick(&mut self, tick: u64, q: &mut DBusQueue) {
         if !self.healthy && tick.is_multiple_of(2) {
             self.healthy = true;
-            self.start();
+            self.start(q);
         }
     }
 }

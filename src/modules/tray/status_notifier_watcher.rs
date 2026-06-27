@@ -1,6 +1,6 @@
 use crate::{
-    modules::{SessionDBus, tray::service::Service},
-    utils::{StringRef, StringRefExt as _},
+    modules::tray::service::Service,
+    utils::{StringRef, StringRefExt as _, dbus::queue::DBusQueue},
 };
 use anyhow::{Context as _, Result, ensure};
 use dbus::{
@@ -25,36 +25,39 @@ impl DBusEncode for RequestNameOrgKdeStatusNotifierWatcher {
 pub(crate) struct StatusNotifierWatcher;
 
 impl StatusNotifierWatcher {
-    pub(crate) fn request_ksni_name() -> Result<(), DBusError> {
+    pub(crate) fn request_ksni_name(q: &mut DBusQueue) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let buf = RequestNameOrgKdeStatusNotifierWatcher::encode((), &mut buf)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
         Ok(())
     }
 
-    fn reply_ok(serial: u32, destination: &str) -> Result<(), DBusError> {
+    fn reply_ok(serial: u32, destination: &str, q: &mut DBusQueue) -> Result<(), DBusError> {
         let mut buf = [0; 1_024];
         let buf = EmptyMethodReturn::encode(&mut buf, destination, serial)?;
-        SessionDBus::queue().push_raw(buf);
+        q.push_raw(buf);
         Ok(())
     }
 
-    pub(crate) fn handle_incoming_request(message: IncomingMessage<'_>) -> Result<Option<Service>> {
+    pub(crate) fn handle_incoming_request(
+        message: IncomingMessage<'_>,
+        q: &mut DBusQueue,
+    ) -> Result<Option<Service>> {
         let mut buf = [0; 1_024];
         if let Some(reply) = StatusNotifierWatcherIntrospection::new().handle(&mut buf, message)? {
-            SessionDBus::queue().push_raw(reply);
+            q.push_raw(reply);
             Ok(None)
         } else if let Ok((serial, sender, req)) = KSNIRequest::parse(message) {
             match req {
                 KSNIRequest::NewItem { address } => {
-                    Self::reply_ok(serial, sender)?;
+                    Self::reply_ok(serial, sender, q)?;
                     Ok(Some(Service::new(
                         StringRef::new(sender),
                         StringRef::new(address),
                     )))
                 }
                 KSNIRequest::Other => {
-                    Self::reply_ok(serial, sender)?;
+                    Self::reply_ok(serial, sender, q)?;
                     Ok(None)
                 }
             }

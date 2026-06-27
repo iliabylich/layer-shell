@@ -26,6 +26,7 @@ pub(crate) struct IO {
 
     session_dbus: SessionDBus,
     session_dbus_readbuf: Vec<u8>,
+    session_dbus_queue: DBusQueue,
     sound: Sound,
     tray: Tray,
 
@@ -54,7 +55,6 @@ impl IO {
     pub(crate) fn init() -> Result<()> {
         env_logger::try_init()?;
         Https::init()?;
-        SessionDBus::init()?;
         Ok(())
     }
 
@@ -83,6 +83,7 @@ impl IO {
 
             session_dbus: SessionDBus::new(),
             session_dbus_readbuf: vec![0; 400 * 1_024],
+            session_dbus_queue: DBusQueue::new(),
             sound: Sound::new(),
             tray: Tray::new(),
 
@@ -118,9 +119,10 @@ impl IO {
         self.schedule_kb_mod();
         self.schedule_niri();
 
-        self.sound.start();
-        Control::init()?;
-        Tray::init()?;
+        self.session_dbus_queue.push_hello()?;
+        self.sound.start(&mut self.session_dbus_queue);
+        Control::init(&mut self.session_dbus_queue)?;
+        Tray::init(&mut self.session_dbus_queue)?;
         self.schedule_session_dbus();
 
         self.system_dbus_queue.push_hello()?;
@@ -197,7 +199,8 @@ impl IO {
             Command::ChangeWallpaper => spawn(&self.config.change_wallpaper),
 
             Command::TriggerTray { uuid } => {
-                self.tray.trigger(uuid.as_str());
+                self.tray
+                    .trigger(uuid.as_str(), &mut self.session_dbus_queue);
                 self.schedule_session_dbus();
             }
         }
@@ -231,7 +234,7 @@ impl IO {
             self.memory.tick();
             self.schedule_memory();
 
-            self.sound.tick(tick);
+            self.sound.tick(tick, &mut self.session_dbus_queue);
             self.schedule_session_dbus();
         }
     }
@@ -338,27 +341,35 @@ impl IO {
 
 impl IO {
     fn schedule_session_dbus(&mut self) {
-        let Some(wants) = self.session_dbus.wants(&mut self.session_dbus_readbuf) else {
+        let Some(wants) = self
+            .session_dbus
+            .wants(&mut self.session_dbus_readbuf, &self.session_dbus_queue)
+        else {
             return;
         };
         log::trace!(target: "SessionDBus", "{wants:?}");
         assert_matches!(
-            self.session_dbus.wants(&mut self.session_dbus_readbuf),
+            self.session_dbus
+                .wants(&mut self.session_dbus_readbuf, &self.session_dbus_queue),
             None
         );
         self.ring.schedule(ModuleId::SessionDBus, wants);
     }
 
     fn satisfy_session_dbus(&mut self, satisfy: Satisfy) {
-        let message = self
-            .session_dbus
-            .satisfy(satisfy, &self.session_dbus_readbuf);
+        let message = self.session_dbus.satisfy(
+            satisfy,
+            &self.session_dbus_readbuf,
+            &mut self.session_dbus_queue,
+        );
 
         if let Some(message) = message {
-            self.sound.handle(message, &mut self.events);
-            self.tray.handle(message, &mut self.events);
+            self.sound
+                .handle(message, &mut self.events, &mut self.session_dbus_queue);
+            self.tray
+                .handle(message, &mut self.events, &mut self.session_dbus_queue);
 
-            if let Some(req) = Control::handle(message) {
+            if let Some(req) = Control::handle(message, &mut self.session_dbus_queue) {
                 self.on_control_req(req);
             }
         }

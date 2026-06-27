@@ -11,17 +11,7 @@ pub(crate) struct SessionDBus {
     addr: SocketAddrUnix,
 }
 
-static mut QUEUE: DBusQueue = DBusQueue::new();
-const fn queue() -> &'static mut DBusQueue {
-    unsafe { &mut QUEUE }
-}
-
 impl SessionDBus {
-    pub(crate) fn init() -> Result<()> {
-        queue().push_hello()?;
-        Ok(())
-    }
-
     fn try_new() -> Result<Self> {
         let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
         let (_, path) = address
@@ -44,12 +34,8 @@ impl SessionDBus {
         })
     }
 
-    pub(crate) const fn queue() -> &'static mut DBusQueue {
-        queue()
-    }
-
-    pub(crate) fn wants(&mut self, readbuf: &mut [u8]) -> Option<Wants> {
-        self.state.wants(&self.addr, readbuf, queue())
+    pub(crate) fn wants(&mut self, readbuf: &mut [u8], queue: &DBusQueue) -> Option<Wants> {
+        self.state.wants(&self.addr, readbuf, queue)
     }
 
     #[must_use]
@@ -57,9 +43,10 @@ impl SessionDBus {
         &mut self,
         satisfy: Satisfy,
         readbuf: &'r [u8],
+        queue: &mut DBusQueue,
     ) -> Option<IncomingMessage<'r>> {
         let message;
-        (self.state, message) = self.state.satisfy(satisfy, readbuf, queue());
+        (self.state, message) = self.state.satisfy(satisfy, readbuf, queue);
         message
     }
 }

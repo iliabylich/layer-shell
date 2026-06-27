@@ -1,7 +1,4 @@
-use crate::{
-    modules::SessionDBus,
-    utils::{StringRef, StringRefExt as _},
-};
+use crate::utils::{StringRef, StringRefExt as _, dbus::queue::DBusQueue};
 use anyhow::Result;
 use dbus::{
     IncomingMessage,
@@ -11,12 +8,12 @@ use dbus::{
 pub(crate) struct Introspection;
 
 impl Introspection {
-    pub(crate) fn handle(message: IncomingMessage<'_>) -> Result<bool> {
+    pub(crate) fn handle(message: IncomingMessage<'_>, q: &mut DBusQueue) -> Result<bool> {
         let Some((sender, serial)) = parse_request(message) else {
             return Ok(false);
         };
 
-        reply(sender.as_str(), serial)?;
+        reply(sender.as_str(), serial, q)?;
         Ok(true)
     }
 }
@@ -38,11 +35,11 @@ fn parse_request(message: IncomingMessage) -> Option<(StringRef, u32)> {
     Some((StringRef::new(sender), serial))
 }
 
-fn reply(destination: &str, reply_serial: u32) -> Result<()> {
+fn reply(destination: &str, reply_serial: u32, q: &mut DBusQueue) -> Result<()> {
     let mut buf = [0; 2_048];
     let encoded =
         IntrospectResponse::encode(&mut buf, reply_serial, destination, INTROSPECTION_XML)?;
-    SessionDBus::queue().push_raw(encoded);
+    q.push_raw(encoded);
     Ok(())
 }
 
