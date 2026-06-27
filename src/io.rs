@@ -72,32 +72,56 @@ impl IO {
         let config = Config::read()?;
         let io_config = IOConfig::new(&config);
 
-        let ring = IoUring::new(10, 0);
+        let mut ring = IoUring::new(10, 0);
         let events = EventQueue::new();
 
-        let timer = Timer::new();
+        let mut timer = Timer::new();
+        schedule_timer(&mut timer, &mut ring);
 
-        let session_dbus = SessionDBus::new();
-        let session_dbus_readbuf = vec![0; 400 * 1_024];
-        let session_dbus_queue = SessionDBusQueue::new();
-        let sound = Sound::new();
-        let tray = Tray::new();
+        let mut session_dbus = SessionDBus::new();
+        let mut session_dbus_readbuf = vec![0; 400 * 1_024];
+        let mut session_dbus_queue = SessionDBusQueue::new()?;
+        let sound = Sound::new(&mut session_dbus_queue);
+        let tray = Tray::new(&mut session_dbus_queue)?;
+        Control::init(&mut session_dbus_queue)?;
+        schedule_session_dbus(
+            &mut session_dbus,
+            &mut session_dbus_readbuf,
+            &mut session_dbus_queue,
+            &mut ring,
+        );
 
-        let system_dbus = SystemDBus::new();
-        let system_dbus_readbuf = vec![0; 400 * 1_024];
-        let system_dbus_queue = SystemDBusQueue::new();
-        let network = Network::new();
+        let mut system_dbus = SystemDBus::new();
+        let mut system_dbus_readbuf = vec![0; 400 * 1_024];
+        let mut system_dbus_queue = SystemDBusQueue::new()?;
+        let network = Network::new(&mut system_dbus_queue);
+        schedule_system_dbus(
+            &mut system_dbus,
+            &mut system_dbus_readbuf,
+            &mut system_dbus_queue,
+            &mut ring,
+        );
 
-        let location = Location::new();
+        let mut location = Location::new();
+        schedule_location(&mut location, &mut ring);
+
         let weather = Weather::new();
 
-        let cpu = CPU::new();
-        let memory = Memory::new();
+        let mut cpu = CPU::new();
+        schedule_cpu(&mut cpu, &mut ring);
 
-        let kb_mod = KbMod::new();
-        let niri = Niri::new();
+        let mut memory = Memory::new();
+        schedule_memory(&mut memory, &mut ring);
 
-        let mut this = Self {
+        let mut kb_mod = KbMod::new();
+        schedule_kb_mod(&mut kb_mod, &mut ring);
+
+        let mut niri = Niri::new();
+        schedule_niri(&mut niri, &mut ring);
+
+        ring.submit_if_dirty();
+
+        Ok(Self {
             ring,
             events,
 
@@ -128,34 +152,7 @@ impl IO {
 
             on_event,
             running: true,
-        };
-
-        this.start()?;
-
-        Ok(this)
-    }
-
-    fn start(&mut self) -> Result<()> {
-        self.schedule_timer();
-
-        self.schedule_location();
-        self.schedule_cpu();
-        self.schedule_memory();
-        self.schedule_kb_mod();
-        self.schedule_niri();
-
-        self.session_dbus_queue.push_hello()?;
-        self.sound.start(&mut self.session_dbus_queue);
-        Control::init(&mut self.session_dbus_queue)?;
-        Tray::init(&mut self.session_dbus_queue)?;
-        self.schedule_session_dbus();
-
-        self.system_dbus_queue.push_hello()?;
-        self.network.init(&mut self.system_dbus_queue);
-        self.schedule_system_dbus();
-
-        self.ring.submit_if_dirty();
-        Ok(())
+        })
     }
 
     fn on_control_req(&mut self, req: ControlRequest) {
@@ -226,7 +223,12 @@ impl IO {
             Command::TriggerTray { uuid } => {
                 self.tray
                     .trigger(uuid.as_str(), &mut self.session_dbus_queue);
-                self.schedule_session_dbus();
+                schedule_session_dbus(
+                    &mut self.session_dbus,
+                    &mut self.session_dbus_readbuf,
+                    &mut self.session_dbus_queue,
+                    &mut self.ring,
+                );
             }
         }
 
@@ -234,153 +236,164 @@ impl IO {
     }
 }
 
-impl IO {
-    fn schedule_timer(&mut self) {
-        let Some(wants) = self.timer.wants() else {
-            return;
-        };
-        log::trace!(target: "Timer", "{wants:?}");
-        assert_matches!(self.timer.wants(), None);
-        self.ring.schedule(ModuleId::Timer, wants);
-    }
+fn schedule_timer(module: &mut Timer, ring: &mut IoUring) {
+    let Some(wants) = module.wants() else {
+        return;
+    };
+    log::trace!(target: "Timer", "{wants:?}");
+    assert_matches!(module.wants(), None);
+    ring.schedule(ModuleId::Timer, wants);
+}
+fn schedule_location(module: &mut Location, ring: &mut IoUring) {
+    let Some(wants) = module.wants() else {
+        return;
+    };
+    log::trace!(target: "Location", "{wants:?}");
+    assert_matches!(module.wants(), None);
+    ring.schedule(ModuleId::GeoLocation, wants);
+}
+fn schedule_weather(module: &mut Weather, ring: &mut IoUring) {
+    let Some(wants) = module.wants() else {
+        return;
+    };
+    log::trace!(target: "Weather", "{wants:?}");
+    assert_matches!(module.wants(), None);
+    ring.schedule(ModuleId::Weather, wants);
+}
+fn schedule_cpu(module: &mut CPU, ring: &mut IoUring) {
+    let Some(wants) = module.wants() else {
+        return;
+    };
+    log::trace!(target: "CPU", "{wants:?}");
+    assert_matches!(module.wants(), None);
+    ring.schedule(ModuleId::Cpu, wants);
+}
+fn schedule_memory(memory: &mut Memory, ring: &mut IoUring) {
+    let Some(wants) = memory.wants() else {
+        return;
+    };
+    log::trace!(target: "Memory", "{wants:?}");
+    assert_matches!(memory.wants(), None);
+    ring.schedule(ModuleId::Memory, wants);
+}
+fn schedule_kb_mod(module: &mut KbMod, ring: &mut IoUring) {
+    let Some(wants) = module.wants() else {
+        return;
+    };
+    log::trace!(target: "KbMod", "{wants:?}");
+    assert_matches!(module.wants(), None);
+    ring.schedule(ModuleId::KbMod, wants);
+}
+fn schedule_niri(module: &mut Niri, ring: &mut IoUring) {
+    let Some(wants) = module.wants() else {
+        return;
+    };
+    log::trace!(target: "Niri", "{wants:?}");
+    assert_matches!(module.wants(), None);
+    ring.schedule(ModuleId::Niri, wants);
+}
 
+fn schedule_session_dbus(
+    module: &mut SessionDBus,
+    readbuf: &mut [u8],
+    queue: &mut SessionDBusQueue,
+    ring: &mut IoUring,
+) {
+    let Some(wants) = module.wants(readbuf, queue) else {
+        return;
+    };
+    log::trace!(target: "SessionDBus", "{wants:?}");
+    assert_matches!(module.wants(readbuf, queue), None);
+    ring.schedule(ModuleId::SessionDBus, wants);
+}
+fn schedule_system_dbus(
+    module: &mut SystemDBus,
+    readbuf: &mut [u8],
+    queue: &mut SystemDBusQueue,
+    ring: &mut IoUring,
+) {
+    let Some(wants) = module.wants(readbuf, queue) else {
+        return;
+    };
+    log::trace!(target: "SystemDBus", "{wants:?}");
+    assert_matches!(module.wants(readbuf, queue), None);
+    ring.schedule(ModuleId::SystemDBus, wants);
+}
+
+impl IO {
     fn satisfy_timer(&mut self, satisfy: Satisfy) {
         if let Some(tick) = self.timer.satisfy(satisfy, &mut self.events) {
-            self.schedule_timer();
+            schedule_timer(&mut self.timer, &mut self.ring);
 
             Clock::tick(&mut self.events);
 
             self.weather.tick(tick);
-            self.schedule_weather();
+            schedule_weather(&mut self.weather, &mut self.ring);
 
             self.cpu.tick();
-            self.schedule_cpu();
+            schedule_cpu(&mut self.cpu, &mut self.ring);
 
             self.memory.tick();
-            self.schedule_memory();
+            schedule_memory(&mut self.memory, &mut self.ring);
 
             self.sound.tick(tick, &mut self.session_dbus_queue);
-            self.schedule_session_dbus();
+            schedule_session_dbus(
+                &mut self.session_dbus,
+                &mut self.session_dbus_readbuf,
+                &mut self.session_dbus_queue,
+                &mut self.ring,
+            );
         }
     }
 }
 
 impl IO {
-    fn schedule_location(&mut self) {
-        let Some(wants) = self.location.wants() else {
-            return;
-        };
-        log::trace!(target: "Location", "{wants:?}");
-        assert_matches!(self.location.wants(), None);
-        self.ring.schedule(ModuleId::GeoLocation, wants);
-    }
     fn satisfy_location(&mut self, satisfy: Satisfy) {
         if let Some((lat, lng)) = self.location.satisfy(satisfy, &mut self.events) {
             self.weather.setup(lat, lng);
-            self.schedule_weather();
+            schedule_weather(&mut self.weather, &mut self.ring);
         } else {
-            self.schedule_location();
+            schedule_location(&mut self.location, &mut self.ring);
         }
     }
 }
 
 impl IO {
-    fn schedule_weather(&mut self) {
-        let Some(wants) = self.weather.wants() else {
-            return;
-        };
-        log::trace!(target: "Weather", "{wants:?}");
-        assert_matches!(self.weather.wants(), None);
-        self.ring.schedule(ModuleId::Weather, wants);
-    }
-
     fn satisfy_weather(&mut self, satisfy: Satisfy) {
         self.weather.satisfy(satisfy, &mut self.events);
-        self.schedule_weather();
+        schedule_weather(&mut self.weather, &mut self.ring);
     }
 }
 
 impl IO {
-    fn schedule_cpu(&mut self) {
-        let Some(wants) = self.cpu.wants() else {
-            return;
-        };
-        log::trace!(target: "CPU", "{wants:?}");
-        assert_matches!(self.cpu.wants(), None);
-        self.ring.schedule(ModuleId::Cpu, wants);
-    }
-
     fn satisfy_cpu(&mut self, satisfy: Satisfy) {
         self.cpu.satisfy(satisfy, &mut self.events);
-        self.schedule_cpu();
+        schedule_cpu(&mut self.cpu, &mut self.ring);
     }
 }
 
 impl IO {
-    fn schedule_memory(&mut self) {
-        let Some(wants) = self.memory.wants() else {
-            return;
-        };
-        log::trace!(target: "Memory", "{wants:?}");
-        assert_matches!(self.memory.wants(), None);
-        self.ring.schedule(ModuleId::Memory, wants);
-    }
-
     fn satisfy_memory(&mut self, satisfy: Satisfy) {
         self.memory.satisfy(satisfy, &mut self.events);
-        self.schedule_memory();
+        schedule_memory(&mut self.memory, &mut self.ring);
     }
 }
 
 impl IO {
-    fn schedule_kb_mod(&mut self) {
-        let Some(wants) = self.kb_mod.wants() else {
-            return;
-        };
-        log::trace!(target: "KbMod", "{wants:?}");
-        assert_matches!(self.kb_mod.wants(), None);
-        self.ring.schedule(ModuleId::KbMod, wants);
-    }
-
     fn satisfy_kb_mod(&mut self, satisfy: Satisfy) {
         self.kb_mod.satisfy(satisfy, &mut self.events);
-        self.schedule_kb_mod();
+        schedule_kb_mod(&mut self.kb_mod, &mut self.ring);
     }
 }
 
 impl IO {
-    fn schedule_niri(&mut self) {
-        let Some(wants) = self.niri.wants() else {
-            return;
-        };
-        log::trace!(target: "Niri", "{wants:?}");
-        assert_matches!(self.niri.wants(), None);
-        self.ring.schedule(ModuleId::Niri, wants);
-    }
-
     fn satisfy_niri(&mut self, satisfy: Satisfy) {
         self.niri.satisfy(satisfy, &mut self.events);
-        self.schedule_niri();
+        schedule_niri(&mut self.niri, &mut self.ring);
     }
 }
 
 impl IO {
-    fn schedule_session_dbus(&mut self) {
-        let Some(wants) = self
-            .session_dbus
-            .wants(&mut self.session_dbus_readbuf, &self.session_dbus_queue)
-        else {
-            return;
-        };
-        log::trace!(target: "SessionDBus", "{wants:?}");
-        assert_matches!(
-            self.session_dbus
-                .wants(&mut self.session_dbus_readbuf, &self.session_dbus_queue),
-            None
-        );
-        self.ring.schedule(ModuleId::SessionDBus, wants);
-    }
-
     fn satisfy_session_dbus(&mut self, satisfy: Satisfy) {
         let message = self.session_dbus.satisfy(
             satisfy,
@@ -399,27 +412,16 @@ impl IO {
             }
         }
 
-        self.schedule_session_dbus();
+        schedule_session_dbus(
+            &mut self.session_dbus,
+            &mut self.session_dbus_readbuf,
+            &mut self.session_dbus_queue,
+            &mut self.ring,
+        );
     }
 }
 
 impl IO {
-    fn schedule_system_dbus(&mut self) {
-        let Some(wants) = self
-            .system_dbus
-            .wants(&mut self.system_dbus_readbuf, &self.system_dbus_queue)
-        else {
-            return;
-        };
-        log::trace!(target: "SystemDBus", "{wants:?}");
-        assert_matches!(
-            self.system_dbus
-                .wants(&mut self.system_dbus_readbuf, &self.system_dbus_queue),
-            None
-        );
-        self.ring.schedule(ModuleId::SystemDBus, wants);
-    }
-
     fn satisfy_system_dbus(&mut self, satisfy: Satisfy) {
         let message = self.system_dbus.satisfy(
             satisfy,
@@ -432,7 +434,12 @@ impl IO {
                 .handle(message, &mut self.events, &mut self.system_dbus_queue);
         }
 
-        self.schedule_system_dbus();
+        schedule_system_dbus(
+            &mut self.system_dbus,
+            &mut self.system_dbus_readbuf,
+            &mut self.system_dbus_queue,
+            &mut self.ring,
+        );
     }
 }
 

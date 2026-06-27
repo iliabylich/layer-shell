@@ -66,16 +66,20 @@ impl State {
 }
 
 impl Sound {
-    pub(crate) const fn new() -> Self {
-        Self {
+    pub(crate) fn new(q: &mut SessionDBusQueue) -> Self {
+        let mut this = Self {
             volume: InfalliblePropertyGetAndSubscribe::new(),
             muted: InfalliblePropertyGetAndSubscribe::new(),
             state: State::new(),
             healthy: true,
-        }
+        };
+
+        this.start(q);
+
+        this
     }
 
-    pub(crate) fn start(&mut self, q: &mut SessionDBusQueue) {
+    fn start(&mut self, q: &mut SessionDBusQueue) {
         self.volume.get_and_subscribe(Volume, q);
         self.muted.get_and_subscribe(Muted, q);
     }

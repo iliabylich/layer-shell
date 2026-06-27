@@ -34,11 +34,7 @@ impl SystemDBus {
         })
     }
 
-    pub(crate) fn wants(
-        &mut self,
-        readbuf: &mut Vec<u8>,
-        queue: &SystemDBusQueue,
-    ) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, readbuf: &mut [u8], queue: &SystemDBusQueue) -> Option<Wants> {
         self.state.wants(&self.addr, readbuf, queue)
     }
 

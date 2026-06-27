@@ -32,24 +32,23 @@ macro_rules! generate_dbus_queue_impl {
         }
 
         impl $name {
-            pub(crate) const fn new() -> Self {
-                Self {
+            pub(crate) fn new() -> Result<Self, EncodeError> {
+                let mut this = Self {
                     serial: DBusSerial::new(),
                     q: VecDeque::new(),
-                }
+                };
+
+                let mut buf = [0; 1_024];
+                let buf = Hello::encode((), &mut buf)?;
+                this.push_raw(buf);
+
+                Ok(this)
             }
 
             fn next_serial(&mut self) -> u32 {
                 let serial = self.serial.current();
                 self.serial.advance();
                 serial
-            }
-
-            pub(crate) fn push_hello(&mut self) -> Result<(), EncodeError> {
-                let mut buf = [0; 1_024];
-                let buf = Hello::encode((), &mut buf)?;
-                self.push_raw(buf);
-                Ok(())
             }
 
             pub(crate) fn push_raw(&mut self, buf: &[u8]) -> u32 {

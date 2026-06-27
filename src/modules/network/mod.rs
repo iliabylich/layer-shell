@@ -33,8 +33,8 @@ pub(crate) struct Network {
 }
 
 impl Network {
-    pub(crate) fn new() -> Self {
-        Self {
+    pub(crate) fn new(q: &mut SystemDBusQueue) -> Self {
+        let mut this = Self {
             wireless_connection: WirelessConnection::new(),
             primary_device: PrimaryDevice::new(),
             active_access_point: ActiveAccessPoint::new(),
@@ -43,10 +43,14 @@ impl Network {
             ssid_and_strength: SsidAndStrength::new(),
             last_ssid: None,
             last_strength: None,
-        }
+        };
+
+        this.init(q);
+
+        this
     }
 
-    pub(crate) fn init(&mut self, q: &mut SystemDBusQueue) {
+    fn init(&mut self, q: &mut SystemDBusQueue) {
         self.wireless_connection.start(q);
     }
 

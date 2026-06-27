@@ -30,13 +30,14 @@ pub(crate) struct Tray {
 }
 
 impl Tray {
-    pub(crate) fn new() -> Self {
-        Self {
+    pub(crate) fn new(q: &mut SessionDBusQueue) -> Result<Self> {
+        Self::init(q)?;
+        Ok(Self {
             registry: HashMap::new(),
-        }
+        })
     }
 
-    pub(crate) fn init(q: &mut SessionDBusQueue) -> Result<()> {
+    fn init(q: &mut SessionDBusQueue) -> Result<()> {
         StatusNotifierWatcher::request_ksni_name(q)?;
 
         let mut buf = [0; 1_024];
