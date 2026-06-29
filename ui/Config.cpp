@@ -1,14 +1,12 @@
 #include "Config.hpp"
 #include "bindings.hpp"
 
-QStringList string_ref_array_to_qstring_list(const char **items) {
+QStringList
+string_ref_array_to_qstring_list(IO_FFIArray<const char *> strings) {
   QStringList out;
-  if (!items) {
-    return out;
-  }
 
-  for (const char **item = items; *item; item++) {
-    out.push_back(QString::fromUtf8(*item));
+  for (size_t i = 0; i < strings.len; i++) {
+    out.push_back(QString::fromUtf8(strings.ptr[i]));
   }
   return out;
 }

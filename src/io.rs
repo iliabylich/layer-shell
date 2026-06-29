@@ -21,7 +21,7 @@ pub(crate) struct IO {
     events: EventQueue,
 
     config: Config,
-    pub(crate) io_config: *const IOConfig,
+    pub(crate) io_config: Box<IOConfig>,
 
     timer: Timer,
 
@@ -71,7 +71,7 @@ impl IO {
         ),
     ) -> Result<Self> {
         let config = Config::read()?;
-        let io_config = IOConfig::new(&config);
+        let io_config = Box::new(IOConfig::new(&config));
 
         let mut ring = IoUring::new(10, 0);
         let events = EventQueue::new();

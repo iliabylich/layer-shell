@@ -94,7 +94,7 @@ private:
 };
 
 TrayRegistry::TrayRegistry(UiModel *model, QWidget *parent, QBoxLayout *layout)
-    : model(model), parent(parent), layout(layout) {};
+    : QObject(parent), model(model), parent(parent), layout(layout) {};
 
 void TrayRegistry::add(const QString &app_id, const QIcon &icon,
                        const QVector<Event::Tray::MenuItem> &items) {

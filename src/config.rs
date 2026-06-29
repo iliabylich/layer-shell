@@ -1,4 +1,7 @@
-use crate::utils::{StringRef, StringRefExt as _};
+use crate::{
+    FFIArray,
+    utils::{StringRef, StringRefExt as _},
+};
 use anyhow::{Context as _, Result};
 use boml::{Toml, table::TomlTable, types::TomlArray};
 use std::path::{Path, PathBuf};
@@ -109,35 +112,38 @@ fn config_dir() -> Result<PathBuf> {
     }
 }
 
+#[derive(Debug)]
 #[repr(C)]
 pub struct IOConfig {
-    pub ping: *mut StringRef,
+    pub ping: FFIArray<StringRef>,
     pub terminal: IOTerminal,
 }
 impl IOConfig {
-    pub(crate) fn new(config: &Config) -> *mut Self {
-        Box::leak(Box::new(Self {
-            ping: vec_of_string_to_null_terminated_c_array(&config.ping),
+    pub(crate) fn new(config: &Config) -> Self {
+        Self {
+            ping: config
+                .ping
+                .iter()
+                .map(|s| StringRef::new(s))
+                .collect::<Vec<_>>()
+                .into(),
             terminal: IOTerminal {
                 label: StringRef::new(&config.terminal.label),
-                command: vec_of_string_to_null_terminated_c_array(&config.terminal.command),
+                command: config
+                    .terminal
+                    .command
+                    .iter()
+                    .map(|s| StringRef::new(s))
+                    .collect::<Vec<_>>()
+                    .into(),
             },
-        }))
+        }
     }
 }
 
+#[derive(Debug)]
 #[repr(C)]
 pub struct IOTerminal {
     pub label: StringRef,
-    pub command: *mut StringRef,
-}
-
-fn vec_of_string_to_null_terminated_c_array(cmd: &[String]) -> *mut StringRef {
-    let cmd = cmd
-        .iter()
-        .map(|s| StringRef::new(s))
-        .chain([StringRef::null()])
-        .collect::<Vec<_>>();
-    let (ptr, _, _) = cmd.into_raw_parts();
-    ptr
+    pub command: FFIArray<StringRef>,
 }

@@ -107,7 +107,7 @@ pub extern "C" fn io_as_raw_fd(io: *mut std::ffi::c_void) -> i32 {
 pub extern "C" fn io_get_config(io: *mut std::ffi::c_void) -> *const IOConfig {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
-        Ok(io.io_config)
+        Ok(&*io.io_config)
     })
 }
 
