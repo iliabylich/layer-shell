@@ -9,10 +9,7 @@ use anyhow::{Context, Result, bail};
 use rustix::net::SocketAddrUnix;
 
 pub(crate) enum KbMod {
-    Running {
-        reader: Box<UnixSocketReader>,
-        bytes_to_drop: usize,
-    },
+    Running { reader: Box<UnixSocketReader> },
     Stopped,
 }
 
@@ -27,9 +24,8 @@ impl KbMod {
     fn try_new() -> Result<Self> {
         Ok(Self::Running {
             reader: Box::new(UnixSocketReader::new(SocketAddrUnix::new(
-                "/run/kb-mod-monitor.sock",
+                "/run/kb-mod-monitor-systemd.sock",
             )?)),
-            bytes_to_drop: 2,
         })
     }
 
@@ -50,11 +46,7 @@ impl TryWantsTrySatisfy for KbMod {
     }
 
     fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<Self::Output> {
-        let Self::Running {
-            reader,
-            bytes_to_drop,
-        } = self
-        else {
+        let Self::Running { reader } = self else {
             return Ok(());
         };
 
@@ -74,15 +66,7 @@ impl TryWantsTrySatisfy for KbMod {
             Satisfy::Read(res) => {
                 let bytes_read = res?;
                 let (buf, len) = reader.satisfy_read(bytes_read)?;
-                let mut bytes = buf.get(..len).context("buf is too short")?;
-
-                if *bytes_to_drop > 0 && !bytes.is_empty() {
-                    let to_drop = std::cmp::min(bytes.len(), *bytes_to_drop);
-                    *bytes_to_drop = bytes_to_drop
-                        .checked_sub(to_drop)
-                        .unwrap_or_else(|| unreachable!());
-                    bytes = bytes.get(to_drop..).unwrap_or_else(|| unreachable!());
-                }
+                let bytes = buf.get(..len).context("buf is too short")?;
 
                 for byte in bytes {
                     let (kind, enabled) = match *byte {

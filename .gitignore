@@ -5,3 +5,4 @@ src/dbus/interfaces
 *.o
 *.data
 /test-install
+Cargo.lock
