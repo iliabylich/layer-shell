@@ -25,14 +25,7 @@ impl Sqe {
     pub(crate) fn prep_close(&mut self, fd: i32) {
         unsafe { __liburing_prep_close(self.sqe, fd) }
     }
-    #[allow(dead_code)]
-    pub(crate) fn prep_openat(
-        &mut self,
-        dfd: i32,
-        path: *const ::std::os::raw::c_char,
-        flags: i32,
-        mode: mode_t,
-    ) {
+    pub(crate) fn prep_openat(&mut self, dfd: i32, path: *const i8, flags: i32, mode: mode_t) {
         unsafe { __liburing_prep_openat(self.sqe, dfd, path, flags, mode) }
     }
 

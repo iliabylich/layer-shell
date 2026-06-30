@@ -1,10 +1,11 @@
 use crate::sansio::{Satisfy, Wants, https::state::OpenSslState};
+use alloc::rc::Rc;
 use anyhow::{Context as _, Result, bail, ensure};
 use openssl_sys::{
     BIO_ctrl, BIO_read, BIO_write, SSL_CTX, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,
     SSL_get_error,
 };
-use std::{os::fd::BorrowedFd, rc::Rc};
+use std::os::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -75,7 +76,7 @@ impl OpenSslHandshake {
     fn drain_wbio(&mut self) -> Result<()> {
         const BIO_CTRL_PENDING: i32 = 10;
         self.writebuf.clear();
-        while unsafe { BIO_ctrl(self.tls.wbio, BIO_CTRL_PENDING, 0, std::ptr::null_mut()) } > 0 {
+        while unsafe { BIO_ctrl(self.tls.wbio, BIO_CTRL_PENDING, 0, core::ptr::null_mut()) } > 0 {
             let mut buf = [0_u8; 1_024];
             let res = unsafe { BIO_read(self.tls.wbio, buf.as_mut_ptr().cast(), 1_024) };
             let bytes_read = usize::try_from(res).context("BIO_read failed")?;

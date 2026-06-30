@@ -1,5 +1,5 @@
 use crate::Event;
-use std::collections::VecDeque;
+use alloc::collections::VecDeque;
 
 pub(crate) struct EventQueue(VecDeque<Event>);
 

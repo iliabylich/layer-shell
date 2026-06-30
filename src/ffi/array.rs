@@ -6,7 +6,7 @@ pub struct FFIArray<T> {
 
 impl<T> FFIArray<T> {
     pub(crate) const fn as_slice(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+        unsafe { core::slice::from_raw_parts(self.ptr, self.len) }
     }
 }
 
@@ -19,7 +19,7 @@ where
         let mut boxed_slice = value.into_boxed_slice();
         let len = boxed_slice.len();
         let ptr = boxed_slice.as_mut_ptr();
-        std::mem::forget(boxed_slice);
+        core::mem::forget(boxed_slice);
         Self { ptr, len }
     }
 }
@@ -27,7 +27,7 @@ where
 impl<T> From<FFIArray<T>> for Vec<T> {
     fn from(array: FFIArray<T>) -> Self {
         let vec = unsafe { Self::from_raw_parts(array.ptr.cast_mut(), array.len, array.len) };
-        std::mem::forget(array);
+        core::mem::forget(array);
         vec
     }
 }
@@ -40,14 +40,14 @@ impl<T> Drop for FFIArray<T> {
     }
 }
 
-impl<T> std::fmt::Debug for FFIArray<T>
+impl<T> core::fmt::Debug for FFIArray<T>
 where
-    T: std::fmt::Debug,
+    T: core::fmt::Debug,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let vec = unsafe { Vec::from_raw_parts(self.ptr.cast_mut(), self.len, self.len) };
         f.debug_list().entries(&vec).finish()?;
-        std::mem::forget(vec);
+        core::mem::forget(vec);
         Ok(())
     }
 }
@@ -59,7 +59,7 @@ where
     fn clone(&self) -> Self {
         let vec = unsafe { Vec::from_raw_parts(self.ptr.cast_mut(), self.len, self.len) };
         let clone = vec.clone();
-        std::mem::forget(vec);
+        core::mem::forget(vec);
         Self::from(clone)
     }
 }

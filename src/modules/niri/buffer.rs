@@ -40,7 +40,7 @@ pub(crate) enum NiriEvent {
 
 impl NiriEvent {
     fn from_json(bytes: &[u8]) -> Result<Option<Self>> {
-        let s = std::str::from_utf8(bytes)?;
+        let s = core::str::from_utf8(bytes)?;
         let json: JsonValue = jzon::parse(s)?;
 
         let event = if json.has_key("KeyboardLayoutsChanged") {

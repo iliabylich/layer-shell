@@ -11,11 +11,15 @@
 #![warn(clippy::arithmetic_side_effects)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
+#![warn(clippy::std_instead_of_alloc)]
+#![warn(clippy::std_instead_of_core)]
 #![allow(clippy::map_unwrap_or)]
 #![allow(clippy::option_if_let_else)]
 #![expect(clippy::redundant_pub_crate)]
 #![expect(clippy::cast_possible_truncation)]
 #![expect(clippy::arithmetic_side_effects)]
+
+extern crate alloc;
 
 mod actor;
 mod command;
@@ -59,9 +63,9 @@ fn map_panic_to_exit_with_error<T>(f: impl core::panic::UnwindSafe + FnOnce() ->
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init(
-    callback: extern "C" fn(event: *const Event, *mut std::ffi::c_void),
-    data: *mut std::ffi::c_void,
-) -> *mut std::ffi::c_void {
+    callback: extern "C" fn(event: *const Event, *mut core::ffi::c_void),
+    data: *mut core::ffi::c_void,
+) -> *mut core::ffi::c_void {
     map_panic_to_exit_with_error(|| {
         IO::init()?;
         Ok(Box::into_raw(Box::new(IO::new((callback, data))?)).cast())
@@ -69,7 +73,7 @@ pub extern "C" fn io_init(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_deinit(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_deinit(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let mut io = unsafe { Box::from_raw(io.cast::<IO>()) };
         io.stop();
@@ -78,7 +82,7 @@ pub extern "C" fn io_deinit(io: *mut std::ffi::c_void) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_handle_readable(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_handle_readable(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.handle_readable()
@@ -86,7 +90,7 @@ pub extern "C" fn io_handle_readable(io: *mut std::ffi::c_void) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_wait_readable(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_wait_readable(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.wait_readable();
@@ -95,7 +99,7 @@ pub extern "C" fn io_wait_readable(io: *mut std::ffi::c_void) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_as_raw_fd(io: *mut std::ffi::c_void) -> i32 {
+pub extern "C" fn io_as_raw_fd(io: *mut core::ffi::c_void) -> i32 {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         Ok(io.as_raw_fd())
@@ -104,7 +108,7 @@ pub extern "C" fn io_as_raw_fd(io: *mut std::ffi::c_void) -> i32 {
 
 #[unsafe(no_mangle)]
 #[must_use]
-pub extern "C" fn io_get_config(io: *mut std::ffi::c_void) -> *const IOConfig {
+pub extern "C" fn io_get_config(io: *mut core::ffi::c_void) -> *const IOConfig {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         Ok(&*io.io_config)
@@ -112,7 +116,7 @@ pub extern "C" fn io_get_config(io: *mut std::ffi::c_void) -> *const IOConfig {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn io_lock(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_lock(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::Lock);
@@ -120,7 +124,7 @@ pub extern "C" fn io_lock(io: *mut std::ffi::c_void) {
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_reboot(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_reboot(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::Reboot);
@@ -128,7 +132,7 @@ pub extern "C" fn io_reboot(io: *mut std::ffi::c_void) {
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_shutdown(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_shutdown(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::Shutdown);
@@ -136,7 +140,7 @@ pub extern "C" fn io_shutdown(io: *mut std::ffi::c_void) {
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_logout(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_logout(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::Logout);
@@ -145,7 +149,7 @@ pub extern "C" fn io_logout(io: *mut std::ffi::c_void) {
 }
 #[unsafe(no_mangle)]
 #[expect(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "C" fn io_trigger_tray(io: *mut std::ffi::c_void, uuid: *const core::ffi::c_char) {
+pub extern "C" fn io_trigger_tray(io: *mut core::ffi::c_void, uuid: *const core::ffi::c_char) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         let uuid = unsafe { core::ffi::CStr::from_ptr(uuid) }.to_str()?;
@@ -158,7 +162,7 @@ pub extern "C" fn io_trigger_tray(io: *mut std::ffi::c_void, uuid: *const core::
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_wifi_editor(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_spawn_wifi_editor(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::SpawnWiFiEditor);
@@ -166,7 +170,7 @@ pub extern "C" fn io_spawn_wifi_editor(io: *mut std::ffi::c_void) {
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_bluetooh_editor(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_spawn_bluetooh_editor(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::SpawnBluetoothEditor);
@@ -174,7 +178,7 @@ pub extern "C" fn io_spawn_bluetooh_editor(io: *mut std::ffi::c_void) {
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_spawn_system_monitor(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_spawn_system_monitor(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::SpawnSystemMonitor);
@@ -182,7 +186,7 @@ pub extern "C" fn io_spawn_system_monitor(io: *mut std::ffi::c_void) {
     });
 }
 #[unsafe(no_mangle)]
-pub extern "C" fn io_change_wallpaper(io: *mut std::ffi::c_void) {
+pub extern "C" fn io_change_wallpaper(io: *mut core::ffi::c_void) {
     map_panic_to_exit_with_error(|| {
         let io = unsafe { &mut *io.cast::<IO>() };
         io.process_command(Command::ChangeWallpaper);

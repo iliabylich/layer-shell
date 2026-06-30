@@ -1,8 +1,8 @@
+use alloc::collections::VecDeque;
 use dbus::{
     DBusSerial, EncodeError, OutgoingQueue, messages::org_freedesktop_dbus::Hello,
     messaging::DBusEncode,
 };
-use std::collections::VecDeque;
 
 macro_rules! generate_dbus_queue_impl {
     ($name:ident) => {

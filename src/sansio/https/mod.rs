@@ -4,7 +4,8 @@ mod request;
 mod response;
 mod state;
 
-use std::{net::SocketAddr, os::fd::BorrowedFd};
+use core::net::SocketAddr;
+use std::os::fd::BorrowedFd;
 
 use openssl_sys::SSL_CTX;
 pub(crate) use request::HttpRequest;
@@ -54,8 +55,8 @@ enum State {
     Finished,
 }
 
-impl std::fmt::Debug for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for State {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Dns(_) => write!(f, "Dns"),
             Self::CanSocket { .. } => write!(f, "CanSocket"),
@@ -189,7 +190,7 @@ impl Https {
 
             (State::WaitingForClose, Satisfy::Close(res)) => {
                 res?;
-                let response = HttpResponse::parse(std::mem::take(&mut self.response))?;
+                let response = HttpResponse::parse(core::mem::take(&mut self.response))?;
                 self.state = State::Finished;
                 return Ok(Some(response));
             }

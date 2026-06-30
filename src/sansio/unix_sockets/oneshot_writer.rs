@@ -88,7 +88,7 @@ impl State {
         readbuf: &mut [u8],
     ) -> Option<Wants> {
         let mut this = Self::Done;
-        std::mem::swap(self, &mut this);
+        core::mem::swap(self, &mut this);
         let (next, wants) = this.wants(addr, writebuf, readbuf);
         *self = next;
         wants

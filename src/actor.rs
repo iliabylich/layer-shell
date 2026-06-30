@@ -4,7 +4,6 @@ use crate::{
     user_data::ModuleId,
 };
 use anyhow::Result;
-use std::assert_matches;
 
 pub(crate) trait TryWantsTrySatisfy {
     const ID: ModuleId;
@@ -23,7 +22,7 @@ pub(crate) trait WantsSatisfy: TryWantsTrySatisfy + Sized + CanStop {
     fn wants(&mut self) -> Option<Wants> {
         let wants = wants_once(self)?;
         log::trace!(target: Self::ID.as_str(), "{wants:?}");
-        assert_matches!(wants_once(self), None);
+        core::assert_matches!(wants_once(self), None);
         Some(wants)
     }
 

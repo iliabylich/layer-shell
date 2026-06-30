@@ -3,6 +3,8 @@ use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
+use alloc::ffi::CString;
+use core::mem::MaybeUninit;
 use generated::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
     __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait, __liburing_wait_cqe,
@@ -12,8 +14,6 @@ use libc::{ETIME, strerror};
 use rustix::net::SocketAddrAny;
 use std::{
     collections::{HashMap, HashSet},
-    ffi::CString,
-    mem::MaybeUninit,
     os::fd::AsRawFd,
 };
 
@@ -27,7 +27,8 @@ mod cqe;
     clippy::ptr_as_ptr,
     clippy::ref_as_ptr,
     clippy::missing_const_for_fn,
-    clippy::use_self
+    clippy::use_self,
+    clippy::std_instead_of_core
 )]
 mod generated;
 mod sqe;
@@ -35,7 +36,7 @@ mod sqe;
 fn checkerr(errno: i32) {
     if errno < 0 {
         let str = unsafe { strerror(errno) };
-        let str = unsafe { std::ffi::CStr::from_ptr(str) }.to_string_lossy();
+        let str = unsafe { core::ffi::CStr::from_ptr(str) }.to_string_lossy();
         log::error!("IoUring error: {str:?}");
         std::process::exit(1);
     }
@@ -94,9 +95,9 @@ impl IoUring {
         self.dirty = false;
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fn wait_cqe(&mut self) -> Cqe {
-        let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
+        let mut cqe: *mut io_uring_cqe = core::ptr::null_mut();
         let errno = unsafe { __liburing_wait_cqe(&raw mut self.ring, &raw mut cqe) };
         checkerr(errno);
         if cqe.is_null() {
@@ -107,7 +108,7 @@ impl IoUring {
     }
 
     pub(crate) fn try_get_cqe(&mut self) -> Option<Cqe> {
-        let mut cqe: *mut io_uring_cqe = std::ptr::null_mut();
+        let mut cqe: *mut io_uring_cqe = core::ptr::null_mut();
         let errno = unsafe {
             __liburing_wait_cqe_timeout(&raw mut self.ring, &raw mut cqe, &raw mut NOTIMEOUT)
         };

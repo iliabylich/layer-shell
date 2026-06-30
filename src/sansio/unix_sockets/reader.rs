@@ -62,7 +62,7 @@ impl State {
 
     fn wants_in_place(&mut self, buf: &mut [u8]) -> Option<Wants> {
         let mut this: Self = unsafe { core::mem::zeroed() };
-        std::mem::swap(self, &mut this);
+        core::mem::swap(self, &mut this);
         let (next, wants) = this.wants(buf);
         *self = next;
         wants

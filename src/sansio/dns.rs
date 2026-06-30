@@ -1,11 +1,9 @@
 use crate::sansio::{Satisfy, Wants};
 use anyhow::{Result, bail};
+use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};
 use rustix::net::{AddressFamily, SocketType};
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    os::fd::BorrowedFd,
-};
+use std::os::fd::BorrowedFd;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct DNS {
@@ -35,8 +33,8 @@ enum State {
 
     Finished,
 }
-impl std::fmt::Debug for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for State {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::CanSocket => write!(f, "CanSocket"),
             Self::WaitingForSocket => write!(f, "WaitingForSocket"),
@@ -121,7 +119,7 @@ impl DNS {
 
     pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<SocketAddr>> {
         let mut state = State::Finished;
-        std::mem::swap(&mut self.state, &mut state);
+        core::mem::swap(&mut self.state, &mut state);
 
         match (state, satisfy) {
             (State::WaitingForSocket, Satisfy::Socket(res)) => {

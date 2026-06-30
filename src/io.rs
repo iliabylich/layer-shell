@@ -14,7 +14,7 @@ use crate::{
     utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
 };
 use anyhow::{Context, Result};
-use std::{assert_matches, os::fd::AsRawFd};
+use std::os::fd::AsRawFd;
 
 pub(crate) struct IO {
     ring: IoUring,
@@ -47,8 +47,8 @@ pub(crate) struct IO {
     niri: Niri,
 
     on_event: (
-        extern "C" fn(event: *const Event, *mut std::ffi::c_void),
-        *mut std::ffi::c_void,
+        extern "C" fn(event: *const Event, *mut core::ffi::c_void),
+        *mut core::ffi::c_void,
     ),
     running: bool,
 }
@@ -66,8 +66,8 @@ impl IO {
 
     pub(crate) fn new(
         on_event: (
-            extern "C" fn(event: *const Event, *mut std::ffi::c_void),
-            *mut std::ffi::c_void,
+            extern "C" fn(event: *const Event, *mut core::ffi::c_void),
+            *mut core::ffi::c_void,
         ),
     ) -> Result<Self> {
         let config = Config::read()?;
@@ -267,7 +267,7 @@ fn schedule_session_dbus(
         return;
     };
     log::trace!(target: "SessionDBus", "{wants:?}");
-    assert_matches!(module.wants(readbuf, queue), None);
+    core::assert_matches!(module.wants(readbuf, queue), None);
     ring.schedule(ModuleId::SessionDBus, wants);
 }
 fn schedule_system_dbus(
@@ -280,7 +280,7 @@ fn schedule_system_dbus(
         return;
     };
     log::trace!(target: "SystemDBus", "{wants:?}");
-    assert_matches!(module.wants(readbuf, queue), None);
+    core::assert_matches!(module.wants(readbuf, queue), None);
     ring.schedule(ModuleId::SystemDBus, wants);
 }
 

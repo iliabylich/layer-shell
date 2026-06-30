@@ -1,4 +1,7 @@
+use alloc::ffi::CString;
+use alloc::rc::Rc;
 use anyhow::{Context as _, Result, ensure};
+use core::str::FromStr;
 use openssl_sys::{
     BIO, BIO_new, BIO_s_mem, SSL, SSL_CTX, SSL_CTX_free, SSL_CTX_new,
     SSL_CTX_set_default_verify_paths, SSL_CTX_set_min_proto_version, SSL_CTX_set_verify,
@@ -6,7 +9,6 @@ use openssl_sys::{
     SSL_set_tlsext_host_name, TLS_client_method, TLS1_2_VERSION, X509_VERIFY_PARAM_set_hostflags,
     X509_VERIFY_PARAM_set1_host,
 };
-use std::{ffi::CString, rc::Rc, str::FromStr};
 
 pub(crate) struct OpenSslContext(*mut SSL_CTX);
 
