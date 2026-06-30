@@ -214,7 +214,7 @@ UiModel::UiModel(QObject *parent) : QObject(parent) {
           [this] { io_handle_readable(io); });
 }
 
-void *UiModel::getIO() const { return io; }
+IO_IO *UiModel::getIO() const { return io; }
 
 UiModel::~UiModel() { io_deinit(io); }
 

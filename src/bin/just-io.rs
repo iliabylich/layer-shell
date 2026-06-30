@@ -16,14 +16,14 @@ fn main() -> Result<(), ()> {
 
     while !SHOULD_EXIT.load(Ordering::Relaxed) {
         // log::info!("Waiting...");
-        io_wait_readable(io);
+        unsafe { io_wait_readable(io) };
         // log::info!("Wait finished...");
 
         // log::info!("Processing...");
-        io_handle_readable(io);
+        unsafe { io_handle_readable(io) };
     }
 
     log::info!("Exiting...");
-    io_deinit(io);
+    unsafe { io_deinit(io) };
     Ok(())
 }

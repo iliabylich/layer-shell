@@ -21,7 +21,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 dbus = { package = "mini-sansio-dbus", version = "5.0.2" }
 dns = { package = "mini-sansio-dns", version = "2.0.0" }
 openssl-sys = "0.9"
-string-bath = "0.2.1"
+string-bath = { version = "0.2.3" }
 jzon = "0.12"
 boml = "2.0"
 rustix = { version = "1.1.4", features = ["net", "fs"] }

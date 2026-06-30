@@ -16,7 +16,7 @@ use crate::{
 use anyhow::{Context, Result};
 use std::os::fd::AsRawFd;
 
-pub(crate) struct IO {
+pub struct IO {
     ring: IoUring,
     events: EventQueue,
     openssl_ctx: OpenSslContext,

@@ -11,12 +11,12 @@ string_ref_array_to_qstring_list(IO_FFIArray<const char *> strings) {
   return out;
 }
 
-QStringList Config::getTerminalCommand(void *io) {
+QStringList Config::getTerminalCommand(IO_IO *io) {
   return string_ref_array_to_qstring_list(io_get_config(io)->terminal.command);
 }
-QStringList Config::getPingCommand(void *io) {
+QStringList Config::getPingCommand(IO_IO *io) {
   return string_ref_array_to_qstring_list(io_get_config(io)->ping);
 }
-QString Config::getTerminalLabel(void *io) {
+QString Config::getTerminalLabel(IO_IO *io) {
   return QString::fromUtf8(io_get_config(io)->terminal.label);
 }

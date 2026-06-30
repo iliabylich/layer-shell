@@ -32,7 +32,7 @@ public:
   explicit UiModel(QObject *parent = nullptr);
   ~UiModel() override;
 
-  void *getIO() const;
+  IO_IO *getIO() const;
 
   void changeWallpaper();
   void lock();
@@ -89,6 +89,6 @@ private:
   void operator()(const Event::ToggleSessionScreen &e);
   void operator()(const Event::Exit &e);
 
-  void *io;
+  IO_IO *io;
   QSocketNotifier *io_notifier_ = nullptr;
 };
