@@ -47,7 +47,7 @@ pub(crate) struct IO {
     niri: Niri,
 
     on_event: (
-        extern "C" fn(event: *const Event, *mut core::ffi::c_void),
+        extern "C" fn(event: &Event, *mut core::ffi::c_void),
         *mut core::ffi::c_void,
     ),
     running: bool,
@@ -66,7 +66,7 @@ impl IO {
 
     pub(crate) fn new(
         on_event: (
-            extern "C" fn(event: *const Event, *mut core::ffi::c_void),
+            extern "C" fn(event: &Event, *mut core::ffi::c_void),
             *mut core::ffi::c_void,
         ),
     ) -> Result<Self> {
@@ -198,7 +198,7 @@ impl IO {
         while let Some(event) = self.events.pop_front() {
             log::info!(target: "IO", "{event:?}");
             let (callback, data) = self.on_event;
-            (callback)(&raw const event, data);
+            (callback)(&event, data);
         }
 
         Ok(())

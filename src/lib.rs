@@ -63,7 +63,7 @@ fn map_panic_to_exit_with_error<T>(f: impl core::panic::UnwindSafe + FnOnce() ->
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init(
-    callback: extern "C" fn(event: *const Event, *mut core::ffi::c_void),
+    callback: extern "C" fn(event: &Event, *mut core::ffi::c_void),
     data: *mut core::ffi::c_void,
 ) -> *mut core::ffi::c_void {
     map_panic_to_exit_with_error(|| {

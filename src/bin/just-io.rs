@@ -3,8 +3,7 @@ use layer_shell_io::{Event, io_deinit, io_handle_readable, io_init, io_wait_read
 
 static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
 
-extern "C" fn on_event(event: *const Event, _data: *mut core::ffi::c_void) {
-    let event = unsafe { &*event };
+extern "C" fn on_event(event: &Event, _data: *mut core::ffi::c_void) {
     log::trace!(target: "just-io", "{event:?}");
 
     if matches!(event, Event::Exit) {
