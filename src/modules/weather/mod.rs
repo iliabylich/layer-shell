@@ -3,7 +3,7 @@ use crate::{
     actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     modules::weather::weather_response::WeatherResponse,
-    sansio::{HttpRequest, Https, Satisfy, Wants},
+    sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
     user_data::ModuleId,
 };
 use anyhow::Result;
@@ -34,11 +34,11 @@ impl Weather {
         Self::WaitingForLocation
     }
 
-    pub(crate) fn start(&mut self, lat: f64, lng: f64) {
+    pub(crate) fn start(&mut self, lat: f64, lng: f64, ctx: &OpenSslContext) {
         *self = Self::Ready {
             lat,
             lng,
-            https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)))),
+            https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)), ctx)),
         }
     }
 
@@ -50,7 +50,7 @@ impl Weather {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: u64) {
+    pub(crate) fn tick(&mut self, tick: u64, ctx: &OpenSslContext) {
         if !tick.is_multiple_of(60) {
             return;
         }
@@ -65,7 +65,7 @@ impl Weather {
             *self = Self::Ready {
                 lat,
                 lng,
-                https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)))),
+                https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)), ctx)),
             };
         }
     }

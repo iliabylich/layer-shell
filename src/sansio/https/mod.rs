@@ -6,8 +6,10 @@ mod state;
 
 use std::{net::SocketAddr, os::fd::BorrowedFd};
 
+use openssl_sys::SSL_CTX;
 pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;
+pub(crate) use state::OpenSslContext;
 
 use anyhow::{Result, bail};
 use handshake::OpenSslHandshake;
@@ -71,21 +73,19 @@ impl std::fmt::Debug for State {
 
 pub(crate) struct Https {
     state: State,
+    ctx: *mut SSL_CTX,
     request: Vec<u8>,
     domain: &'static str,
     response: Vec<u8>,
 }
 
 impl Https {
-    pub(crate) fn init() -> Result<()> {
-        OpenSslState::init()
-    }
-
-    pub(crate) fn new(request: HttpRequest) -> Self {
+    pub(crate) fn new(request: HttpRequest, ctx: &OpenSslContext) -> Self {
         let domain = request.host();
 
         Self {
             state: State::Dns(DNS::new(domain)),
+            ctx: ctx.raw(),
             request: request.into_bytes(),
             domain,
             response: vec![],
@@ -164,7 +164,7 @@ impl Https {
                 res?;
                 let fd = *fd;
                 self.state = State::Handshaking {
-                    inner: OpenSslHandshake::new(self.domain)?,
+                    inner: OpenSslHandshake::new(self.domain, self.ctx)?,
                     fd,
                 };
             }

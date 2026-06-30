@@ -9,7 +9,7 @@ use crate::{
         CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, Network, Niri, SessionDBus,
         Sound, SystemDBus, Timer, Tray, Weather,
     },
-    sansio::{Https, Satisfy},
+    sansio::{OpenSslContext, Satisfy},
     user_data::{ModuleId, UserData},
     utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
 };
@@ -19,6 +19,7 @@ use std::{assert_matches, os::fd::AsRawFd};
 pub(crate) struct IO {
     ring: IoUring,
     events: EventQueue,
+    openssl_ctx: OpenSslContext,
 
     config: Config,
     pub(crate) io_config: Box<IOConfig>,
@@ -55,7 +56,6 @@ pub(crate) struct IO {
 impl IO {
     pub(crate) fn init() -> Result<()> {
         env_logger::try_init()?;
-        Https::init()?;
         Ok(())
     }
 
@@ -75,6 +75,7 @@ impl IO {
 
         let mut ring = IoUring::new(10, 0);
         let events = EventQueue::new();
+        let openssl_ctx = OpenSslContext::new()?;
 
         let mut timer = Timer::new();
         schedule_timer(&mut timer, &mut ring);
@@ -103,7 +104,7 @@ impl IO {
             &mut ring,
         );
 
-        let mut location = Location::new();
+        let mut location = Location::new(&openssl_ctx);
         schedule_location(&mut location, &mut ring);
 
         let weather = Weather::new();
@@ -125,6 +126,7 @@ impl IO {
         Ok(Self {
             ring,
             events,
+            openssl_ctx,
 
             config,
             io_config,
@@ -300,7 +302,7 @@ impl IO {
 
             Clock::tick(&mut self.events);
 
-            self.weather.tick(tick);
+            self.weather.tick(tick, &self.openssl_ctx);
             schedule_weather(&mut self.weather, &mut self.ring);
 
             self.cpu.tick();
@@ -323,7 +325,7 @@ impl IO {
 impl IO {
     fn satisfy_location(&mut self, satisfy: Satisfy) {
         if let Some((lat, lng)) = self.location.satisfy(satisfy, &mut self.events) {
-            self.weather.start(lat, lng);
+            self.weather.start(lat, lng, &self.openssl_ctx);
             schedule_weather(&mut self.weather, &mut self.ring);
         } else {
             schedule_location(&mut self.location, &mut self.ring);

@@ -1,7 +1,7 @@
 use crate::{
     actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
-    sansio::{HttpRequest, Https, Satisfy, Wants},
+    sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
     user_data::ModuleId,
 };
 use anyhow::Result;
@@ -17,8 +17,8 @@ pub(crate) enum Location {
 }
 
 impl Location {
-    pub(crate) fn new() -> Self {
-        Self::Running(Https::new(HttpRequest::get(HOST, "/".to_string())))
+    pub(crate) fn new(ctx: &OpenSslContext) -> Self {
+        Self::Running(Https::new(HttpRequest::get(HOST, "/".to_string()), ctx))
     }
 }
 
