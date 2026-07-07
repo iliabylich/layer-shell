@@ -11,7 +11,7 @@ use generated::{
 };
 use libc::{ETIME, strerror};
 use rustix::net::SocketAddrAny;
-use std::{collections::HashSet, os::fd::AsRawFd};
+use std::os::fd::AsRawFd;
 
 mod cqe;
 #[expect(
@@ -46,7 +46,8 @@ static mut NOTIMEOUT: __kernel_timespec = __kernel_timespec {
 pub(crate) struct IoUring {
     ring: io_uring,
     dirty: bool,
-    socket_addr_cache: HashSet<Box<SocketAddrAny>>,
+    #[expect(clippy::vec_box)]
+    socket_addr_cache: Vec<Box<SocketAddrAny>>,
 }
 
 impl IoUring {
@@ -57,7 +58,7 @@ impl IoUring {
         Self {
             ring,
             dirty: false,
-            socket_addr_cache: HashSet::new(),
+            socket_addr_cache: vec![],
         }
     }
 
@@ -143,13 +144,13 @@ impl IoUring {
             }
             Wants::Connect { fd, addr, .. } => {
                 let mut sqe = self.get_sqe();
-                if !self.socket_addr_cache.contains(&addr) {
-                    self.socket_addr_cache.insert(Box::new(addr.clone()));
-                }
-                let addr = self
-                    .socket_addr_cache
-                    .get(&addr)
-                    .unwrap_or_else(|| unreachable!());
+                let addr =
+                    if let Some(cached) = self.socket_addr_cache.iter().find(|e| ***e == addr) {
+                        cached
+                    } else {
+                        self.socket_addr_cache.push_mut(Box::new(addr))
+                    };
+
                 sqe.prep_connect(fd.as_raw_fd(), addr.as_ptr().cast(), addr.addr_len());
                 sqe.set_user_data(UserData::new(module_id, Op::Connect));
             }
