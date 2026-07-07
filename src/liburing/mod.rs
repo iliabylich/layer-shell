@@ -3,6 +3,7 @@ use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
+use anyhow::{Result, bail};
 use core::mem::MaybeUninit;
 use generated::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
@@ -28,13 +29,13 @@ mod cqe;
 mod generated;
 mod sqe;
 
-fn checkerr(errno: i32) {
+fn checkerr(errno: i32) -> Result<()> {
     if errno < 0 {
         let str = unsafe { strerror(errno) };
         let str = unsafe { core::ffi::CStr::from_ptr(str) }.to_string_lossy();
-        log::error!("IoUring error: {str:?}");
-        std::process::exit(1);
+        bail!("IoUring error: {str:?}");
     }
+    Ok(())
 }
 
 static mut NOTIMEOUT: __kernel_timespec = __kernel_timespec {
@@ -50,71 +51,71 @@ pub(crate) struct IoUring {
 }
 
 impl IoUring {
-    pub(crate) fn new(entries: u32, flags: u32) -> Self {
+    pub(crate) fn new(entries: u32, flags: u32) -> Result<Self> {
         let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
         let errno = unsafe { __liburing_queue_init(entries, &raw mut ring, flags) };
-        checkerr(errno);
-        Self {
+        checkerr(errno)?;
+        Ok(Self {
             ring,
             dirty: false,
             socket_addr_cache: vec![],
-        }
+        })
     }
 
-    fn get_sqe(&mut self) -> Sqe {
+    fn get_sqe(&mut self) -> Result<Sqe> {
         let sqe = unsafe { __liburing_get_sqe(&raw mut self.ring) };
         if sqe.is_null() {
-            log::error!("got NULL from io_uring_get_sqe");
-            std::process::exit(1);
+            bail!("got NULL from io_uring_get_sqe");
         }
         self.dirty = true;
-        Sqe { sqe }
+        Ok(Sqe { sqe })
     }
 
-    fn submit(&mut self) {
+    fn submit(&mut self) -> Result<()> {
         let errno = unsafe { __liburing_submit(&raw mut self.ring) };
-        checkerr(errno);
+        checkerr(errno)?;
         self.dirty = false;
+        Ok(())
     }
 
-    pub(crate) fn submit_if_dirty(&mut self) {
+    pub(crate) fn submit_if_dirty(&mut self) -> Result<()> {
         if self.dirty {
-            self.submit();
+            self.submit()?;
         }
+        Ok(())
     }
 
-    pub(crate) fn submit_and_wait(&mut self, n: usize) {
+    pub(crate) fn submit_and_wait(&mut self, n: usize) -> Result<()> {
         let errno = unsafe { __liburing_submit_and_wait(&raw mut self.ring, n as u32) };
-        checkerr(errno);
+        checkerr(errno)?;
         self.dirty = false;
+        Ok(())
     }
 
     #[expect(dead_code)]
-    pub(crate) fn wait_cqe(&mut self) -> Cqe {
+    pub(crate) fn wait_cqe(&mut self) -> Result<Cqe> {
         let mut cqe: *mut io_uring_cqe = core::ptr::null_mut();
         let errno = unsafe { __liburing_wait_cqe(&raw mut self.ring, &raw mut cqe) };
-        checkerr(errno);
+        checkerr(errno)?;
         if cqe.is_null() {
-            log::error!("got NULL from io_uring_wait_cqe");
-            std::process::exit(1);
+            bail!("got NULL from io_uring_wait_cqe");
         }
-        Cqe { cqe }
+        Ok(Cqe { cqe })
     }
 
-    pub(crate) fn try_get_cqe(&mut self) -> Option<Cqe> {
+    pub(crate) fn try_get_cqe(&mut self) -> Result<Option<Cqe>> {
         let mut cqe: *mut io_uring_cqe = core::ptr::null_mut();
         let errno = unsafe {
             __liburing_wait_cqe_timeout(&raw mut self.ring, &raw mut cqe, &raw mut NOTIMEOUT)
         };
         if errno == -ETIME {
-            return None;
+            return Ok(None);
         }
-        checkerr(errno);
+        checkerr(errno)?;
         if cqe.is_null() {
-            log::error!("got NULL from io_uring_wait_cqe_timeout");
-            std::process::exit(1);
+            bail!("got NULL from io_uring_wait_cqe_timeout");
         }
-        Some(Cqe { cqe })
+        Ok(Some(Cqe { cqe }))
     }
 
     pub(crate) fn cqe_seen(&mut self, cqe: Cqe) {
@@ -129,10 +130,10 @@ impl IoUring {
         unsafe { __liburing_queue_exit(&raw mut self.ring) };
     }
 
-    pub(crate) fn schedule(&mut self, module_id: ModuleId, wants: Wants) {
+    pub(crate) fn schedule(&mut self, module_id: ModuleId, wants: Wants) -> Result<()> {
         match wants {
             Wants::Socket { domain, r#type, .. } => {
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 sqe.prep_socket(
                     i32::from(domain.as_raw()),
                     i32::try_from(r#type.as_raw()).unwrap_or_else(|_| unreachable!()),
@@ -142,7 +143,7 @@ impl IoUring {
                 sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
             Wants::Connect { fd, addr, .. } => {
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 let addr =
                     if let Some(cached) = self.socket_addr_cache.iter().find(|e| ***e == addr) {
                         cached
@@ -154,12 +155,12 @@ impl IoUring {
                 sqe.set_user_data(UserData::new(module_id, Op::Connect));
             }
             Wants::Read { fd, buf, len, .. } => {
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 sqe.prep_read(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
             }
             Wants::Write { fd, buf, len, .. } => {
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 sqe.prep_write(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
@@ -171,11 +172,11 @@ impl IoUring {
                 writelen,
                 ..
             } => {
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 sqe.prep_read(fd, readbuf, readlen);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
 
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 sqe.prep_write(fd, writebuf, writelen);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
@@ -186,7 +187,7 @@ impl IoUring {
                 mode,
                 ..
             } => {
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 sqe.prep_openat(
                     dfd,
                     path.as_ptr(),
@@ -196,10 +197,12 @@ impl IoUring {
                 sqe.set_user_data(UserData::new(module_id, Op::OpenAt));
             }
             Wants::Close { fd, .. } => {
-                let mut sqe = self.get_sqe();
+                let mut sqe = self.get_sqe()?;
                 sqe.prep_close(fd);
                 sqe.set_user_data(UserData::new(module_id, Op::Close));
             }
         }
+
+        Ok(())
     }
 }

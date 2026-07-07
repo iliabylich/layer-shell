@@ -12,8 +12,8 @@ pub(crate) enum Timer {
 }
 
 impl Timer {
-    pub(crate) fn new() -> Self {
-        Self::Running(TimerFd::new())
+    pub(crate) fn new() -> Result<Self> {
+        Ok(Self::Running(TimerFd::new()?))
     }
 }
 

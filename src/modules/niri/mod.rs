@@ -4,7 +4,7 @@ use crate::{
     event_queue::EventQueue,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     user_data::ModuleId,
-    utils::{StringRef, StringRefExt as _},
+    utils::{StringRef, StringRefExt as _, getenv},
 };
 use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};
@@ -33,7 +33,7 @@ impl Niri {
     }
 
     fn try_new() -> Result<Self> {
-        let path = std::env::var("NIRI_SOCKET").context("no $NIRI_SOCKET")?;
+        let path = getenv(c"NIRI_SOCKET").context("no $NIRI_SOCKET")?;
         let addr = SocketAddrUnix::new(path)?;
 
         Ok(Self {

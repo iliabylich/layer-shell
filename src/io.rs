@@ -11,7 +11,10 @@ use crate::{
     },
     sansio::{OpenSslContext, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
+    utils::{
+        dbus::queue::{SessionDBusQueue, SystemDBusQueue},
+        getenv,
+    },
 };
 use anyhow::{Context, Result};
 
@@ -72,12 +75,12 @@ impl IO {
         let config = Config::read()?;
         let io_config = Box::new(IOConfig::new(&config));
 
-        let mut ring = IoUring::new(10, 0);
+        let mut ring = IoUring::new(10, 0)?;
         let events = EventQueue::new();
         let openssl_ctx = OpenSslContext::new()?;
 
-        let mut timer = Timer::new();
-        schedule_timer(&mut timer, &mut ring);
+        let mut timer = Timer::new()?;
+        schedule_timer(&mut timer, &mut ring)?;
 
         let mut session_dbus = SessionDBus::new();
         let mut session_dbus_readbuf = vec![0; 400 * 1_024];
@@ -90,7 +93,7 @@ impl IO {
             &mut session_dbus_readbuf,
             &session_dbus_queue,
             &mut ring,
-        );
+        )?;
 
         let mut system_dbus = SystemDBus::new();
         let mut system_dbus_readbuf = vec![0; 400 * 1_024];
@@ -101,26 +104,26 @@ impl IO {
             &mut system_dbus_readbuf,
             &system_dbus_queue,
             &mut ring,
-        );
+        )?;
 
         let mut location = Location::new(&openssl_ctx);
-        schedule_location(&mut location, &mut ring);
+        schedule_location(&mut location, &mut ring)?;
 
         let weather = Weather::new();
 
         let mut cpu = CPU::new();
-        schedule_cpu(&mut cpu, &mut ring);
+        schedule_cpu(&mut cpu, &mut ring)?;
 
         let mut memory = Memory::new();
-        schedule_memory(&mut memory, &mut ring);
+        schedule_memory(&mut memory, &mut ring)?;
 
         let mut kb_mod = KbMod::new();
-        schedule_kb_mod(&mut kb_mod, &mut ring);
+        schedule_kb_mod(&mut kb_mod, &mut ring)?;
 
         let mut niri = Niri::new();
-        schedule_niri(&mut niri, &mut ring);
+        schedule_niri(&mut niri, &mut ring)?;
 
-        ring.submit_if_dirty();
+        ring.submit_if_dirty()?;
 
         Ok(Self {
             ring,
@@ -169,7 +172,7 @@ impl IO {
             return Ok(());
         }
 
-        while let Some(cqe) = self.ring.try_get_cqe() {
+        while let Some(cqe) = self.ring.try_get_cqe()? {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
@@ -178,21 +181,21 @@ impl IO {
             log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?}");
 
             match module_id {
-                ModuleId::Location => self.satisfy_location(satisfy),
-                ModuleId::Weather => self.satisfy_weather(satisfy),
-                ModuleId::KbMod => self.satisfy_kb_mod(satisfy),
-                ModuleId::Niri => self.satisfy_niri(satisfy),
-                ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy),
-                ModuleId::SystemDBus => self.satisfy_system_dbus(satisfy),
-                ModuleId::CPU => self.satisfy_cpu(satisfy),
-                ModuleId::Memory => self.satisfy_memory(satisfy),
-                ModuleId::Timer => self.satisfy_timer(satisfy),
+                ModuleId::Location => self.satisfy_location(satisfy)?,
+                ModuleId::Weather => self.satisfy_weather(satisfy)?,
+                ModuleId::KbMod => self.satisfy_kb_mod(satisfy)?,
+                ModuleId::Niri => self.satisfy_niri(satisfy)?,
+                ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy)?,
+                ModuleId::SystemDBus => self.satisfy_system_dbus(satisfy)?,
+                ModuleId::CPU => self.satisfy_cpu(satisfy)?,
+                ModuleId::Memory => self.satisfy_memory(satisfy)?,
+                ModuleId::Timer => self.satisfy_timer(satisfy)?,
             }
 
             self.ring.cqe_seen(cqe);
         }
 
-        self.ring.submit_if_dirty();
+        self.ring.submit_if_dirty()?;
 
         while let Some(event) = self.events.pop_front() {
             log::info!(target: "IO", "{event:?}");
@@ -203,13 +206,14 @@ impl IO {
         Ok(())
     }
 
-    pub(crate) fn wait_readable(&mut self) {
-        self.ring.submit_and_wait(1);
+    pub(crate) fn wait_readable(&mut self) -> Result<()> {
+        self.ring.submit_and_wait(1)?;
+        Ok(())
     }
 
-    pub(crate) fn process_command(&mut self, cmd: Command) {
+    pub(crate) fn process_command(&mut self, cmd: Command) -> Result<()> {
         if !self.running {
-            return;
+            return Ok(());
         }
 
         match cmd {
@@ -230,11 +234,12 @@ impl IO {
                     &mut self.session_dbus_readbuf,
                     &self.session_dbus_queue,
                     &mut self.ring,
-                );
+                )?;
             }
         }
 
-        self.ring.submit_if_dirty();
+        self.ring.submit_if_dirty()?;
+        Ok(())
     }
 
     pub(crate) const fn fd(&self) -> i32 {
@@ -244,10 +249,11 @@ impl IO {
 
 macro_rules! generate_simple_schedule_impl {
     ($fn:ident, $module:ident) => {
-        fn $fn(module: &mut $module, ring: &mut IoUring) {
+        fn $fn(module: &mut $module, ring: &mut IoUring) -> Result<()> {
             if let Some(wants) = module.wants() {
-                ring.schedule(ModuleId::$module, wants);
+                ring.schedule(ModuleId::$module, wants)?;
             };
+            Ok(())
         }
     };
 }
@@ -265,54 +271,57 @@ fn schedule_session_dbus(
     readbuf: &mut [u8],
     queue: &SessionDBusQueue,
     ring: &mut IoUring,
-) {
+) -> Result<()> {
     let Some(wants) = module.wants(readbuf, queue) else {
-        return;
+        return Ok(());
     };
     log::trace!(target: "SessionDBus", "{wants:?}");
     core::assert_matches!(module.wants(readbuf, queue), None);
-    ring.schedule(ModuleId::SessionDBus, wants);
+    ring.schedule(ModuleId::SessionDBus, wants)?;
+    Ok(())
 }
 fn schedule_system_dbus(
     module: &mut SystemDBus,
     readbuf: &mut [u8],
     queue: &SystemDBusQueue,
     ring: &mut IoUring,
-) {
+) -> Result<()> {
     let Some(wants) = module.wants(readbuf, queue) else {
-        return;
+        return Ok(());
     };
     log::trace!(target: "SystemDBus", "{wants:?}");
     core::assert_matches!(module.wants(readbuf, queue), None);
-    ring.schedule(ModuleId::SystemDBus, wants);
+    ring.schedule(ModuleId::SystemDBus, wants)?;
+    Ok(())
 }
 
 macro_rules! generate_simple_satisfy_impl {
     ($fn:ident, $module:ident, $schedule:ident) => {
         impl IO {
-            fn $fn(&mut self, satisfy: Satisfy) {
+            fn $fn(&mut self, satisfy: Satisfy) -> Result<()> {
                 self.$module.satisfy(satisfy, &mut self.events);
-                $schedule(&mut self.$module, &mut self.ring);
+                $schedule(&mut self.$module, &mut self.ring)?;
+                Ok(())
             }
         }
     };
 }
 
 impl IO {
-    fn satisfy_timer(&mut self, satisfy: Satisfy) {
+    fn satisfy_timer(&mut self, satisfy: Satisfy) -> Result<()> {
         if let Some(tick) = self.timer.satisfy(satisfy, &mut self.events) {
-            schedule_timer(&mut self.timer, &mut self.ring);
+            schedule_timer(&mut self.timer, &mut self.ring)?;
 
             Clock::tick(&mut self.events);
 
             self.weather.tick(tick, &self.openssl_ctx);
-            schedule_weather(&mut self.weather, &mut self.ring);
+            schedule_weather(&mut self.weather, &mut self.ring)?;
 
             self.cpu.tick();
-            schedule_cpu(&mut self.cpu, &mut self.ring);
+            schedule_cpu(&mut self.cpu, &mut self.ring)?;
 
             self.memory.tick();
-            schedule_memory(&mut self.memory, &mut self.ring);
+            schedule_memory(&mut self.memory, &mut self.ring)?;
 
             self.sound.tick(tick, &mut self.session_dbus_queue);
             schedule_session_dbus(
@@ -320,19 +329,21 @@ impl IO {
                 &mut self.session_dbus_readbuf,
                 &self.session_dbus_queue,
                 &mut self.ring,
-            );
+            )?;
         }
+        Ok(())
     }
 }
 
 impl IO {
-    fn satisfy_location(&mut self, satisfy: Satisfy) {
+    fn satisfy_location(&mut self, satisfy: Satisfy) -> Result<()> {
         if let Some((lat, lng)) = self.location.satisfy(satisfy, &mut self.events) {
             self.weather.start(lat, lng, &self.openssl_ctx);
-            schedule_weather(&mut self.weather, &mut self.ring);
+            schedule_weather(&mut self.weather, &mut self.ring)?;
         } else {
-            schedule_location(&mut self.location, &mut self.ring);
+            schedule_location(&mut self.location, &mut self.ring)?;
         }
+        Ok(())
     }
 }
 
@@ -343,7 +354,7 @@ generate_simple_satisfy_impl!(satisfy_kb_mod, kb_mod, schedule_kb_mod);
 generate_simple_satisfy_impl!(satisfy_niri, niri, schedule_niri);
 
 impl IO {
-    fn satisfy_session_dbus(&mut self, satisfy: Satisfy) {
+    fn satisfy_session_dbus(&mut self, satisfy: Satisfy) -> Result<()> {
         let message = self.session_dbus.satisfy(
             satisfy,
             &self.session_dbus_readbuf,
@@ -366,12 +377,13 @@ impl IO {
             &mut self.session_dbus_readbuf,
             &self.session_dbus_queue,
             &mut self.ring,
-        );
+        )?;
+        Ok(())
     }
 }
 
 impl IO {
-    fn satisfy_system_dbus(&mut self, satisfy: Satisfy) {
+    fn satisfy_system_dbus(&mut self, satisfy: Satisfy) -> Result<()> {
         let message = self.system_dbus.satisfy(
             satisfy,
             &self.system_dbus_readbuf,
@@ -388,7 +400,8 @@ impl IO {
             &mut self.system_dbus_readbuf,
             &self.system_dbus_queue,
             &mut self.ring,
-        );
+        )?;
+        Ok(())
     }
 }
 
@@ -403,8 +416,9 @@ fn try_spawn(cmd: &str) -> Result<()> {
 
     let mut cmd = cmd.split_whitespace();
     let first = cmd.next().context("command can't be parsed")?;
-    let home = std::env::var("HOME").context("no $HOME")?;
-    let rest = cmd.map(|arg| arg.replace('~', &home)).collect::<Vec<_>>();
+    let home =
+        core::str::from_utf8(getenv(c"HOME").context("no $HOME")?).context("non-utf8 $HOME")?;
+    let rest = cmd.map(|arg| arg.replace('~', home)).collect::<Vec<_>>();
 
     Command::new(first)
         .args(rest)

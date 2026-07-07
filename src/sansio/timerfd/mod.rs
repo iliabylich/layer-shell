@@ -16,13 +16,13 @@ enum State {
 }
 
 impl TimerFd {
-    pub(crate) fn new() -> Self {
-        Self {
-            fd: create_timer(),
+    pub(crate) fn new() -> Result<Self> {
+        Ok(Self {
+            fd: create_timer()?,
             buf: [0; _],
             ticks: 0,
             state: State::CanRead,
-        }
+        })
     }
 
     pub(crate) const fn wants(&mut self) -> Option<Wants> {
@@ -61,16 +61,10 @@ impl TimerFd {
     }
 }
 
-fn create_timer() -> i32 {
+fn create_timer() -> Result<i32> {
     let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
-    if fd == -1 {
-        log::error!(
-            "timerfd_create returned -1: {}",
-            std::io::Error::last_os_error()
-        );
-        std::process::exit(1);
-    }
+    ensure!(fd != -1, "timerfd_create returned -1");
 
     let timer_spec = itimerspec {
         it_interval: timespec {
@@ -85,13 +79,7 @@ fn create_timer() -> i32 {
 
     let res = unsafe { timerfd_settime(fd, 0, &raw const timer_spec, core::ptr::null_mut()) };
 
-    if res == -1 {
-        log::error!(
-            "timerfd_settime returned -1: {}",
-            std::io::Error::last_os_error()
-        );
-        std::process::exit(1);
-    }
+    ensure!(res != -1, "timerfd_settime returned -1");
 
-    fd
+    Ok(fd)
 }

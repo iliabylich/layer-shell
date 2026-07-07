@@ -17,7 +17,7 @@ impl StringRefExt for StringRef {
         unsafe {
             STRING_POOL.alloc(s).unwrap_or_else(|err| {
                 log::error!("{err}");
-                std::process::exit(1)
+                libc::exit(1);
             })
         }
     }

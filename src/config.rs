@@ -1,10 +1,10 @@
 use crate::{
     FFIArray,
-    utils::{StringRef, StringRefExt as _},
+    utils::{ArrayWriter, StringRef, StringRefExt as _, getenv},
 };
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, ensure};
 use boml::{Toml, table::TomlTable, types::TomlArray};
-use std::path::{Path, PathBuf};
+use core::fmt::Write;
 
 #[derive(Debug)]
 pub(crate) struct Config {
@@ -53,9 +53,25 @@ fn toml_value_to_array_of_strings(toml: &TomlArray<'_>) -> Result<Vec<String>> {
 
 impl Config {
     pub(crate) fn read() -> Result<Self> {
-        let path = config_dir()?.join("layer-shell").join("config.toml");
-        let contents = std::fs::read_to_string(&path)?;
-        let toml = boml::parse(&contents).map_err(|err| anyhow::anyhow!("{err}"))?;
+        let mut buf = [0; 256];
+        let mut writer = ArrayWriter::new(&mut buf);
+        fmt_config_path(&mut writer)?;
+        let path = writer.as_str()?;
+
+        let fd = unsafe { libc::open(path.as_ptr().cast(), libc::O_RDONLY) };
+        ensure!(fd != -1, "failed to open config at {path:?}");
+        let fd = AutoCloseFd(fd);
+
+        let mut buf = [0; 1_024];
+        let res = unsafe { libc::read(fd.0, buf.as_mut_ptr().cast(), 1_024) };
+
+        let len = usize::try_from(res).context("failed to read config")?;
+        let buf = buf
+            .get(..len)
+            .context("reading config exceeded buffer size")?;
+
+        let contents = core::str::from_utf8(buf).context("non-utf8 config")?;
+        let toml = boml::parse(contents).map_err(|err| anyhow::anyhow!("{err}"))?;
         let config = Self::from_toml(&toml)?;
 
         log::info!(target: "Config", "{config:#?}");
@@ -103,13 +119,23 @@ impl Config {
     }
 }
 
-fn config_dir() -> Result<PathBuf> {
-    if let Ok(xdg_config_dir) = std::env::var("XDG_CONFIG_DIR") {
-        Ok(PathBuf::from(xdg_config_dir))
+fn fmt_config_path(mut w: impl Write) -> Result<()> {
+    let xdg_config_dir = getenv(c"XDG_CONFIG_DIR")
+        .map(core::str::from_utf8)
+        .transpose()
+        .context("non-utf8 $XDG_CONFIG_DIR")?;
+    let home = getenv(c"HOME")
+        .map(core::str::from_utf8)
+        .transpose()
+        .context("non-utf8 $HOME")?
+        .context("no $HOME")?;
+
+    if let Some(xdg_config_dir) = xdg_config_dir {
+        write!(&mut w, "{xdg_config_dir}/layer-shell/config.toml")?;
     } else {
-        let home = std::env::var("HOME").context("no $HOME")?;
-        Ok(Path::new(&home).join(".config"))
+        write!(&mut w, "{home}/.config/layer-shell/config.toml")?;
     }
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -146,4 +172,12 @@ impl IOConfig {
 pub struct IOTerminal {
     pub label: StringRef,
     pub command: FFIArray<StringRef>,
+}
+
+struct AutoCloseFd(i32);
+
+impl Drop for AutoCloseFd {
+    fn drop(&mut self) {
+        unsafe { libc::close(self.0) };
+    }
 }

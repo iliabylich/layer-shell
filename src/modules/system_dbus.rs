@@ -1,8 +1,8 @@
 use crate::{
     sansio::{DBusState, Satisfy, Wants},
-    utils::dbus::queue::SystemDBusQueue,
+    utils::{dbus::queue::SystemDBusQueue, getenv},
 };
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use dbus::IncomingMessage;
 use rustix::net::SocketAddrUnix;
 
@@ -13,14 +13,9 @@ pub(crate) struct SystemDBus {
 
 impl SystemDBus {
     fn try_new() -> Result<Self> {
-        let path = std::env::var("DBUS_SYSTEM_BUS_ADDRESS")
-            .ok()
-            .and_then(|address| address.split_once('=').map(|(_, path)| path.to_string()))
-            .unwrap_or_else(|| String::from("/var/run/dbus/system_bus_socket"));
-
         Ok(Self {
             state: DBusState::CanSocket,
-            addr: SocketAddrUnix::new(path)?,
+            addr: SocketAddrUnix::new(address()?)?,
         })
     }
 
@@ -48,4 +43,15 @@ impl SystemDBus {
         (self.state, message) = self.state.satisfy(satisfy, readbuf, queue);
         message
     }
+}
+
+fn address() -> Result<&'static [u8]> {
+    let Some(address) = getenv(c"DBUS_SYSTEM_BUS_ADDRESS") else {
+        return Ok(b"/var/run/dbus/system_bus_socket");
+    };
+
+    let mut iter = address.split(|b| *b == b'=');
+    let _prefix = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
+    let path = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
+    Ok(path)
 }

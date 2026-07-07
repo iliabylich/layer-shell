@@ -1,6 +1,6 @@
 use crate::{
     sansio::{DBusState, Satisfy, Wants},
-    utils::dbus::queue::SessionDBusQueue,
+    utils::{dbus::queue::SessionDBusQueue, getenv},
 };
 use anyhow::{Context, Result};
 use dbus::IncomingMessage;
@@ -13,14 +13,9 @@ pub(crate) struct SessionDBus {
 
 impl SessionDBus {
     fn try_new() -> Result<Self> {
-        let address = std::env::var("DBUS_SESSION_BUS_ADDRESS")?;
-        let (_, path) = address
-            .split_once('=')
-            .context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
-
         Ok(Self {
             state: DBusState::CanSocket,
-            addr: SocketAddrUnix::new(path)?,
+            addr: SocketAddrUnix::new(address()?)?,
         })
     }
 
@@ -49,4 +44,13 @@ impl SessionDBus {
         (self.state, message) = self.state.satisfy(satisfy, readbuf, queue);
         message
     }
+}
+
+fn address() -> Result<&'static [u8]> {
+    let address =
+        getenv(c"DBUS_SESSION_BUS_ADDRESS").context("$DBUS_SESSION_BUS_ADDRESS is not set")?;
+    let mut iter = address.split(|b| *b == b'=');
+    let _prefix = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
+    let path = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
+    Ok(path)
 }
