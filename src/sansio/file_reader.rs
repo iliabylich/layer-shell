@@ -1,8 +1,7 @@
 use crate::sansio::{Satisfy, Wants};
 use anyhow::{Context as _, Result, bail};
 use core::ffi::CStr;
-use rustix::fs::{CWD, Mode, OFlags};
-use std::os::fd::BorrowedFd;
+use rustix::fs::{Mode, OFlags};
 
 pub(crate) struct FileReader {
     path: &'static CStr,
@@ -13,9 +12,9 @@ pub(crate) struct FileReader {
 enum State {
     CanOpen,
     WaitingForOpen,
-    CanRead { fd: BorrowedFd<'static> },
-    WaitingForRead { fd: BorrowedFd<'static> },
-    Sleeping { fd: BorrowedFd<'static> },
+    CanRead { fd: i32 },
+    WaitingForRead { fd: i32 },
+    Sleeping { fd: i32 },
 }
 
 impl FileReader {
@@ -31,7 +30,7 @@ impl FileReader {
             State::CanOpen => {
                 self.state = State::WaitingForOpen;
                 Some(Wants::OpenAt {
-                    dfd: CWD,
+                    dfd: libc::AT_FDCWD,
                     path: self.path,
                     flags: OFlags::RDONLY,
                     mode: Mode::empty(),

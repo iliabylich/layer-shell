@@ -2,7 +2,6 @@ use crate::{sansio::Wants, utils::ArrayWriter};
 use anyhow::{Context, Result, bail, ensure};
 use core::fmt::Write;
 use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
-use std::os::fd::BorrowedFd;
 
 pub(crate) struct UnixSocketOneshotWriter {
     addr: SocketAddrUnix,
@@ -18,16 +17,16 @@ enum State {
     ReadyToSocket,
     WaitingForSocket,
 
-    ReadyToConnect { fd: BorrowedFd<'static> },
-    WaitingForConnect { fd: BorrowedFd<'static> },
+    ReadyToConnect { fd: i32 },
+    WaitingForConnect { fd: i32 },
 
-    ReadyToWrite { fd: BorrowedFd<'static> },
-    WaitingForWrite { fd: BorrowedFd<'static> },
+    ReadyToWrite { fd: i32 },
+    WaitingForWrite { fd: i32 },
 
-    ReadyToRead { fd: BorrowedFd<'static> },
-    WaitingForRead { fd: BorrowedFd<'static> },
+    ReadyToRead { fd: i32 },
+    WaitingForRead { fd: i32 },
 
-    ReadyToClose { fd: BorrowedFd<'static> },
+    ReadyToClose { fd: i32 },
     WaitingForClose,
 
     Done,
@@ -122,7 +121,7 @@ impl UnixSocketOneshotWriter {
         )
     }
 
-    pub(crate) fn satisfy_socket(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
+    pub(crate) fn satisfy_socket(&mut self, fd: i32) -> Result<()> {
         ensure!(
             matches!(self.state, State::WaitingForSocket),
             "malformed state: expected Socket, got {:?}",
@@ -173,7 +172,7 @@ impl UnixSocketOneshotWriter {
             .context("buf is too short")
     }
 
-    pub(crate) fn fd(&self) -> Result<BorrowedFd<'static>> {
+    pub(crate) fn fd(&self) -> Result<i32> {
         match self.state {
             State::ReadyToConnect { fd }
             | State::WaitingForConnect { fd }

@@ -14,7 +14,6 @@ use crate::{
     utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
 };
 use anyhow::{Context, Result};
-use std::os::fd::AsRawFd;
 
 pub struct IO {
     ring: IoUring,
@@ -237,6 +236,10 @@ impl IO {
 
         self.ring.submit_if_dirty();
     }
+
+    pub(crate) const fn fd(&self) -> i32 {
+        self.ring.fd()
+    }
 }
 
 macro_rules! generate_simple_schedule_impl {
@@ -386,12 +389,6 @@ impl IO {
             &self.system_dbus_queue,
             &mut self.ring,
         );
-    }
-}
-
-impl AsRawFd for IO {
-    fn as_raw_fd(&self) -> i32 {
-        self.ring.as_raw_fd()
     }
 }
 

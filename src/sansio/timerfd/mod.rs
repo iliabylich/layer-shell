@@ -1,10 +1,9 @@
 use crate::sansio::{Satisfy, Wants};
 use anyhow::{Context, Result, bail, ensure};
 use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
-use std::os::fd::BorrowedFd;
 
 pub(crate) struct TimerFd {
-    fd: BorrowedFd<'static>,
+    fd: i32,
     buf: [u8; 8],
     ticks: u64,
     state: State,
@@ -62,7 +61,7 @@ impl TimerFd {
     }
 }
 
-fn create_timer() -> BorrowedFd<'static> {
+fn create_timer() -> i32 {
     let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
     if fd == -1 {
@@ -94,5 +93,5 @@ fn create_timer() -> BorrowedFd<'static> {
         std::process::exit(1);
     }
 
-    unsafe { BorrowedFd::borrow_raw(fd) }
+    fd
 }

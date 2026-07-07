@@ -3,7 +3,6 @@ use rustix::{
     fs::{Mode, OFlags},
     net::{AddressFamily, SocketAddrAny, SocketType},
 };
-use std::os::fd::BorrowedFd;
 
 #[derive(Debug)]
 pub(crate) enum Wants {
@@ -12,33 +11,33 @@ pub(crate) enum Wants {
         r#type: SocketType,
     },
     Connect {
-        fd: BorrowedFd<'static>,
+        fd: i32,
         addr: SocketAddrAny,
     },
     Read {
-        fd: BorrowedFd<'static>,
+        fd: i32,
         buf: *mut u8,
         len: usize,
     },
     Write {
-        fd: BorrowedFd<'static>,
+        fd: i32,
         buf: *const u8,
         len: usize,
     },
     ReadWrite {
-        fd: BorrowedFd<'static>,
+        fd: i32,
         readbuf: *mut u8,
         readlen: usize,
         writebuf: *const u8,
         writelen: usize,
     },
     OpenAt {
-        dfd: BorrowedFd<'static>,
+        dfd: i32,
         path: &'static CStr,
         flags: OFlags,
         mode: Mode,
     },
     Close {
-        fd: BorrowedFd<'static>,
+        fd: i32,
     },
 }

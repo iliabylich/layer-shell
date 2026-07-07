@@ -1,15 +1,14 @@
 use crate::sansio::Op;
 use anyhow::Result;
-use std::os::fd::BorrowedFd;
 
 #[derive(Debug)]
 pub(crate) enum Satisfy {
-    Socket(Result<BorrowedFd<'static>>),
+    Socket(Result<i32>),
     Connect(Result<()>),
     Write(Result<usize>),
     Read(Result<usize>),
     Close(Result<()>),
-    OpenAt(Result<BorrowedFd<'static>>),
+    OpenAt(Result<i32>),
 }
 
 impl Satisfy {
@@ -17,7 +16,7 @@ impl Satisfy {
         match op {
             Op::Socket => {
                 let fd = if res >= 0 {
-                    Ok(unsafe { BorrowedFd::borrow_raw(res) })
+                    Ok(res)
                 } else {
                     Err(anyhow::anyhow!("Op::Socket returned error: {res}"))
                 };
@@ -51,7 +50,7 @@ impl Satisfy {
             }
             Op::OpenAt => {
                 let fd = if res >= 0 {
-                    Ok(unsafe { BorrowedFd::borrow_raw(res) })
+                    Ok(res)
                 } else {
                     Err(anyhow::anyhow!("Op::OpenAt returned error: {res}"))
                 };

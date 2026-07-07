@@ -5,7 +5,6 @@ use openssl_sys::{
     BIO_ctrl, BIO_read, BIO_write, SSL_CTX, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,
     SSL_get_error,
 };
-use std::os::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -86,7 +85,7 @@ impl OpenSslHandshake {
         Ok(())
     }
 
-    pub(crate) fn wants(&mut self, fd: BorrowedFd<'static>) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, fd: i32) -> Option<Wants> {
         match self.state {
             State::ReadyToRead => {
                 self.state = State::WaitingForRead;

@@ -36,7 +36,6 @@ mod user_data;
 mod utils;
 
 use core::ptr::NonNull;
-use std::os::fd::AsRawFd as _;
 
 use command::Command;
 use config::IOConfig;
@@ -105,7 +104,7 @@ pub unsafe extern "C" fn io_wait_readable(mut io: NonNull<IO>) {
 pub unsafe extern "C" fn io_as_raw_fd(io: NonNull<IO>) -> i32 {
     map_panic_to_exit_with_error(move || {
         let io = unsafe { io.as_ref() };
-        Ok(io.as_raw_fd())
+        Ok(io.fd())
     })
 }
 

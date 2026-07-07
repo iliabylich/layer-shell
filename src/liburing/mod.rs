@@ -11,7 +11,6 @@ use generated::{
 };
 use libc::{ETIME, strerror};
 use rustix::net::SocketAddrAny;
-use std::os::fd::AsRawFd;
 
 mod cqe;
 #[expect(
@@ -122,7 +121,7 @@ impl IoUring {
         unsafe { __liburing_cqe_seen(&raw mut self.ring, cqe.cqe) }
     }
 
-    pub(crate) const fn as_raw_fd(&self) -> i32 {
+    pub(crate) const fn fd(&self) -> i32 {
         self.ring.ring_fd
     }
 
@@ -151,17 +150,17 @@ impl IoUring {
                         self.socket_addr_cache.push_mut(Box::new(addr))
                     };
 
-                sqe.prep_connect(fd.as_raw_fd(), addr.as_ptr().cast(), addr.addr_len());
+                sqe.prep_connect(fd, addr.as_ptr().cast(), addr.addr_len());
                 sqe.set_user_data(UserData::new(module_id, Op::Connect));
             }
             Wants::Read { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_read(fd.as_raw_fd(), buf, len);
+                sqe.prep_read(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
             }
             Wants::Write { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_write(fd.as_raw_fd(), buf, len);
+                sqe.prep_write(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::ReadWrite {
@@ -173,11 +172,11 @@ impl IoUring {
                 ..
             } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_read(fd.as_raw_fd(), readbuf, readlen);
+                sqe.prep_read(fd, readbuf, readlen);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
 
                 let mut sqe = self.get_sqe();
-                sqe.prep_write(fd.as_raw_fd(), writebuf, writelen);
+                sqe.prep_write(fd, writebuf, writelen);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::OpenAt {
@@ -189,7 +188,7 @@ impl IoUring {
             } => {
                 let mut sqe = self.get_sqe();
                 sqe.prep_openat(
-                    dfd.as_raw_fd(),
+                    dfd,
                     path.as_ptr(),
                     i32::try_from(flags.bits()).unwrap_or_else(|_| unreachable!()),
                     mode.bits(),
@@ -198,7 +197,7 @@ impl IoUring {
             }
             Wants::Close { fd, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_close(fd.as_raw_fd());
+                sqe.prep_close(fd);
                 sqe.set_user_data(UserData::new(module_id, Op::Close));
             }
         }

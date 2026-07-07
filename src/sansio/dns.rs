@@ -3,7 +3,6 @@ use anyhow::{Result, bail};
 use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};
 use rustix::net::{AddressFamily, SocketType};
-use std::os::fd::BorrowedFd;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct DNS {
@@ -19,16 +18,16 @@ enum State {
     CanSocket,
     WaitingForSocket,
 
-    CanConnect { fd: BorrowedFd<'static> },
-    WaitingForConnect { fd: BorrowedFd<'static> },
+    CanConnect { fd: i32 },
+    WaitingForConnect { fd: i32 },
 
-    CanWrite { dns: Dns, fd: BorrowedFd<'static> },
-    WaitingForWrite { dns: Dns, fd: BorrowedFd<'static> },
+    CanWrite { dns: Dns, fd: i32 },
+    WaitingForWrite { dns: Dns, fd: i32 },
 
-    CanRead { dns: Dns, fd: BorrowedFd<'static> },
-    WaitingForRead { dns: Dns, fd: BorrowedFd<'static> },
+    CanRead { dns: Dns, fd: i32 },
+    WaitingForRead { dns: Dns, fd: i32 },
 
-    CanClose { fd: BorrowedFd<'static> },
+    CanClose { fd: i32 },
     WaitingForClose,
 
     Finished,

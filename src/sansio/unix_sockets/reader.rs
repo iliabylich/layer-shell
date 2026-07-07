@@ -1,31 +1,17 @@
 use crate::sansio::Wants;
 use anyhow::{Result, bail, ensure};
 use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
-use std::os::fd::BorrowedFd;
 
 #[derive(Debug)]
 enum State {
-    ReadyToSocket {
-        addr: SocketAddrUnix,
-    },
-    WaitingForSocket {
-        addr: SocketAddrUnix,
-    },
+    ReadyToSocket { addr: SocketAddrUnix },
+    WaitingForSocket { addr: SocketAddrUnix },
 
-    ReadyToConnect {
-        addr: SocketAddrUnix,
-        fd: BorrowedFd<'static>,
-    },
-    WaitingForConnect {
-        fd: BorrowedFd<'static>,
-    },
+    ReadyToConnect { addr: SocketAddrUnix, fd: i32 },
+    WaitingForConnect { fd: i32 },
 
-    ReadyToRead {
-        fd: BorrowedFd<'static>,
-    },
-    WaitingForRead {
-        fd: BorrowedFd<'static>,
-    },
+    ReadyToRead { fd: i32 },
+    WaitingForRead { fd: i32 },
 }
 
 impl State {
@@ -82,7 +68,7 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) const fn new_connected_from_fd(fd: BorrowedFd<'static>) -> Self {
+    pub(crate) const fn new_connected_from_fd(fd: i32) -> Self {
         Self {
             buf: [0; _],
             state: State::ReadyToRead { fd },
@@ -93,7 +79,7 @@ impl UnixSocketReader {
         self.state.wants_in_place(&mut self.buf)
     }
 
-    pub(crate) fn satisfy_socket(&mut self, fd: BorrowedFd<'static>) -> Result<()> {
+    pub(crate) fn satisfy_socket(&mut self, fd: i32) -> Result<()> {
         let State::WaitingForSocket { addr } = &self.state else {
             bail!("malformed state: expected Socket, got {:?}", self.state);
         };

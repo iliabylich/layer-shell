@@ -5,7 +5,6 @@ mod response;
 mod state;
 
 use core::net::SocketAddr;
-use std::os::fd::BorrowedFd;
 
 use openssl_sys::SSL_CTX;
 pub(crate) use request::HttpRequest;
@@ -23,33 +22,16 @@ use crate::sansio::{DNS, Satisfy, Wants};
 enum State {
     Dns(DNS),
 
-    CanSocket {
-        addr: SocketAddr,
-    },
-    WaitingForSocket {
-        addr: SocketAddr,
-    },
+    CanSocket { addr: SocketAddr },
+    WaitingForSocket { addr: SocketAddr },
 
-    CanConnect {
-        addr: SocketAddr,
-        fd: BorrowedFd<'static>,
-    },
-    WaitingForConnect {
-        fd: BorrowedFd<'static>,
-    },
+    CanConnect { addr: SocketAddr, fd: i32 },
+    WaitingForConnect { fd: i32 },
 
-    Handshaking {
-        inner: OpenSslHandshake,
-        fd: BorrowedFd<'static>,
-    },
-    ReadWrite {
-        inner: OpenSslReadWrite,
-        fd: BorrowedFd<'static>,
-    },
+    Handshaking { inner: OpenSslHandshake, fd: i32 },
+    ReadWrite { inner: OpenSslReadWrite, fd: i32 },
 
-    CanClose {
-        fd: BorrowedFd<'static>,
-    },
+    CanClose { fd: i32 },
     WaitingForClose,
 
     Finished,

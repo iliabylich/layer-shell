@@ -4,7 +4,6 @@ use dbus::{
     IncomingMessage, OutgoingQueue,
 };
 use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
-use std::os::fd::BorrowedFd;
 
 use crate::sansio::{Satisfy, Wants};
 
@@ -13,38 +12,16 @@ pub(crate) enum DBusState {
     CanSocket,
     WaitingForSocket,
 
-    CanConnect {
-        fd: BorrowedFd<'static>,
-    },
-    WaitingForConnect {
-        fd: BorrowedFd<'static>,
-    },
+    CanConnect { fd: i32 },
+    WaitingForConnect { fd: i32 },
 
-    Connecting {
-        fd: BorrowedFd<'static>,
-        connector: DBusConnector,
-    },
-    ConnectingWaiting {
-        fd: BorrowedFd<'static>,
-        connector: DBusConnector,
-    },
+    Connecting { fd: i32, connector: DBusConnector },
+    ConnectingWaiting { fd: i32, connector: DBusConnector },
 
-    Ready {
-        fd: BorrowedFd<'static>,
-        connection: DBusConnection,
-    },
-    ReadyWaitingRead {
-        fd: BorrowedFd<'static>,
-        connection: DBusConnection,
-    },
-    ReadyWaitingWrite {
-        fd: BorrowedFd<'static>,
-        connection: DBusConnection,
-    },
-    ReadyWaitingReadWrite {
-        fd: BorrowedFd<'static>,
-        connection: DBusConnection,
-    },
+    Ready { fd: i32, connection: DBusConnection },
+    ReadyWaitingRead { fd: i32, connection: DBusConnection },
+    ReadyWaitingWrite { fd: i32, connection: DBusConnection },
+    ReadyWaitingReadWrite { fd: i32, connection: DBusConnection },
 
     Disconnected,
 }
