@@ -24,7 +24,11 @@ openssl-sys = "0.9"
 string-bath = { version = "0.2.3" }
 jzon = "0.12"
 boml = "2.0"
-rustix = { version = "1.1.4", features = ["net", "fs"] }
+rustix = { version = "1.1.4", default-features = false, features = [
+    "std",
+    "net",
+    "fs",
+] }
 
 [build-dependencies]
 cc = "1"

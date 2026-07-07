@@ -15,7 +15,6 @@ pub use icon::{TrayIcon, TrayIconPixmap};
 pub use item::TrayItem;
 use service::Service;
 use status_notifier_watcher::StatusNotifierWatcher;
-use std::collections::HashMap;
 use uuid::UUID;
 
 mod app;
@@ -26,15 +25,13 @@ mod status_notifier_watcher;
 mod uuid;
 
 pub(crate) struct Tray {
-    registry: HashMap<Service, App>,
+    registry: Vec<(Service, App)>,
 }
 
 impl Tray {
     pub(crate) fn new(q: &mut SessionDBusQueue) -> Result<Self> {
         Self::init(q)?;
-        Ok(Self {
-            registry: HashMap::new(),
-        })
+        Ok(Self { registry: vec![] })
     }
 
     fn init(q: &mut SessionDBusQueue) -> Result<()> {
@@ -67,23 +64,21 @@ impl Tray {
             log::info!(target: "Tray", "Added {service:?}");
             let mut tray_app = App::new(service.clone());
             tray_app.init(q)?;
-            self.registry.insert(service, tray_app);
+            self.registry.retain(|(s, _)| s != &service);
+            self.registry.push((service, tray_app));
             return Ok(());
         }
 
         if let Some(service) = NameOwnerChangedSignal::handle(message)? {
-            let Some(key) = self
+            let Some(idx) = self
                 .registry
-                .keys()
-                .find(|s| s.name() == service || s.raw_address() == service)
-                .cloned()
+                .iter()
+                .position(|(s, _)| s.name() == service || s.raw_address() == service)
             else {
                 return Ok(());
             };
 
-            let Some(mut tray_app) = self.registry.remove(&key) else {
-                return Ok(());
-            };
+            let (_, mut tray_app) = self.registry.remove(idx);
 
             log::info!(target: "Tray", "Removed {service}");
             tray_app.reset(q)?;
@@ -124,17 +119,11 @@ impl Tray {
             return Ok(());
         };
 
-        let Some(key) = self
+        let Some((_, tray_app)) = self
             .registry
-            .keys()
-            .find(|k| k.name() == service || k.raw_address() == service)
-            .cloned()
+            .iter()
+            .find(|(s, _)| s.name() == service || s.raw_address() == service)
         else {
-            log::info!(target: "Tray", "service {service} doesn't exist");
-            return Ok(());
-        };
-
-        let Some(tray_app) = self.registry.get(&key) else {
             log::info!(target: "Tray", "service {service} doesn't exist");
             return Ok(());
         };
