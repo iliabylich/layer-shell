@@ -34,3 +34,7 @@ opt-level = "z"
 lto = true
 panic = "abort"
 codegen-units = 1
+
+[[example]]
+name = "just-io"
+path = "src/examples/just-io.rs"

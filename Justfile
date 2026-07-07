@@ -39,7 +39,7 @@ strace-io:
     strace target/debug/just-io
 
 io log="info":
-    RUST_LOG={{log}} cargo run --bin just-io
+    RUST_LOG={{log}} cargo run --example just-io
 
 test-install:
     @just clean
