@@ -21,7 +21,7 @@ pub(crate) enum Memory {
 impl Memory {
     pub(crate) fn new() -> Self {
         Self::Running {
-            reader: FileReader::new("/proc/meminfo"),
+            reader: FileReader::new(c"/proc/meminfo"),
             buf: Box::new([0; _]),
         }
     }

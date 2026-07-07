@@ -1,10 +1,11 @@
 use crate::sansio::{Satisfy, Wants};
 use anyhow::{Context as _, Result, bail};
+use core::ffi::CStr;
 use rustix::fs::{CWD, Mode, OFlags};
 use std::os::fd::BorrowedFd;
 
 pub(crate) struct FileReader {
-    path: &'static str,
+    path: &'static CStr,
     state: State,
 }
 
@@ -18,7 +19,7 @@ enum State {
 }
 
 impl FileReader {
-    pub(crate) const fn new(path: &'static str) -> Self {
+    pub(crate) const fn new(path: &'static CStr) -> Self {
         Self {
             path,
             state: State::CanOpen,

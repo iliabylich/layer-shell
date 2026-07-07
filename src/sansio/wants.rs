@@ -1,3 +1,4 @@
+use core::ffi::CStr;
 use rustix::{
     fs::{Mode, OFlags},
     net::{AddressFamily, SocketAddrAny, SocketType},
@@ -33,7 +34,7 @@ pub(crate) enum Wants {
     },
     OpenAt {
         dfd: BorrowedFd<'static>,
-        path: &'static str,
+        path: &'static CStr,
         flags: OFlags,
         mode: Mode,
     },

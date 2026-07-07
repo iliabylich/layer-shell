@@ -23,7 +23,7 @@ pub(crate) enum CPU {
 impl CPU {
     pub(crate) fn new() -> Self {
         Self::Running {
-            reader: FileReader::new("/proc/stat"),
+            reader: FileReader::new(c"/proc/stat"),
             buf: Box::new([0; _]),
             state: None,
         }

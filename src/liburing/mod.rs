@@ -3,7 +3,6 @@ use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
-use alloc::ffi::CString;
 use core::mem::MaybeUninit;
 use generated::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
@@ -12,10 +11,7 @@ use generated::{
 };
 use libc::{ETIME, strerror};
 use rustix::net::SocketAddrAny;
-use std::{
-    collections::{HashMap, HashSet},
-    os::fd::AsRawFd,
-};
+use std::{collections::HashSet, os::fd::AsRawFd};
 
 mod cqe;
 #[expect(
@@ -51,7 +47,6 @@ pub(crate) struct IoUring {
     ring: io_uring,
     dirty: bool,
     socket_addr_cache: HashSet<Box<SocketAddrAny>>,
-    string_cache: HashMap<&'static str, CString>,
 }
 
 impl IoUring {
@@ -63,7 +58,6 @@ impl IoUring {
             ring,
             dirty: false,
             socket_addr_cache: HashSet::new(),
-            string_cache: HashMap::new(),
         }
     }
 
@@ -193,15 +187,6 @@ impl IoUring {
                 ..
             } => {
                 let mut sqe = self.get_sqe();
-                if !self.string_cache.contains_key(path) {
-                    self.string_cache
-                        .insert(path, CString::new(path).unwrap_or_else(|_| unreachable!()));
-                }
-                let path = self
-                    .string_cache
-                    .get(path)
-                    .unwrap_or_else(|| unreachable!());
-
                 sqe.prep_openat(
                     dfd.as_raw_fd(),
                     path.as_ptr(),
