@@ -3,6 +3,7 @@ use crate::{
     event_queue::EventQueue,
     utils::{StringRef, StringRefExt},
 };
+use alloc::string::ToString as _;
 
 pub(crate) struct Clock;
 

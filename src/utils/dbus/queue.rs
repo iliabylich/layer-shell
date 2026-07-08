@@ -1,4 +1,4 @@
-use alloc::collections::VecDeque;
+use alloc::{collections::VecDeque, vec::Vec};
 use dbus::{
     DBusSerial, EncodeError, OutgoingQueue, messages::org_freedesktop_dbus::Hello,
     messaging::DBusEncode,

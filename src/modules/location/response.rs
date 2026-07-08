@@ -1,4 +1,5 @@
 use crate::{sansio::HttpResponse, utils::get_json};
+use alloc::vec::Vec;
 use anyhow::{Context as _, Result, bail, ensure};
 use jzon::JsonValue;
 

@@ -13,6 +13,7 @@ use crate::{
     user_data::{ModuleId, UserData},
     utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
 };
+use alloc::{vec, vec::Vec};
 use anyhow::Result;
 
 pub struct IO {

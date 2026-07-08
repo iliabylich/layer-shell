@@ -4,6 +4,7 @@ use crate::{
     sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
     user_data::ModuleId,
 };
+use alloc::string::ToString as _;
 use anyhow::Result;
 use response::LocationResponse;
 

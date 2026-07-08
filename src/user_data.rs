@@ -1,7 +1,5 @@
-use anyhow::{Result, ensure};
-use core::cell::Cell;
-
 use crate::sansio::Op;
+use anyhow::{Result, ensure};
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -66,12 +64,10 @@ pub(crate) struct UserData {
 }
 const _: [u8; 8] = [0; size_of::<UserData>()];
 
-thread_local! {
-    static NEXT_REQUEST_ID: Cell<u32> = const { Cell::new(1) };
-}
+static mut NEXT_REQUEST_ID: u32 = 1;
 fn next_request_id() -> u32 {
-    let request_id = NEXT_REQUEST_ID.get();
-    NEXT_REQUEST_ID.set(request_id.wrapping_add(1));
+    let request_id = unsafe { NEXT_REQUEST_ID };
+    unsafe { NEXT_REQUEST_ID = NEXT_REQUEST_ID.wrapping_add(1) };
     request_id
 }
 

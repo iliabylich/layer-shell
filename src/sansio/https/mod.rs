@@ -4,8 +4,8 @@ mod request;
 mod response;
 mod state;
 
+use alloc::{vec, vec::Vec};
 use core::net::SocketAddr;
-
 use openssl_sys::SSL_CTX;
 pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;

@@ -5,6 +5,7 @@ use crate::{
     sansio::{FileReader, Satisfy, Wants},
     user_data::ModuleId,
 };
+use alloc::boxed::Box;
 use anyhow::Result;
 use parser::Parser;
 

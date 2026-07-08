@@ -6,6 +6,7 @@ use crate::{
     user_data::ModuleId,
     utils::{StringRef, StringRefExt as _, getenv},
 };
+use alloc::{boxed::Box, string::String, vec, vec::Vec};
 use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};
 use rustix::net::SocketAddrUnix;

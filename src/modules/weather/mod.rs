@@ -7,6 +7,10 @@ use crate::{
     user_data::ModuleId,
     utils::ArrayWriter,
 };
+use alloc::{
+    boxed::Box,
+    string::{String, ToString as _},
+};
 use anyhow::Result;
 use core::fmt::Write;
 pub use weather_code::WeatherCode;

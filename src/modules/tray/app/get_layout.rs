@@ -2,6 +2,7 @@ use crate::{
     modules::{TrayItem, tray::uuid::UUID},
     utils::{StringRef, StringRefExt as _},
 };
+use alloc::{vec, vec::Vec};
 use dbus::messages::sni_host::{GetLayoutItem, GetLayoutList};
 
 /// cbindgen:ignore

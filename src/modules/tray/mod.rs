@@ -4,6 +4,7 @@ use crate::{
     modules::tray::app::TrayEvent,
     utils::{StringRef, StringRefExt, dbus::queue::SessionDBusQueue},
 };
+use alloc::{vec, vec::Vec};
 use anyhow::Result;
 use app::App;
 use dbus::{

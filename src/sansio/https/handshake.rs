@@ -1,5 +1,5 @@
 use crate::sansio::{Satisfy, Wants, https::state::OpenSslState};
-use alloc::rc::Rc;
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use anyhow::{Context as _, Result, bail, ensure};
 use openssl_sys::{
     BIO_ctrl, BIO_read, BIO_write, SSL_CTX, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,

@@ -1,4 +1,5 @@
 use crate::utils::{ArrayWriter, StringRef, StringRefExt as _, getenv};
+use alloc::vec::Vec;
 use anyhow::{Context as _, Result, ensure};
 use boml::{Toml, table::TomlTable, types::TomlArray};
 use core::fmt::Write;

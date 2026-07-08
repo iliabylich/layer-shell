@@ -5,6 +5,7 @@ use crate::{
         dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SessionDBusQueue},
     },
 };
+use alloc::{vec, vec::Vec};
 use anyhow::Result;
 use dbus::{
     EncodeError, IncomingMessage,

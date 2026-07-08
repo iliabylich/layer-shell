@@ -1,4 +1,5 @@
 use crate::modules::{TrayIcon, TrayItem, tray::app::TrayEvent};
+use alloc::vec::Vec;
 
 pub(crate) enum State {
     Nothing,

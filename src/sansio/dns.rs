@@ -1,4 +1,5 @@
 use crate::sansio::{Satisfy, Wants};
+use alloc::boxed::Box;
 use anyhow::{Result, bail};
 use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};

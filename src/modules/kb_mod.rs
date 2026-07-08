@@ -5,6 +5,7 @@ use crate::{
     sansio::{Satisfy, UnixSocketReader, Wants},
     user_data::ModuleId,
 };
+use alloc::boxed::Box;
 use anyhow::{Context, Result, bail};
 use rustix::net::SocketAddrUnix;
 

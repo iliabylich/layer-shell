@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use anyhow::{Context as _, Result, bail};
 
 pub(crate) struct Parser;

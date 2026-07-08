@@ -3,6 +3,7 @@ use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
+use alloc::{boxed::Box, vec, vec::Vec};
 use anyhow::{Result, bail};
 use core::mem::MaybeUninit;
 use generated::{

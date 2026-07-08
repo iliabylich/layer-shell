@@ -1,3 +1,5 @@
+#![no_std]
+
 use core::sync::atomic::{AtomicBool, Ordering};
 use layer_shell_io::{Event, io_deinit, io_handle_readable, io_init, io_wait_readable};
 

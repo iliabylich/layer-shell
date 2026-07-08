@@ -1,3 +1,7 @@
+use alloc::{
+    string::{String, ToString as _},
+    vec::Vec,
+};
 use anyhow::{Context as _, Result, bail};
 
 #[derive(Debug)]

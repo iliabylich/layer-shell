@@ -1,3 +1,8 @@
+use alloc::{
+    string::{String, ToString as _},
+    vec,
+    vec::Vec,
+};
 use anyhow::{Context as _, Result};
 use jzon::JsonValue;
 

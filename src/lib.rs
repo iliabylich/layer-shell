@@ -1,3 +1,4 @@
+#![no_std]
 #![expect(static_mut_refs)]
 #![warn(trivial_casts)]
 #![warn(trivial_numeric_casts)]
@@ -35,6 +36,7 @@ mod sansio;
 mod user_data;
 mod utils;
 
+use alloc::boxed::Box;
 use core::ptr::NonNull;
 
 use command::Command;
@@ -47,15 +49,11 @@ use crate::{
 };
 use anyhow::Result;
 
-fn map_panic_to_exit_with_error<T>(f: impl core::panic::UnwindSafe + FnOnce() -> Result<T>) -> T {
-    match std::panic::catch_unwind(f) {
-        Ok(Ok(out)) => out,
-        Ok(Err(err)) => {
-            log::error!("error returned: {err:?}");
-            unsafe { libc::exit(1) };
-        }
+fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
+    match f() {
+        Ok(out) => out,
         Err(err) => {
-            log::error!("panic: {err:?}");
+            log::error!("error returned: {err:?}");
             unsafe { libc::exit(1) };
         }
     }
@@ -66,7 +64,7 @@ pub extern "C" fn io_init(
     callback: extern "C" fn(event: &Event, *mut core::ffi::c_void),
     data: *mut core::ffi::c_void,
 ) -> NonNull<IO> {
-    map_panic_to_exit_with_error(|| {
+    exit_if_err(|| {
         IO::init()?;
         let ptr = Box::into_raw(Box::new(IO::new((callback, data))?));
         Ok(unsafe { NonNull::new_unchecked(ptr) })
@@ -75,7 +73,7 @@ pub extern "C" fn io_init(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_deinit(io: NonNull<IO>) {
-    map_panic_to_exit_with_error(|| {
+    exit_if_err(|| {
         let mut io = unsafe { Box::from_raw(io.as_ptr()) };
         io.stop();
         Ok(())
@@ -84,7 +82,7 @@ pub unsafe extern "C" fn io_deinit(io: NonNull<IO>) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_handle_readable(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.handle_readable()
     });
@@ -92,7 +90,7 @@ pub unsafe extern "C" fn io_handle_readable(mut io: NonNull<IO>) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_wait_readable(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.wait_readable()
     });
@@ -100,7 +98,7 @@ pub unsafe extern "C" fn io_wait_readable(mut io: NonNull<IO>) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_as_raw_fd(io: NonNull<IO>) -> i32 {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_ref() };
         Ok(io.fd())
     })
@@ -108,35 +106,35 @@ pub unsafe extern "C" fn io_as_raw_fd(io: NonNull<IO>) -> i32 {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_lock(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::Lock)
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_reboot(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::Reboot)
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_shutdown(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::Shutdown)
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_logout(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::Logout)
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, uuid: *const core::ffi::c_char) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         let uuid = unsafe { core::ffi::CStr::from_ptr(uuid) }.to_str()?;
 
@@ -147,28 +145,28 @@ pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, uuid: *const core:
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_spawn_wifi_editor(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::SpawnWiFiEditor)
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_spawn_bluetooh_editor(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::SpawnBluetoothEditor)
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_spawn_system_monitor(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::SpawnSystemMonitor)
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_change_wallpaper(mut io: NonNull<IO>) {
-    map_panic_to_exit_with_error(move || {
+    exit_if_err(move || {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::ChangeWallpaper)
     });

@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 #[repr(C)]
 pub struct FFIArray<T> {
     pub ptr: *const T,

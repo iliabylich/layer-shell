@@ -1,4 +1,5 @@
 use crate::utils::{StringRef, StringRefExt as _, getenv};
+use alloc::vec::Vec;
 use anyhow::{Context as _, Result, bail};
 
 pub(crate) fn spawn(cmd: &str) -> Result<()> {

@@ -2,6 +2,7 @@ use crate::utils::{
     StringRef, StringRefExt as _,
     dbus::{infallible_property::InfalliblePropertyGetAndSubscribe, queue::SystemDBusQueue},
 };
+use alloc::string::{String, ToString as _};
 use dbus::{
     IncomingMessage,
     messages::network_manager::{SSID, Strength},

@@ -1,13 +1,20 @@
-use crate::utils::{StringRef, StringRefExt as _};
+use crate::utils::{ArrayWriter, StringRef, StringRefExt as _};
 use anyhow::{Context as _, Result};
+use core::fmt::Write;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct UUID;
 
 impl UUID {
     pub(crate) fn encode(service: &str, id: i32) -> StringRef {
-        let uuid = format!("{service}**{id}");
-        StringRef::new(uuid.as_str())
+        let mut buf = [0; 1_024];
+        let mut w = ArrayWriter::new(&mut buf);
+        write!(&mut w, "{service}**{id}").unwrap_or_else(|_| {
+            log::error!("UUID doesn't fit into StringRef");
+            unsafe { libc::exit(1) };
+        });
+        let uuid = w.as_str().unwrap_or_else(|_| unreachable!());
+        StringRef::new(uuid)
     }
 
     pub(crate) fn decode(uuid: &str) -> Result<(StringRef, i32)> {

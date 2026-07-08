@@ -1,5 +1,6 @@
 use super::WeatherCode;
 use crate::{Event, sansio::HttpResponse, utils::get_json};
+use alloc::{vec, vec::Vec};
 use anyhow::{Context as _, Result, ensure};
 use chrono::TimeZone;
 use jzon::JsonValue;
