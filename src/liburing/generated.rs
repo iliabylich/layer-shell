@@ -2,11 +2,11 @@
 
 #[repr(C)]
 #[derive(Default)]
-pub(crate) struct __IncompleteArrayField<T>(::std::marker::PhantomData<T>, [T; 0]);
+pub(crate) struct __IncompleteArrayField<T>(::core::marker::PhantomData<T>, [T; 0]);
 impl<T> __IncompleteArrayField<T> {
     #[inline]
     pub(crate) const fn new() -> Self {
-        __IncompleteArrayField(::std::marker::PhantomData, [])
+        __IncompleteArrayField(::core::marker::PhantomData, [])
     }
     #[inline]
     pub(crate) fn as_ptr(&self) -> *const T {
@@ -18,20 +18,20 @@ impl<T> __IncompleteArrayField<T> {
     }
     #[inline]
     pub(crate) unsafe fn as_slice(&self, len: usize) -> &[T] {
-        ::std::slice::from_raw_parts(self.as_ptr(), len)
+        ::core::slice::from_raw_parts(self.as_ptr(), len)
     }
     #[inline]
     pub(crate) unsafe fn as_mut_slice(&mut self, len: usize) -> &mut [T] {
-        ::std::slice::from_raw_parts_mut(self.as_mut_ptr(), len)
+        ::core::slice::from_raw_parts_mut(self.as_mut_ptr(), len)
     }
 }
-impl<T> ::std::fmt::Debug for __IncompleteArrayField<T> {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+impl<T> ::core::fmt::Debug for __IncompleteArrayField<T> {
+    fn fmt(&self, fmt: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
         fmt.write_str("__IncompleteArrayField")
     }
 }
-pub(crate) type __mode_t = ::std::os::raw::c_uint;
-pub(crate) type __socklen_t = ::std::os::raw::c_uint;
+pub(crate) type __mode_t = ::core::ffi::c_uint;
+pub(crate) type __socklen_t = ::core::ffi::c_uint;
 pub(crate) type mode_t = __mode_t;
 pub(crate) type socklen_t = __socklen_t;
 #[repr(C)]
@@ -42,29 +42,29 @@ pub(crate) struct sockaddr {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of sockaddr"][::std::mem::size_of::<sockaddr>() - 16usize];
-    ["Alignment of sockaddr"][::std::mem::align_of::<sockaddr>() - 2usize];
+    ["Size of sockaddr"][::core::mem::size_of::<sockaddr>() - 16usize];
+    ["Alignment of sockaddr"][::core::mem::align_of::<sockaddr>() - 2usize];
 };
-pub(crate) type __kernel_time64_t = ::std::os::raw::c_longlong;
-pub(crate) type __u8 = ::std::os::raw::c_uchar;
-pub(crate) type __u16 = ::std::os::raw::c_ushort;
-pub(crate) type __s32 = ::std::os::raw::c_int;
-pub(crate) type __u32 = ::std::os::raw::c_uint;
-pub(crate) type __u64 = ::std::os::raw::c_ulonglong;
+pub(crate) type __kernel_time64_t = ::core::ffi::c_longlong;
+pub(crate) type __u8 = ::core::ffi::c_uchar;
+pub(crate) type __u16 = ::core::ffi::c_ushort;
+pub(crate) type __s32 = ::core::ffi::c_int;
+pub(crate) type __u32 = ::core::ffi::c_uint;
+pub(crate) type __u64 = ::core::ffi::c_ulonglong;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct __kernel_timespec {
     pub(crate) tv_sec: __kernel_time64_t,
-    pub(crate) tv_nsec: ::std::os::raw::c_longlong,
+    pub(crate) tv_nsec: ::core::ffi::c_longlong,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of __kernel_timespec"][::std::mem::size_of::<__kernel_timespec>() - 16usize];
-    ["Alignment of __kernel_timespec"][::std::mem::align_of::<__kernel_timespec>() - 8usize];
+    ["Size of __kernel_timespec"][::core::mem::size_of::<__kernel_timespec>() - 16usize];
+    ["Alignment of __kernel_timespec"][::core::mem::align_of::<__kernel_timespec>() - 8usize];
     ["Offset of field: __kernel_timespec::tv_sec"]
-        [::std::mem::offset_of!(__kernel_timespec, tv_sec) - 0usize];
+        [::core::mem::offset_of!(__kernel_timespec, tv_sec) - 0usize];
     ["Offset of field: __kernel_timespec::tv_nsec"]
-        [::std::mem::offset_of!(__kernel_timespec, tv_nsec) - 8usize];
+        [::core::mem::offset_of!(__kernel_timespec, tv_nsec) - 8usize];
 };
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -98,16 +98,16 @@ pub(crate) struct io_uring_sqe__bindgen_ty_1__bindgen_ty_1 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_1__bindgen_ty_1"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_1__bindgen_ty_1>() - 8usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_1__bindgen_ty_1>() - 8usize];
     ["Alignment of io_uring_sqe__bindgen_ty_1__bindgen_ty_1"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_1__bindgen_ty_1>() - 4usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_1__bindgen_ty_1>() - 4usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_1"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_1>() - 8usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_1>() - 8usize];
     ["Alignment of io_uring_sqe__bindgen_ty_1"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_1>() - 8usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_1>() - 8usize];
 };
 #[repr(C)]
 #[repr(align(8))]
@@ -124,16 +124,16 @@ pub(crate) struct io_uring_sqe__bindgen_ty_2__bindgen_ty_1 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_2__bindgen_ty_1"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_2__bindgen_ty_1>() - 8usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_2__bindgen_ty_1>() - 8usize];
     ["Alignment of io_uring_sqe__bindgen_ty_2__bindgen_ty_1"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_2__bindgen_ty_1>() - 4usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_2__bindgen_ty_1>() - 4usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_2"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_2>() - 8usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_2>() - 8usize];
     ["Alignment of io_uring_sqe__bindgen_ty_2"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_2>() - 8usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_2>() - 8usize];
 };
 #[repr(C)]
 #[repr(align(4))]
@@ -144,9 +144,9 @@ pub(crate) union io_uring_sqe__bindgen_ty_3 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_3"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_3>() - 4usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_3>() - 4usize];
     ["Alignment of io_uring_sqe__bindgen_ty_3"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_3>() - 4usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_3>() - 4usize];
 };
 #[repr(C)]
 #[repr(align(1))]
@@ -157,9 +157,9 @@ pub(crate) union io_uring_sqe__bindgen_ty_4 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_4"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_4>() - 2usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_4>() - 2usize];
     ["Alignment of io_uring_sqe__bindgen_ty_4"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_4>() - 1usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_4>() - 1usize];
 };
 #[repr(C)]
 #[repr(align(4))]
@@ -176,16 +176,16 @@ pub(crate) struct io_uring_sqe__bindgen_ty_5__bindgen_ty_1 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_5__bindgen_ty_1"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_5__bindgen_ty_1>() - 4usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_5__bindgen_ty_1>() - 4usize];
     ["Alignment of io_uring_sqe__bindgen_ty_5__bindgen_ty_1"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_5__bindgen_ty_1>() - 2usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_5__bindgen_ty_1>() - 2usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_5"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_5>() - 4usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_5>() - 4usize];
     ["Alignment of io_uring_sqe__bindgen_ty_5"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_5>() - 4usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_5>() - 4usize];
 };
 #[repr(C)]
 #[repr(align(8))]
@@ -202,9 +202,9 @@ pub(crate) struct io_uring_sqe__bindgen_ty_6__bindgen_ty_1 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_6__bindgen_ty_1"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_1>() - 16usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_1>() - 16usize];
     ["Alignment of io_uring_sqe__bindgen_ty_6__bindgen_ty_1"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_1>() - 8usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_1>() - 8usize];
 };
 #[repr(C)]
 #[repr(align(8))]
@@ -215,32 +215,32 @@ pub(crate) struct io_uring_sqe__bindgen_ty_6__bindgen_ty_2 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_6__bindgen_ty_2"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_2>() - 16usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_2>() - 16usize];
     ["Alignment of io_uring_sqe__bindgen_ty_6__bindgen_ty_2"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_2>() - 8usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_6__bindgen_ty_2>() - 8usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of io_uring_sqe__bindgen_ty_6"]
-        [::std::mem::size_of::<io_uring_sqe__bindgen_ty_6>() - 16usize];
+        [::core::mem::size_of::<io_uring_sqe__bindgen_ty_6>() - 16usize];
     ["Alignment of io_uring_sqe__bindgen_ty_6"]
-        [::std::mem::align_of::<io_uring_sqe__bindgen_ty_6>() - 8usize];
+        [::core::mem::align_of::<io_uring_sqe__bindgen_ty_6>() - 8usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of io_uring_sqe"][::std::mem::size_of::<io_uring_sqe>() - 64usize];
-    ["Alignment of io_uring_sqe"][::std::mem::align_of::<io_uring_sqe>() - 8usize];
+    ["Size of io_uring_sqe"][::core::mem::size_of::<io_uring_sqe>() - 64usize];
+    ["Alignment of io_uring_sqe"][::core::mem::align_of::<io_uring_sqe>() - 8usize];
     ["Offset of field: io_uring_sqe::opcode"]
-        [::std::mem::offset_of!(io_uring_sqe, opcode) - 0usize];
-    ["Offset of field: io_uring_sqe::flags"][::std::mem::offset_of!(io_uring_sqe, flags) - 1usize];
+        [::core::mem::offset_of!(io_uring_sqe, opcode) - 0usize];
+    ["Offset of field: io_uring_sqe::flags"][::core::mem::offset_of!(io_uring_sqe, flags) - 1usize];
     ["Offset of field: io_uring_sqe::ioprio"]
-        [::std::mem::offset_of!(io_uring_sqe, ioprio) - 2usize];
-    ["Offset of field: io_uring_sqe::fd"][::std::mem::offset_of!(io_uring_sqe, fd) - 4usize];
-    ["Offset of field: io_uring_sqe::len"][::std::mem::offset_of!(io_uring_sqe, len) - 24usize];
+        [::core::mem::offset_of!(io_uring_sqe, ioprio) - 2usize];
+    ["Offset of field: io_uring_sqe::fd"][::core::mem::offset_of!(io_uring_sqe, fd) - 4usize];
+    ["Offset of field: io_uring_sqe::len"][::core::mem::offset_of!(io_uring_sqe, len) - 24usize];
     ["Offset of field: io_uring_sqe::user_data"]
-        [::std::mem::offset_of!(io_uring_sqe, user_data) - 32usize];
+        [::core::mem::offset_of!(io_uring_sqe, user_data) - 32usize];
     ["Offset of field: io_uring_sqe::personality"]
-        [::std::mem::offset_of!(io_uring_sqe, personality) - 42usize];
+        [::core::mem::offset_of!(io_uring_sqe, personality) - 42usize];
 };
 #[repr(C)]
 #[derive(Debug)]
@@ -252,14 +252,15 @@ pub(crate) struct io_uring_cqe {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of io_uring_cqe"][::std::mem::size_of::<io_uring_cqe>() - 16usize];
-    ["Alignment of io_uring_cqe"][::std::mem::align_of::<io_uring_cqe>() - 8usize];
+    ["Size of io_uring_cqe"][::core::mem::size_of::<io_uring_cqe>() - 16usize];
+    ["Alignment of io_uring_cqe"][::core::mem::align_of::<io_uring_cqe>() - 8usize];
     ["Offset of field: io_uring_cqe::user_data"]
-        [::std::mem::offset_of!(io_uring_cqe, user_data) - 0usize];
-    ["Offset of field: io_uring_cqe::res"][::std::mem::offset_of!(io_uring_cqe, res) - 8usize];
-    ["Offset of field: io_uring_cqe::flags"][::std::mem::offset_of!(io_uring_cqe, flags) - 12usize];
+        [::core::mem::offset_of!(io_uring_cqe, user_data) - 0usize];
+    ["Offset of field: io_uring_cqe::res"][::core::mem::offset_of!(io_uring_cqe, res) - 8usize];
+    ["Offset of field: io_uring_cqe::flags"]
+        [::core::mem::offset_of!(io_uring_cqe, flags) - 12usize];
     ["Offset of field: io_uring_cqe::big_cqe"]
-        [::std::mem::offset_of!(io_uring_cqe, big_cqe) - 16usize];
+        [::core::mem::offset_of!(io_uring_cqe, big_cqe) - 16usize];
 };
 #[repr(C)]
 #[repr(align(8))]
@@ -269,8 +270,8 @@ pub(crate) struct io_uring_sq {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of io_uring_sq"][::std::mem::size_of::<io_uring_sq>() - 104usize];
-    ["Alignment of io_uring_sq"][::std::mem::align_of::<io_uring_sq>() - 8usize];
+    ["Size of io_uring_sq"][::core::mem::size_of::<io_uring_sq>() - 104usize];
+    ["Alignment of io_uring_sq"][::core::mem::align_of::<io_uring_sq>() - 8usize];
 };
 #[repr(C)]
 #[repr(align(8))]
@@ -280,66 +281,66 @@ pub(crate) struct io_uring_cq {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of io_uring_cq"][::std::mem::size_of::<io_uring_cq>() - 88usize];
-    ["Alignment of io_uring_cq"][::std::mem::align_of::<io_uring_cq>() - 8usize];
+    ["Size of io_uring_cq"][::core::mem::size_of::<io_uring_cq>() - 88usize];
+    ["Alignment of io_uring_cq"][::core::mem::align_of::<io_uring_cq>() - 8usize];
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct io_uring {
     pub(crate) sq: io_uring_sq,
     pub(crate) cq: io_uring_cq,
-    pub(crate) flags: ::std::os::raw::c_uint,
-    pub(crate) ring_fd: ::std::os::raw::c_int,
-    pub(crate) features: ::std::os::raw::c_uint,
-    pub(crate) enter_ring_fd: ::std::os::raw::c_int,
+    pub(crate) flags: ::core::ffi::c_uint,
+    pub(crate) ring_fd: ::core::ffi::c_int,
+    pub(crate) features: ::core::ffi::c_uint,
+    pub(crate) enter_ring_fd: ::core::ffi::c_int,
     pub(crate) int_flags: __u8,
     pub(crate) pad: [__u8; 3usize],
-    pub(crate) pad2: ::std::os::raw::c_uint,
+    pub(crate) pad2: ::core::ffi::c_uint,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of io_uring"][::std::mem::size_of::<io_uring>() - 216usize];
-    ["Alignment of io_uring"][::std::mem::align_of::<io_uring>() - 8usize];
-    ["Offset of field: io_uring::sq"][::std::mem::offset_of!(io_uring, sq) - 0usize];
-    ["Offset of field: io_uring::cq"][::std::mem::offset_of!(io_uring, cq) - 104usize];
-    ["Offset of field: io_uring::flags"][::std::mem::offset_of!(io_uring, flags) - 192usize];
-    ["Offset of field: io_uring::ring_fd"][::std::mem::offset_of!(io_uring, ring_fd) - 196usize];
-    ["Offset of field: io_uring::features"][::std::mem::offset_of!(io_uring, features) - 200usize];
+    ["Size of io_uring"][::core::mem::size_of::<io_uring>() - 216usize];
+    ["Alignment of io_uring"][::core::mem::align_of::<io_uring>() - 8usize];
+    ["Offset of field: io_uring::sq"][::core::mem::offset_of!(io_uring, sq) - 0usize];
+    ["Offset of field: io_uring::cq"][::core::mem::offset_of!(io_uring, cq) - 104usize];
+    ["Offset of field: io_uring::flags"][::core::mem::offset_of!(io_uring, flags) - 192usize];
+    ["Offset of field: io_uring::ring_fd"][::core::mem::offset_of!(io_uring, ring_fd) - 196usize];
+    ["Offset of field: io_uring::features"][::core::mem::offset_of!(io_uring, features) - 200usize];
     ["Offset of field: io_uring::enter_ring_fd"]
-        [::std::mem::offset_of!(io_uring, enter_ring_fd) - 204usize];
+        [::core::mem::offset_of!(io_uring, enter_ring_fd) - 204usize];
     ["Offset of field: io_uring::int_flags"]
-        [::std::mem::offset_of!(io_uring, int_flags) - 208usize];
-    ["Offset of field: io_uring::pad"][::std::mem::offset_of!(io_uring, pad) - 209usize];
-    ["Offset of field: io_uring::pad2"][::std::mem::offset_of!(io_uring, pad2) - 212usize];
+        [::core::mem::offset_of!(io_uring, int_flags) - 208usize];
+    ["Offset of field: io_uring::pad"][::core::mem::offset_of!(io_uring, pad) - 209usize];
+    ["Offset of field: io_uring::pad2"][::core::mem::offset_of!(io_uring, pad2) - 212usize];
 };
 unsafe extern "C" {
     pub(crate) fn __liburing_queue_init(
-        entries: ::std::os::raw::c_uint,
+        entries: ::core::ffi::c_uint,
         ring: *mut io_uring,
-        flags: ::std::os::raw::c_uint,
-    ) -> ::std::os::raw::c_int;
+        flags: ::core::ffi::c_uint,
+    ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
-    pub(crate) fn __liburing_submit(ring: *mut io_uring) -> ::std::os::raw::c_int;
+    pub(crate) fn __liburing_submit(ring: *mut io_uring) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub(crate) fn __liburing_submit_and_wait(
         ring: *mut io_uring,
-        wait_nr: ::std::os::raw::c_uint,
-    ) -> ::std::os::raw::c_int;
+        wait_nr: ::core::ffi::c_uint,
+    ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub(crate) fn __liburing_wait_cqe(
         ring: *mut io_uring,
         cqe_ptr: *mut *mut io_uring_cqe,
-    ) -> ::std::os::raw::c_int;
+    ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub(crate) fn __liburing_wait_cqe_timeout(
         ring: *mut io_uring,
         cqe_ptr: *mut *mut io_uring_cqe,
         ts: *mut __kernel_timespec,
-    ) -> ::std::os::raw::c_int;
+    ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub(crate) fn __liburing_cqe_seen(ring: *mut io_uring, cqe: *mut io_uring_cqe);
@@ -353,16 +354,16 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub(crate) fn __liburing_prep_socket(
         sqe: *mut io_uring_sqe,
-        domain: ::std::os::raw::c_int,
-        type_: ::std::os::raw::c_int,
-        protocol: ::std::os::raw::c_int,
-        flags: ::std::os::raw::c_uint,
+        domain: ::core::ffi::c_int,
+        type_: ::core::ffi::c_int,
+        protocol: ::core::ffi::c_int,
+        flags: ::core::ffi::c_uint,
     );
 }
 unsafe extern "C" {
     pub(crate) fn __liburing_prep_connect(
         sqe: *mut io_uring_sqe,
-        fd: ::std::os::raw::c_int,
+        fd: ::core::ffi::c_int,
         addr: *const sockaddr,
         addrlen: socklen_t,
     );
@@ -370,30 +371,30 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub(crate) fn __liburing_prep_write(
         sqe: *mut io_uring_sqe,
-        fd: ::std::os::raw::c_int,
-        buf: *const ::std::os::raw::c_void,
-        nbytes: ::std::os::raw::c_uint,
+        fd: ::core::ffi::c_int,
+        buf: *const ::core::ffi::c_void,
+        nbytes: ::core::ffi::c_uint,
         offset: __u64,
     );
 }
 unsafe extern "C" {
     pub(crate) fn __liburing_prep_read(
         sqe: *mut io_uring_sqe,
-        fd: ::std::os::raw::c_int,
-        buf: *mut ::std::os::raw::c_void,
-        nbytes: ::std::os::raw::c_uint,
+        fd: ::core::ffi::c_int,
+        buf: *mut ::core::ffi::c_void,
+        nbytes: ::core::ffi::c_uint,
         offset: __u64,
     );
 }
 unsafe extern "C" {
-    pub(crate) fn __liburing_prep_close(sqe: *mut io_uring_sqe, fd: ::std::os::raw::c_int);
+    pub(crate) fn __liburing_prep_close(sqe: *mut io_uring_sqe, fd: ::core::ffi::c_int);
 }
 unsafe extern "C" {
     pub(crate) fn __liburing_prep_openat(
         sqe: *mut io_uring_sqe,
-        dfd: ::std::os::raw::c_int,
-        path: *const ::std::os::raw::c_char,
-        flags: ::std::os::raw::c_int,
+        dfd: ::core::ffi::c_int,
+        path: *const ::core::ffi::c_char,
+        flags: ::core::ffi::c_int,
         mode: mode_t,
     );
 }

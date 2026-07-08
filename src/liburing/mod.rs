@@ -23,8 +23,7 @@ mod cqe;
     clippy::ptr_as_ptr,
     clippy::ref_as_ptr,
     clippy::missing_const_for_fn,
-    clippy::use_self,
-    clippy::std_instead_of_core
+    clippy::use_self
 )]
 mod generated;
 mod sqe;

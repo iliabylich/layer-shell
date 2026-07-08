@@ -6,6 +6,7 @@ liburing-generate:
         --opaque-type "io_uring_cq" \
         --opaque-type ".*bindgen.*" \
         --opaque-type "sockaddr" \
+        --use-core \
         -o src/liburing/generated.rs
     sed -i 's/pub /pub(crate) /g' src/liburing/generated.rs
 
