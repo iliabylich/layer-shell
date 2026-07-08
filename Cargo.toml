@@ -10,10 +10,7 @@ name = "layer_shell_io"
 [dependencies]
 anyhow = { version = "1", default-features = false, features = ["backtrace"] }
 log = { version = "0.4", default-features = false }
-env_logger = { version = "0.11", default-features = false, features = [
-    "auto-color",
-] }
-libc = "0.2"
+libc = { version = "0.2", default-features = false }
 dbus = { package = "mini-sansio-dbus", version = "5.0.2" }
 dns = { package = "mini-sansio-dns", version = "2.0.0" }
 openssl-sys = "0.9"

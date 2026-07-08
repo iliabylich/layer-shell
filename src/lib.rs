@@ -31,6 +31,7 @@ mod event_queue;
 mod ffi;
 mod io;
 mod liburing;
+mod logger;
 mod modules;
 mod sansio;
 mod user_data;

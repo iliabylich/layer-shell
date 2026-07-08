@@ -54,7 +54,7 @@ pub struct IO {
 
 impl IO {
     pub(crate) fn init() -> Result<()> {
-        env_logger::try_init()?;
+        crate::logger::init()?;
         Ok(())
     }
 
