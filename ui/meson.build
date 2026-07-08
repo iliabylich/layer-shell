@@ -44,8 +44,10 @@ sassc = generator(
 
 if get_option('buildtype') == 'debug'
     asan_options = ['-fsanitize=address']
+    gc_sections_options = []
 else
     asan_options = []
+    gc_sections_options = ['-Wl,--gc-sections']
 endif
 
 executable(
@@ -83,5 +85,5 @@ executable(
     include_directories: include_directories('..'),
     install: true,
     install_dir: join_paths(get_option('prefix'), get_option('bindir')),
-    link_args: asan_options,
+    link_args: asan_options + gc_sections_options,
 )
