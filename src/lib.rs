@@ -38,7 +38,6 @@ mod utils;
 use core::ptr::NonNull;
 
 use command::Command;
-use config::IOConfig;
 pub use event::Event;
 pub use ffi::FFIArray;
 
@@ -108,15 +107,6 @@ pub unsafe extern "C" fn io_as_raw_fd(io: NonNull<IO>) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-#[must_use]
-pub unsafe extern "C" fn io_get_config(mut io: NonNull<IO>) -> NonNull<IOConfig> {
-    map_panic_to_exit_with_error(move || {
-        let io = unsafe { io.as_mut() };
-        Ok(unsafe { NonNull::new_unchecked(&raw mut (*io.io_config)) })
-    })
-}
-
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_lock(mut io: NonNull<IO>) {
     map_panic_to_exit_with_error(move || {
         let io = unsafe { io.as_mut() };
@@ -182,4 +172,30 @@ pub unsafe extern "C" fn io_change_wallpaper(mut io: NonNull<IO>) {
         let io = unsafe { io.as_mut() };
         io.process_command(Command::ChangeWallpaper)
     });
+}
+
+#[repr(C)]
+pub struct CommandToExec {
+    pub ptr: *const StringRef,
+    pub len: usize,
+}
+
+#[unsafe(no_mangle)]
+pub const unsafe extern "C" fn io_get_ping_cmd(mut io: NonNull<IO>) -> CommandToExec {
+    let io = unsafe { io.as_mut() };
+    let ptr = io.config.ping.as_ptr();
+    let len = io.config.ping.len();
+    CommandToExec { ptr, len }
+}
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn io_get_terminal_label(mut io: NonNull<IO>) -> StringRef {
+    let io = unsafe { io.as_mut() };
+    io.config.terminal.label.clone()
+}
+#[unsafe(no_mangle)]
+pub const unsafe extern "C" fn io_get_terminal_cmd(mut io: NonNull<IO>) -> CommandToExec {
+    let io = unsafe { io.as_mut() };
+    let ptr = io.config.terminal.command.as_ptr();
+    let len = io.config.terminal.command.len();
+    CommandToExec { ptr, len }
 }

@@ -1,36 +1,33 @@
-use crate::{
-    FFIArray,
-    utils::{ArrayWriter, StringRef, StringRefExt as _, getenv},
-};
+use crate::utils::{ArrayWriter, StringRef, StringRefExt as _, getenv};
 use anyhow::{Context as _, Result, ensure};
 use boml::{Toml, table::TomlTable, types::TomlArray};
 use core::fmt::Write;
 
 #[derive(Debug)]
 pub(crate) struct Config {
-    pub(crate) lock: String,
-    pub(crate) reboot: String,
-    pub(crate) shutdown: String,
-    pub(crate) logout: String,
-    pub(crate) edit_wifi: String,
-    pub(crate) edit_bluetooth: String,
-    pub(crate) open_system_monitor: String,
-    pub(crate) change_wallpaper: String,
+    pub(crate) lock: StringRef,
+    pub(crate) reboot: StringRef,
+    pub(crate) shutdown: StringRef,
+    pub(crate) logout: StringRef,
+    pub(crate) edit_wifi: StringRef,
+    pub(crate) edit_bluetooth: StringRef,
+    pub(crate) open_system_monitor: StringRef,
+    pub(crate) change_wallpaper: StringRef,
 
-    pub(crate) ping: Vec<String>,
+    pub(crate) ping: Vec<StringRef>,
     pub(crate) terminal: Terminal,
 }
 #[derive(Debug)]
 pub(crate) struct Terminal {
-    label: String,
-    command: Vec<String>,
+    pub(crate) label: StringRef,
+    pub(crate) command: Vec<StringRef>,
 }
 impl Terminal {
     fn from_toml(toml: &TomlTable<'_>) -> Result<Self> {
         let label = toml
             .get_string("label")
-            .map_err(|err| anyhow::anyhow!("{err:?}"))?
-            .to_string();
+            .map(StringRef::new)
+            .map_err(|err| anyhow::anyhow!("{err:?}"))?;
         let command = toml
             .get_array("command")
             .map_err(|err| anyhow::anyhow!("{err:?}"))?;
@@ -41,12 +38,12 @@ impl Terminal {
     }
 }
 
-fn toml_value_to_array_of_strings(toml: &TomlArray<'_>) -> Result<Vec<String>> {
+fn toml_value_to_array_of_strings(toml: &TomlArray<'_>) -> Result<Vec<StringRef>> {
     toml.iter()
         .map(|e| {
             e.as_string()
                 .context("array item is not a string")
-                .map(ToString::to_string)
+                .map(StringRef::new)
         })
         .collect()
 }
@@ -85,8 +82,8 @@ impl Config {
                 toml.get($key)
                     .with_context(|| format!("no {}", $key))?
                     .as_string()
+                    .map(StringRef::new)
                     .with_context(|| format!("{} is not a string", $key))?
-                    .to_string()
             };
         }
         let lock = string!("lock");
@@ -136,42 +133,6 @@ fn fmt_config_path(mut w: impl Write) -> Result<()> {
         write!(&mut w, "{home}/.config/layer-shell/config.toml")?;
     }
     Ok(())
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct IOConfig {
-    pub ping: FFIArray<StringRef>,
-    pub terminal: IOTerminal,
-}
-impl IOConfig {
-    pub(crate) fn new(config: &Config) -> Self {
-        Self {
-            ping: config
-                .ping
-                .iter()
-                .map(|s| StringRef::new(s))
-                .collect::<Vec<_>>()
-                .into(),
-            terminal: IOTerminal {
-                label: StringRef::new(&config.terminal.label),
-                command: config
-                    .terminal
-                    .command
-                    .iter()
-                    .map(|s| StringRef::new(s))
-                    .collect::<Vec<_>>()
-                    .into(),
-            },
-        }
-    }
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct IOTerminal {
-    pub label: StringRef,
-    pub command: FFIArray<StringRef>,
 }
 
 struct AutoCloseFd(i32);

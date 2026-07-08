@@ -2,7 +2,7 @@ use crate::{
     Event,
     actor::WantsSatisfy,
     command::Command,
-    config::{Config, IOConfig},
+    config::Config,
     event_queue::EventQueue,
     liburing::IoUring,
     modules::{
@@ -23,8 +23,7 @@ pub struct IO {
     events: EventQueue,
     openssl_ctx: OpenSslContext,
 
-    config: Config,
-    pub(crate) io_config: Box<IOConfig>,
+    pub(crate) config: Config,
 
     timer: Timer,
 
@@ -73,7 +72,6 @@ impl IO {
         ),
     ) -> Result<Self> {
         let config = Config::read()?;
-        let io_config = Box::new(IOConfig::new(&config));
 
         let mut ring = IoUring::new(10, 0)?;
         let events = EventQueue::new();
@@ -131,7 +129,6 @@ impl IO {
             openssl_ctx,
 
             config,
-            io_config,
 
             timer,
 
@@ -217,14 +214,14 @@ impl IO {
         }
 
         match cmd {
-            Command::Lock => spawn(&self.config.lock),
-            Command::Reboot => spawn(&self.config.reboot),
-            Command::Shutdown => spawn(&self.config.shutdown),
-            Command::Logout => spawn(&self.config.logout),
-            Command::SpawnWiFiEditor => spawn(&self.config.edit_wifi),
-            Command::SpawnBluetoothEditor => spawn(&self.config.edit_bluetooth),
-            Command::SpawnSystemMonitor => spawn(&self.config.open_system_monitor),
-            Command::ChangeWallpaper => spawn(&self.config.change_wallpaper),
+            Command::Lock => spawn(self.config.lock.as_str()),
+            Command::Reboot => spawn(self.config.reboot.as_str()),
+            Command::Shutdown => spawn(self.config.shutdown.as_str()),
+            Command::Logout => spawn(self.config.logout.as_str()),
+            Command::SpawnWiFiEditor => spawn(self.config.edit_wifi.as_str()),
+            Command::SpawnBluetoothEditor => spawn(self.config.edit_bluetooth.as_str()),
+            Command::SpawnSystemMonitor => spawn(self.config.open_system_monitor.as_str()),
+            Command::ChangeWallpaper => spawn(self.config.change_wallpaper.as_str()),
 
             Command::TriggerTray { uuid } => {
                 self.tray
