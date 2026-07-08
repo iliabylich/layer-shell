@@ -35,7 +35,7 @@ impl Niri {
 
     fn try_new() -> Result<Self> {
         let path = getenv(c"NIRI_SOCKET").context("no $NIRI_SOCKET")?;
-        let addr = SocketAddrUnix::new(path)?;
+        let addr = SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))?;
 
         Ok(Self {
             state: State::Writer(Box::new(UnixSocketOneshotWriter::new(

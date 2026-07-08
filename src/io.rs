@@ -307,7 +307,7 @@ impl IO {
         if let Some(tick) = self.timer.satisfy(satisfy, &mut self.events) {
             schedule_timer(&mut self.timer, &mut self.ring)?;
 
-            Clock::tick(&mut self.events);
+            Clock::tick(&mut self.events)?;
 
             self.weather.tick(tick, &self.openssl_ctx)?;
             schedule_weather(&mut self.weather, &mut self.ring)?;

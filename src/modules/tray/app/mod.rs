@@ -214,8 +214,9 @@ impl App {
     }
 
     pub(crate) fn trigger(&self, id: i32, q: &mut SessionDBusQueue) -> Result<(), EncodeError> {
-        let timestamp =
-            u32::try_from(chrono::Utc::now().timestamp()).map_err(|_| EncodeError::ValueTooLong)?;
+        let mut now = 0;
+        unsafe { libc::time(&raw mut now) };
+        let timestamp = u32::try_from(now).map_err(|_| EncodeError::ValueTooLong)?;
         let args = EventArgs {
             id,
             timestamp,

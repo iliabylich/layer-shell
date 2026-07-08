@@ -2,7 +2,6 @@ use super::WeatherCode;
 use crate::{Event, sansio::HttpResponse, utils::get_json};
 use alloc::{vec, vec::Vec};
 use anyhow::{Context as _, Result, ensure};
-use chrono::TimeZone;
 use jzon::JsonValue;
 
 #[derive(Debug)]
@@ -129,7 +128,8 @@ fn map_hourly_forecase(
         temperature_2m,
         weather_code,
     } = response;
-    let now = chrono::Local::now().timestamp();
+    let mut now = 0;
+    unsafe { libc::time(&raw mut now) };
 
     let mut forecast = vec![];
     for ((temp, code), time) in temperature_2m.into_iter().zip(weather_code).zip(time) {
@@ -165,7 +165,8 @@ fn map_daily_forecase(
         weather_code,
     } = response;
 
-    let today = chrono::Local::now().date_naive();
+    let mut now = 0;
+    unsafe { libc::time(&raw mut now) };
 
     let mut forecast = vec![];
     for (((min, max), code), time) in temperature_2m_min
@@ -175,12 +176,7 @@ fn map_daily_forecase(
         .zip(time)
     {
         let code = WeatherCode::from(code);
-        let date = chrono::Local
-            .timestamp_opt(time, 0)
-            .single()
-            .context("invalid unix timestamp")?
-            .date_naive();
-        if date > today {
+        if is_date_greater_than_or_eq(time, now) {
             forecast.push(WeatherOnDay {
                 unix_seconds: time,
                 temperature_min: min,
@@ -230,5 +226,23 @@ impl core::fmt::Debug for WeatherOnDay {
             "{} - {}..{} - {:?}",
             self.unix_seconds, self.temperature_min, self.temperature_max, self.code
         )
+    }
+}
+
+fn is_date_greater_than_or_eq(lhs: i64, rhs: i64) -> bool {
+    unsafe {
+        let mut lhs_tm: libc::tm = core::mem::zeroed();
+        let mut rhs_tm: libc::tm = core::mem::zeroed();
+
+        if libc::localtime_r(&raw const lhs, &raw mut lhs_tm).is_null() {
+            return false;
+        }
+
+        if libc::localtime_r(&raw const rhs, &raw mut rhs_tm).is_null() {
+            return false;
+        }
+
+        (lhs_tm.tm_year, lhs_tm.tm_mon, lhs_tm.tm_mday)
+            >= (rhs_tm.tm_year, rhs_tm.tm_mon, rhs_tm.tm_mday)
     }
 }

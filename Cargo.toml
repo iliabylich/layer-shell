@@ -8,16 +8,12 @@ crate-type = ["staticlib", "lib"]
 name = "layer_shell_io"
 
 [dependencies]
-anyhow = { version = "1", default-features = false, features = [
-    "std",
-    "backtrace",
-] }
+anyhow = { version = "1", default-features = false, features = ["backtrace"] }
 log = { version = "0.4", default-features = false }
 env_logger = { version = "0.11", default-features = false, features = [
     "auto-color",
 ] }
 libc = "0.2"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
 dbus = { package = "mini-sansio-dbus", version = "5.0.2" }
 dns = { package = "mini-sansio-dns", version = "2.0.0" }
 openssl-sys = "0.9"
@@ -25,7 +21,6 @@ string-bath = { version = "0.2.4" }
 jzon = "0.12"
 boml = "2.0"
 rustix = { version = "1.1.4", default-features = false, features = [
-    "std",
     "net",
     "fs",
 ] }

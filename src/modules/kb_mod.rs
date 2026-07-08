@@ -24,9 +24,10 @@ impl KbMod {
 
     fn try_new() -> Result<Self> {
         Ok(Self::Running {
-            reader: Box::new(UnixSocketReader::new(SocketAddrUnix::new(
-                "/run/kb-mod-monitor-systemd.sock",
-            )?)),
+            reader: Box::new(UnixSocketReader::new(
+                SocketAddrUnix::new("/run/kb-mod-monitor-systemd.sock")
+                    .map_err(|errno| anyhow::anyhow!(errno))?,
+            )),
         })
     }
 

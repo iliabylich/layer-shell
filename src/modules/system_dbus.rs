@@ -15,7 +15,7 @@ impl SystemDBus {
     fn try_new() -> Result<Self> {
         Ok(Self {
             state: DBusState::CanSocket,
-            addr: SocketAddrUnix::new(address()?)?,
+            addr: SocketAddrUnix::new(address()?).map_err(|errno| anyhow::anyhow!(errno))?,
         })
     }
 
