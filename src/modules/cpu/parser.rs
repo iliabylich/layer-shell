@@ -26,28 +26,46 @@ pub(crate) struct CoreUsage {
 
 impl CoreUsage {
     fn parse(line: &str) -> Result<Self> {
-        Self::parse0(line).with_context(|| format!("failed to parse line '{line}'"))
+        Self::parse0(line).context("failed to parse line")
     }
 
     fn parse0(line: &str) -> Result<Self> {
         let mut parts = line.split(' ');
 
-        let id = cut_str(&mut parts, 0, "cpuN")?
+        macro_rules! cut_str {
+            ($idx:expr, $name:expr) => {
+                parts
+                    .next()
+                    .context(concat!("no ", $idx, " item (", $name, ") in CPU line"))
+            };
+        }
+
+        macro_rules! cut_u64 {
+            ($idx:expr, $name:expr) => {
+                cut_str!($idx, $name)?.parse::<u64>().context(concat!(
+                    "non-int ",
+                    $name,
+                    " component"
+                ))
+            };
+        }
+
+        let id = cut_str!(0, "cpuN")?
             .strip_prefix("cpu")
             .context("no 'cpu' prefix in CPU line")?
             .parse::<u8>()
             .context("non-int CPU")?;
 
-        let user_n = cut_u64(&mut parts, 1, "user")?;
-        let nice_n = cut_u64(&mut parts, 2, "nice")?;
-        let system_n = cut_u64(&mut parts, 3, "system")?;
-        let idle_n = cut_u64(&mut parts, 4, "idle")?;
-        let iowait_n = cut_u64(&mut parts, 5, "iowait")?;
-        let irq_n = cut_u64(&mut parts, 6, "irq")?;
-        let softirq_n = cut_u64(&mut parts, 7, "softirq")?;
-        let steal_n = cut_u64(&mut parts, 8, "steal")?;
-        let guest_n = cut_u64(&mut parts, 9, "guest")?;
-        let guest_nice_n = cut_u64(&mut parts, 10, "guest_nice")?;
+        let user_n = cut_u64!(1, "user")?;
+        let nice_n = cut_u64!(2, "nice")?;
+        let system_n = cut_u64!(3, "system")?;
+        let idle_n = cut_u64!(4, "idle")?;
+        let iowait_n = cut_u64!(5, "iowait")?;
+        let irq_n = cut_u64!(6, "irq")?;
+        let softirq_n = cut_u64!(7, "softirq")?;
+        let steal_n = cut_u64!(8, "steal")?;
+        let guest_n = cut_u64!(9, "guest")?;
+        let guest_nice_n = cut_u64!(10, "guest_nice")?;
 
         let idle = idle_n + iowait_n;
         let total = user_n
@@ -79,15 +97,4 @@ impl CoreUsage {
 
         u8::try_from(percent).context("percent is too big for u8")
     }
-}
-
-fn cut_str<'a>(i: &mut impl Iterator<Item = &'a str>, idx: usize, name: &str) -> Result<&'a str> {
-    i.next()
-        .with_context(|| format!("no {idx} item ({name}) in CPU line"))
-}
-
-fn cut_u64<'a>(i: &mut impl Iterator<Item = &'a str>, idx: usize, name: &str) -> Result<u64> {
-    let s = cut_str(i, idx, name)?;
-    s.parse()
-        .with_context(|| format!("non-int {name} component: {s}"))
 }

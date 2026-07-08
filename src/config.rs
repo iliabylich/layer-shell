@@ -80,10 +80,10 @@ impl Config {
         macro_rules! string {
             ($key:expr) => {
                 toml.get($key)
-                    .with_context(|| format!("no {}", $key))?
+                    .context(concat!("no ", $key))?
                     .as_string()
                     .map(StringRef::new)
-                    .with_context(|| format!("{} is not a string", $key))?
+                    .context(concat!($key, " is not a string"))?
             };
         }
         let lock = string!("lock");

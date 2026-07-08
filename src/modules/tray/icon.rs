@@ -41,10 +41,10 @@ pub struct TrayIconPixmap {
 
 impl core::fmt::Debug for TrayIconPixmap {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("TrayIconPixmap")
-            .field("w", &self.width)
-            .field("h", &self.height)
-            .field("bytes", &format!("[...{} bytes]", self.bytes.len))
-            .finish()
+        write!(
+            f,
+            "TrayIconPixmap({}x{}, {} bytes)",
+            self.width, self.height, self.bytes.len
+        )
     }
 }

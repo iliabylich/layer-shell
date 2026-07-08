@@ -2,13 +2,13 @@ macro_rules! get_json {
     ($json:expr, $key:expr, $f:ident) => {
         $json
             .get($key)
-            .with_context(|| format!("no {}", $key))?
+            .context(concat!("no ", $key))?
             .$f()
-            .with_context(|| format!("{} can't be coerced with {}", $key, stringify!($f)))?
+            .context(concat!($key, " can't be coerced with ", stringify!($f)))?
     };
 
     ($json:expr, $key:expr) => {
-        $json.get($key).with_context(|| format!("no {}", $key))?
+        $json.get($key).context(concat!("no ", $key))?
     };
 }
 pub(crate) use get_json;

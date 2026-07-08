@@ -11,13 +11,11 @@ impl UUID {
     }
 
     pub(crate) fn decode(uuid: &str) -> Result<(StringRef, i32)> {
-        let (service, rest) = uuid
-            .split_once("**")
-            .with_context(|| format!("expected at least one || in {uuid:?}"))?;
+        let (service, rest) = uuid.split_once("**").context("expected at least one ||")?;
 
         let id = rest
             .parse::<i32>()
-            .with_context(|| format!("ID (the last part) is not a i32 in {uuid:?}"))?;
+            .context("ID (the last part) is not a i32")?;
 
         Ok((StringRef::new(service), id))
     }

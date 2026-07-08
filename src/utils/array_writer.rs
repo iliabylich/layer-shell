@@ -10,9 +10,14 @@ impl<'a> ArrayWriter<'a> {
         ArrayWriter { buf, offset: 0 }
     }
 
-    pub(crate) fn as_str(&self) -> Result<&str> {
-        core::str::from_utf8(self.buf.get(..self.offset).context("malformed offset")?)
+    pub(crate) fn as_bytes(&self) -> Result<&[u8]> {
+        self.buf
+            .get(..self.offset)
             .context("malformed ArrayWriter's buffer")
+    }
+
+    pub(crate) fn as_str(&self) -> Result<&str> {
+        core::str::from_utf8(self.as_bytes()?).context("non-utf8 ArrayWriter's buffer")
     }
 }
 

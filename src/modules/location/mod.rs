@@ -17,8 +17,11 @@ pub(crate) enum Location {
 }
 
 impl Location {
-    pub(crate) fn new(ctx: &OpenSslContext) -> Self {
-        Self::Running(Https::new(HttpRequest::get(HOST, "/".to_string()), ctx))
+    pub(crate) fn new(ctx: &OpenSslContext) -> Result<Self> {
+        Ok(Self::Running(Https::new(
+            HttpRequest::get(HOST, "/".to_string()),
+            ctx,
+        )?))
     }
 }
 

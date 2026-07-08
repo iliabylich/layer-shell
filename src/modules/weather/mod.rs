@@ -5,8 +5,10 @@ use crate::{
     modules::weather::weather_response::WeatherResponse,
     sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
     user_data::ModuleId,
+    utils::ArrayWriter,
 };
 use anyhow::Result;
+use core::fmt::Write;
 pub use weather_code::WeatherCode;
 pub use weather_response::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherOnDay, WeatherOnHour,
@@ -34,12 +36,13 @@ impl Weather {
         Self::WaitingForLocation
     }
 
-    pub(crate) fn start(&mut self, lat: f64, lng: f64, ctx: &OpenSslContext) {
+    pub(crate) fn start(&mut self, lat: f64, lng: f64, ctx: &OpenSslContext) -> Result<()> {
         *self = Self::Ready {
             lat,
             lng,
-            https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)), ctx)),
-        }
+            https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)?), ctx)?),
+        };
+        Ok(())
     }
 
     const fn latlng(&self) -> Option<(f64, f64)> {
@@ -50,24 +53,26 @@ impl Weather {
         }
     }
 
-    pub(crate) fn tick(&mut self, tick: u64, ctx: &OpenSslContext) {
+    pub(crate) fn tick(&mut self, tick: u64, ctx: &OpenSslContext) -> Result<()> {
         if !tick.is_multiple_of(60) {
-            return;
+            return Ok(());
         }
 
         if let Self::Ready { https, .. } = self
             && https.is_waiting()
         {
-            return;
+            return Ok(());
         }
 
         if let Some((lat, lng)) = self.latlng() {
             *self = Self::Ready {
                 lat,
                 lng,
-                https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)), ctx)),
+                https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)?), ctx)?),
             };
         }
+
+        Ok(())
     }
 }
 
@@ -106,24 +111,19 @@ impl CanStop for Weather {
     }
 }
 
-fn path(lat: f64, lng: f64) -> String {
-    let query = format!(
-        "{}={}&{}={}&{}={}&{}={}&{}={}&{}={}&{}={}",
-        "latitude",
-        lat,
-        "longitude",
-        lng,
-        "current",
-        "temperature_2m,weather_code",
-        "hourly",
-        "temperature_2m,weather_code",
-        "daily",
-        "temperature_2m_min,temperature_2m_max,weather_code",
-        "timezone",
-        "Europe/Warsaw",
-        "timeformat",
-        "unixtime"
-    );
-
-    format!("/v1/forecast?{query}")
+fn path(lat: f64, lng: f64) -> Result<String> {
+    let mut buf = [0; 1_024];
+    let mut w = ArrayWriter::new(&mut buf);
+    write!(&mut w, "/v1/forecast")?;
+    write!(&mut w, "?latitude={lat}")?;
+    write!(&mut w, "&longitude={lng}")?;
+    write!(&mut w, "&current=temperature_2m,weather_code")?;
+    write!(&mut w, "&hourly=temperature_2m,weather_code")?;
+    write!(
+        &mut w,
+        "&daily=temperature_2m_min,temperature_2m_max,weather_code"
+    )?;
+    write!(&mut w, "&timezone=Europe/Warsaw")?;
+    write!(&mut w, "&timeformat=unixtime")?;
+    Ok(w.as_str()?.to_string())
 }

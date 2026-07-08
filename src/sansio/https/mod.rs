@@ -63,16 +63,16 @@ pub(crate) struct Https {
 }
 
 impl Https {
-    pub(crate) fn new(request: HttpRequest, ctx: &OpenSslContext) -> Self {
+    pub(crate) fn new(request: HttpRequest, ctx: &OpenSslContext) -> Result<Self> {
         let domain = request.host();
 
-        Self {
+        Ok(Self {
             state: State::Dns(DNS::new(domain)),
             ctx: ctx.raw(),
-            request: request.into_bytes(),
+            request: request.into_bytes()?,
             domain,
             response: vec![],
-        }
+        })
     }
 
     pub(crate) const fn is_waiting(&self) -> bool {

@@ -1,3 +1,7 @@
+use crate::utils::ArrayWriter;
+use anyhow::Result;
+use core::fmt::Write;
+
 #[derive(Debug)]
 pub(crate) enum HttpRequest {
     Get { host: &'static str, path: String },
@@ -14,11 +18,16 @@ impl HttpRequest {
         }
     }
 
-    pub(crate) fn into_bytes(self) -> Vec<u8> {
+    pub(crate) fn into_bytes(self) -> Result<Vec<u8>> {
         match self {
             Self::Get { path, host } => {
-                format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n")
-                    .into_bytes()
+                let mut buf = [0; 1_024];
+                let mut w = ArrayWriter::new(&mut buf);
+                write!(
+                    &mut w,
+                    "GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+                )?;
+                Ok(w.as_bytes()?.to_vec())
             }
         }
     }
