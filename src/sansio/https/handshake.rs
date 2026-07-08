@@ -1,10 +1,10 @@
-use crate::sansio::{Satisfy, Wants, https::state::OpenSslState};
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
-use anyhow::{Context as _, Result, bail, ensure};
-use openssl_sys::{
+use super::generated::{
     BIO_ctrl, BIO_read, BIO_write, SSL_CTX, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,
     SSL_get_error,
 };
+use crate::sansio::{Satisfy, Wants, https::state::OpenSslState};
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+use anyhow::{Context as _, Result, bail, ensure};
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -57,7 +57,8 @@ impl OpenSslHandshake {
             return Ok(Progress::Done);
         }
 
-        let err = unsafe { SSL_get_error(self.tls.ssl, ret) };
+        let err = u32::try_from(unsafe { SSL_get_error(self.tls.ssl, ret) })
+            .context("SSL_get_error returned negative value")?;
         self.drain_wbio()?;
         if !self.writebuf.is_empty() {
             return Ok(Progress::NextState(State::ReadyToWrite));

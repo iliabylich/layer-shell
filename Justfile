@@ -10,6 +10,47 @@ liburing-generate:
         -o src/liburing/generated.rs
     sed -i 's/pub /pub(crate) /g' src/liburing/generated.rs
 
+openssl-generate:
+    bindgen \
+        src/openssl-wrapper.h \
+        --allowlist-function "BIO_ctrl" \
+        --allowlist-function "BIO_new" \
+        --allowlist-function "BIO_read" \
+        --allowlist-function "BIO_s_mem" \
+        --allowlist-function "BIO_write" \
+        --allowlist-function "SSL_CTX_free" \
+        --allowlist-function "SSL_CTX_new" \
+        --allowlist-function "SSL_CTX_set_default_verify_paths" \
+        --allowlist-function "SSL_CTX_set_verify" \
+        --allowlist-function "SSL_connect" \
+        --allowlist-function "SSL_free" \
+        --allowlist-function "SSL_get0_param" \
+        --allowlist-function "SSL_get_error" \
+        --allowlist-function "SSL_new" \
+        --allowlist-function "SSL_read" \
+        --allowlist-function "SSL_set_bio" \
+        --allowlist-function "SSL_set_connect_state" \
+        --allowlist-function "SSL_write" \
+        --allowlist-function "TLS_client_method" \
+        --allowlist-function "X509_VERIFY_PARAM_set1_host" \
+        --allowlist-function "X509_VERIFY_PARAM_set_hostflags" \
+        --allowlist-function "__openssl_.*" \
+        --allowlist-var "SSL_ERROR_WANT_READ" \
+        --allowlist-var "SSL_ERROR_WANT_WRITE" \
+        --allowlist-var "SSL_ERROR_ZERO_RETURN" \
+        --allowlist-var "SSL_VERIFY_PEER" \
+        --allowlist-var "TLS1_2_VERSION" \
+        --opaque-type "BIO" \
+        --opaque-type "BIO_METHOD" \
+        --opaque-type "SSL" \
+        --opaque-type "SSL_CTX" \
+        --opaque-type "SSL_METHOD" \
+        --opaque-type "X509_STORE_CTX" \
+        --opaque-type "X509_VERIFY_PARAM" \
+        --use-core \
+        -o src/sansio/https/generated.rs
+    sed -i 's/pub /pub(crate) /g' src/sansio/https/generated.rs
+
 setup build:
     meson setup builddir --buildtype={{build}}
 

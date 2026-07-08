@@ -1,10 +1,10 @@
-use crate::sansio::{Satisfy, Wants, https::OpenSslState};
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
-use anyhow::{Context as _, Result, bail, ensure};
-use openssl_sys::{
+use super::generated::{
     BIO_ctrl, BIO_read, BIO_write, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
     SSL_ERROR_ZERO_RETURN, SSL_get_error, SSL_read, SSL_write,
 };
+use crate::sansio::{Satisfy, Wants, https::OpenSslState};
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+use anyhow::{Context as _, Result, bail, ensure};
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -53,7 +53,8 @@ impl OpenSslReadWrite {
             )
         };
         if res <= 0 {
-            let err = unsafe { SSL_get_error(self.tls.ssl, res) };
+            let err = u32::try_from(unsafe { SSL_get_error(self.tls.ssl, res) })
+                .context("SSL_get_error returned negative value")?;
             self.drain_wbio()?;
             if !self.writebuf.is_empty() {
                 self.state = State::ReadyToWrite;
@@ -167,7 +168,8 @@ impl OpenSslReadWrite {
                                 .context("plaintext buffer is too short")?,
                         );
                     } else {
-                        let err = unsafe { SSL_get_error(self.tls.ssl, res) };
+                        let err = u32::try_from(unsafe { SSL_get_error(self.tls.ssl, res) })
+                            .context("SSL_get_error returned negative value")?;
 
                         match err {
                             SSL_ERROR_WANT_READ => {
