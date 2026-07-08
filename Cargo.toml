@@ -15,12 +15,12 @@ dbus = { package = "mini-sansio-dbus", version = "5.0.2" }
 dns = { package = "mini-sansio-dns", version = "2.0.0" }
 openssl-sys = "0.9"
 string-bath = { version = "0.2.4" }
-boml = "2.0"
+toml_parser = { version = "1.1.2", default-features = false }
 rustix = { version = "1.1.4", default-features = false, features = [
     "net",
     "fs",
 ] }
-microjson = "0.1"
+microjson = { version = "0.1", default-features = false }
 
 [features]
 debug-backtrace = ["anyhow/std", "anyhow/backtrace"]

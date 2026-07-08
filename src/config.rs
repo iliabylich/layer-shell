@@ -1,8 +1,10 @@
 use crate::utils::{ArrayWriter, StringRef, StringRefExt as _, getenv};
 use alloc::vec::Vec;
 use anyhow::{Context as _, Result, ensure};
-use boml::{Toml, table::TomlTable, types::TomlArray};
 use core::fmt::Write;
+use toml_parser::{
+    ErrorSink, ParseError, Raw, Source, Span, decoder::Encoding, parser::EventReceiver,
+};
 
 #[derive(Debug)]
 pub(crate) struct Config {
@@ -22,31 +24,6 @@ pub(crate) struct Config {
 pub(crate) struct Terminal {
     pub(crate) label: StringRef,
     pub(crate) command: Vec<StringRef>,
-}
-impl Terminal {
-    fn from_toml(toml: &TomlTable<'_>) -> Result<Self> {
-        let label = toml
-            .get_string("label")
-            .map(StringRef::new)
-            .map_err(|err| anyhow::anyhow!("{err:?}"))?;
-        let command = toml
-            .get_array("command")
-            .map_err(|err| anyhow::anyhow!("{err:?}"))?;
-        Ok(Self {
-            label,
-            command: toml_value_to_array_of_strings(command)?,
-        })
-    }
-}
-
-fn toml_value_to_array_of_strings(toml: &TomlArray<'_>) -> Result<Vec<StringRef>> {
-    toml.iter()
-        .map(|e| {
-            e.as_string()
-                .context("array item is not a string")
-                .map(StringRef::new)
-        })
-        .collect()
 }
 
 impl Config {
@@ -69,51 +46,186 @@ impl Config {
             .context("reading config exceeded buffer size")?;
 
         let contents = core::str::from_utf8(buf).context("non-utf8 config")?;
-        let toml = boml::parse(contents).map_err(|err| anyhow::anyhow!("{err}"))?;
-        let config = Self::from_toml(&toml)?;
+        let config = Self::from_toml(contents)?;
 
         log::info!(target: "Config", "{config:#?}");
 
         Ok(config)
     }
 
-    fn from_toml(toml: &Toml<'_>) -> Result<Self> {
-        macro_rules! string {
-            ($key:expr) => {
-                toml.get($key)
-                    .context(concat!("no ", $key))?
-                    .as_string()
-                    .map(StringRef::new)
-                    .context(concat!($key, " is not a string"))?
-            };
-        }
-        let lock = string!("lock");
-        let reboot = string!("reboot");
-        let shutdown = string!("shutdown");
-        let logout = string!("logout");
-        let edit_wifi = string!("edit_wifi");
-        let edit_bluetooth = string!("edit_bluetooth");
-        let open_system_monitor = string!("open_system_monitor");
-        let change_wallpaper = string!("change_wallpaper");
-        let ping = toml
-            .get_array("ping")
-            .map_err(|err| anyhow::anyhow!("{err:?}"))?;
-        let terminal = toml
-            .get_table("terminal")
-            .map_err(|err| anyhow::anyhow!("{err:?}"))?;
+    fn from_toml(contents: &str) -> Result<Self> {
+        let source = Source::new(contents);
+        let lexer = source.lex();
+        let tokens = lexer.collect::<Vec<_>>();
 
-        Ok(Self {
-            lock,
-            reboot,
-            shutdown,
-            logout,
-            edit_wifi,
-            edit_bluetooth,
-            open_system_monitor,
-            change_wallpaper,
-            ping: toml_value_to_array_of_strings(ping)?,
-            terminal: Terminal::from_toml(terminal)?,
+        let mut errhandler = |error: ParseError| {
+            log::error!("failed to parse TOML config: {error:?}");
+            unsafe { libc::exit(1) };
+        };
+
+        let mut receiver = ConfigReceiver::new(contents);
+        toml_parser::parser::parse_document(&tokens, &mut receiver, &mut errhandler);
+
+        receiver.into_config()
+    }
+}
+
+struct ConfigReceiver<'a> {
+    source: Source<'a>,
+    pending_key: Option<&'a str>,
+
+    lock: Option<&'a str>,
+    reboot: Option<&'a str>,
+    shutdown: Option<&'a str>,
+    logout: Option<&'a str>,
+    edit_wifi: Option<&'a str>,
+    edit_bluetooth: Option<&'a str>,
+    open_system_monitor: Option<&'a str>,
+    change_wallpaper: Option<&'a str>,
+    ping: Option<&'a str>,
+    terminal_label: Option<&'a str>,
+    terminal_command: Option<&'a str>,
+}
+
+impl<'a> ConfigReceiver<'a> {
+    fn new(input: &'a str) -> Self {
+        Self {
+            source: Source::new(input),
+            pending_key: None,
+            lock: None,
+            reboot: None,
+            shutdown: None,
+            logout: None,
+            edit_wifi: None,
+            edit_bluetooth: None,
+            open_system_monitor: None,
+            change_wallpaper: None,
+            ping: None,
+            terminal_label: None,
+            terminal_command: None,
+        }
+    }
+
+    fn into_config(self) -> Result<Config> {
+        let lock = self.lock.context("no lock")?;
+        let reboot = self.reboot.context("no reboot")?;
+        let shutdown = self.shutdown.context("no shutdown")?;
+        let logout = self.logout.context("no logout")?;
+        let edit_wifi = self.edit_wifi.context("no edit_wifi")?;
+        let edit_bluetooth = self.edit_bluetooth.context("no edit_bluetooth")?;
+        let open_system_monitor = self.open_system_monitor.context("no open_system_monitor")?;
+        let change_wallpaper = self.change_wallpaper.context("no change_wallpaper")?;
+        let ping = self.ping.context("no ping")?;
+        let terminal_label = self.terminal_label.context("no terminal_label")?;
+        let terminal_command = self.terminal_command.context("no terminal_command")?;
+
+        Ok(Config {
+            lock: StringRef::new(lock),
+            reboot: StringRef::new(reboot),
+            shutdown: StringRef::new(shutdown),
+            logout: StringRef::new(logout),
+            edit_wifi: StringRef::new(edit_wifi),
+            edit_bluetooth: StringRef::new(edit_bluetooth),
+            open_system_monitor: StringRef::new(open_system_monitor),
+            change_wallpaper: StringRef::new(change_wallpaper),
+            ping: ping.split_whitespace().map(StringRef::new).collect(),
+            terminal: Terminal {
+                label: StringRef::new(terminal_label),
+                command: terminal_command
+                    .split_whitespace()
+                    .map(StringRef::new)
+                    .collect(),
+            },
         })
+    }
+}
+
+impl EventReceiver for ConfigReceiver<'_> {
+    fn simple_key(&mut self, span: Span, _kind: Option<Encoding>, error: &mut dyn ErrorSink) {
+        let Some(key) = self.source.get(span) else {
+            error.report_error(ParseError::new("can't get source of span"));
+            return;
+        };
+        if self.pending_key.is_some() {
+            error.report_error(ParseError::new("unhandled key"));
+            return;
+        }
+        self.pending_key = Some(key.as_str());
+    }
+
+    fn scalar(&mut self, span: Span, encoding: Option<Encoding>, error: &mut dyn ErrorSink) {
+        let Some(key) = self.pending_key.take() else {
+            error.report_error(ParseError::new("value without a key"));
+            return;
+        };
+        let mut value = "";
+        let Some(raw) = self
+            .source
+            .get(span)
+            .map(|raw| Raw::new_unchecked(raw.as_str(), encoding, span))
+        else {
+            error.report_error(ParseError::new("failed to get source of span"));
+            return;
+        };
+        let _ = raw.decode_scalar(&mut value, error);
+        match key {
+            "lock" => self.lock = Some(value),
+            "reboot" => self.reboot = Some(value),
+            "shutdown" => self.shutdown = Some(value),
+            "logout" => self.logout = Some(value),
+            "edit_wifi" => self.edit_wifi = Some(value),
+            "edit_bluetooth" => self.edit_bluetooth = Some(value),
+            "open_system_monitor" => self.open_system_monitor = Some(value),
+            "change_wallpaper" => self.change_wallpaper = Some(value),
+            "ping" => self.ping = Some(value),
+            "terminal_label" => self.terminal_label = Some(value),
+            "terminal_command" => self.terminal_command = Some(value),
+            _ => {
+                log::error!("unknown config key {key}");
+                error.report_error(ParseError::new("unknown config key"));
+            }
+        }
+    }
+
+    fn key_val_sep(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
+    fn whitespace(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
+    fn comment(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
+    fn newline(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
+
+    fn error(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("got parse error"));
+    }
+
+    fn inline_table_open(&mut self, _span: Span, _error: &mut dyn ErrorSink) -> bool {
+        true
+    }
+    fn array_open(&mut self, _span: Span, _error: &mut dyn ErrorSink) -> bool {
+        true
+    }
+
+    fn std_table_open(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported std_table_open"));
+    }
+    fn std_table_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported std_table_close"));
+    }
+    fn array_table_open(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported array_table_open"));
+    }
+    fn array_table_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported array_table_close"));
+    }
+    fn inline_table_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported inline_table_close"));
+    }
+    fn array_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported array_close"));
+    }
+    fn key_sep(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported key_sep"));
+    }
+    fn value_sep(&mut self, _span: Span, error: &mut dyn ErrorSink) {
+        error.report_error(ParseError::new("unsupported value_sep"));
     }
 }
 
