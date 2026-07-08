@@ -1,7 +1,7 @@
 use crate::{sansio::HttpResponse, utils::get_json};
 use alloc::vec::Vec;
 use anyhow::{Context as _, Result, bail, ensure};
-use jzon::JsonValue;
+use microjson::JSONValue;
 
 pub(crate) struct LocationResponse;
 
@@ -9,7 +9,7 @@ impl LocationResponse {
     pub(crate) fn parse(response: &HttpResponse) -> Result<(f64, f64)> {
         ensure!(response.status == 200);
 
-        let json = jzon::parse(&response.body)?;
+        let json = JSONValue::load(&response.body);
         let response = Response::from_json(&json).context("malformed JSON response")?;
 
         let get = |source: Source| -> Option<(f64, f64)> {
@@ -34,10 +34,9 @@ struct Response {
 }
 
 impl Response {
-    fn from_json(json: &JsonValue) -> Result<Self> {
+    fn from_json(json: &JSONValue<'_>) -> Result<Self> {
         Ok(Self {
-            location: get_json!(json, "location", as_array)
-                .iter()
+            location: get_json!(json, "location", iter_array)
                 .map(Location::from_json)
                 .collect::<Result<Vec<_>>>()?,
         })
@@ -52,10 +51,10 @@ struct Location {
 }
 
 impl Location {
-    fn from_json(json: &JsonValue) -> Result<Self> {
-        let lat = get_json!(json, "lat", as_f64);
-        let lng = get_json!(json, "lng", as_f64);
-        let source = Source::from_str(get_json!(json, "source", as_str))?;
+    fn from_json(json: JSONValue) -> Result<Self> {
+        let lat = f64::from(get_json!(json, "lat", read_float));
+        let lng = f64::from(get_json!(json, "lng", read_float));
+        let source = Source::from_str(get_json!(json, "source", read_string))?;
         Ok(Self { lat, lng, source })
     }
 }

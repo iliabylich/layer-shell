@@ -2,7 +2,7 @@ use super::WeatherCode;
 use crate::{Event, sansio::HttpResponse, utils::get_json};
 use alloc::{vec, vec::Vec};
 use anyhow::{Context as _, Result, ensure};
-use jzon::JsonValue;
+use microjson::JSONValue;
 
 #[derive(Debug)]
 pub(crate) struct WeatherResponse {
@@ -11,7 +11,7 @@ pub(crate) struct WeatherResponse {
     pub(crate) daily: DailyWeatherResponse,
 }
 impl WeatherResponse {
-    fn from_json(json: &JsonValue) -> Result<Self> {
+    fn from_json(json: JSONValue) -> Result<Self> {
         Ok(Self {
             current: CurrentWeatherResponse::from_json(get_json!(json, "current"))?,
             hourly: HourlyWeatherResponse::from_json(get_json!(json, "hourly"))?,
@@ -26,10 +26,11 @@ pub(crate) struct CurrentWeatherResponse {
     pub(crate) weather_code: u32,
 }
 impl CurrentWeatherResponse {
-    fn from_json(json: &JsonValue) -> Result<Self> {
+    fn from_json(json: JSONValue) -> Result<Self> {
         Ok(Self {
-            temperature_2m: get_json!(json, "temperature_2m", as_f32),
-            weather_code: get_json!(json, "weather_code", as_u32),
+            temperature_2m: get_json!(json, "temperature_2m", read_float),
+            weather_code: u32::try_from(get_json!(json, "weather_code", read_integer))
+                .context("not u32")?,
         })
     }
 }
@@ -41,7 +42,7 @@ pub(crate) struct HourlyWeatherResponse {
     pub(crate) weather_code: Vec<u32>,
 }
 impl HourlyWeatherResponse {
-    fn from_json(json: &JsonValue) -> Result<Self> {
+    fn from_json(json: JSONValue) -> Result<Self> {
         Ok(Self {
             time: json_value_to_vec_of_i64(get_json!(json, "time"))?,
             temperature_2m: json_value_to_vec_of_f32(get_json!(json, "temperature_2m"))?,
@@ -58,7 +59,7 @@ pub(crate) struct DailyWeatherResponse {
     pub(crate) weather_code: Vec<u32>,
 }
 impl DailyWeatherResponse {
-    fn from_json(json: &JsonValue) -> Result<Self> {
+    fn from_json(json: JSONValue) -> Result<Self> {
         Ok(Self {
             time: json_value_to_vec_of_i64(get_json!(json, "time"))?,
             temperature_2m_min: json_value_to_vec_of_f32(get_json!(json, "temperature_2m_min"))?,
@@ -68,33 +69,36 @@ impl DailyWeatherResponse {
     }
 }
 
-fn json_value_to_vec_of_f32(json: &JsonValue) -> Result<Vec<f32>> {
-    json.as_array()
-        .context("not an array")?
-        .iter()
-        .map(|e| e.as_f32().context("not f32"))
+fn json_value_to_vec_of_f32(json: JSONValue) -> Result<Vec<f32>> {
+    json.iter_array()
+        .map_err(|err| anyhow::anyhow!(err))?
+        .map(|e| e.read_float().map_err(|err| anyhow::anyhow!(err)))
         .collect()
 }
-fn json_value_to_vec_of_i64(json: &JsonValue) -> Result<Vec<i64>> {
-    json.as_array()
-        .context("not an array")?
-        .iter()
-        .map(|e| e.as_i64().context("not i64"))
+fn json_value_to_vec_of_i64(json: JSONValue) -> Result<Vec<i64>> {
+    json.iter_array()
+        .map_err(|err| anyhow::anyhow!(err))?
+        .map(|e| {
+            let v = e.read_integer().map_err(|err| anyhow::anyhow!(err))?;
+            i64::try_from(v).context("not i64")
+        })
         .collect()
 }
-fn json_value_to_vec_of_u32(json: &JsonValue) -> Result<Vec<u32>> {
-    json.as_array()
-        .context("not an array")?
-        .iter()
-        .map(|e| e.as_u32().context("not u32"))
+fn json_value_to_vec_of_u32(json: JSONValue) -> Result<Vec<u32>> {
+    json.iter_array()
+        .map_err(|err| anyhow::anyhow!(err))?
+        .map(|e| {
+            let v = e.read_integer().map_err(|err| anyhow::anyhow!(err))?;
+            u32::try_from(v).context("not i64")
+        })
         .collect()
 }
 
 impl WeatherResponse {
     pub(crate) fn parse(response: &HttpResponse) -> Result<Self> {
         ensure!(response.status == 200);
-        let json = jzon::parse(&response.body)?;
-        Self::from_json(&json).context("malformed JSON output")
+        let json = JSONValue::load(&response.body);
+        Self::from_json(json).context("malformed JSON output")
     }
 }
 

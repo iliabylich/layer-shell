@@ -1,10 +1,10 @@
 use alloc::{
-    string::{String, ToString as _},
+    string::{String, ToString},
     vec,
     vec::Vec,
 };
 use anyhow::{Context as _, Result};
-use jzon::JsonValue;
+use microjson::JSONValue;
 
 use crate::utils::get_json;
 
@@ -46,40 +46,59 @@ pub(crate) enum NiriEvent {
 impl NiriEvent {
     fn from_json(bytes: &[u8]) -> Result<Option<Self>> {
         let s = core::str::from_utf8(bytes)?;
-        let json: JsonValue = jzon::parse(s)?;
+        let json = JSONValue::load(s);
 
-        let event = if json.has_key("KeyboardLayoutsChanged") {
-            Self::parse_keyboard_layouts_changed(&json)
-                .context("malformed KeyboardLayoutsChanged event")?
-        } else if json.has_key("KeyboardLayoutSwitched") {
-            Self::parse_keyword_layout_switched(&json)
-                .context("malformed KeyboardLayoutSwitched event")?
-        } else {
-            return Ok(None);
-        };
+        match json.get_key_value("KeyboardLayoutsChanged") {
+            Ok(json) => {
+                let event = Self::parse_keyboard_layouts_changed(&json)?;
+                return Ok(Some(event));
+            }
+            Err(err) => match err {
+                microjson::JSONParsingError::KeyNotFound => {}
+                err => return Err(anyhow::anyhow!(err)),
+            },
+        }
 
-        Ok(Some(event))
+        match json.get_key_value("KeyboardLayoutSwitched") {
+            Ok(json) => {
+                let event = Self::parse_keyword_layout_switched(&json)?;
+                return Ok(Some(event));
+            }
+            Err(err) => match err {
+                microjson::JSONParsingError::KeyNotFound => {}
+                err => return Err(anyhow::anyhow!(err)),
+            },
+        }
+
+        Ok(None)
     }
 
-    fn parse_keyboard_layouts_changed(json: &JsonValue) -> Result<Self> {
-        let keyboard_layouts_changed = get_json!(json, "KeyboardLayoutsChanged", as_object);
-        let keyboard_layouts = get_json!(keyboard_layouts_changed, "keyboard_layouts", as_object);
-        let names = get_json!(keyboard_layouts, "names", as_array)
-            .iter()
+    fn parse_keyboard_layouts_changed(json: &JSONValue) -> Result<Self> {
+        let keyboard_layouts = json
+            .get_key_value("keyboard_layouts")
+            .map_err(|err| anyhow::anyhow!(err))?;
+        let names = keyboard_layouts
+            .get_key_value("names")
+            .map_err(|err| anyhow::anyhow!(err))?
+            .iter_array()
+            .map_err(|err| anyhow::anyhow!(err))?
             .map(|name| {
-                let name = name.as_str().context("names contains non-string")?;
-                Ok(name.to_string())
+                name.read_string()
+                    .map(ToString::to_string)
+                    .map_err(|err| anyhow::anyhow!(err))
             })
             .collect::<Result<Vec<_>>>()?;
-        let current_idx = get_json!(keyboard_layouts, "current_idx", as_usize);
+
+        let current_idx = get_json!(keyboard_layouts, "current_idx", read_integer);
+        let current_idx = usize::try_from(current_idx).context("negative keyboard current_idx")?;
         Ok(Self::KeyboardLayoutsChanged {
             keyboard_layouts: KeyboardLayouts { names, current_idx },
         })
     }
 
-    fn parse_keyword_layout_switched(json: &JsonValue) -> Result<Self> {
-        let keyboard_layout_switched = get_json!(json, "KeyboardLayoutSwitched", as_object);
-        let idx = get_json!(keyboard_layout_switched, "idx", as_usize);
+    fn parse_keyword_layout_switched(json: &JSONValue) -> Result<Self> {
+        let idx = get_json!(json, "idx", read_integer);
+        let idx = usize::try_from(idx).context("negative keyboard idx")?;
         Ok(Self::KeyboardLayoutSwitched { idx })
     }
 
