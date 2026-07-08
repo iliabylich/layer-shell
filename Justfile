@@ -18,7 +18,7 @@ compile:
 
 dev:
     @just compile
-    ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=lsan.supp ./builddir/ui/layer-shell
+    RUST_BACKTRACE=1 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=lsan.supp ./builddir/ui/layer-shell
 
 clean:
     rm -rf builddir
@@ -40,7 +40,7 @@ strace-io:
     strace target/debug/just-io
 
 io log="info":
-    RUST_LOG={{log}} cargo run --example just-io
+    RUST_BACKTRACE=1 RUST_LOG={{log}} cargo run --example just-io --features debug-backtrace
 
 test-install:
     @just clean

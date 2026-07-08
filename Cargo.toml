@@ -8,7 +8,7 @@ crate-type = ["staticlib", "lib"]
 name = "layer_shell_io"
 
 [dependencies]
-anyhow = { version = "1", default-features = false, features = ["backtrace"] }
+anyhow = { version = "1", default-features = false }
 log = { version = "0.4", default-features = false }
 libc = { version = "0.2", default-features = false }
 dbus = { package = "mini-sansio-dbus", version = "5.0.2" }
@@ -21,6 +21,9 @@ rustix = { version = "1.1.4", default-features = false, features = [
     "net",
     "fs",
 ] }
+
+[features]
+debug-backtrace = ["anyhow/std", "anyhow/backtrace"]
 
 [build-dependencies]
 cc = "1"

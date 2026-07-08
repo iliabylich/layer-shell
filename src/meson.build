@@ -2,6 +2,8 @@ find_program('cargo')
 cargo_args = ['--manifest-path', meson.project_source_root() / 'Cargo.toml']
 if get_option('buildtype') == 'release'
     cargo_args += ['--release']
+else
+    cargo_args += ['--features debug-backtrace']
 endif
 
 rustlib = custom_target(
