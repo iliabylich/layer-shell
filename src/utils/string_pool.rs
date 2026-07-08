@@ -10,6 +10,7 @@ pub(crate) type StringRef = string_bath::StringRef<'static, STRING_LEN>;
 
 pub(crate) trait StringRefExt {
     fn new(s: &str) -> Self;
+    fn as_const_ptr(&self) -> *const i8;
 }
 
 impl StringRefExt for StringRef {
@@ -20,5 +21,9 @@ impl StringRefExt for StringRef {
                 libc::exit(1);
             })
         }
+    }
+
+    fn as_const_ptr(&self) -> *const i8 {
+        self.as_str().as_ptr().cast::<i8>()
     }
 }

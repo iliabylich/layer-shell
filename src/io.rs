@@ -11,12 +11,9 @@ use crate::{
     },
     sansio::{OpenSslContext, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::{
-        dbus::queue::{SessionDBusQueue, SystemDBusQueue},
-        getenv,
-    },
+    utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub struct IO {
     ring: IoUring,
@@ -403,26 +400,7 @@ impl IO {
 }
 
 fn spawn(cmd: &str) {
-    if let Err(err) = try_spawn(cmd) {
+    if let Err(err) = crate::utils::spawn(cmd) {
         log::error!("{err:?}");
     }
-}
-
-fn try_spawn(cmd: &str) -> Result<()> {
-    use std::process::{Command, Stdio};
-
-    let mut cmd = cmd.split_whitespace();
-    let first = cmd.next().context("command can't be parsed")?;
-    let home =
-        core::str::from_utf8(getenv(c"HOME").context("no $HOME")?).context("non-utf8 $HOME")?;
-    let rest = cmd.map(|arg| arg.replace('~', home)).collect::<Vec<_>>();
-
-    Command::new(first)
-        .args(rest)
-        .stdout(Stdio::null())
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .map(|_| ())
-        .context("failed to spawn")
 }
