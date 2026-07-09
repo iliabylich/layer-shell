@@ -11,9 +11,11 @@ use crate::{
     },
     sansio::{OpenSslContext, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::dbus::queue::{SessionDBusQueue, SystemDBusQueue},
+    utils::{
+        HeapBlob,
+        dbus::queue::{SessionDBusQueue, SystemDBusQueue},
+    },
 };
-use alloc::{vec, vec::Vec};
 use anyhow::Result;
 use rustix::net::SocketAddrUnix;
 
@@ -29,14 +31,14 @@ pub struct IO {
 
     session_dbus: SessionDBus,
     session_dbus_addr: SocketAddrUnix,
-    session_dbus_readbuf: Vec<u8>,
+    session_dbus_readbuf: HeapBlob,
     session_dbus_queue: SessionDBusQueue,
     sound: Sound,
     tray: Tray,
 
     system_dbus: SystemDBus,
     system_dbus_addr: SocketAddrUnix,
-    system_dbus_readbuf: Vec<u8>,
+    system_dbus_readbuf: HeapBlob,
     system_dbus_queue: SystemDBusQueue,
     network: Network,
 
@@ -80,7 +82,7 @@ impl IO {
         let session_dbus = SessionDBus::new();
         let session_dbus_addr =
             SocketAddrUnix::new(SessionDBus::address()?).map_err(|errno| anyhow::anyhow!(errno))?;
-        let session_dbus_readbuf = vec![0; 400 * 1_024];
+        let session_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
         let mut session_dbus_queue = SessionDBusQueue::new()?;
         let sound = Sound::new(&mut session_dbus_queue);
         let tray = Tray::new(&mut session_dbus_queue)?;
@@ -89,7 +91,7 @@ impl IO {
         let system_dbus = SystemDBus::new();
         let system_dbus_addr =
             SocketAddrUnix::new(SystemDBus::address()?).map_err(|errno| anyhow::anyhow!(errno))?;
-        let system_dbus_readbuf = vec![0; 400 * 1_024];
+        let system_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
         let mut system_dbus_queue = SystemDBusQueue::new()?;
         let network = Network::new(&mut system_dbus_queue);
 
@@ -149,7 +151,7 @@ impl IO {
 
         schedule_session_dbus(
             &mut self.session_dbus,
-            &mut self.session_dbus_readbuf,
+            self.session_dbus_readbuf.as_slice(),
             &self.session_dbus_addr,
             &self.session_dbus_queue,
             &mut self.ring,
@@ -157,7 +159,7 @@ impl IO {
 
         schedule_system_dbus(
             &mut self.system_dbus,
-            &mut self.system_dbus_readbuf,
+            self.system_dbus_readbuf.as_slice(),
             &self.system_dbus_addr,
             &self.system_dbus_queue,
             &mut self.ring,
@@ -249,7 +251,7 @@ impl IO {
                     .trigger(uuid.as_str(), &mut self.session_dbus_queue);
                 schedule_session_dbus(
                     &mut self.session_dbus,
-                    &mut self.session_dbus_readbuf,
+                    self.session_dbus_readbuf.as_slice(),
                     &self.session_dbus_addr,
                     &self.session_dbus_queue,
                     &mut self.ring,
@@ -360,7 +362,7 @@ impl IO {
                 self.sound.tick(tick, &mut self.session_dbus_queue);
                 schedule_session_dbus(
                     &mut self.session_dbus,
-                    &mut self.session_dbus_readbuf,
+                    self.session_dbus_readbuf.as_slice(),
                     &self.session_dbus_addr,
                     &self.session_dbus_queue,
                     &mut self.ring,
@@ -399,7 +401,7 @@ impl IO {
     fn satisfy_session_dbus(&mut self, satisfy: Satisfy) -> Result<()> {
         let message = self.session_dbus.satisfy(
             satisfy,
-            &self.session_dbus_readbuf,
+            self.session_dbus_readbuf.as_slice(),
             &mut self.session_dbus_queue,
         );
 
@@ -416,7 +418,7 @@ impl IO {
 
         schedule_session_dbus(
             &mut self.session_dbus,
-            &mut self.session_dbus_readbuf,
+            self.session_dbus_readbuf.as_slice(),
             &self.session_dbus_addr,
             &self.session_dbus_queue,
             &mut self.ring,
@@ -429,7 +431,7 @@ impl IO {
     fn satisfy_system_dbus(&mut self, satisfy: Satisfy) -> Result<()> {
         let message = self.system_dbus.satisfy(
             satisfy,
-            &self.system_dbus_readbuf,
+            self.system_dbus_readbuf.as_slice(),
             &mut self.system_dbus_queue,
         );
 
@@ -440,7 +442,7 @@ impl IO {
 
         schedule_system_dbus(
             &mut self.system_dbus,
-            &mut self.system_dbus_readbuf,
+            self.system_dbus_readbuf.as_slice(),
             &self.system_dbus_addr,
             &self.system_dbus_queue,
             &mut self.ring,

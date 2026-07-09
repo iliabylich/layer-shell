@@ -77,8 +77,8 @@ perf-io:
     perf report
 
 strace-io:
-    cargo build --bin just-io
-    strace target/debug/just-io
+    cargo build --example just-io
+    strace target/debug/examples/just-io
 
 io log="info":
     RUST_BACKTRACE=1 RUST_LOG={{log}} cargo run --example just-io --features debug-backtrace
