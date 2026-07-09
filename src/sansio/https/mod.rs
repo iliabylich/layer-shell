@@ -78,21 +78,6 @@ impl Https {
         })
     }
 
-    pub(crate) const fn is_waiting(&self) -> bool {
-        match &self.state {
-            State::WaitingForSocket { .. }
-            | State::WaitingForConnect { .. }
-            | State::WaitingForClose => true,
-            State::Handshaking { inner, .. } => inner.is_waiting(),
-            State::ReadWrite { inner, .. } => inner.is_waiting(),
-            State::Dns(_)
-            | State::CanSocket { .. }
-            | State::CanConnect { .. }
-            | State::CanClose { .. }
-            | State::Finished => false,
-        }
-    }
-
     pub(crate) fn try_wants(&mut self) -> Result<Option<Wants>> {
         match &mut self.state {
             State::Dns(dns) => dns.try_wants(),

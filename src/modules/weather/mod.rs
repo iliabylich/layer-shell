@@ -62,12 +62,6 @@ impl Weather {
             return Ok(());
         }
 
-        if let Self::Ready { https, .. } = self
-            && https.is_waiting()
-        {
-            return Ok(());
-        }
-
         if let Some((lat, lng)) = self.latlng() {
             *self = Self::Ready {
                 lat,

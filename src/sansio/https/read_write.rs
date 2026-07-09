@@ -125,10 +125,6 @@ impl OpenSslReadWrite {
         }
     }
 
-    pub(crate) const fn is_waiting(&self) -> bool {
-        matches!(self.state, State::WaitingForRead | State::WaitingForWrite)
-    }
-
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Vec<u8>>> {
         match (self.state, satisfy) {
             (State::WaitingForWrite, Satisfy::Write(res)) => {

@@ -110,10 +110,6 @@ impl OpenSslHandshake {
         }
     }
 
-    pub(crate) const fn is_waiting(&self) -> bool {
-        matches!(self.state, State::WaitingForRead | State::WaitingForWrite)
-    }
-
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Rc<OpenSslState>>> {
         match (self.state, satisfy) {
             (State::WaitingForRead, Satisfy::Read(res)) => {
