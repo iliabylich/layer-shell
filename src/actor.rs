@@ -32,7 +32,7 @@ pub(crate) trait WantsSatisfy: TryWantsTrySatisfy + Sized + CanStop {
             Err(err) => {
                 log::error!("Module {:?} has crashed: {err:?}", Self::ID);
                 *self = self.stopped();
-                Default::default()
+                Self::Output::default()
             }
         }
     }

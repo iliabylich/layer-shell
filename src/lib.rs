@@ -48,7 +48,7 @@ use crate::{
     io::IO,
     utils::{StringRef, StringRefExt as _},
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
     match f() {
@@ -66,9 +66,18 @@ pub extern "C" fn io_init(
     data: *mut core::ffi::c_void,
 ) -> NonNull<IO> {
     exit_if_err(|| {
-        IO::init()?;
-        let ptr = Box::into_raw(Box::new(IO::new((callback, data))?));
-        Ok(unsafe { NonNull::new_unchecked(ptr) })
+        logger::init()?;
+        let mut ptr = unsafe {
+            NonNull::new(libc::malloc(size_of::<IO>()))
+                .context("failed to malloc IO")?
+                .cast::<IO>()
+        };
+
+        unsafe {
+            ptr.write(IO::new((callback, data))?);
+            ptr.as_mut().start()?;
+        }
+        Ok(ptr)
     })
 }
 

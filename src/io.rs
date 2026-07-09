@@ -15,6 +15,7 @@ use crate::{
 };
 use alloc::{vec, vec::Vec};
 use anyhow::Result;
+use rustix::net::SocketAddrUnix;
 
 pub struct IO {
     ring: IoUring,
@@ -23,15 +24,18 @@ pub struct IO {
 
     pub(crate) config: Config,
 
-    timer: Timer,
+    timer: Option<Timer>,
+    timerbuf: [u8; 8],
 
     session_dbus: SessionDBus,
+    session_dbus_addr: SocketAddrUnix,
     session_dbus_readbuf: Vec<u8>,
     session_dbus_queue: SessionDBusQueue,
     sound: Sound,
     tray: Tray,
 
     system_dbus: SystemDBus,
+    system_dbus_addr: SocketAddrUnix,
     system_dbus_readbuf: Vec<u8>,
     system_dbus_queue: SystemDBusQueue,
     network: Network,
@@ -53,11 +57,6 @@ pub struct IO {
 }
 
 impl IO {
-    pub(crate) fn init() -> Result<()> {
-        crate::logger::init()?;
-        Ok(())
-    }
-
     pub(crate) fn stop(&mut self) {
         self.running = false;
         self.ring.deinit();
@@ -71,55 +70,40 @@ impl IO {
     ) -> Result<Self> {
         let config = Config::read()?;
 
-        let mut ring = IoUring::new(10, 0)?;
+        let ring = IoUring::new(10, 0)?;
         let events = EventQueue::new();
         let openssl_ctx = OpenSslContext::new()?;
 
-        let mut timer = Timer::new()?;
-        schedule_timer(&mut timer, &mut ring)?;
+        let timer = Timer::new()?;
+        let timerbuf = [0; 8];
 
-        let mut session_dbus = SessionDBus::new();
-        let mut session_dbus_readbuf = vec![0; 400 * 1_024];
+        let session_dbus = SessionDBus::new();
+        let session_dbus_addr =
+            SocketAddrUnix::new(SessionDBus::address()?).map_err(|errno| anyhow::anyhow!(errno))?;
+        let session_dbus_readbuf = vec![0; 400 * 1_024];
         let mut session_dbus_queue = SessionDBusQueue::new()?;
         let sound = Sound::new(&mut session_dbus_queue);
         let tray = Tray::new(&mut session_dbus_queue)?;
         Control::init(&mut session_dbus_queue)?;
-        schedule_session_dbus(
-            &mut session_dbus,
-            &mut session_dbus_readbuf,
-            &session_dbus_queue,
-            &mut ring,
-        )?;
 
-        let mut system_dbus = SystemDBus::new();
-        let mut system_dbus_readbuf = vec![0; 400 * 1_024];
+        let system_dbus = SystemDBus::new();
+        let system_dbus_addr =
+            SocketAddrUnix::new(SystemDBus::address()?).map_err(|errno| anyhow::anyhow!(errno))?;
+        let system_dbus_readbuf = vec![0; 400 * 1_024];
         let mut system_dbus_queue = SystemDBusQueue::new()?;
         let network = Network::new(&mut system_dbus_queue);
-        schedule_system_dbus(
-            &mut system_dbus,
-            &mut system_dbus_readbuf,
-            &system_dbus_queue,
-            &mut ring,
-        )?;
 
-        let mut location = Location::new(&openssl_ctx)?;
-        schedule_location(&mut location, &mut ring)?;
+        let location = Location::new(&openssl_ctx)?;
 
         let weather = Weather::new();
 
-        let mut cpu = CPU::new();
-        schedule_cpu(&mut cpu, &mut ring)?;
+        let cpu = CPU::new();
 
-        let mut memory = Memory::new();
-        schedule_memory(&mut memory, &mut ring)?;
+        let memory = Memory::new();
 
-        let mut kb_mod = KbMod::new();
-        schedule_kb_mod(&mut kb_mod, &mut ring)?;
+        let kb_mod = KbMod::new();
 
-        let mut niri = Niri::new();
-        schedule_niri(&mut niri, &mut ring)?;
-
-        ring.submit_if_dirty()?;
+        let niri = Niri::new();
 
         Ok(Self {
             ring,
@@ -128,15 +112,18 @@ impl IO {
 
             config,
 
-            timer,
+            timer: Some(timer),
+            timerbuf,
 
             session_dbus,
+            session_dbus_addr,
             session_dbus_readbuf,
             session_dbus_queue,
             sound,
             tray,
 
             system_dbus,
+            system_dbus_addr,
             system_dbus_readbuf,
             system_dbus_queue,
             network,
@@ -153,6 +140,42 @@ impl IO {
             on_event,
             running: true,
         })
+    }
+
+    pub(crate) fn start(&mut self) -> Result<()> {
+        if let Some(timer) = &mut self.timer {
+            schedule_timer(timer, &mut self.ring, &mut self.timerbuf)?;
+        }
+
+        schedule_session_dbus(
+            &mut self.session_dbus,
+            &mut self.session_dbus_readbuf,
+            &self.session_dbus_addr,
+            &self.session_dbus_queue,
+            &mut self.ring,
+        )?;
+
+        schedule_system_dbus(
+            &mut self.system_dbus,
+            &mut self.system_dbus_readbuf,
+            &self.system_dbus_addr,
+            &self.system_dbus_queue,
+            &mut self.ring,
+        )?;
+
+        schedule_location(&mut self.location, &mut self.ring)?;
+
+        schedule_cpu(&mut self.cpu, &mut self.ring)?;
+
+        schedule_memory(&mut self.memory, &mut self.ring)?;
+
+        schedule_kb_mod(&mut self.kb_mod, &mut self.ring)?;
+
+        schedule_niri(&mut self.niri, &mut self.ring)?;
+
+        self.ring.submit_if_dirty()?;
+
+        Ok(())
     }
 
     fn on_control_req(&mut self, req: ControlRequest) {
@@ -227,6 +250,7 @@ impl IO {
                 schedule_session_dbus(
                     &mut self.session_dbus,
                     &mut self.session_dbus_readbuf,
+                    &self.session_dbus_addr,
                     &self.session_dbus_queue,
                     &mut self.ring,
                 )?;
@@ -253,7 +277,15 @@ macro_rules! generate_simple_schedule_impl {
     };
 }
 
-generate_simple_schedule_impl!(schedule_timer, Timer);
+fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) -> Result<()> {
+    if let Some(wants) = timer.wants(buf) {
+        log::trace!(target: "Timer", "{wants:?}");
+        core::assert_matches!(timer.wants(buf), None);
+        ring.schedule(ModuleId::Timer, wants)?;
+    }
+    Ok(())
+}
+
 generate_simple_schedule_impl!(schedule_location, Location);
 generate_simple_schedule_impl!(schedule_weather, Weather);
 generate_simple_schedule_impl!(schedule_cpu, CPU);
@@ -264,28 +296,30 @@ generate_simple_schedule_impl!(schedule_niri, Niri);
 fn schedule_session_dbus(
     module: &mut SessionDBus,
     readbuf: &mut [u8],
+    addr: &SocketAddrUnix,
     queue: &SessionDBusQueue,
     ring: &mut IoUring,
 ) -> Result<()> {
-    let Some(wants) = module.wants(readbuf, queue) else {
+    let Some(wants) = module.wants(readbuf, queue, addr) else {
         return Ok(());
     };
     log::trace!(target: "SessionDBus", "{wants:?}");
-    core::assert_matches!(module.wants(readbuf, queue), None);
+    core::assert_matches!(module.wants(readbuf, queue, addr), None);
     ring.schedule(ModuleId::SessionDBus, wants)?;
     Ok(())
 }
 fn schedule_system_dbus(
     module: &mut SystemDBus,
     readbuf: &mut [u8],
+    addr: &SocketAddrUnix,
     queue: &SystemDBusQueue,
     ring: &mut IoUring,
 ) -> Result<()> {
-    let Some(wants) = module.wants(readbuf, queue) else {
+    let Some(wants) = module.wants(readbuf, queue, addr) else {
         return Ok(());
     };
     log::trace!(target: "SystemDBus", "{wants:?}");
-    core::assert_matches!(module.wants(readbuf, queue), None);
+    core::assert_matches!(module.wants(readbuf, queue, addr), None);
     ring.schedule(ModuleId::SystemDBus, wants)?;
     Ok(())
 }
@@ -304,28 +338,41 @@ macro_rules! generate_simple_satisfy_impl {
 
 impl IO {
     fn satisfy_timer(&mut self, satisfy: Satisfy) -> Result<()> {
-        if let Some(tick) = self.timer.satisfy(satisfy, &mut self.events) {
-            schedule_timer(&mut self.timer, &mut self.ring)?;
+        let Some(timer) = &mut self.timer else {
+            return Ok(());
+        };
 
-            Clock::tick(&mut self.events)?;
+        match timer.satisfy(satisfy, self.timerbuf) {
+            Ok(Some(tick)) => {
+                schedule_timer(timer, &mut self.ring, &mut self.timerbuf)?;
 
-            self.weather.tick(tick, &self.openssl_ctx)?;
-            schedule_weather(&mut self.weather, &mut self.ring)?;
+                Clock::tick(&mut self.events)?;
 
-            self.cpu.tick();
-            schedule_cpu(&mut self.cpu, &mut self.ring)?;
+                self.weather.tick(tick, &self.openssl_ctx)?;
+                schedule_weather(&mut self.weather, &mut self.ring)?;
 
-            self.memory.tick();
-            schedule_memory(&mut self.memory, &mut self.ring)?;
+                self.cpu.tick();
+                schedule_cpu(&mut self.cpu, &mut self.ring)?;
 
-            self.sound.tick(tick, &mut self.session_dbus_queue);
-            schedule_session_dbus(
-                &mut self.session_dbus,
-                &mut self.session_dbus_readbuf,
-                &self.session_dbus_queue,
-                &mut self.ring,
-            )?;
+                self.memory.tick();
+                schedule_memory(&mut self.memory, &mut self.ring)?;
+
+                self.sound.tick(tick, &mut self.session_dbus_queue);
+                schedule_session_dbus(
+                    &mut self.session_dbus,
+                    &mut self.session_dbus_readbuf,
+                    &self.session_dbus_addr,
+                    &self.session_dbus_queue,
+                    &mut self.ring,
+                )?;
+            }
+            Ok(None) => {}
+            Err(err) => {
+                log::error!(target: "Timer", "{err:?}");
+                self.timer = None;
+            }
         }
+
         Ok(())
     }
 }
@@ -370,6 +417,7 @@ impl IO {
         schedule_session_dbus(
             &mut self.session_dbus,
             &mut self.session_dbus_readbuf,
+            &self.session_dbus_addr,
             &self.session_dbus_queue,
             &mut self.ring,
         )?;
@@ -393,6 +441,7 @@ impl IO {
         schedule_system_dbus(
             &mut self.system_dbus,
             &mut self.system_dbus_readbuf,
+            &self.system_dbus_addr,
             &self.system_dbus_queue,
             &mut self.ring,
         )?;

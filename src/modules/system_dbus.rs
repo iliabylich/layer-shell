@@ -6,31 +6,36 @@ use anyhow::{Context as _, Result};
 use dbus::IncomingMessage;
 use rustix::net::SocketAddrUnix;
 
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct SystemDBus {
     state: DBusState,
-    addr: SocketAddrUnix,
 }
 
 impl SystemDBus {
-    fn try_new() -> Result<Self> {
-        Ok(Self {
+    pub(crate) fn address() -> Result<&'static [u8]> {
+        let Some(address) = getenv(c"DBUS_SYSTEM_BUS_ADDRESS") else {
+            return Ok(b"/var/run/dbus/system_bus_socket");
+        };
+
+        let mut iter = address.split(|b| *b == b'=');
+        let _prefix = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
+        let path = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
+        Ok(path)
+    }
+
+    pub(crate) const fn new() -> Self {
+        Self {
             state: DBusState::CanSocket,
-            addr: SocketAddrUnix::new(address()?).map_err(|errno| anyhow::anyhow!(errno))?,
-        })
+        }
     }
 
-    pub(crate) fn new() -> Self {
-        Self::try_new().unwrap_or_else(|err| {
-            log::error!(target: "SystemDBus", "{err:?}");
-            Self {
-                state: DBusState::Disconnected,
-                addr: unsafe { core::mem::zeroed() },
-            }
-        })
-    }
-
-    pub(crate) fn wants(&mut self, readbuf: &mut [u8], queue: &SystemDBusQueue) -> Option<Wants> {
-        self.state.wants(&self.addr, readbuf, queue)
+    pub(crate) fn wants(
+        &mut self,
+        readbuf: &mut [u8],
+        queue: &SystemDBusQueue,
+        addr: &SocketAddrUnix,
+    ) -> Option<Wants> {
+        self.state.wants(addr, readbuf, queue)
     }
 
     pub(crate) fn satisfy<'r>(
@@ -43,15 +48,4 @@ impl SystemDBus {
         (self.state, message) = self.state.satisfy(satisfy, readbuf, queue);
         message
     }
-}
-
-fn address() -> Result<&'static [u8]> {
-    let Some(address) = getenv(c"DBUS_SYSTEM_BUS_ADDRESS") else {
-        return Ok(b"/var/run/dbus/system_bus_socket");
-    };
-
-    let mut iter = address.split(|b| *b == b'=');
-    let _prefix = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
-    let path = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
-    Ok(path)
 }
