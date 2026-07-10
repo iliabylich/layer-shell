@@ -1,6 +1,6 @@
 use crate::sansio::Wants;
 use anyhow::{Result, bail, ensure};
-use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
+use rustix::net::SocketAddrAny;
 
 #[derive(Debug)]
 enum State {
@@ -20,8 +20,8 @@ impl State {
             Self::ReadyToSocket => (
                 Self::WaitingForSocket,
                 Some(Wants::Socket {
-                    domain: AddressFamily::UNIX,
-                    r#type: SocketType::STREAM,
+                    domain: libc::AF_UNIX,
+                    type_: libc::SOCK_STREAM,
                 }),
             ),
 

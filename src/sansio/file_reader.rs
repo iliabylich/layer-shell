@@ -1,7 +1,6 @@
 use crate::sansio::{Satisfy, Wants};
 use anyhow::{Context as _, Result, bail};
 use core::ffi::CStr;
-use rustix::fs::{Mode, OFlags};
 
 pub(crate) struct FileReader {
     path: &'static CStr,
@@ -32,8 +31,8 @@ impl FileReader {
                 Some(Wants::OpenAt {
                     dfd: libc::AT_FDCWD,
                     path: self.path,
-                    flags: OFlags::RDONLY,
-                    mode: Mode::empty(),
+                    flags: libc::O_RDONLY,
+                    mode: 0,
                 })
             }
 

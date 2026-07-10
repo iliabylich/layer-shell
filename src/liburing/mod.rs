@@ -124,14 +124,9 @@ impl IoUring {
 
     pub(crate) fn schedule(&mut self, module_id: ModuleId, wants: Wants) -> Result<()> {
         match wants {
-            Wants::Socket { domain, r#type, .. } => {
+            Wants::Socket { domain, type_, .. } => {
                 let mut sqe = self.get_sqe()?;
-                sqe.prep_socket(
-                    i32::from(domain.as_raw()),
-                    i32::try_from(r#type.as_raw()).unwrap_or_else(|_| unreachable!()),
-                    0,
-                    0,
-                );
+                sqe.prep_socket(domain, type_, 0, 0);
                 sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
             Wants::Connect { fd, addr, addrlen } => {
@@ -173,12 +168,7 @@ impl IoUring {
                 ..
             } => {
                 let mut sqe = self.get_sqe()?;
-                sqe.prep_openat(
-                    dfd,
-                    path.as_ptr(),
-                    i32::try_from(flags.bits()).unwrap_or_else(|_| unreachable!()),
-                    mode.bits(),
-                );
+                sqe.prep_openat(dfd, path.as_ptr(), flags, mode);
                 sqe.set_user_data(UserData::new(module_id, Op::OpenAt));
             }
             Wants::Close { fd, .. } => {

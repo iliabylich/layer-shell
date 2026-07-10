@@ -3,7 +3,7 @@ use dbus::{
     DBusConnection, DBusConnector, DBusConnectorWants, DBusWantsRead, DBusWantsWrite,
     IncomingMessage, OutgoingQueue,
 };
-use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
+use rustix::net::SocketAddrAny;
 
 use crate::sansio::{Satisfy, Wants};
 
@@ -37,8 +37,8 @@ impl DBusState {
             Self::CanSocket => {
                 *self = Self::WaitingForSocket;
                 Ok(Some(Wants::Socket {
-                    domain: AddressFamily::UNIX,
-                    r#type: SocketType::STREAM,
+                    domain: libc::AF_UNIX,
+                    type_: libc::SOCK_STREAM,
                 }))
             }
 

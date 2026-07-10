@@ -1,15 +1,11 @@
 use core::ffi::CStr;
 use libc::{sockaddr, socklen_t};
-use rustix::{
-    fs::{Mode, OFlags},
-    net::{AddressFamily, SocketType},
-};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Wants {
     Socket {
-        domain: AddressFamily,
-        r#type: SocketType,
+        domain: i32,
+        type_: i32,
     },
     Connect {
         fd: i32,
@@ -36,8 +32,8 @@ pub(crate) enum Wants {
     OpenAt {
         dfd: i32,
         path: &'static CStr,
-        flags: OFlags,
-        mode: Mode,
+        flags: i32,
+        mode: u32,
     },
     Close {
         fd: i32,

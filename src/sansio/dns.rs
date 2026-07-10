@@ -3,7 +3,7 @@ use alloc::boxed::Box;
 use anyhow::{Result, bail};
 use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};
-use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
+use rustix::net::SocketAddrAny;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct DNS {
@@ -68,8 +68,8 @@ impl DNS {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
                 Ok(Some(Wants::Socket {
-                    domain: AddressFamily::INET,
-                    r#type: SocketType::DGRAM,
+                    domain: libc::AF_INET,
+                    type_: libc::SOCK_DGRAM,
                 }))
             }
 

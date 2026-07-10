@@ -16,7 +16,7 @@ pub(crate) use state::OpenSslContext;
 use anyhow::{Result, bail};
 use handshake::OpenSslHandshake;
 use read_write::OpenSslReadWrite;
-use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
+use rustix::net::SocketAddrAny;
 use state::OpenSslState;
 
 use crate::sansio::{Satisfy, Wants};
@@ -79,8 +79,8 @@ impl Https {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
                 Some(Wants::Socket {
-                    domain: AddressFamily::INET,
-                    r#type: SocketType::STREAM,
+                    domain: libc::AF_INET,
+                    type_: libc::SOCK_STREAM,
                 })
             }
 

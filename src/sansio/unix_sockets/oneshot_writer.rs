@@ -1,7 +1,7 @@
 use crate::{sansio::Wants, utils::ArrayWriter};
 use anyhow::{Context, Result, bail, ensure};
 use core::fmt::Write;
-use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
+use rustix::net::SocketAddrAny;
 
 pub(crate) struct UnixSocketOneshotWriter {
     writebuf: [u8; 4_096],
@@ -42,8 +42,8 @@ impl State {
             Self::ReadyToSocket => (
                 Self::WaitingForSocket,
                 Some(Wants::Socket {
-                    domain: AddressFamily::UNIX,
-                    r#type: SocketType::STREAM,
+                    domain: libc::AF_UNIX,
+                    type_: libc::SOCK_STREAM,
                 }),
             ),
 
