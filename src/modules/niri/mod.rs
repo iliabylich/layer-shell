@@ -2,12 +2,11 @@ use crate::{
     Event,
     event_queue::EventQueue,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
-    utils::{StringRef, StringRefExt as _, getenv},
+    utils::{StringRef, StringRefExt as _, getenv, new_sockaddr_un},
 };
 use alloc::{boxed::Box, string::String, vec, vec::Vec};
 use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};
-use rustix::net::{SocketAddrAny, SocketAddrUnix};
 
 mod buffer;
 
@@ -23,10 +22,10 @@ pub(crate) struct Niri {
 }
 
 impl Niri {
-    pub(crate) fn address() -> Result<SocketAddrAny> {
+    pub(crate) fn address() -> Result<libc::sockaddr_un> {
         let path = getenv(c"NIRI_SOCKET").context("no $NIRI_SOCKET")?;
-        let addr = SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))?;
-        Ok(addr.into())
+        let addr = new_sockaddr_un(path)?;
+        Ok(addr)
     }
 
     pub(crate) fn new() -> Result<Self> {
@@ -37,7 +36,7 @@ impl Niri {
         })
     }
 
-    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
         match &mut self.state {
             State::Writer(writer) => writer.wants(addr),
             State::Reader(reader) => reader.wants(addr),

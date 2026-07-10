@@ -468,7 +468,11 @@ unsafe extern "C" {
     pub(crate) fn SSL_set_bio(s: *mut SSL, rbio: *mut BIO, wbio: *mut BIO);
 }
 unsafe extern "C" {
-    pub(crate) fn SSL_CTX_set_verify(ctx: *mut SSL_CTX, mode: ::core::ffi::c_int, callback: SSL_verify_cb);
+    pub(crate) fn SSL_CTX_set_verify(
+        ctx: *mut SSL_CTX,
+        mode: ::core::ffi::c_int,
+        callback: SSL_verify_cb,
+    );
 }
 unsafe extern "C" {
     pub(crate) fn SSL_new(ctx: *mut SSL_CTX) -> *mut SSL;

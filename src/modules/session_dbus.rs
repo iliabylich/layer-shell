@@ -1,10 +1,9 @@
 use crate::{
     sansio::{DBusState, Satisfy, Wants},
-    utils::{dbus::queue::SessionDBusQueue, getenv},
+    utils::{dbus::queue::SessionDBusQueue, getenv, new_sockaddr_un},
 };
 use anyhow::{Context, Result};
 use dbus::IncomingMessage;
-use rustix::net::{SocketAddrAny, SocketAddrUnix};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SessionDBus {
@@ -12,14 +11,14 @@ pub(crate) struct SessionDBus {
 }
 
 impl SessionDBus {
-    pub(crate) fn address() -> Result<SocketAddrAny> {
+    pub(crate) fn address() -> Result<libc::sockaddr_un> {
         let address =
             getenv(c"DBUS_SESSION_BUS_ADDRESS").context("$DBUS_SESSION_BUS_ADDRESS is not set")?;
         let mut iter = address.split(|b| *b == b'=');
         let _prefix = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
         let path = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
-        let addr = SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))?;
-        Ok(addr.into())
+        let addr = new_sockaddr_un(path)?;
+        Ok(addr)
     }
 
     pub(crate) const fn new() -> Self {
@@ -32,7 +31,7 @@ impl SessionDBus {
         &mut self,
         readbuf: &mut [u8],
         queue: &SessionDBusQueue,
-        addr: &SocketAddrAny,
+        addr: &libc::sockaddr_un,
     ) -> Option<Wants> {
         self.state.wants(addr, readbuf, queue)
     }

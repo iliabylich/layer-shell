@@ -17,13 +17,12 @@ use crate::{
     },
 };
 use anyhow::{Context as _, Result};
-use rustix::net::SocketAddrAny;
 
 pub struct IO {
     ring: IoUring,
     events: EventQueue,
     openssl_ctx: OpenSslContext,
-    dns_server_addr: SocketAddrAny,
+    dns_server_addr: libc::sockaddr_in,
 
     pub(crate) config: Config,
 
@@ -31,35 +30,35 @@ pub struct IO {
     timerbuf: [u8; 8],
 
     session_dbus: SessionDBus,
-    session_dbus_addr: SocketAddrAny,
+    session_dbus_addr: libc::sockaddr_un,
     session_dbus_readbuf: HeapBlob,
     session_dbus_queue: SessionDBusQueue,
     sound: Sound,
     tray: Tray,
 
     system_dbus: SystemDBus,
-    system_dbus_addr: SocketAddrAny,
+    system_dbus_addr: libc::sockaddr_un,
     system_dbus_readbuf: HeapBlob,
     system_dbus_queue: SystemDBusQueue,
     network: Network,
 
     location_dns: DNS,
-    location_addr: Option<SocketAddrAny>,
+    location_addr: Option<libc::sockaddr_in>,
     location: Option<Location>,
     latlng: Option<(f64, f64)>,
 
     weather_dns: DNS,
-    weather_addr: Option<SocketAddrAny>,
+    weather_addr: Option<libc::sockaddr_in>,
     weather: Option<Weather>,
 
     cpu: CPU,
     memory: Memory,
 
     kb_mod: Option<KbMod>,
-    kb_mod_addr: SocketAddrAny,
+    kb_mod_addr: libc::sockaddr_un,
 
     niri: Option<Niri>,
-    niri_addr: SocketAddrAny,
+    niri_addr: libc::sockaddr_un,
 
     on_event: (
         extern "C" fn(event: &Event, *mut core::ffi::c_void),
@@ -314,7 +313,7 @@ generate_simple_schedule_impl!(schedule_memory, Memory);
 fn schedule_location_dns(
     dns: &mut DNS,
     ring: &mut IoUring,
-    dns_addr: &SocketAddrAny,
+    dns_addr: &libc::sockaddr_in,
 ) -> Result<()> {
     if let Some(wants) = dns.try_wants(dns_addr)? {
         log::trace!(target: "LocationDNS", "{wants:?}");
@@ -327,7 +326,7 @@ fn schedule_location_dns(
 fn schedule_location(
     location: &mut Location,
     ring: &mut IoUring,
-    remote_server_addr: &SocketAddrAny,
+    remote_server_addr: &libc::sockaddr_in,
 ) {
     if let Some(wants) = location.wants(remote_server_addr) {
         log::trace!(target: "Location", "{wants:?}");
@@ -336,7 +335,11 @@ fn schedule_location(
     }
 }
 
-fn schedule_weather_dns(dns: &mut DNS, ring: &mut IoUring, dns_addr: &SocketAddrAny) -> Result<()> {
+fn schedule_weather_dns(
+    dns: &mut DNS,
+    ring: &mut IoUring,
+    dns_addr: &libc::sockaddr_in,
+) -> Result<()> {
     if let Some(wants) = dns.try_wants(dns_addr)? {
         log::trace!(target: "WeatherDNS", "{wants:?}");
         core::assert_matches!(dns.try_wants(dns_addr), Ok(None));
@@ -345,7 +348,11 @@ fn schedule_weather_dns(dns: &mut DNS, ring: &mut IoUring, dns_addr: &SocketAddr
     Ok(())
 }
 
-fn schedule_weather(weather: &mut Weather, ring: &mut IoUring, remote_server_addr: &SocketAddrAny) {
+fn schedule_weather(
+    weather: &mut Weather,
+    ring: &mut IoUring,
+    remote_server_addr: &libc::sockaddr_in,
+) {
     if let Some(wants) = weather.wants(remote_server_addr) {
         log::trace!(target: "Weather", "{wants:?}");
         core::assert_matches!(weather.wants(remote_server_addr), None);
@@ -353,7 +360,7 @@ fn schedule_weather(weather: &mut Weather, ring: &mut IoUring, remote_server_add
     }
 }
 
-fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &SocketAddrAny) {
+fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &libc::sockaddr_un) {
     if let Some(wants) = kb_mod.wants(addr) {
         log::trace!(target: "KbMod", "{wants:?}");
         core::assert_matches!(kb_mod.wants(addr), None);
@@ -361,7 +368,7 @@ fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &SocketAddrAny)
     }
 }
 
-fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &SocketAddrAny) {
+fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &libc::sockaddr_un) {
     if let Some(wants) = niri.wants(addr) {
         log::trace!(target: "Niri", "{wants:?}");
         core::assert_matches!(niri.wants(addr), None);
@@ -380,7 +387,7 @@ fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) {
 fn schedule_session_dbus(
     module: &mut SessionDBus,
     readbuf: &mut [u8],
-    addr: &SocketAddrAny,
+    addr: &libc::sockaddr_un,
     queue: &SessionDBusQueue,
     ring: &mut IoUring,
 ) {
@@ -394,7 +401,7 @@ fn schedule_session_dbus(
 fn schedule_system_dbus(
     module: &mut SystemDBus,
     readbuf: &mut [u8],
-    addr: &SocketAddrAny,
+    addr: &libc::sockaddr_un,
     queue: &SystemDBusQueue,
     ring: &mut IoUring,
 ) {

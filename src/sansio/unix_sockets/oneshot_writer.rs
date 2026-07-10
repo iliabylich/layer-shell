@@ -1,7 +1,6 @@
 use crate::{sansio::Wants, utils::ArrayWriter};
 use anyhow::{Context, Result, bail, ensure};
-use core::fmt::Write;
-use rustix::net::SocketAddrAny;
+use core::{fmt::Write, mem::size_of};
 
 pub(crate) struct UnixSocketOneshotWriter {
     writebuf: [u8; 4_096],
@@ -32,9 +31,9 @@ enum State {
 }
 
 impl State {
-    fn wants(
+    const fn wants(
         self,
-        addr: &SocketAddrAny,
+        addr: &libc::sockaddr_un,
         writebuf: &[u8],
         readbuf: &mut [u8],
     ) -> (Self, Option<Wants>) {
@@ -51,8 +50,8 @@ impl State {
                 Self::WaitingForConnect { fd },
                 Some(Wants::Connect {
                     fd,
-                    addr: addr.as_ptr().cast(),
-                    addrlen: addr.addr_len(),
+                    addr: core::ptr::from_ref(addr).cast(),
+                    addrlen: size_of::<libc::sockaddr_un>() as libc::socklen_t,
                 }),
             ),
 
@@ -80,9 +79,9 @@ impl State {
         }
     }
 
-    fn wants_in_place(
+    const fn wants_in_place(
         &mut self,
-        addr: &SocketAddrAny,
+        addr: &libc::sockaddr_un,
         writebuf: &[u8],
         readbuf: &mut [u8],
     ) -> Option<Wants> {
@@ -110,7 +109,7 @@ impl UnixSocketOneshotWriter {
         })
     }
 
-    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
         self.state.wants_in_place(
             addr,
             self.writebuf

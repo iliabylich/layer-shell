@@ -7,7 +7,6 @@ use crate::{
 use alloc::string::ToString as _;
 use anyhow::Result;
 use response::LocationResponse;
-use rustix::net::SocketAddrAny;
 
 mod response;
 
@@ -24,7 +23,7 @@ impl Location {
         })
     }
 
-    pub(crate) fn wants(&mut self, remote_server_addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, remote_server_addr: &libc::sockaddr_in) -> Option<Wants> {
         self.https.wants(remote_server_addr)
     }
 

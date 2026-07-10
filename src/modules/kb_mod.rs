@@ -2,20 +2,19 @@ use crate::{
     Event,
     event_queue::EventQueue,
     sansio::{Satisfy, UnixSocketReader, Wants},
+    utils::new_sockaddr_un,
 };
 use alloc::boxed::Box;
 use anyhow::{Context, Result, bail};
-use rustix::net::{SocketAddrAny, SocketAddrUnix};
 
 pub(crate) struct KbMod {
     reader: Box<UnixSocketReader>,
 }
 
 impl KbMod {
-    pub(crate) fn address() -> Result<SocketAddrAny> {
-        let addr = SocketAddrUnix::new("/run/kb-mod-monitor-systemd.sock")
-            .map_err(|errno| anyhow::anyhow!(errno))?;
-        Ok(addr.into())
+    pub(crate) fn address() -> Result<libc::sockaddr_un> {
+        let addr = new_sockaddr_un(b"/run/kb-mod-monitor-systemd.sock")?;
+        Ok(addr)
     }
 
     pub(crate) fn new() -> Self {
@@ -24,7 +23,7 @@ impl KbMod {
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
         self.reader.wants(addr)
     }
 

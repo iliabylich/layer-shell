@@ -11,7 +11,6 @@ use alloc::{
 };
 use anyhow::Result;
 use core::{ffi::CStr, fmt::Write};
-use rustix::net::SocketAddrAny;
 pub use weather_code::WeatherCode;
 pub use weather_response::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherOnDay, WeatherOnHour,
@@ -36,7 +35,7 @@ impl Weather {
         })
     }
 
-    pub(crate) fn wants(&mut self, remote_server_addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, remote_server_addr: &libc::sockaddr_in) -> Option<Wants> {
         self.https.wants(remote_server_addr)
     }
 

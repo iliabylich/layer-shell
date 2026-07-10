@@ -1,12 +1,13 @@
 use crate::sansio::{Satisfy, Wants};
+use crate::utils::new_sockaddr_in;
 use alloc::boxed::Box;
 use anyhow::{Context, Result, bail};
 use core::{
     ffi::CStr,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
+    mem::size_of,
+    net::{Ipv4Addr, SocketAddr},
 };
 use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};
-use rustix::net::SocketAddrAny;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct DNS {
@@ -53,8 +54,8 @@ impl core::fmt::Debug for State {
 }
 
 impl DNS {
-    pub(crate) fn address() -> SocketAddrAny {
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53).into()
+    pub(crate) const fn address() -> libc::sockaddr_in {
+        new_sockaddr_in(Ipv4Addr::new(8, 8, 8, 8).octets(), 53)
     }
 
     pub(crate) fn new(domain: &'static CStr) -> Self {
@@ -66,7 +67,7 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_wants(&mut self, addr: &SocketAddrAny) -> Result<Option<Wants>> {
+    pub(crate) fn try_wants(&mut self, addr: &libc::sockaddr_in) -> Result<Option<Wants>> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
@@ -80,8 +81,8 @@ impl DNS {
                 self.state = State::WaitingForConnect { fd };
                 Ok(Some(Wants::Connect {
                     fd,
-                    addr: addr.as_ptr().cast(),
-                    addrlen: addr.addr_len(),
+                    addr: core::ptr::from_ref(addr).cast(),
+                    addrlen: size_of::<libc::sockaddr_in>() as libc::socklen_t,
                 }))
             }
 
@@ -123,7 +124,7 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<SocketAddrAny>> {
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<libc::sockaddr_in>> {
         let mut state = State::Finished;
         core::mem::swap(&mut self.state, &mut state);
 
@@ -164,11 +165,13 @@ impl DNS {
 
             (State::WaitingForClose, Satisfy::Close(res)) => {
                 res?;
-                let Some(mut addr) = self.output.take() else {
+                let Some(addr) = self.output.take() else {
                     return Ok(None);
                 };
-                addr.set_port(443);
-                Ok(Some(addr.into()))
+                let SocketAddr::V4(addr) = addr else {
+                    bail!("DNS query returned non-IPv4 address");
+                };
+                Ok(Some(new_sockaddr_in(addr.ip().octets(), 443)))
             }
 
             (_, satisfy) => bail!("malformed state: {:?} vs {satisfy:?}", self.state),

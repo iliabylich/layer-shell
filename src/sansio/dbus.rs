@@ -1,9 +1,9 @@
 use anyhow::{Result, bail};
+use core::mem::size_of;
 use dbus::{
     DBusConnection, DBusConnector, DBusConnectorWants, DBusWantsRead, DBusWantsWrite,
     IncomingMessage, OutgoingQueue,
 };
-use rustix::net::SocketAddrAny;
 
 use crate::sansio::{Satisfy, Wants};
 
@@ -29,7 +29,7 @@ pub(crate) enum DBusState {
 impl DBusState {
     pub(crate) fn try_wants(
         &mut self,
-        addr: &SocketAddrAny,
+        addr: &libc::sockaddr_un,
         readbuf: &mut [u8],
         queue: &impl OutgoingQueue,
     ) -> Result<Option<Wants>> {
@@ -46,8 +46,8 @@ impl DBusState {
                 *self = Self::WaitingForConnect { fd };
                 Ok(Some(Wants::Connect {
                     fd,
-                    addr: addr.as_ptr().cast(),
-                    addrlen: addr.addr_len(),
+                    addr: core::ptr::from_ref(addr).cast(),
+                    addrlen: size_of::<libc::sockaddr_un>() as libc::socklen_t,
                 }))
             }
 
@@ -125,7 +125,7 @@ impl DBusState {
 
     pub(crate) fn wants(
         &mut self,
-        addr: &SocketAddrAny,
+        addr: &libc::sockaddr_un,
         readbuf: &mut [u8],
         queue: &impl OutgoingQueue,
     ) -> Option<Wants> {

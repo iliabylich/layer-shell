@@ -4,7 +4,7 @@ mod request;
 mod response;
 mod state;
 
-use core::ffi::CStr;
+use core::{ffi::CStr, mem::size_of};
 
 use crate::external::SSL_CTX;
 use alloc::{vec, vec::Vec};
@@ -15,7 +15,6 @@ pub(crate) use state::OpenSslContext;
 use anyhow::{Result, bail};
 use handshake::OpenSslHandshake;
 use read_write::OpenSslReadWrite;
-use rustix::net::SocketAddrAny;
 use state::OpenSslState;
 
 use crate::sansio::{Satisfy, Wants};
@@ -73,7 +72,7 @@ impl Https {
         })
     }
 
-    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_in) -> Option<Wants> {
         match &mut self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
@@ -88,8 +87,8 @@ impl Https {
                 self.state = State::WaitingForConnect { fd };
                 Some(Wants::Connect {
                     fd,
-                    addr: addr.as_ptr().cast(),
-                    addrlen: addr.addr_len(),
+                    addr: core::ptr::from_ref(addr).cast(),
+                    addrlen: size_of::<libc::sockaddr_in>() as libc::socklen_t,
                 })
             }
 

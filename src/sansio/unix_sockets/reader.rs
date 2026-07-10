@@ -1,6 +1,6 @@
 use crate::sansio::Wants;
 use anyhow::{Result, bail, ensure};
-use rustix::net::SocketAddrAny;
+use core::mem::size_of;
 
 #[derive(Debug)]
 enum State {
@@ -15,7 +15,7 @@ enum State {
 }
 
 impl State {
-    fn wants(self, buf: &mut [u8], addr: &SocketAddrAny) -> (Self, Option<Wants>) {
+    const fn wants(self, buf: &mut [u8], addr: &libc::sockaddr_un) -> (Self, Option<Wants>) {
         match self {
             Self::ReadyToSocket => (
                 Self::WaitingForSocket,
@@ -29,8 +29,8 @@ impl State {
                 Self::WaitingForConnect { fd },
                 Some(Wants::Connect {
                     fd,
-                    addr: addr.as_ptr().cast(),
-                    addrlen: addr.addr_len(),
+                    addr: core::ptr::from_ref(addr).cast(),
+                    addrlen: size_of::<libc::sockaddr_un>() as libc::socklen_t,
                 }),
             ),
 
@@ -47,7 +47,7 @@ impl State {
         }
     }
 
-    fn wants_in_place(&mut self, buf: &mut [u8], addr: &SocketAddrAny) -> Option<Wants> {
+    const fn wants_in_place(&mut self, buf: &mut [u8], addr: &libc::sockaddr_un) -> Option<Wants> {
         let mut this: Self = unsafe { core::mem::zeroed() };
         core::mem::swap(self, &mut this);
         let (next, wants) = this.wants(buf, addr);
@@ -76,7 +76,7 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) const fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
         self.state.wants_in_place(&mut self.buf, addr)
     }
 
