@@ -13,8 +13,6 @@ pub(crate) struct DNS {
     buf: Box<[u8; MAX_DNS_PACKET_LEN]>,
 }
 
-const DNS_SERVER_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53);
-
 enum State {
     CanSocket,
     WaitingForSocket,
@@ -52,6 +50,10 @@ impl core::fmt::Debug for State {
 }
 
 impl DNS {
+    pub(crate) const fn address() -> SocketAddr {
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53)
+    }
+
     pub(crate) fn new(domain: &'static str) -> Self {
         Self {
             state: State::CanSocket,
@@ -61,7 +63,7 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn try_wants(&mut self, addr: &SocketAddr) -> Result<Option<Wants>> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
@@ -75,7 +77,7 @@ impl DNS {
                 self.state = State::WaitingForConnect { fd };
                 Ok(Some(Wants::Connect {
                     fd,
-                    addr: DNS_SERVER_ADDR.into(),
+                    addr: (*addr).into(),
                 }))
             }
 

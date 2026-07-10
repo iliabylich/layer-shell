@@ -1,3 +1,5 @@
+use core::net::SocketAddr;
+
 use crate::{
     Event,
     actor::WantsSatisfy,
@@ -9,7 +11,7 @@ use crate::{
         CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, Network, Niri, SessionDBus,
         Sound, SystemDBus, Timer, Tray, Weather,
     },
-    sansio::{OpenSslContext, Satisfy},
+    sansio::{DNS, OpenSslContext, Satisfy},
     user_data::{ModuleId, UserData},
     utils::{
         HeapBlob,
@@ -23,6 +25,7 @@ pub struct IO {
     ring: IoUring,
     events: EventQueue,
     openssl_ctx: OpenSslContext,
+    dns_server_addr: SocketAddr,
 
     pub(crate) config: Config,
 
@@ -43,7 +46,7 @@ pub struct IO {
     network: Network,
 
     location: Location,
-    weather: Weather,
+    weather: Option<Weather>,
 
     cpu: CPU,
     memory: Memory,
@@ -78,6 +81,7 @@ impl IO {
         let ring = IoUring::new(10, 0)?;
         let events = EventQueue::new();
         let openssl_ctx = OpenSslContext::new()?;
+        let dns_server_addr = DNS::address();
 
         let timer = Timer::new()?;
         let timerbuf = [0; 8];
@@ -114,6 +118,7 @@ impl IO {
             ring,
             events,
             openssl_ctx,
+            dns_server_addr,
 
             config,
 
@@ -134,7 +139,7 @@ impl IO {
             network,
 
             location,
-            weather,
+            weather: Some(weather),
 
             cpu,
             memory,
@@ -171,7 +176,7 @@ impl IO {
             &mut self.ring,
         )?;
 
-        schedule_location(&mut self.location, &mut self.ring)?;
+        schedule_location(&mut self.location, &mut self.ring, &self.dns_server_addr)?;
 
         schedule_cpu(&mut self.cpu, &mut self.ring)?;
 
@@ -289,10 +294,34 @@ macro_rules! generate_simple_schedule_impl {
     };
 }
 
-generate_simple_schedule_impl!(schedule_location, Location);
-generate_simple_schedule_impl!(schedule_weather, Weather);
 generate_simple_schedule_impl!(schedule_cpu, CPU);
 generate_simple_schedule_impl!(schedule_memory, Memory);
+
+fn schedule_weather(
+    weather: &mut Weather,
+    ring: &mut IoUring,
+    dns_addr: &SocketAddr,
+) -> Result<()> {
+    if let Some(wants) = weather.wants(dns_addr)? {
+        log::trace!(target: "Weather", "{wants:?}");
+        core::assert_matches!(weather.wants(dns_addr), Ok(None));
+        ring.schedule(ModuleId::Weather, wants)?;
+    }
+    Ok(())
+}
+
+fn schedule_location(
+    location: &mut Location,
+    ring: &mut IoUring,
+    dns_addr: &SocketAddr,
+) -> Result<()> {
+    if let Some(wants) = location.wants(dns_addr)? {
+        log::trace!(target: "Location", "{wants:?}");
+        core::assert_matches!(location.wants(dns_addr), Ok(None));
+        ring.schedule(ModuleId::Location, wants)?;
+    }
+    Ok(())
+}
 
 fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &SocketAddrUnix) -> Result<()> {
     if let Some(wants) = kb_mod.wants(addr) {
@@ -376,8 +405,10 @@ impl IO {
 
                 Clock::tick(&mut self.events)?;
 
-                self.weather.tick(tick, &self.openssl_ctx)?;
-                schedule_weather(&mut self.weather, &mut self.ring)?;
+                if let Some(weather) = &mut self.weather {
+                    weather.tick(tick, &self.openssl_ctx)?;
+                    schedule_weather(weather, &mut self.ring, &self.dns_server_addr)?;
+                }
 
                 self.cpu.tick();
                 schedule_cpu(&mut self.cpu, &mut self.ring)?;
@@ -447,17 +478,42 @@ impl IO {
 
 impl IO {
     fn satisfy_location(&mut self, satisfy: Satisfy) -> Result<()> {
-        if let Some((lat, lng)) = self.location.satisfy(satisfy, &mut self.events) {
-            self.weather.start(lat, lng, &self.openssl_ctx)?;
-            schedule_weather(&mut self.weather, &mut self.ring)?;
-        } else {
-            schedule_location(&mut self.location, &mut self.ring)?;
+        match self.location.satisfy(satisfy, &mut self.events) {
+            Ok(Some((lat, lng))) => {
+                if let Some(weather) = &mut self.weather {
+                    weather.start(lat, lng, &self.openssl_ctx)?;
+                    schedule_weather(weather, &mut self.ring, &self.dns_server_addr)?;
+                }
+            }
+            Ok(None) => {
+                schedule_location(&mut self.location, &mut self.ring, &self.dns_server_addr)?;
+            }
+            Err(_) => todo!(),
         }
         Ok(())
     }
 }
 
-generate_simple_satisfy_impl!(satisfy_weather, weather, schedule_weather);
+impl IO {
+    fn satisfy_weather(&mut self, satisfy: Satisfy) -> Result<()> {
+        let Some(weather) = &mut self.weather else {
+            return Ok(());
+        };
+
+        match weather.satisfy(satisfy, &mut self.events) {
+            Ok(()) => {
+                schedule_weather(weather, &mut self.ring, &self.dns_server_addr)?;
+                Ok(())
+            }
+            Err(err) => {
+                log::error!(target: "Weather", "{err:?}");
+                self.weather = None;
+                Ok(())
+            }
+        }
+    }
+}
+
 generate_simple_satisfy_impl!(satisfy_cpu, cpu, schedule_cpu);
 generate_simple_satisfy_impl!(satisfy_memory, memory, schedule_memory);
 

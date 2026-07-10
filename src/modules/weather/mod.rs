@@ -1,10 +1,8 @@
 use crate::{
     Event,
-    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     modules::weather::weather_response::WeatherResponse,
     sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
-    user_data::ModuleId,
     utils::ArrayWriter,
 };
 use alloc::{
@@ -12,7 +10,7 @@ use alloc::{
     string::{String, ToString as _},
 };
 use anyhow::Result;
-use core::fmt::Write;
+use core::{fmt::Write, net::SocketAddr};
 pub use weather_code::WeatherCode;
 pub use weather_response::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherOnDay, WeatherOnHour,
@@ -29,9 +27,6 @@ pub(crate) enum Weather {
         lat: f64,
         lng: f64,
         https: Box<Https>,
-    },
-    Stopped {
-        latlng: Option<(f64, f64)>,
     },
 }
 
@@ -53,7 +48,28 @@ impl Weather {
         match self {
             Self::WaitingForLocation => None,
             Self::Ready { lat, lng, .. } => Some((*lat, *lng)),
-            Self::Stopped { latlng } => *latlng,
+        }
+    }
+
+    pub(crate) fn wants(&mut self, dns_addr: &SocketAddr) -> Result<Option<Wants>> {
+        match self {
+            Self::Ready { https, .. } => https.try_wants(dns_addr),
+            Self::WaitingForLocation => Ok(None),
+        }
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+        match self {
+            Self::Ready { https, .. } => {
+                let Some(response) = https.try_satisfy(satisfy)? else {
+                    return Ok(());
+                };
+                let response = WeatherResponse::parse(&response)?;
+                let event = Event::try_from(response)?;
+                events.push_back(event);
+                Ok(())
+            }
+            Self::WaitingForLocation => Ok(()),
         }
     }
 
@@ -71,41 +87,6 @@ impl Weather {
         }
 
         Ok(())
-    }
-}
-
-impl TryWantsTrySatisfy for Weather {
-    const ID: ModuleId = ModuleId::Weather;
-    type Output = ();
-
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
-        match self {
-            Self::Ready { https, .. } => https.try_wants(),
-            Self::WaitingForLocation | Self::Stopped { .. } => Ok(None),
-        }
-    }
-
-    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<Self::Output> {
-        match self {
-            Self::Ready { https, .. } => {
-                let Some(response) = https.try_satisfy(satisfy)? else {
-                    return Ok(());
-                };
-                let response = WeatherResponse::parse(&response)?;
-                let event = Event::try_from(response)?;
-                events.push_back(event);
-                Ok(())
-            }
-            Self::Stopped { .. } | Self::WaitingForLocation => Ok(()),
-        }
-    }
-}
-
-impl CanStop for Weather {
-    fn stopped(&mut self) -> Self {
-        Self::Stopped {
-            latlng: self.latlng(),
-        }
     }
 }
 

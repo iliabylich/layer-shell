@@ -78,9 +78,9 @@ impl Https {
         })
     }
 
-    pub(crate) fn try_wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn try_wants(&mut self, dns_addr: &SocketAddr) -> Result<Option<Wants>> {
         match &mut self.state {
-            State::Dns(dns) => dns.try_wants(),
+            State::Dns(dns) => dns.try_wants(dns_addr),
 
             State::CanSocket { addr } => {
                 self.state = State::WaitingForSocket { addr: *addr };

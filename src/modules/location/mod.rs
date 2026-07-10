@@ -1,57 +1,41 @@
 use crate::{
-    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
-    user_data::ModuleId,
 };
 use alloc::string::ToString as _;
 use anyhow::Result;
+use core::net::SocketAddr;
 use response::LocationResponse;
 
 mod response;
 
 const HOST: &str = "myip.ibylich.dev";
 
-pub(crate) enum Location {
-    Running(Https),
-    Stopped,
+pub(crate) struct Location {
+    https: Https,
 }
 
 impl Location {
     pub(crate) fn new(ctx: &OpenSslContext) -> Result<Self> {
-        Ok(Self::Running(Https::new(
-            HttpRequest::get(HOST, "/".to_string()),
-            ctx,
-        )?))
-    }
-}
-
-impl TryWantsTrySatisfy for Location {
-    const ID: ModuleId = ModuleId::Location;
-    type Output = Option<(f64, f64)>;
-
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
-        match self {
-            Self::Running(https) => https.try_wants(),
-            Self::Stopped => Ok(None),
-        }
+        Ok(Self {
+            https: Https::new(HttpRequest::get(HOST, "/".to_string()), ctx)?,
+        })
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, _events: &mut EventQueue) -> Result<Self::Output> {
-        let Self::Running(https) = self else {
-            return Ok(None);
-        };
-        let Some(response) = https.try_satisfy(satisfy)? else {
+    pub(crate) fn wants(&mut self, dns_addr: &SocketAddr) -> Result<Option<Wants>> {
+        self.https.try_wants(dns_addr)
+    }
+
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        _events: &mut EventQueue,
+    ) -> Result<Option<(f64, f64)>> {
+        let Some(response) = self.https.try_satisfy(satisfy)? else {
             return Ok(None);
         };
 
         let (lat, lng) = LocationResponse::parse(&response)?;
         Ok(Some((lat, lng)))
-    }
-}
-
-impl CanStop for Location {
-    fn stopped(&mut self) -> Self {
-        Self::Stopped
     }
 }
