@@ -35,6 +35,7 @@ external:
         --allowlist-var "SSL_ERROR_ZERO_RETURN" \
         --allowlist-var "SSL_VERIFY_PEER" \
         --allowlist-var "TLS1_2_VERSION" \
+        --allowlist-var "BIO_CTRL_PENDING" \
         --opaque-type "BIO" \
         --opaque-type "BIO_METHOD" \
         --opaque-type "SSL" \

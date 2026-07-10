@@ -30,6 +30,7 @@ impl<T> ::core::fmt::Debug for __IncompleteArrayField<T> {
         fmt.write_str("__IncompleteArrayField")
     }
 }
+pub(crate) const BIO_CTRL_PENDING: u32 = 10;
 pub(crate) const TLS1_2_VERSION: u32 = 771;
 pub(crate) const SSL_VERIFY_PEER: u32 = 1;
 pub(crate) const SSL_ERROR_WANT_READ: u32 = 2;

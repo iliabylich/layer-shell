@@ -1,5 +1,5 @@
 use crate::external::{
-    BIO_ctrl, BIO_read, BIO_write, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
+    BIO_CTRL_PENDING, BIO_ctrl, BIO_read, BIO_write, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
     SSL_ERROR_ZERO_RETURN, SSL_get_error, SSL_read, SSL_write,
 };
 use crate::sansio::{Satisfy, Wants, https::OpenSslState};
@@ -90,9 +90,16 @@ impl OpenSslReadWrite {
     }
 
     fn drain_wbio(&mut self) -> Result<()> {
-        const BIO_CTRL_PENDING: i32 = 10;
         self.writebuf.clear();
-        while unsafe { BIO_ctrl(self.tls.wbio, BIO_CTRL_PENDING, 0, core::ptr::null_mut()) } > 0 {
+        while unsafe {
+            BIO_ctrl(
+                self.tls.wbio,
+                BIO_CTRL_PENDING.cast_signed(),
+                0,
+                core::ptr::null_mut(),
+            )
+        } > 0
+        {
             let mut buf = [0_u8; 1_024];
             let read = unsafe { BIO_read(self.tls.wbio, buf.as_mut_ptr().cast(), 1_024) };
             let len = usize::try_from(read).context("OpenSslReadWrite: BIO_read failed")?;
