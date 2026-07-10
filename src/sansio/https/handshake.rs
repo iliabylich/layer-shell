@@ -1,4 +1,4 @@
-use super::generated::{
+use crate::external::{
     BIO_ctrl, BIO_read, BIO_write, SSL_CTX, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,
     SSL_get_error,
 };

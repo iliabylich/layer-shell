@@ -1,14 +1,11 @@
-#[expect(non_camel_case_types, clippy::upper_case_acronyms)]
-mod generated;
-
 mod handshake;
 mod read_write;
 mod request;
 mod response;
 mod state;
 
+use crate::external::SSL_CTX;
 use alloc::{vec, vec::Vec};
-use generated::SSL_CTX;
 pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;
 pub(crate) use state::OpenSslContext;

@@ -1,18 +1,13 @@
-liburing-generate:
+external:
     bindgen \
-        src/liburing-wrapper.h \
+        src/external.h \
+        \
         --allowlist-function "__liburing_.*" \
         --opaque-type "io_uring_sq" \
         --opaque-type "io_uring_cq" \
         --opaque-type ".*bindgen.*" \
         --opaque-type "sockaddr" \
-        --use-core \
-        -o src/liburing/generated.rs
-    sed -i 's/pub /pub(crate) /g' src/liburing/generated.rs
-
-openssl-generate:
-    bindgen \
-        src/openssl-wrapper.h \
+        \
         --allowlist-function "BIO_ctrl" \
         --allowlist-function "BIO_new" \
         --allowlist-function "BIO_read" \
@@ -47,9 +42,10 @@ openssl-generate:
         --opaque-type "SSL_METHOD" \
         --opaque-type "X509_STORE_CTX" \
         --opaque-type "X509_VERIFY_PARAM" \
+        \
         --use-core \
-        -o src/sansio/https/generated.rs
-    sed -i 's/pub /pub(crate) /g' src/sansio/https/generated.rs
+        -o src/external.rs
+    sed -i 's/pub /pub(crate) /g' src/external.rs
 
 setup build:
     meson setup builddir --buildtype={{build}}

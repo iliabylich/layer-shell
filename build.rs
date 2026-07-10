@@ -1,8 +1,5 @@
 fn main() {
-    cc::Build::new()
-        .file("src/liburing-wrapper.c")
-        .file("src/openssl-wrapper.c")
-        .compile("uring-wrapper");
+    cc::Build::new().file("src/external.c").compile("external");
 
     println!("cargo::rustc-link-lib=uring");
     println!("cargo::rustc-link-lib=ssl");

@@ -24,3 +24,10 @@ void __liburing_prep_read(struct io_uring_sqe *sqe, int fd, void *buf,
 void __liburing_prep_close(struct io_uring_sqe *sqe, int fd);
 void __liburing_prep_openat(struct io_uring_sqe *sqe, int dfd, const char *path,
                             int flags, mode_t mode);
+
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/tls1.h>
+#include <openssl/x509v3.h>
+int __openssl_SSL_CTX_set_min_proto_version(SSL_CTX *ctx, int version);
+long __openssl_SSL_set_tlsext_host_name(SSL *ssl, char *name);

@@ -1,30 +1,18 @@
 pub(crate) use self::{cqe::Cqe, sqe::Sqe};
+use crate::external::{
+    __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
+    __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait, __liburing_wait_cqe,
+    __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
+};
 use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
 use anyhow::{Result, bail};
 use core::mem::MaybeUninit;
-use generated::{
-    __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
-    __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait, __liburing_wait_cqe,
-    __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
-};
 use libc::{ETIME, strerror};
 
 mod cqe;
-#[expect(
-    dead_code,
-    unsafe_op_in_unsafe_fn,
-    non_camel_case_types,
-    trivial_casts,
-    clippy::indexing_slicing,
-    clippy::ptr_as_ptr,
-    clippy::ref_as_ptr,
-    clippy::missing_const_for_fn,
-    clippy::use_self
-)]
-mod generated;
 mod sqe;
 
 fn checkerr(errno: i32) -> Result<()> {

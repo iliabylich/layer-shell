@@ -1,4 +1,4 @@
-use super::generated::{
+use crate::external::{
     __openssl_SSL_CTX_set_min_proto_version, __openssl_SSL_set_tlsext_host_name, BIO, BIO_new,
     BIO_s_mem, SSL, SSL_CTX, SSL_CTX_free, SSL_CTX_new, SSL_CTX_set_default_verify_paths,
     SSL_CTX_set_verify, SSL_VERIFY_PEER, SSL_free, SSL_get0_param, SSL_new, SSL_set_bio,

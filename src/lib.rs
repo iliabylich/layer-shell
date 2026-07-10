@@ -28,6 +28,19 @@ mod command;
 mod config;
 mod event;
 mod event_queue;
+#[expect(
+    dead_code,
+    unsafe_op_in_unsafe_fn,
+    trivial_casts,
+    clippy::indexing_slicing,
+    clippy::ptr_as_ptr,
+    clippy::ref_as_ptr,
+    clippy::missing_const_for_fn,
+    clippy::use_self,
+    non_camel_case_types,
+    clippy::upper_case_acronyms
+)]
+mod external;
 mod ffi;
 mod io;
 mod liburing;
