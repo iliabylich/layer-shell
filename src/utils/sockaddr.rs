@@ -1,8 +1,10 @@
-pub(crate) const fn new_sockaddr_in(ip: [u8; 4], port: u16) -> libc::sockaddr_in {
-    libc::sockaddr_in {
-        sin_family: libc::AF_INET as libc::sa_family_t,
+use crate::external::{AF_INET, AF_UNIX, in_addr, sa_family_t, sockaddr_in, sockaddr_un};
+
+pub(crate) const fn new_sockaddr_in(ip: [u8; 4], port: u16) -> sockaddr_in {
+    sockaddr_in {
+        sin_family: AF_INET as sa_family_t,
         sin_port: port.to_be(),
-        sin_addr: libc::in_addr {
+        sin_addr: in_addr {
             s_addr: u32::from_be_bytes(ip).to_be(),
         },
         sin_zero: [0; 8],
@@ -11,9 +13,9 @@ pub(crate) const fn new_sockaddr_in(ip: [u8; 4], port: u16) -> libc::sockaddr_in
 
 pub(crate) const fn new_sockaddr_un(
     path: &[u8],
-) -> Result<libc::sockaddr_un, PathIsTooLongForSockaddrUn> {
-    let mut addr: libc::sockaddr_un = unsafe { core::mem::zeroed() };
-    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+) -> Result<sockaddr_un, PathIsTooLongForSockaddrUn> {
+    let mut addr: sockaddr_un = unsafe { core::mem::zeroed() };
+    addr.sun_family = AF_UNIX as sa_family_t;
 
     if path.len() >= addr.sun_path.len() {
         return Err(PathIsTooLongForSockaddrUn);

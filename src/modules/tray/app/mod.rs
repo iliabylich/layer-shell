@@ -1,4 +1,5 @@
 use crate::{
+    external::time,
     modules::{TrayIcon, TrayIconPixmap, TrayItem, tray::service::Service},
     utils::{
         StringRef, StringRefExt as _,
@@ -215,7 +216,7 @@ impl App {
 
     pub(crate) fn trigger(&self, id: i32, q: &mut SessionDBusQueue) -> Result<(), EncodeError> {
         let mut now = 0;
-        unsafe { libc::time(&raw mut now) };
+        unsafe { time(&raw mut now) };
         let timestamp = u32::try_from(now).map_err(|_| EncodeError::ValueTooLong)?;
         let args = EventArgs {
             id,

@@ -2,6 +2,7 @@ use core::ffi::CStr;
 
 use crate::{
     event_queue::EventQueue,
+    external::sockaddr_in,
     sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
 };
 use alloc::string::ToString as _;
@@ -23,7 +24,7 @@ impl Location {
         })
     }
 
-    pub(crate) fn wants(&mut self, remote_server_addr: &libc::sockaddr_in) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, remote_server_addr: &sockaddr_in) -> Option<Wants> {
         self.https.wants(remote_server_addr)
     }
 

@@ -1,4 +1,7 @@
-use crate::utils::{ArrayWriter, StringRef, StringRefExt as _, getenv};
+use crate::{
+    external::{O_RDONLY, close, exit, open, read},
+    utils::{ArrayWriter, StringRef, StringRefExt as _, getenv},
+};
 use alloc::vec::Vec;
 use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;
@@ -33,12 +36,12 @@ impl Config {
         fmt_config_path(&mut writer)?;
         let path = writer.as_str()?;
 
-        let fd = unsafe { libc::open(path.as_ptr().cast(), libc::O_RDONLY) };
+        let fd = unsafe { open(path.as_ptr().cast(), O_RDONLY) };
         ensure!(fd != -1, "failed to open config at {path:?}");
         let fd = AutoCloseFd(fd);
 
         let mut buf = [0; 1_024];
-        let res = unsafe { libc::read(fd.0, buf.as_mut_ptr().cast(), 1_024) };
+        let res = unsafe { read(fd.0, buf.as_mut_ptr().cast(), 1_024) };
 
         let len = usize::try_from(res).context("failed to read config")?;
         let buf = buf
@@ -60,7 +63,7 @@ impl Config {
 
         let mut errhandler = |error: ParseError| {
             log::error!("failed to parse TOML config: {error:?}");
-            unsafe { libc::exit(1) };
+            unsafe { exit(1) };
         };
 
         let mut receiver = ConfigReceiver::new(contents);
@@ -252,6 +255,6 @@ struct AutoCloseFd(i32);
 
 impl Drop for AutoCloseFd {
     fn drop(&mut self) {
-        unsafe { libc::close(self.0) };
+        unsafe { close(self.0) };
     }
 }

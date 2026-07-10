@@ -1,6 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
+    external::sockaddr_un,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     utils::{StringRef, StringRefExt as _, getenv, new_sockaddr_un},
 };
@@ -22,7 +23,7 @@ pub(crate) struct Niri {
 }
 
 impl Niri {
-    pub(crate) fn address() -> Result<libc::sockaddr_un> {
+    pub(crate) fn address() -> Result<sockaddr_un> {
         let path = getenv(c"NIRI_SOCKET").context("no $NIRI_SOCKET")?;
         let addr = new_sockaddr_un(path)?;
         Ok(addr)
@@ -36,7 +37,7 @@ impl Niri {
         })
     }
 
-    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
         match &mut self.state {
             State::Writer(writer) => writer.wants(addr),
             State::Reader(reader) => reader.wants(addr),

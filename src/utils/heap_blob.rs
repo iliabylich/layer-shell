@@ -1,3 +1,4 @@
+use crate::external::{__u64, calloc, free};
 use core::ptr::NonNull;
 
 pub(crate) struct HeapBlob {
@@ -9,7 +10,7 @@ impl HeapBlob {
     pub(crate) fn new(len: usize) -> Result<Self, FailedToMallocError> {
         Ok(Self {
             ptr: unsafe {
-                NonNull::new(libc::calloc(len, 1))
+                NonNull::new(calloc(len as __u64, 1))
                     .ok_or(FailedToMallocError)?
                     .cast::<u8>()
             },
@@ -25,7 +26,7 @@ impl HeapBlob {
 impl Drop for HeapBlob {
     fn drop(&mut self) {
         unsafe {
-            libc::free(self.ptr.as_ptr().cast());
+            free(self.ptr.as_ptr().cast());
         }
     }
 }

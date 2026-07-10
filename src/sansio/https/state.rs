@@ -14,11 +14,10 @@ impl OpenSslContext {
     pub(crate) fn new() -> Result<Self> {
         let ctx = unsafe { SSL_CTX_new(TLS_client_method()) };
         ensure!(!ctx.is_null(), "SSL_CTX is NULL");
-        unsafe { SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER.cast_signed(), None) };
+        unsafe { SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, None) };
         let res = unsafe { SSL_CTX_set_default_verify_paths(ctx) };
         ensure!(res == 1, "SSL_CTX_set_default_verify_paths failed");
-        let res =
-            unsafe { __openssl_SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION.cast_signed()) };
+        let res = unsafe { __openssl_SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) };
         ensure!(res == 1, "SSL_CTX_set_min_proto_version failed");
         Ok(Self(ctx))
     }

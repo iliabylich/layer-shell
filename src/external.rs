@@ -30,16 +30,61 @@ impl<T> ::core::fmt::Debug for __IncompleteArrayField<T> {
         fmt.write_str("__IncompleteArrayField")
     }
 }
-pub(crate) const BIO_CTRL_PENDING: u32 = 10;
-pub(crate) const TLS1_2_VERSION: u32 = 771;
-pub(crate) const SSL_VERIFY_PEER: u32 = 1;
-pub(crate) const SSL_ERROR_WANT_READ: u32 = 2;
-pub(crate) const SSL_ERROR_WANT_WRITE: u32 = 3;
-pub(crate) const SSL_ERROR_ZERO_RETURN: u32 = 6;
+pub(crate) const ETIME: i32 = 62;
+pub(crate) const O_RDONLY: i32 = 0;
+pub(crate) const O_WRONLY: i32 = 1;
+pub(crate) const AT_FDCWD: i32 = -100;
+pub(crate) const AF_UNIX: i32 = 1;
+pub(crate) const AF_INET: i32 = 2;
+pub(crate) const CLOCK_MONOTONIC: i32 = 1;
+pub(crate) const STDOUT_FILENO: i32 = 1;
+pub(crate) const STDERR_FILENO: i32 = 2;
+pub(crate) const BIO_CTRL_PENDING: i32 = 10;
+pub(crate) const TLS1_2_VERSION: i32 = 771;
+pub(crate) const SSL_VERIFY_PEER: i32 = 1;
+pub(crate) const SSL_ERROR_WANT_READ: i32 = 2;
+pub(crate) const SSL_ERROR_WANT_WRITE: i32 = 3;
+pub(crate) const SSL_ERROR_ZERO_RETURN: i32 = 6;
 pub(crate) type __mode_t = ::core::ffi::c_uint;
+pub(crate) type __pid_t = ::core::ffi::c_int;
+pub(crate) type __time_t = ::core::ffi::c_long;
+pub(crate) type __clockid_t = ::core::ffi::c_int;
+pub(crate) type __syscall_slong_t = ::core::ffi::c_long;
 pub(crate) type __socklen_t = ::core::ffi::c_uint;
 pub(crate) type mode_t = __mode_t;
+pub(crate) type time_t = __time_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct timespec {
+    pub(crate) tv_sec: __time_t,
+    pub(crate) tv_nsec: __syscall_slong_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of timespec"][::core::mem::size_of::<timespec>() - 16usize];
+    ["Alignment of timespec"][::core::mem::align_of::<timespec>() - 8usize];
+    ["Offset of field: timespec::tv_sec"][::core::mem::offset_of!(timespec, tv_sec) - 0usize];
+    ["Offset of field: timespec::tv_nsec"][::core::mem::offset_of!(timespec, tv_nsec) - 8usize];
+};
+unsafe extern "C" {
+    pub(crate) fn open(
+        __file: *const ::core::ffi::c_char,
+        __oflag: ::core::ffi::c_int,
+        ...
+    ) -> ::core::ffi::c_int;
+}
 pub(crate) type socklen_t = __socklen_t;
+pub(crate) const __socket_type_SOCK_STREAM: __socket_type = 1;
+pub(crate) const __socket_type_SOCK_DGRAM: __socket_type = 2;
+pub(crate) const __socket_type_SOCK_RAW: __socket_type = 3;
+pub(crate) const __socket_type_SOCK_RDM: __socket_type = 4;
+pub(crate) const __socket_type_SOCK_SEQPACKET: __socket_type = 5;
+pub(crate) const __socket_type_SOCK_DCCP: __socket_type = 6;
+pub(crate) const __socket_type_SOCK_PACKET: __socket_type = 10;
+pub(crate) const __socket_type_SOCK_CLOEXEC: __socket_type = 524288;
+pub(crate) const __socket_type_SOCK_NONBLOCK: __socket_type = 2048;
+pub(crate) type __socket_type = ::core::ffi::c_uint;
+pub(crate) type sa_family_t = ::core::ffi::c_ushort;
 #[repr(C)]
 #[repr(align(2))]
 #[derive(Debug, Copy, Clone)]
@@ -52,6 +97,66 @@ const _: () = {
     ["Alignment of sockaddr"][::core::mem::align_of::<sockaddr>() - 2usize];
 };
 pub(crate) type __kernel_time64_t = ::core::ffi::c_longlong;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct tm {
+    pub(crate) tm_sec: ::core::ffi::c_int,
+    pub(crate) tm_min: ::core::ffi::c_int,
+    pub(crate) tm_hour: ::core::ffi::c_int,
+    pub(crate) tm_mday: ::core::ffi::c_int,
+    pub(crate) tm_mon: ::core::ffi::c_int,
+    pub(crate) tm_year: ::core::ffi::c_int,
+    pub(crate) tm_wday: ::core::ffi::c_int,
+    pub(crate) tm_yday: ::core::ffi::c_int,
+    pub(crate) tm_isdst: ::core::ffi::c_int,
+    pub(crate) tm_gmtoff: ::core::ffi::c_long,
+    pub(crate) tm_zone: *const ::core::ffi::c_char,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of tm"][::core::mem::size_of::<tm>() - 56usize];
+    ["Alignment of tm"][::core::mem::align_of::<tm>() - 8usize];
+    ["Offset of field: tm::tm_sec"][::core::mem::offset_of!(tm, tm_sec) - 0usize];
+    ["Offset of field: tm::tm_min"][::core::mem::offset_of!(tm, tm_min) - 4usize];
+    ["Offset of field: tm::tm_hour"][::core::mem::offset_of!(tm, tm_hour) - 8usize];
+    ["Offset of field: tm::tm_mday"][::core::mem::offset_of!(tm, tm_mday) - 12usize];
+    ["Offset of field: tm::tm_mon"][::core::mem::offset_of!(tm, tm_mon) - 16usize];
+    ["Offset of field: tm::tm_year"][::core::mem::offset_of!(tm, tm_year) - 20usize];
+    ["Offset of field: tm::tm_wday"][::core::mem::offset_of!(tm, tm_wday) - 24usize];
+    ["Offset of field: tm::tm_yday"][::core::mem::offset_of!(tm, tm_yday) - 28usize];
+    ["Offset of field: tm::tm_isdst"][::core::mem::offset_of!(tm, tm_isdst) - 32usize];
+    ["Offset of field: tm::tm_gmtoff"][::core::mem::offset_of!(tm, tm_gmtoff) - 40usize];
+    ["Offset of field: tm::tm_zone"][::core::mem::offset_of!(tm, tm_zone) - 48usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct itimerspec {
+    pub(crate) it_interval: timespec,
+    pub(crate) it_value: timespec,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of itimerspec"][::core::mem::size_of::<itimerspec>() - 32usize];
+    ["Alignment of itimerspec"][::core::mem::align_of::<itimerspec>() - 8usize];
+    ["Offset of field: itimerspec::it_interval"]
+        [::core::mem::offset_of!(itimerspec, it_interval) - 0usize];
+    ["Offset of field: itimerspec::it_value"]
+        [::core::mem::offset_of!(itimerspec, it_value) - 16usize];
+};
+unsafe extern "C" {
+    pub(crate) fn time(__timer: *mut time_t) -> time_t;
+}
+unsafe extern "C" {
+    pub(crate) fn strftime(
+        __s: *mut ::core::ffi::c_char,
+        __maxsize: usize,
+        __format: *const ::core::ffi::c_char,
+        __tp: *const tm,
+    ) -> usize;
+}
+unsafe extern "C" {
+    pub(crate) fn localtime_r(__timer: *const time_t, __tp: *mut tm) -> *mut tm;
+}
 pub(crate) type __u8 = ::core::ffi::c_uchar;
 pub(crate) type __u16 = ::core::ffi::c_ushort;
 pub(crate) type __s32 = ::core::ffi::c_int;
@@ -319,6 +424,122 @@ const _: () = {
     ["Offset of field: io_uring::pad"][::core::mem::offset_of!(io_uring, pad) - 209usize];
     ["Offset of field: io_uring::pad2"][::core::mem::offset_of!(io_uring, pad2) - 212usize];
 };
+pub(crate) type in_addr_t = u32;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct in_addr {
+    pub(crate) s_addr: in_addr_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of in_addr"][::core::mem::size_of::<in_addr>() - 4usize];
+    ["Alignment of in_addr"][::core::mem::align_of::<in_addr>() - 4usize];
+    ["Offset of field: in_addr::s_addr"][::core::mem::offset_of!(in_addr, s_addr) - 0usize];
+};
+pub(crate) type in_port_t = u16;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct sockaddr_in {
+    pub(crate) sin_family: sa_family_t,
+    pub(crate) sin_port: in_port_t,
+    pub(crate) sin_addr: in_addr,
+    pub(crate) sin_zero: [::core::ffi::c_uchar; 8usize],
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of sockaddr_in"][::core::mem::size_of::<sockaddr_in>() - 16usize];
+    ["Alignment of sockaddr_in"][::core::mem::align_of::<sockaddr_in>() - 4usize];
+    ["Offset of field: sockaddr_in::sin_family"]
+        [::core::mem::offset_of!(sockaddr_in, sin_family) - 0usize];
+    ["Offset of field: sockaddr_in::sin_port"]
+        [::core::mem::offset_of!(sockaddr_in, sin_port) - 2usize];
+    ["Offset of field: sockaddr_in::sin_addr"]
+        [::core::mem::offset_of!(sockaddr_in, sin_addr) - 4usize];
+    ["Offset of field: sockaddr_in::sin_zero"]
+        [::core::mem::offset_of!(sockaddr_in, sin_zero) - 8usize];
+};
+unsafe extern "C" {
+    pub(crate) fn malloc(__size: ::core::ffi::c_ulong) -> *mut ::core::ffi::c_void;
+}
+unsafe extern "C" {
+    pub(crate) fn calloc(
+        __nmemb: ::core::ffi::c_ulong,
+        __size: ::core::ffi::c_ulong,
+    ) -> *mut ::core::ffi::c_void;
+}
+unsafe extern "C" {
+    pub(crate) fn free(__ptr: *mut ::core::ffi::c_void);
+}
+unsafe extern "C" {
+    pub(crate) fn exit(__status: ::core::ffi::c_int) -> !;
+}
+unsafe extern "C" {
+    pub(crate) fn getenv(__name: *const ::core::ffi::c_char) -> *mut ::core::ffi::c_char;
+}
+unsafe extern "C" {
+    pub(crate) fn strerror(__errnum: ::core::ffi::c_int) -> *mut ::core::ffi::c_char;
+}
+unsafe extern "C" {
+    pub(crate) fn timerfd_create(
+        __clock_id: __clockid_t,
+        __flags: ::core::ffi::c_int,
+    ) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
+    pub(crate) fn timerfd_settime(
+        __ufd: ::core::ffi::c_int,
+        __flags: ::core::ffi::c_int,
+        __utmr: *const itimerspec,
+        __otmr: *mut itimerspec,
+    ) -> ::core::ffi::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct sockaddr_un {
+    pub(crate) sun_family: sa_family_t,
+    pub(crate) sun_path: [::core::ffi::c_char; 108usize],
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of sockaddr_un"][::core::mem::size_of::<sockaddr_un>() - 110usize];
+    ["Alignment of sockaddr_un"][::core::mem::align_of::<sockaddr_un>() - 2usize];
+    ["Offset of field: sockaddr_un::sun_family"]
+        [::core::mem::offset_of!(sockaddr_un, sun_family) - 0usize];
+    ["Offset of field: sockaddr_un::sun_path"]
+        [::core::mem::offset_of!(sockaddr_un, sun_path) - 2usize];
+};
+unsafe extern "C" {
+    pub(crate) fn close(__fd: ::core::ffi::c_int) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
+    pub(crate) fn read(
+        __fd: ::core::ffi::c_int,
+        __buf: *mut ::core::ffi::c_void,
+        __nbytes: usize,
+    ) -> isize;
+}
+unsafe extern "C" {
+    pub(crate) fn write(
+        __fd: ::core::ffi::c_int,
+        __buf: *const ::core::ffi::c_void,
+        __n: usize,
+    ) -> isize;
+}
+unsafe extern "C" {
+    pub(crate) fn dup2(__fd: ::core::ffi::c_int, __fd2: ::core::ffi::c_int) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
+    pub(crate) fn execvp(
+        __file: *const ::core::ffi::c_char,
+        __argv: *const *mut ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
+    pub(crate) fn _exit(__status: ::core::ffi::c_int) -> !;
+}
+unsafe extern "C" {
+    pub(crate) fn fork() -> __pid_t;
+}
 unsafe extern "C" {
     pub(crate) fn __liburing_queue_init(
         entries: ::core::ffi::c_uint,

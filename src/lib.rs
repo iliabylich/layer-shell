@@ -28,17 +28,21 @@ mod command;
 mod config;
 mod event;
 mod event_queue;
+/// cbindgen:ignore
 #[expect(
     dead_code,
     unsafe_op_in_unsafe_fn,
     trivial_casts,
+    non_camel_case_types,
+    non_upper_case_globals,
     clippy::indexing_slicing,
     clippy::ptr_as_ptr,
     clippy::ref_as_ptr,
     clippy::missing_const_for_fn,
     clippy::use_self,
-    non_camel_case_types,
-    clippy::upper_case_acronyms
+    clippy::upper_case_acronyms,
+    clippy::unreadable_literal,
+    clippy::struct_field_names
 )]
 mod external;
 mod ffi;
@@ -58,6 +62,7 @@ pub use event::Event;
 pub use ffi::FFIArray;
 
 use crate::{
+    external::{__u64, exit, malloc},
     io::IO,
     utils::{StringRef, StringRefExt as _},
 };
@@ -68,7 +73,7 @@ fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
         Ok(out) => out,
         Err(err) => {
             log::error!("error returned: {err:?}");
-            unsafe { libc::exit(1) };
+            unsafe { exit(1) };
         }
     }
 }
@@ -82,7 +87,7 @@ pub extern "C" fn io_init(
 
     exit_if_err(|| {
         Ok(unsafe {
-            let mut ptr = NonNull::new(libc::malloc(size_of::<IO>()))
+            let mut ptr = NonNull::new(malloc(size_of::<IO>() as __u64))
                 .context("failed to malloc IO")?
                 .cast::<IO>();
             ptr.write(IO::new((callback, data))?);

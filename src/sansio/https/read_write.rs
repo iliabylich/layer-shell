@@ -53,8 +53,7 @@ impl OpenSslReadWrite {
             )
         };
         if res <= 0 {
-            let err = u32::try_from(unsafe { SSL_get_error(self.tls.ssl, res) })
-                .context("SSL_get_error returned negative value")?;
+            let err = unsafe { SSL_get_error(self.tls.ssl, res) };
             self.drain_wbio()?;
             if !self.writebuf.is_empty() {
                 self.state = State::ReadyToWrite;
@@ -91,15 +90,7 @@ impl OpenSslReadWrite {
 
     fn drain_wbio(&mut self) -> Result<()> {
         self.writebuf.clear();
-        while unsafe {
-            BIO_ctrl(
-                self.tls.wbio,
-                BIO_CTRL_PENDING.cast_signed(),
-                0,
-                core::ptr::null_mut(),
-            )
-        } > 0
-        {
+        while unsafe { BIO_ctrl(self.tls.wbio, BIO_CTRL_PENDING, 0, core::ptr::null_mut()) } > 0 {
             let mut buf = [0_u8; 1_024];
             let read = unsafe { BIO_read(self.tls.wbio, buf.as_mut_ptr().cast(), 1_024) };
             let len = usize::try_from(read).context("OpenSslReadWrite: BIO_read failed")?;
@@ -171,8 +162,7 @@ impl OpenSslReadWrite {
                                 .context("plaintext buffer is too short")?,
                         );
                     } else {
-                        let err = u32::try_from(unsafe { SSL_get_error(self.tls.ssl, res) })
-                            .context("SSL_get_error returned negative value")?;
+                        let err = unsafe { SSL_get_error(self.tls.ssl, res) };
 
                         match err {
                             SSL_ERROR_WANT_READ => {

@@ -1,8 +1,7 @@
 use crate::external::{
     __liburing_prep_close, __liburing_prep_connect, __liburing_prep_openat, __liburing_prep_read,
-    __liburing_prep_socket, __liburing_prep_write, io_uring_sqe, mode_t, socklen_t,
+    __liburing_prep_socket, __liburing_prep_write, io_uring_sqe, mode_t, sockaddr, socklen_t,
 };
-use libc::sockaddr;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Sqe {

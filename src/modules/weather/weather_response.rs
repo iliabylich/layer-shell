@@ -1,5 +1,10 @@
 use super::WeatherCode;
-use crate::{Event, sansio::HttpResponse, utils::get_json};
+use crate::{
+    Event,
+    external::{localtime_r, time as external_time, tm},
+    sansio::HttpResponse,
+    utils::get_json,
+};
 use alloc::{vec, vec::Vec};
 use anyhow::{Context as _, Result, ensure};
 use microjson::JSONValue;
@@ -133,7 +138,7 @@ fn map_hourly_forecase(
         weather_code,
     } = response;
     let mut now = 0;
-    unsafe { libc::time(&raw mut now) };
+    unsafe { external_time(&raw mut now) };
 
     let mut forecast = vec![];
     for ((temp, code), time) in temperature_2m.into_iter().zip(weather_code).zip(time) {
@@ -170,7 +175,7 @@ fn map_daily_forecase(
     } = response;
 
     let mut now = 0;
-    unsafe { libc::time(&raw mut now) };
+    unsafe { external_time(&raw mut now) };
 
     let mut forecast = vec![];
     for (((min, max), code), time) in temperature_2m_min
@@ -235,14 +240,14 @@ impl core::fmt::Debug for WeatherOnDay {
 
 fn is_date_greater_than_or_eq(lhs: i64, rhs: i64) -> bool {
     unsafe {
-        let mut lhs_tm: libc::tm = core::mem::zeroed();
-        let mut rhs_tm: libc::tm = core::mem::zeroed();
+        let mut lhs_tm: tm = core::mem::zeroed();
+        let mut rhs_tm: tm = core::mem::zeroed();
 
-        if libc::localtime_r(&raw const lhs, &raw mut lhs_tm).is_null() {
+        if localtime_r(&raw const lhs, &raw mut lhs_tm).is_null() {
             return false;
         }
 
-        if libc::localtime_r(&raw const rhs, &raw mut rhs_tm).is_null() {
+        if localtime_r(&raw const rhs, &raw mut rhs_tm).is_null() {
             return false;
         }
 

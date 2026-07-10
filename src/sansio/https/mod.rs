@@ -4,10 +4,14 @@ mod request;
 mod response;
 mod state;
 
-use core::{ffi::CStr, mem::size_of};
-
-use crate::external::SSL_CTX;
+use crate::{
+    external::{
+        __socket_type_SOCK_STREAM as SOCK_STREAM, AF_INET, SSL_CTX, sockaddr_in, socklen_t,
+    },
+    sansio::{Satisfy, Wants},
+};
 use alloc::{vec, vec::Vec};
+use core::{ffi::CStr, mem::size_of};
 pub(crate) use request::HttpRequest;
 pub(crate) use response::HttpResponse;
 pub(crate) use state::OpenSslContext;
@@ -16,8 +20,6 @@ use anyhow::{Result, bail};
 use handshake::OpenSslHandshake;
 use read_write::OpenSslReadWrite;
 use state::OpenSslState;
-
-use crate::sansio::{Satisfy, Wants};
 
 enum State {
     CanSocket,
@@ -72,13 +74,13 @@ impl Https {
         })
     }
 
-    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_in) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &sockaddr_in) -> Option<Wants> {
         match &mut self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
                 Some(Wants::Socket {
-                    domain: libc::AF_INET,
-                    type_: libc::SOCK_STREAM,
+                    domain: AF_INET,
+                    type_: SOCK_STREAM,
                 })
             }
 
@@ -88,7 +90,7 @@ impl Https {
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<libc::sockaddr_in>() as libc::socklen_t,
+                    addrlen: size_of::<sockaddr_in>() as socklen_t,
                 })
             }
 

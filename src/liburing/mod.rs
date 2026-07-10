@@ -2,7 +2,7 @@ pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use crate::external::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
     __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait, __liburing_wait_cqe,
-    __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
+    __liburing_wait_cqe_timeout, ETIME, exit, io_uring, io_uring_cqe, strerror,
 };
 use crate::{
     sansio::{Op, Wants},
@@ -10,7 +10,6 @@ use crate::{
 };
 use anyhow::{Result, bail};
 use core::mem::MaybeUninit;
-use libc::{ETIME, strerror};
 
 mod cqe;
 mod sqe;
@@ -20,7 +19,7 @@ fn checkerr(errno: i32) {
         let str = unsafe { strerror(errno) };
         let str = unsafe { core::ffi::CStr::from_ptr(str) }.to_string_lossy();
         log::error!("IoUring error: {str:?}");
-        unsafe { libc::exit(1) }
+        unsafe { exit(1) }
     }
 }
 
@@ -41,7 +40,7 @@ impl IoUring {
         let sqe = unsafe { __liburing_get_sqe(&raw mut self.ring) };
         if sqe.is_null() {
             log::error!("got NULL from io_uring_get_sqe");
-            unsafe { libc::exit(1) }
+            unsafe { exit(1) }
         }
         self.dirty = true;
         Sqe { sqe }
@@ -91,7 +90,7 @@ impl IoUring {
         checkerr(errno);
         if cqe.is_null() {
             log::error!("got NULL from io_uring_wait_cqe_timeout");
-            unsafe { libc::exit(1) };
+            unsafe { exit(1) };
         }
         Some(Cqe { cqe })
     }
@@ -112,7 +111,7 @@ impl IoUring {
         match wants {
             Wants::Socket { domain, type_, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_socket(domain, type_, 0, 0);
+                sqe.prep_socket(domain, type_.cast_signed(), 0, 0);
                 sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
             Wants::Connect { fd, addr, addrlen } => {

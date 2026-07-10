@@ -1,6 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
+    external::sockaddr_un,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::new_sockaddr_un,
 };
@@ -12,7 +13,7 @@ pub(crate) struct KbMod {
 }
 
 impl KbMod {
-    pub(crate) fn address() -> Result<libc::sockaddr_un> {
+    pub(crate) fn address() -> Result<sockaddr_un> {
         let addr = new_sockaddr_un(b"/run/kb-mod-monitor-systemd.sock")?;
         Ok(addr)
     }
@@ -23,7 +24,7 @@ impl KbMod {
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
         self.reader.wants(addr)
     }
 

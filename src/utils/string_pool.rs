@@ -1,3 +1,4 @@
+use crate::external::exit;
 use string_bath::StringPool;
 
 const SLOTS_COUNT: usize = 100;
@@ -18,7 +19,7 @@ impl StringRefExt for StringRef {
         unsafe {
             STRING_POOL.alloc(s).unwrap_or_else(|err| {
                 log::error!("{err}");
-                libc::exit(1);
+                exit(1);
             })
         }
     }

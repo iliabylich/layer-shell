@@ -1,5 +1,8 @@
-use crate::sansio::{Satisfy, Wants};
-use crate::utils::new_sockaddr_in;
+use crate::{
+    external::{__socket_type_SOCK_DGRAM as SOCK_DGRAM, AF_INET, sockaddr_in, socklen_t},
+    sansio::{Satisfy, Wants},
+    utils::new_sockaddr_in,
+};
 use alloc::boxed::Box;
 use anyhow::{Context, Result, bail};
 use core::{
@@ -54,7 +57,7 @@ impl core::fmt::Debug for State {
 }
 
 impl DNS {
-    pub(crate) const fn address() -> libc::sockaddr_in {
+    pub(crate) const fn address() -> sockaddr_in {
         new_sockaddr_in(Ipv4Addr::new(8, 8, 8, 8).octets(), 53)
     }
 
@@ -67,13 +70,13 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_wants(&mut self, addr: &libc::sockaddr_in) -> Result<Option<Wants>> {
+    pub(crate) fn try_wants(&mut self, addr: &sockaddr_in) -> Result<Option<Wants>> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
                 Ok(Some(Wants::Socket {
-                    domain: libc::AF_INET,
-                    type_: libc::SOCK_DGRAM,
+                    domain: AF_INET,
+                    type_: SOCK_DGRAM,
                 }))
             }
 
@@ -82,7 +85,7 @@ impl DNS {
                 Ok(Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<libc::sockaddr_in>() as libc::socklen_t,
+                    addrlen: size_of::<sockaddr_in>() as socklen_t,
                 }))
             }
 
@@ -124,7 +127,7 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<libc::sockaddr_in>> {
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<sockaddr_in>> {
         let mut state = State::Finished;
         core::mem::swap(&mut self.state, &mut state);
 

@@ -1,6 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
+    external::{localtime_r, strftime, time, tm},
     utils::{StringRef, StringRefExt},
 };
 use alloc::string::String;
@@ -19,18 +20,18 @@ impl Clock {
 fn local_time_string() -> Result<String> {
     unsafe {
         let mut now = 0;
-        libc::time(&raw mut now);
+        time(&raw mut now);
 
-        let mut tm: libc::tm = core::mem::zeroed();
+        let mut tm: tm = core::mem::zeroed();
 
-        if libc::localtime_r(&raw const now, &raw mut tm).is_null() {
+        if localtime_r(&raw const now, &raw mut tm).is_null() {
             bail!("failed to get time");
         }
 
         let fmt = c"%H:%M:%S | %b %d | %a";
         let mut buf = [0_i8; 64];
 
-        let n = libc::strftime(buf.as_mut_ptr(), buf.len(), fmt.as_ptr(), &raw const tm);
+        let n = strftime(buf.as_mut_ptr(), buf.len(), fmt.as_ptr(), &raw const tm);
 
         if n == 0 {
             bail!("failed to format time");

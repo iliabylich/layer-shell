@@ -1,4 +1,5 @@
 use crate::{
+    external::sockaddr_un,
     sansio::{DBusState, Satisfy, Wants},
     utils::{dbus::queue::SystemDBusQueue, getenv, new_sockaddr_un},
 };
@@ -11,7 +12,7 @@ pub(crate) struct SystemDBus {
 }
 
 impl SystemDBus {
-    pub(crate) fn address() -> Result<libc::sockaddr_un> {
+    pub(crate) fn address() -> Result<sockaddr_un> {
         let path = match getenv(c"DBUS_SYSTEM_BUS_ADDRESS") {
             Some(address) => {
                 let mut iter = address.split(|b| *b == b'=');
@@ -35,7 +36,7 @@ impl SystemDBus {
         &mut self,
         readbuf: &mut [u8],
         queue: &SystemDBusQueue,
-        addr: &libc::sockaddr_un,
+        addr: &sockaddr_un,
     ) -> Option<Wants> {
         self.state.wants(addr, readbuf, queue)
     }

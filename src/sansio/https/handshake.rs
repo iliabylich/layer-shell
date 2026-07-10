@@ -59,8 +59,7 @@ impl OpenSslHandshake {
             return Ok(Progress::Done);
         }
 
-        let err = u32::try_from(unsafe { SSL_get_error(self.tls.ssl, ret) })
-            .context("SSL_get_error returned negative value")?;
+        let err = unsafe { SSL_get_error(self.tls.ssl, ret) };
         self.drain_wbio()?;
         if !self.writebuf.is_empty() {
             return Ok(Progress::NextState(State::ReadyToWrite));
@@ -77,15 +76,7 @@ impl OpenSslHandshake {
 
     fn drain_wbio(&mut self) -> Result<()> {
         self.writebuf.clear();
-        while unsafe {
-            BIO_ctrl(
-                self.tls.wbio,
-                BIO_CTRL_PENDING.cast_signed(),
-                0,
-                core::ptr::null_mut(),
-            )
-        } > 0
-        {
+        while unsafe { BIO_ctrl(self.tls.wbio, BIO_CTRL_PENDING, 0, core::ptr::null_mut()) } > 0 {
             let mut buf = [0_u8; 1_024];
             let res = unsafe { BIO_read(self.tls.wbio, buf.as_mut_ptr().cast(), 1_024) };
             let bytes_read = usize::try_from(res).context("BIO_read failed")?;

@@ -1,4 +1,7 @@
-use crate::sansio::Wants;
+use crate::{
+    external::{__socket_type_SOCK_STREAM as SOCK_STREAM, AF_UNIX, sockaddr_un, socklen_t},
+    sansio::Wants,
+};
 use anyhow::{Result, bail, ensure};
 use core::mem::size_of;
 
@@ -15,13 +18,13 @@ enum State {
 }
 
 impl State {
-    const fn wants(self, buf: &mut [u8], addr: &libc::sockaddr_un) -> (Self, Option<Wants>) {
+    const fn wants(self, buf: &mut [u8], addr: &sockaddr_un) -> (Self, Option<Wants>) {
         match self {
             Self::ReadyToSocket => (
                 Self::WaitingForSocket,
                 Some(Wants::Socket {
-                    domain: libc::AF_UNIX,
-                    type_: libc::SOCK_STREAM,
+                    domain: AF_UNIX,
+                    type_: SOCK_STREAM,
                 }),
             ),
 
@@ -30,7 +33,7 @@ impl State {
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<libc::sockaddr_un>() as libc::socklen_t,
+                    addrlen: size_of::<sockaddr_un>() as socklen_t,
                 }),
             ),
 
@@ -47,7 +50,7 @@ impl State {
         }
     }
 
-    const fn wants_in_place(&mut self, buf: &mut [u8], addr: &libc::sockaddr_un) -> Option<Wants> {
+    const fn wants_in_place(&mut self, buf: &mut [u8], addr: &sockaddr_un) -> Option<Wants> {
         let mut this: Self = unsafe { core::mem::zeroed() };
         core::mem::swap(self, &mut this);
         let (next, wants) = this.wants(buf, addr);
@@ -76,7 +79,7 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) const fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
+    pub(crate) const fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
         self.state.wants_in_place(&mut self.buf, addr)
     }
 

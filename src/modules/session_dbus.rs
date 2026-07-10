@@ -1,4 +1,5 @@
 use crate::{
+    external::sockaddr_un,
     sansio::{DBusState, Satisfy, Wants},
     utils::{dbus::queue::SessionDBusQueue, getenv, new_sockaddr_un},
 };
@@ -11,7 +12,7 @@ pub(crate) struct SessionDBus {
 }
 
 impl SessionDBus {
-    pub(crate) fn address() -> Result<libc::sockaddr_un> {
+    pub(crate) fn address() -> Result<sockaddr_un> {
         let address =
             getenv(c"DBUS_SESSION_BUS_ADDRESS").context("$DBUS_SESSION_BUS_ADDRESS is not set")?;
         let mut iter = address.split(|b| *b == b'=');
@@ -31,7 +32,7 @@ impl SessionDBus {
         &mut self,
         readbuf: &mut [u8],
         queue: &SessionDBusQueue,
-        addr: &libc::sockaddr_un,
+        addr: &sockaddr_un,
     ) -> Option<Wants> {
         self.state.wants(addr, readbuf, queue)
     }

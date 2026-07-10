@@ -1,4 +1,8 @@
-use crate::{sansio::Wants, utils::ArrayWriter};
+use crate::{
+    external::{__socket_type_SOCK_STREAM as SOCK_STREAM, AF_UNIX, sockaddr_un, socklen_t},
+    sansio::Wants,
+    utils::ArrayWriter,
+};
 use anyhow::{Context, Result, bail, ensure};
 use core::{fmt::Write, mem::size_of};
 
@@ -33,7 +37,7 @@ enum State {
 impl State {
     const fn wants(
         self,
-        addr: &libc::sockaddr_un,
+        addr: &sockaddr_un,
         writebuf: &[u8],
         readbuf: &mut [u8],
     ) -> (Self, Option<Wants>) {
@@ -41,8 +45,8 @@ impl State {
             Self::ReadyToSocket => (
                 Self::WaitingForSocket,
                 Some(Wants::Socket {
-                    domain: libc::AF_UNIX,
-                    type_: libc::SOCK_STREAM,
+                    domain: AF_UNIX,
+                    type_: SOCK_STREAM,
                 }),
             ),
 
@@ -51,7 +55,7 @@ impl State {
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<libc::sockaddr_un>() as libc::socklen_t,
+                    addrlen: size_of::<sockaddr_un>() as socklen_t,
                 }),
             ),
 
@@ -81,7 +85,7 @@ impl State {
 
     const fn wants_in_place(
         &mut self,
-        addr: &libc::sockaddr_un,
+        addr: &sockaddr_un,
         writebuf: &[u8],
         readbuf: &mut [u8],
     ) -> Option<Wants> {
@@ -109,7 +113,7 @@ impl UnixSocketOneshotWriter {
         })
     }
 
-    pub(crate) fn wants(&mut self, addr: &libc::sockaddr_un) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
         self.state.wants_in_place(
             addr,
             self.writebuf

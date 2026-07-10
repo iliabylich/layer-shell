@@ -1,4 +1,7 @@
-use crate::sansio::{Satisfy, Wants};
+use crate::{
+    external::{AT_FDCWD, O_RDONLY},
+    sansio::{Satisfy, Wants},
+};
 use anyhow::{Context as _, Result, bail};
 use core::ffi::CStr;
 
@@ -29,9 +32,9 @@ impl FileReader {
             State::CanOpen => {
                 self.state = State::WaitingForOpen;
                 Some(Wants::OpenAt {
-                    dfd: libc::AT_FDCWD,
+                    dfd: AT_FDCWD,
                     path: self.path,
-                    flags: libc::O_RDONLY,
+                    flags: O_RDONLY,
                     mode: 0,
                 })
             }

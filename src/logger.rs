@@ -1,4 +1,7 @@
-use crate::utils::{ArrayWriter, getenv};
+use crate::{
+    external::{STDERR_FILENO, exit, write},
+    utils::{ArrayWriter, getenv},
+};
 use core::{fmt::Write as _, str::FromStr as _};
 use log::{LevelFilter, Metadata, Record};
 
@@ -9,7 +12,7 @@ pub(crate) fn init() {
         log::set_max_level(level_from_env());
     } else {
         eprint(b"failed to set logger\n");
-        unsafe { libc::exit(1) }
+        unsafe { exit(1) }
     }
 }
 
@@ -62,13 +65,13 @@ fn level_from_env() -> LevelFilter {
 
     let Ok(level) = core::str::from_utf8(level) else {
         eprint(b"non-utf8 $RUST_LOG\n");
-        unsafe { libc::exit(1) }
+        unsafe { exit(1) }
     };
     if let Ok(v) = LevelFilter::from_str(level) {
         v
     } else {
         eprint(b"unsupported $RUST_LOG value\n");
-        unsafe { libc::exit(1) }
+        unsafe { exit(1) }
     }
 }
 
@@ -92,6 +95,6 @@ const fn color_for_level(level: log::Level) -> &'static str {
 
 fn eprint(bytes: &[u8]) {
     unsafe {
-        libc::write(libc::STDERR_FILENO, bytes.as_ptr().cast(), bytes.len());
+        write(STDERR_FILENO, bytes.as_ptr().cast(), bytes.len());
     }
 }

@@ -1,6 +1,7 @@
 use crate::{
     Event,
     event_queue::EventQueue,
+    external::sockaddr_in,
     modules::weather::weather_response::WeatherResponse,
     sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
     utils::ArrayWriter,
@@ -35,7 +36,7 @@ impl Weather {
         })
     }
 
-    pub(crate) fn wants(&mut self, remote_server_addr: &libc::sockaddr_in) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, remote_server_addr: &sockaddr_in) -> Option<Wants> {
         self.https.wants(remote_server_addr)
     }
 

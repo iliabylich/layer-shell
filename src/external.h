@@ -1,4 +1,14 @@
+#include <errno.h>
+#include <fcntl.h>
 #include <liburing.h>
+#include <netinet/in.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/timerfd.h>
+#include <sys/un.h>
+#include <time.h>
+#include <unistd.h>
 
 int __liburing_queue_init(unsigned int entries, struct io_uring *ring,
                           unsigned int flags);
