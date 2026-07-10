@@ -12,13 +12,13 @@ pub(crate) struct SessionDBus {
 }
 
 impl SessionDBus {
-    pub(crate) fn address() -> Result<&'static [u8]> {
+    pub(crate) fn address() -> Result<SocketAddrUnix> {
         let address =
             getenv(c"DBUS_SESSION_BUS_ADDRESS").context("$DBUS_SESSION_BUS_ADDRESS is not set")?;
         let mut iter = address.split(|b| *b == b'=');
         let _prefix = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
         let path = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
-        Ok(path)
+        SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))
     }
 
     pub(crate) const fn new() -> Self {

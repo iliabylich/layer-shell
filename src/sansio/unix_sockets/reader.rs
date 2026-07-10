@@ -4,10 +4,10 @@ use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
 
 #[derive(Debug)]
 enum State {
-    ReadyToSocket { addr: SocketAddrUnix },
-    WaitingForSocket { addr: SocketAddrUnix },
+    ReadyToSocket,
+    WaitingForSocket,
 
-    ReadyToConnect { addr: SocketAddrUnix, fd: i32 },
+    ReadyToConnect { fd: i32 },
     WaitingForConnect { fd: i32 },
 
     ReadyToRead { fd: i32 },
@@ -15,21 +15,21 @@ enum State {
 }
 
 impl State {
-    fn wants(self, buf: &mut [u8]) -> (Self, Option<Wants>) {
+    fn wants(self, buf: &mut [u8], addr: &SocketAddrUnix) -> (Self, Option<Wants>) {
         match self {
-            Self::ReadyToSocket { addr } => (
-                Self::WaitingForSocket { addr },
+            Self::ReadyToSocket => (
+                Self::WaitingForSocket,
                 Some(Wants::Socket {
                     domain: AddressFamily::UNIX,
                     r#type: SocketType::STREAM,
                 }),
             ),
 
-            Self::ReadyToConnect { addr, fd } => (
+            Self::ReadyToConnect { fd } => (
                 Self::WaitingForConnect { fd },
                 Some(Wants::Connect {
                     fd,
-                    addr: addr.into(),
+                    addr: addr.clone().into(),
                 }),
             ),
 
@@ -46,10 +46,10 @@ impl State {
         }
     }
 
-    fn wants_in_place(&mut self, buf: &mut [u8]) -> Option<Wants> {
+    fn wants_in_place(&mut self, buf: &mut [u8], addr: &SocketAddrUnix) -> Option<Wants> {
         let mut this: Self = unsafe { core::mem::zeroed() };
         core::mem::swap(self, &mut this);
-        let (next, wants) = this.wants(buf);
+        let (next, wants) = this.wants(buf, addr);
         *self = next;
         wants
     }
@@ -61,10 +61,10 @@ pub(crate) struct UnixSocketReader {
 }
 
 impl UnixSocketReader {
-    pub(crate) const fn new(addr: SocketAddrUnix) -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             buf: [0; _],
-            state: State::ReadyToSocket { addr },
+            state: State::ReadyToSocket,
         }
     }
 
@@ -75,19 +75,16 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.state.wants_in_place(&mut self.buf)
+    pub(crate) fn wants(&mut self, addr: &SocketAddrUnix) -> Option<Wants> {
+        self.state.wants_in_place(&mut self.buf, addr)
     }
 
     pub(crate) fn satisfy_socket(&mut self, fd: i32) -> Result<()> {
-        let State::WaitingForSocket { addr } = &self.state else {
+        let State::WaitingForSocket = &self.state else {
             bail!("malformed state: expected Socket, got {:?}", self.state);
         };
 
-        self.state = State::ReadyToConnect {
-            addr: addr.clone(),
-            fd,
-        };
+        self.state = State::ReadyToConnect { fd };
         Ok(())
     }
 

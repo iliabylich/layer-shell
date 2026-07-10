@@ -12,15 +12,17 @@ pub(crate) struct SystemDBus {
 }
 
 impl SystemDBus {
-    pub(crate) fn address() -> Result<&'static [u8]> {
-        let Some(address) = getenv(c"DBUS_SYSTEM_BUS_ADDRESS") else {
-            return Ok(b"/var/run/dbus/system_bus_socket");
+    pub(crate) fn address() -> Result<SocketAddrUnix> {
+        let path = match getenv(c"DBUS_SYSTEM_BUS_ADDRESS") {
+            Some(address) => {
+                let mut iter = address.split(|b| *b == b'=');
+                let _prefix = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
+                iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?
+            }
+            None => b"/var/run/dbus/system_bus_socket",
         };
 
-        let mut iter = address.split(|b| *b == b'=');
-        let _prefix = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
-        let path = iter.next().context("malformed $DBUS_SYSTEM_BUS_ADDRESS")?;
-        Ok(path)
+        SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))
     }
 
     pub(crate) const fn new() -> Self {

@@ -4,7 +4,6 @@ use core::fmt::Write;
 use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
 
 pub(crate) struct UnixSocketOneshotWriter {
-    addr: SocketAddrUnix,
     writebuf: [u8; 4_096],
     writebuflen: usize,
     readbuf: [u8; 4_096],
@@ -95,14 +94,13 @@ impl State {
 }
 
 impl UnixSocketOneshotWriter {
-    pub(crate) fn new(addr: SocketAddrUnix, data: &str) -> Result<Self> {
+    pub(crate) fn new(data: &str) -> Result<Self> {
         let mut writebuf = [0; 4_096];
         let mut writer = ArrayWriter::new(&mut writebuf);
         write!(&mut writer, "{data}").context("failed to write command to buffer")?;
         let writebuflen = writer.offset;
 
         Ok(Self {
-            addr,
             writebuf,
             writebuflen,
             readbuf: [0; _],
@@ -111,9 +109,9 @@ impl UnixSocketOneshotWriter {
         })
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &SocketAddrUnix) -> Option<Wants> {
         self.state.wants_in_place(
-            &self.addr,
+            addr,
             self.writebuf
                 .get(..self.writebuflen)
                 .unwrap_or_else(|| unreachable!()),

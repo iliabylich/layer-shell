@@ -1,9 +1,7 @@
 use crate::{
     Event,
-    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
-    user_data::ModuleId,
     utils::{StringRef, StringRefExt as _, getenv},
 };
 use alloc::{boxed::Box, string::String, vec, vec::Vec};
@@ -16,7 +14,6 @@ mod buffer;
 enum State {
     Writer(Box<UnixSocketOneshotWriter>),
     Reader(Box<UnixSocketReader>),
-    Stopped,
 }
 
 pub(crate) struct Niri {
@@ -26,92 +23,27 @@ pub(crate) struct Niri {
 }
 
 impl Niri {
-    pub(crate) fn new() -> Self {
-        Self::try_new().unwrap_or_else(|err| {
-            log::error!("{err:?}");
-            Self::stopped()
-        })
-    }
-
-    fn try_new() -> Result<Self> {
+    pub(crate) fn address() -> Result<SocketAddrUnix> {
         let path = getenv(c"NIRI_SOCKET").context("no $NIRI_SOCKET")?;
-        let addr = SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))?;
+        SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))
+    }
 
+    pub(crate) fn new() -> Result<Self> {
         Ok(Self {
-            state: State::Writer(Box::new(UnixSocketOneshotWriter::new(
-                addr,
-                "\"EventStream\"\n",
-            )?)),
+            state: State::Writer(Box::new(UnixSocketOneshotWriter::new("\"EventStream\"\n")?)),
             buffer: Buffer::new(),
             layouts: vec![],
         })
     }
 
-    const fn stopped() -> Self {
-        Self {
-            state: State::Stopped,
-            buffer: Buffer::new(),
-            layouts: vec![],
-        }
-    }
-
-    fn process(&mut self, buf: &[u8], events: &mut EventQueue) -> Result<()> {
-        let niri_events = self.buffer.push(buf)?;
-        let mut layouts = None;
-        let mut current_layout_idx = None;
-
-        for event in niri_events {
-            match event {
-                NiriEvent::KeyboardLayoutsChanged { keyboard_layouts } => {
-                    layouts = Some(keyboard_layouts.names);
-                    current_layout_idx = Some(keyboard_layouts.current_idx);
-                }
-                NiriEvent::KeyboardLayoutSwitched { idx } => {
-                    current_layout_idx = Some(idx);
-                }
-            }
-        }
-
-        if let Some(layouts) = layouts {
-            self.layouts = layouts;
-        }
-        if let Some(current_layout_idx) = current_layout_idx {
-            let mut lang = self
-                .layouts
-                .get(current_layout_idx)
-                .context("no such layout idx")?
-                .as_str();
-
-            if lang == "English (US)" {
-                lang = "EN";
-            } else if lang == "Polish" {
-                lang = "PL";
-            } else {
-                lang = "??";
-            }
-
-            events.push_back(Event::Language {
-                lang: StringRef::new(lang),
-            });
-        }
-
-        Ok(())
-    }
-}
-
-impl TryWantsTrySatisfy for Niri {
-    const ID: ModuleId = ModuleId::Niri;
-    type Output = ();
-
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self, addr: &SocketAddrUnix) -> Option<Wants> {
         match &mut self.state {
-            State::Writer(writer) => Ok(writer.wants()),
-            State::Reader(reader) => Ok(reader.wants()),
-            State::Stopped => Ok(None),
+            State::Writer(writer) => writer.wants(addr),
+            State::Reader(reader) => reader.wants(addr),
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<Self::Output> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         match &mut self.state {
             State::Writer(writer) => match satisfy {
                 Satisfy::Socket(res) => {
@@ -155,16 +87,51 @@ impl TryWantsTrySatisfy for Niri {
 
                 _ => bail!("Niri reader only accepts Socket, Connect and Read, got: {satisfy:?}"),
             },
-
-            State::Stopped => {}
         }
 
         Ok(())
     }
-}
 
-impl CanStop for Niri {
-    fn stopped(&mut self) -> Self {
-        Self::stopped()
+    fn process(&mut self, buf: &[u8], events: &mut EventQueue) -> Result<()> {
+        let niri_events = self.buffer.push(buf)?;
+        let mut layouts = None;
+        let mut current_layout_idx = None;
+
+        for event in niri_events {
+            match event {
+                NiriEvent::KeyboardLayoutsChanged { keyboard_layouts } => {
+                    layouts = Some(keyboard_layouts.names);
+                    current_layout_idx = Some(keyboard_layouts.current_idx);
+                }
+                NiriEvent::KeyboardLayoutSwitched { idx } => {
+                    current_layout_idx = Some(idx);
+                }
+            }
+        }
+
+        if let Some(layouts) = layouts {
+            self.layouts = layouts;
+        }
+        if let Some(current_layout_idx) = current_layout_idx {
+            let mut lang = self
+                .layouts
+                .get(current_layout_idx)
+                .context("no such layout idx")?
+                .as_str();
+
+            if lang == "English (US)" {
+                lang = "EN";
+            } else if lang == "Polish" {
+                lang = "PL";
+            } else {
+                lang = "??";
+            }
+
+            events.push_back(Event::Language {
+                lang: StringRef::new(lang),
+            });
+        }
+
+        Ok(())
     }
 }

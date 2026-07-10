@@ -48,8 +48,11 @@ pub struct IO {
     cpu: CPU,
     memory: Memory,
 
-    kb_mod: KbMod,
-    niri: Niri,
+    kb_mod: Option<KbMod>,
+    kb_mod_addr: SocketAddrUnix,
+
+    niri: Option<Niri>,
+    niri_addr: SocketAddrUnix,
 
     on_event: (
         extern "C" fn(event: &Event, *mut core::ffi::c_void),
@@ -80,8 +83,7 @@ impl IO {
         let timerbuf = [0; 8];
 
         let session_dbus = SessionDBus::new();
-        let session_dbus_addr =
-            SocketAddrUnix::new(SessionDBus::address()?).map_err(|errno| anyhow::anyhow!(errno))?;
+        let session_dbus_addr = SessionDBus::address()?;
         let session_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
         let mut session_dbus_queue = SessionDBusQueue::new()?;
         let sound = Sound::new(&mut session_dbus_queue);
@@ -89,8 +91,7 @@ impl IO {
         Control::init(&mut session_dbus_queue)?;
 
         let system_dbus = SystemDBus::new();
-        let system_dbus_addr =
-            SocketAddrUnix::new(SystemDBus::address()?).map_err(|errno| anyhow::anyhow!(errno))?;
+        let system_dbus_addr = SystemDBus::address()?;
         let system_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
         let mut system_dbus_queue = SystemDBusQueue::new()?;
         let network = Network::new(&mut system_dbus_queue);
@@ -104,8 +105,10 @@ impl IO {
         let memory = Memory::new();
 
         let kb_mod = KbMod::new();
+        let kb_mod_addr = KbMod::address()?;
 
-        let niri = Niri::new();
+        let niri = Niri::new()?;
+        let niri_addr = Niri::address()?;
 
         Ok(Self {
             ring,
@@ -136,8 +139,11 @@ impl IO {
             cpu,
             memory,
 
-            kb_mod,
-            niri,
+            kb_mod: Some(kb_mod),
+            kb_mod_addr,
+
+            niri: Some(niri),
+            niri_addr,
 
             on_event,
             running: true,
@@ -171,9 +177,13 @@ impl IO {
 
         schedule_memory(&mut self.memory, &mut self.ring)?;
 
-        schedule_kb_mod(&mut self.kb_mod, &mut self.ring)?;
+        if let Some(kb_mod) = &mut self.kb_mod {
+            schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr)?;
+        }
 
-        schedule_niri(&mut self.niri, &mut self.ring)?;
+        if let Some(niri) = &mut self.niri {
+            schedule_niri(niri, &mut self.ring, &self.niri_addr)?;
+        }
 
         self.ring.submit_if_dirty()?;
 
@@ -279,6 +289,29 @@ macro_rules! generate_simple_schedule_impl {
     };
 }
 
+generate_simple_schedule_impl!(schedule_location, Location);
+generate_simple_schedule_impl!(schedule_weather, Weather);
+generate_simple_schedule_impl!(schedule_cpu, CPU);
+generate_simple_schedule_impl!(schedule_memory, Memory);
+
+fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &SocketAddrUnix) -> Result<()> {
+    if let Some(wants) = kb_mod.wants(addr) {
+        log::trace!(target: "KbMod", "{wants:?}");
+        core::assert_matches!(kb_mod.wants(addr), None);
+        ring.schedule(ModuleId::KbMod, wants)?;
+    }
+    Ok(())
+}
+
+fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &SocketAddrUnix) -> Result<()> {
+    if let Some(wants) = niri.wants(addr) {
+        log::trace!(target: "Niri", "{wants:?}");
+        core::assert_matches!(niri.wants(addr), None);
+        ring.schedule(ModuleId::Niri, wants)?;
+    }
+    Ok(())
+}
+
 fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) -> Result<()> {
     if let Some(wants) = timer.wants(buf) {
         log::trace!(target: "Timer", "{wants:?}");
@@ -287,13 +320,6 @@ fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) -> R
     }
     Ok(())
 }
-
-generate_simple_schedule_impl!(schedule_location, Location);
-generate_simple_schedule_impl!(schedule_weather, Weather);
-generate_simple_schedule_impl!(schedule_cpu, CPU);
-generate_simple_schedule_impl!(schedule_memory, Memory);
-generate_simple_schedule_impl!(schedule_kb_mod, KbMod);
-generate_simple_schedule_impl!(schedule_niri, Niri);
 
 fn schedule_session_dbus(
     module: &mut SessionDBus,
@@ -380,6 +406,46 @@ impl IO {
 }
 
 impl IO {
+    fn satisfy_niri(&mut self, satisfy: Satisfy) -> Result<()> {
+        let Some(niri) = &mut self.niri else {
+            return Ok(());
+        };
+
+        match niri.satisfy(satisfy, &mut self.events) {
+            Ok(()) => {
+                schedule_niri(niri, &mut self.ring, &self.niri_addr)?;
+                Ok(())
+            }
+            Err(err) => {
+                log::error!(target: "Niri", "{err:?}");
+                self.niri = None;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl IO {
+    fn satisfy_kb_mod(&mut self, satisfy: Satisfy) -> Result<()> {
+        let Some(kb_mod) = &mut self.kb_mod else {
+            return Ok(());
+        };
+
+        match kb_mod.satisfy(satisfy, &mut self.events) {
+            Ok(()) => {
+                schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr)?;
+                Ok(())
+            }
+            Err(err) => {
+                log::error!(target: "KbMod", "{err:?}");
+                self.kb_mod = None;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl IO {
     fn satisfy_location(&mut self, satisfy: Satisfy) -> Result<()> {
         if let Some((lat, lng)) = self.location.satisfy(satisfy, &mut self.events) {
             self.weather.start(lat, lng, &self.openssl_ctx)?;
@@ -394,8 +460,6 @@ impl IO {
 generate_simple_satisfy_impl!(satisfy_weather, weather, schedule_weather);
 generate_simple_satisfy_impl!(satisfy_cpu, cpu, schedule_cpu);
 generate_simple_satisfy_impl!(satisfy_memory, memory, schedule_memory);
-generate_simple_satisfy_impl!(satisfy_kb_mod, kb_mod, schedule_kb_mod);
-generate_simple_satisfy_impl!(satisfy_niri, niri, schedule_niri);
 
 impl IO {
     fn satisfy_session_dbus(&mut self, satisfy: Satisfy) -> Result<()> {

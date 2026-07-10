@@ -1,73 +1,49 @@
 use crate::{
     Event,
-    actor::{CanStop, TryWantsTrySatisfy},
     event_queue::EventQueue,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    user_data::ModuleId,
 };
 use alloc::boxed::Box;
 use anyhow::{Context, Result, bail};
 use rustix::net::SocketAddrUnix;
 
-pub(crate) enum KbMod {
-    Running { reader: Box<UnixSocketReader> },
-    Stopped,
+pub(crate) struct KbMod {
+    reader: Box<UnixSocketReader>,
 }
 
 impl KbMod {
+    pub(crate) fn address() -> Result<SocketAddrUnix> {
+        SocketAddrUnix::new("/run/kb-mod-monitor-systemd.sock")
+            .map_err(|errno| anyhow::anyhow!(errno))
+    }
+
     pub(crate) fn new() -> Self {
-        Self::try_new().unwrap_or_else(|err| {
-            log::error!("{err:?}");
-            Self::stopped()
-        })
-    }
-
-    fn try_new() -> Result<Self> {
-        Ok(Self::Running {
-            reader: Box::new(UnixSocketReader::new(
-                SocketAddrUnix::new("/run/kb-mod-monitor-systemd.sock")
-                    .map_err(|errno| anyhow::anyhow!(errno))?,
-            )),
-        })
-    }
-
-    const fn stopped() -> Self {
-        Self::Stopped
-    }
-}
-
-impl TryWantsTrySatisfy for KbMod {
-    const ID: ModuleId = ModuleId::KbMod;
-    type Output = ();
-
-    fn try_wants(&mut self) -> Result<Option<Wants>> {
-        match self {
-            Self::Running { reader, .. } => Ok(reader.wants()),
-            Self::Stopped => Ok(None),
+        Self {
+            reader: Box::new(UnixSocketReader::new()),
         }
     }
 
-    fn try_satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<Self::Output> {
-        let Self::Running { reader } = self else {
-            return Ok(());
-        };
+    pub(crate) fn wants(&mut self, addr: &SocketAddrUnix) -> Option<Wants> {
+        self.reader.wants(addr)
+    }
 
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         match satisfy {
             Satisfy::Socket(res) => {
                 let fd = res?;
-                reader.satisfy_socket(fd)?;
+                self.reader.satisfy_socket(fd)?;
                 Ok(())
             }
 
             Satisfy::Connect(res) => {
                 res?;
-                reader.satisfy_connect()?;
+                self.reader.satisfy_connect()?;
                 Ok(())
             }
 
             Satisfy::Read(res) => {
                 let bytes_read = res?;
-                let (buf, len) = reader.satisfy_read(bytes_read)?;
+                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
                 let bytes = buf.get(..len).context("buf is too short")?;
 
                 for byte in bytes {
@@ -87,12 +63,6 @@ impl TryWantsTrySatisfy for KbMod {
 
             _ => bail!("KbMod only accepts Socket, Connect and Read, got: {satisfy:?}"),
         }
-    }
-}
-
-impl CanStop for KbMod {
-    fn stopped(&mut self) -> Self {
-        Self::Stopped
     }
 }
 
