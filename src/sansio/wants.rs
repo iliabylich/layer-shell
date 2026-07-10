@@ -1,10 +1,11 @@
 use core::ffi::CStr;
+use libc::{sockaddr, socklen_t};
 use rustix::{
     fs::{Mode, OFlags},
-    net::{AddressFamily, SocketAddrAny, SocketType},
+    net::{AddressFamily, SocketType},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum Wants {
     Socket {
         domain: AddressFamily,
@@ -12,7 +13,8 @@ pub(crate) enum Wants {
     },
     Connect {
         fd: i32,
-        addr: SocketAddrAny,
+        addr: *const sockaddr,
+        addrlen: socklen_t,
     },
     Read {
         fd: i32,

@@ -560,7 +560,6 @@ impl IO {
     fn satisfy_weather_dns(&mut self, satisfy: Satisfy) -> Result<()> {
         match self.weather_dns.try_satisfy(satisfy)? {
             Some(addr) => {
-                log::error!("Weather addr: {addr:?}");
                 let weather_addr = self.weather_addr.insert(addr);
                 let (lat, lng) = self.latlng.context("no latlng")?;
                 let weather = self

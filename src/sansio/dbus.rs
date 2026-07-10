@@ -46,7 +46,8 @@ impl DBusState {
                 *self = Self::WaitingForConnect { fd };
                 Ok(Some(Wants::Connect {
                     fd,
-                    addr: addr.clone(),
+                    addr: addr.as_ptr().cast(),
+                    addrlen: addr.addr_len(),
                 }))
             }
 

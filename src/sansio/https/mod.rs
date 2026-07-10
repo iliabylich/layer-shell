@@ -74,7 +74,7 @@ impl Https {
         })
     }
 
-    pub(crate) fn wants(&mut self, remote_server_addr: &SocketAddrAny) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
         match &mut self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
@@ -89,7 +89,8 @@ impl Https {
                 self.state = State::WaitingForConnect { fd };
                 Some(Wants::Connect {
                     fd,
-                    addr: remote_server_addr.clone(),
+                    addr: addr.as_ptr().cast(),
+                    addrlen: addr.addr_len(),
                 })
             }
 

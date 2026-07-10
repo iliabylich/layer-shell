@@ -3,7 +3,6 @@ use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
-use alloc::{boxed::Box, vec, vec::Vec};
 use anyhow::{Result, bail};
 use core::mem::MaybeUninit;
 use generated::{
@@ -12,7 +11,6 @@ use generated::{
     __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
 };
 use libc::{ETIME, strerror};
-use rustix::net::SocketAddrAny;
 
 mod cqe;
 #[expect(
@@ -46,8 +44,6 @@ static mut NOTIMEOUT: __kernel_timespec = __kernel_timespec {
 pub(crate) struct IoUring {
     ring: io_uring,
     dirty: bool,
-    #[expect(clippy::vec_box)]
-    socket_addr_cache: Vec<Box<SocketAddrAny>>,
 }
 
 impl IoUring {
@@ -55,11 +51,7 @@ impl IoUring {
         let mut ring: io_uring = unsafe { MaybeUninit::zeroed().assume_init() };
         let errno = unsafe { __liburing_queue_init(entries, &raw mut ring, flags) };
         checkerr(errno)?;
-        Ok(Self {
-            ring,
-            dirty: false,
-            socket_addr_cache: vec![],
-        })
+        Ok(Self { ring, dirty: false })
     }
 
     fn get_sqe(&mut self) -> Result<Sqe> {
@@ -142,16 +134,9 @@ impl IoUring {
                 );
                 sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
-            Wants::Connect { fd, addr, .. } => {
+            Wants::Connect { fd, addr, addrlen } => {
                 let mut sqe = self.get_sqe()?;
-                let addr =
-                    if let Some(cached) = self.socket_addr_cache.iter().find(|e| ***e == addr) {
-                        cached
-                    } else {
-                        self.socket_addr_cache.push_mut(Box::new(addr))
-                    };
-
-                sqe.prep_connect(fd, addr.as_ptr().cast(), addr.addr_len());
+                sqe.prep_connect(fd, addr, addrlen);
                 sqe.set_user_data(UserData::new(module_id, Op::Connect));
             }
             Wants::Read { fd, buf, len, .. } => {

@@ -51,7 +51,8 @@ impl State {
                 Self::WaitingForConnect { fd },
                 Some(Wants::Connect {
                     fd,
-                    addr: addr.clone(),
+                    addr: addr.as_ptr().cast(),
+                    addrlen: addr.addr_len(),
                 }),
             ),
 
