@@ -82,7 +82,7 @@ impl IO {
     ) -> Result<Self> {
         let config = Config::read()?;
 
-        let ring = IoUring::new(10, 0)?;
+        let ring = IoUring::new(10, 0);
         let events = EventQueue::new();
         let openssl_ctx = OpenSslContext::new()?;
         let dns_server_addr = DNS::address();
@@ -167,7 +167,7 @@ impl IO {
 
     pub(crate) fn start(&mut self) -> Result<()> {
         if let Some(timer) = &mut self.timer {
-            schedule_timer(timer, &mut self.ring, &mut self.timerbuf)?;
+            schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
         }
 
         schedule_session_dbus(
@@ -176,7 +176,7 @@ impl IO {
             &self.session_dbus_addr,
             &self.session_dbus_queue,
             &mut self.ring,
-        )?;
+        );
 
         schedule_system_dbus(
             &mut self.system_dbus,
@@ -184,7 +184,7 @@ impl IO {
             &self.system_dbus_addr,
             &self.system_dbus_queue,
             &mut self.ring,
-        )?;
+        );
 
         schedule_location_dns(
             &mut self.location_dns,
@@ -197,14 +197,14 @@ impl IO {
         schedule_memory(&mut self.memory, &mut self.ring)?;
 
         if let Some(kb_mod) = &mut self.kb_mod {
-            schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr)?;
+            schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr);
         }
 
         if let Some(niri) = &mut self.niri {
-            schedule_niri(niri, &mut self.ring, &self.niri_addr)?;
+            schedule_niri(niri, &mut self.ring, &self.niri_addr);
         }
 
-        self.ring.submit_if_dirty()?;
+        self.ring.submit_if_dirty();
 
         Ok(())
     }
@@ -221,7 +221,7 @@ impl IO {
             return Ok(());
         }
 
-        while let Some(cqe) = self.ring.try_get_cqe()? {
+        while let Some(cqe) = self.ring.try_get_cqe() {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
@@ -234,10 +234,10 @@ impl IO {
                 ModuleId::Location => self.satisfy_location(satisfy)?,
                 ModuleId::WeatherDNS => self.satisfy_weather_dns(satisfy)?,
                 ModuleId::Weather => self.satisfy_weather(satisfy)?,
-                ModuleId::KbMod => self.satisfy_kb_mod(satisfy)?,
-                ModuleId::Niri => self.satisfy_niri(satisfy)?,
-                ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy)?,
-                ModuleId::SystemDBus => self.satisfy_system_dbus(satisfy)?,
+                ModuleId::KbMod => self.satisfy_kb_mod(satisfy),
+                ModuleId::Niri => self.satisfy_niri(satisfy),
+                ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy),
+                ModuleId::SystemDBus => self.satisfy_system_dbus(satisfy),
                 ModuleId::CPU => self.satisfy_cpu(satisfy)?,
                 ModuleId::Memory => self.satisfy_memory(satisfy)?,
                 ModuleId::Timer => self.satisfy_timer(satisfy)?,
@@ -246,7 +246,7 @@ impl IO {
             self.ring.cqe_seen(cqe);
         }
 
-        self.ring.submit_if_dirty()?;
+        self.ring.submit_if_dirty();
 
         while let Some(event) = self.events.pop_front() {
             log::info!(target: "IO", "{event:?}");
@@ -257,14 +257,13 @@ impl IO {
         Ok(())
     }
 
-    pub(crate) fn wait_readable(&mut self) -> Result<()> {
-        self.ring.submit_and_wait(1)?;
-        Ok(())
+    pub(crate) fn wait_readable(&mut self) {
+        self.ring.submit_and_wait(1);
     }
 
-    pub(crate) fn process_command(&mut self, cmd: Command) -> Result<()> {
+    pub(crate) fn process_command(&mut self, cmd: Command) {
         if !self.running {
-            return Ok(());
+            return;
         }
 
         match cmd {
@@ -286,12 +285,11 @@ impl IO {
                     &self.session_dbus_addr,
                     &self.session_dbus_queue,
                     &mut self.ring,
-                )?;
+                );
             }
         }
 
-        self.ring.submit_if_dirty()?;
-        Ok(())
+        self.ring.submit_if_dirty();
     }
 
     pub(crate) const fn fd(&self) -> i32 {
@@ -303,7 +301,7 @@ macro_rules! generate_simple_schedule_impl {
     ($fn:ident, $module:ident) => {
         fn $fn(module: &mut $module, ring: &mut IoUring) -> Result<()> {
             if let Some(wants) = module.wants() {
-                ring.schedule(ModuleId::$module, wants)?;
+                ring.schedule(ModuleId::$module, wants);
             };
             Ok(())
         }
@@ -321,7 +319,7 @@ fn schedule_location_dns(
     if let Some(wants) = dns.try_wants(dns_addr)? {
         log::trace!(target: "LocationDNS", "{wants:?}");
         core::assert_matches!(dns.try_wants(dns_addr), Ok(None));
-        ring.schedule(ModuleId::LocationDNS, wants)?;
+        ring.schedule(ModuleId::LocationDNS, wants);
     }
     Ok(())
 }
@@ -330,62 +328,53 @@ fn schedule_location(
     location: &mut Location,
     ring: &mut IoUring,
     remote_server_addr: &SocketAddrAny,
-) -> Result<()> {
+) {
     if let Some(wants) = location.wants(remote_server_addr) {
         log::trace!(target: "Location", "{wants:?}");
         core::assert_matches!(location.wants(remote_server_addr), None);
-        ring.schedule(ModuleId::Location, wants)?;
+        ring.schedule(ModuleId::Location, wants);
     }
-    Ok(())
 }
 
 fn schedule_weather_dns(dns: &mut DNS, ring: &mut IoUring, dns_addr: &SocketAddrAny) -> Result<()> {
     if let Some(wants) = dns.try_wants(dns_addr)? {
         log::trace!(target: "WeatherDNS", "{wants:?}");
         core::assert_matches!(dns.try_wants(dns_addr), Ok(None));
-        ring.schedule(ModuleId::WeatherDNS, wants)?;
+        ring.schedule(ModuleId::WeatherDNS, wants);
     }
     Ok(())
 }
 
-fn schedule_weather(
-    weather: &mut Weather,
-    ring: &mut IoUring,
-    remote_server_addr: &SocketAddrAny,
-) -> Result<()> {
+fn schedule_weather(weather: &mut Weather, ring: &mut IoUring, remote_server_addr: &SocketAddrAny) {
     if let Some(wants) = weather.wants(remote_server_addr) {
         log::trace!(target: "Weather", "{wants:?}");
         core::assert_matches!(weather.wants(remote_server_addr), None);
-        ring.schedule(ModuleId::Weather, wants)?;
+        ring.schedule(ModuleId::Weather, wants);
     }
-    Ok(())
 }
 
-fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &SocketAddrAny) -> Result<()> {
+fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &SocketAddrAny) {
     if let Some(wants) = kb_mod.wants(addr) {
         log::trace!(target: "KbMod", "{wants:?}");
         core::assert_matches!(kb_mod.wants(addr), None);
-        ring.schedule(ModuleId::KbMod, wants)?;
+        ring.schedule(ModuleId::KbMod, wants);
     }
-    Ok(())
 }
 
-fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &SocketAddrAny) -> Result<()> {
+fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &SocketAddrAny) {
     if let Some(wants) = niri.wants(addr) {
         log::trace!(target: "Niri", "{wants:?}");
         core::assert_matches!(niri.wants(addr), None);
-        ring.schedule(ModuleId::Niri, wants)?;
+        ring.schedule(ModuleId::Niri, wants);
     }
-    Ok(())
 }
 
-fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) -> Result<()> {
+fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) {
     if let Some(wants) = timer.wants(buf) {
         log::trace!(target: "Timer", "{wants:?}");
         core::assert_matches!(timer.wants(buf), None);
-        ring.schedule(ModuleId::Timer, wants)?;
+        ring.schedule(ModuleId::Timer, wants);
     }
-    Ok(())
 }
 
 fn schedule_session_dbus(
@@ -394,14 +383,13 @@ fn schedule_session_dbus(
     addr: &SocketAddrAny,
     queue: &SessionDBusQueue,
     ring: &mut IoUring,
-) -> Result<()> {
+) {
     let Some(wants) = module.wants(readbuf, queue, addr) else {
-        return Ok(());
+        return;
     };
     log::trace!(target: "SessionDBus", "{wants:?}");
     core::assert_matches!(module.wants(readbuf, queue, addr), None);
-    ring.schedule(ModuleId::SessionDBus, wants)?;
-    Ok(())
+    ring.schedule(ModuleId::SessionDBus, wants);
 }
 fn schedule_system_dbus(
     module: &mut SystemDBus,
@@ -409,14 +397,13 @@ fn schedule_system_dbus(
     addr: &SocketAddrAny,
     queue: &SystemDBusQueue,
     ring: &mut IoUring,
-) -> Result<()> {
+) {
     let Some(wants) = module.wants(readbuf, queue, addr) else {
-        return Ok(());
+        return;
     };
     log::trace!(target: "SystemDBus", "{wants:?}");
     core::assert_matches!(module.wants(readbuf, queue, addr), None);
-    ring.schedule(ModuleId::SystemDBus, wants)?;
-    Ok(())
+    ring.schedule(ModuleId::SystemDBus, wants);
 }
 
 macro_rules! generate_simple_satisfy_impl {
@@ -439,7 +426,7 @@ impl IO {
 
         match timer.satisfy(satisfy, self.timerbuf) {
             Ok(Some(tick)) => {
-                schedule_timer(timer, &mut self.ring, &mut self.timerbuf)?;
+                schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
 
                 Clock::tick(&mut self.events)?;
 
@@ -447,7 +434,7 @@ impl IO {
                     && let Some((lat, lng)) = self.latlng
                 {
                     weather.tick(tick, lat, lng, &self.openssl_ctx)?;
-                    schedule_weather(weather, &mut self.ring, &self.dns_server_addr)?;
+                    schedule_weather(weather, &mut self.ring, &self.dns_server_addr);
                 }
 
                 self.cpu.tick();
@@ -463,7 +450,7 @@ impl IO {
                     &self.session_dbus_addr,
                     &self.session_dbus_queue,
                     &mut self.ring,
-                )?;
+                );
             }
             Ok(None) => {}
             Err(err) => {
@@ -477,40 +464,32 @@ impl IO {
 }
 
 impl IO {
-    fn satisfy_niri(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn satisfy_niri(&mut self, satisfy: Satisfy) {
         let Some(niri) = &mut self.niri else {
-            return Ok(());
+            return;
         };
 
         match niri.satisfy(satisfy, &mut self.events) {
-            Ok(()) => {
-                schedule_niri(niri, &mut self.ring, &self.niri_addr)?;
-                Ok(())
-            }
+            Ok(()) => schedule_niri(niri, &mut self.ring, &self.niri_addr),
             Err(err) => {
                 log::error!(target: "Niri", "{err:?}");
                 self.niri = None;
-                Ok(())
             }
         }
     }
 }
 
 impl IO {
-    fn satisfy_kb_mod(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn satisfy_kb_mod(&mut self, satisfy: Satisfy) {
         let Some(kb_mod) = &mut self.kb_mod else {
-            return Ok(());
+            return;
         };
 
         match kb_mod.satisfy(satisfy, &mut self.events) {
-            Ok(()) => {
-                schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr)?;
-                Ok(())
-            }
+            Ok(()) => schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr),
             Err(err) => {
                 log::error!(target: "KbMod", "{err:?}");
                 self.kb_mod = None;
-                Ok(())
             }
         }
     }
@@ -522,7 +501,7 @@ impl IO {
             Some(addr) => {
                 let location_addr = self.location_addr.insert(addr);
                 let location = self.location.insert(Location::new(&self.openssl_ctx)?);
-                schedule_location(location, &mut self.ring, location_addr)?;
+                schedule_location(location, &mut self.ring, location_addr);
             }
             None => {
                 schedule_location_dns(
@@ -549,7 +528,7 @@ impl IO {
                     location,
                     &mut self.ring,
                     self.location_addr.as_ref().context("no location_addr")?,
-                )?;
+                );
             }
         }
         Ok(())
@@ -565,7 +544,7 @@ impl IO {
                 let weather = self
                     .weather
                     .insert(Weather::new(lat, lng, &self.openssl_ctx)?);
-                schedule_weather(weather, &mut self.ring, weather_addr)?;
+                schedule_weather(weather, &mut self.ring, weather_addr);
             }
             None => {
                 schedule_weather_dns(&mut self.weather_dns, &mut self.ring, &self.dns_server_addr)?;
@@ -584,7 +563,7 @@ impl IO {
                     weather,
                     &mut self.ring,
                     self.weather_addr.as_ref().context("no weather_addr")?,
-                )?;
+                );
                 Ok(())
             }
             Err(err) => {
@@ -600,7 +579,7 @@ generate_simple_satisfy_impl!(satisfy_cpu, cpu, schedule_cpu);
 generate_simple_satisfy_impl!(satisfy_memory, memory, schedule_memory);
 
 impl IO {
-    fn satisfy_session_dbus(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn satisfy_session_dbus(&mut self, satisfy: Satisfy) {
         let message = self.session_dbus.satisfy(
             satisfy,
             self.session_dbus_readbuf.as_slice(),
@@ -624,13 +603,12 @@ impl IO {
             &self.session_dbus_addr,
             &self.session_dbus_queue,
             &mut self.ring,
-        )?;
-        Ok(())
+        );
     }
 }
 
 impl IO {
-    fn satisfy_system_dbus(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn satisfy_system_dbus(&mut self, satisfy: Satisfy) {
         let message = self.system_dbus.satisfy(
             satisfy,
             self.system_dbus_readbuf.as_slice(),
@@ -648,8 +626,7 @@ impl IO {
             &self.system_dbus_addr,
             &self.system_dbus_queue,
             &mut self.ring,
-        )?;
-        Ok(())
+        );
     }
 }
 

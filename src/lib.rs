@@ -78,29 +78,24 @@ pub extern "C" fn io_init(
     callback: extern "C" fn(event: &Event, *mut core::ffi::c_void),
     data: *mut core::ffi::c_void,
 ) -> NonNull<IO> {
-    exit_if_err(|| {
-        logger::init()?;
-        let mut ptr = unsafe {
-            NonNull::new(libc::malloc(size_of::<IO>()))
-                .context("failed to malloc IO")?
-                .cast::<IO>()
-        };
+    logger::init();
 
-        unsafe {
+    exit_if_err(|| {
+        Ok(unsafe {
+            let mut ptr = NonNull::new(libc::malloc(size_of::<IO>()))
+                .context("failed to malloc IO")?
+                .cast::<IO>();
             ptr.write(IO::new((callback, data))?);
             ptr.as_mut().start()?;
-        }
-        Ok(ptr)
+            ptr
+        })
     })
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_deinit(io: NonNull<IO>) {
-    exit_if_err(|| {
-        let mut io = unsafe { Box::from_raw(io.as_ptr()) };
-        io.stop();
-        Ok(())
-    });
+    let mut io = unsafe { Box::from_raw(io.as_ptr()) };
+    io.stop();
 }
 
 #[unsafe(no_mangle)]
@@ -113,47 +108,35 @@ pub unsafe extern "C" fn io_handle_readable(mut io: NonNull<IO>) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_wait_readable(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.wait_readable()
-    });
+    let io = unsafe { io.as_mut() };
+    io.wait_readable();
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_as_raw_fd(io: NonNull<IO>) -> i32 {
-    exit_if_err(move || {
-        let io = unsafe { io.as_ref() };
-        Ok(io.fd())
-    })
+pub const unsafe extern "C" fn io_as_raw_fd(io: NonNull<IO>) -> i32 {
+    let io = unsafe { io.as_ref() };
+    io.fd()
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_lock(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::Lock)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::Lock);
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_reboot(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::Reboot)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::Reboot);
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_shutdown(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::Shutdown)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::Shutdown);
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_logout(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::Logout)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::Logout);
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, uuid: *const core::ffi::c_char) {
@@ -163,36 +146,29 @@ pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, uuid: *const core:
 
         io.process_command(Command::TriggerTray {
             uuid: StringRef::new(uuid),
-        })
+        });
+        Ok(())
     });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_spawn_wifi_editor(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::SpawnWiFiEditor)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::SpawnWiFiEditor);
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_spawn_bluetooh_editor(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::SpawnBluetoothEditor)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::SpawnBluetoothEditor);
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_spawn_system_monitor(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::SpawnSystemMonitor)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::SpawnSystemMonitor);
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_change_wallpaper(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.process_command(Command::ChangeWallpaper)
-    });
+    let io = unsafe { io.as_mut() };
+    io.process_command(Command::ChangeWallpaper);
 }
 
 #[repr(C)]

@@ -1,15 +1,16 @@
 use crate::utils::{ArrayWriter, getenv};
-use anyhow::{Context as _, Result};
 use core::{fmt::Write as _, str::FromStr as _};
 use log::{LevelFilter, Metadata, Record};
 
 static LOGGER: Logger = Logger;
 
-pub(crate) fn init() -> Result<()> {
+pub(crate) fn init() {
     if log::set_logger(&LOGGER).is_ok() {
-        log::set_max_level(level_from_env()?);
+        log::set_max_level(level_from_env());
+    } else {
+        eprint(b"failed to set logger\n");
+        unsafe { libc::exit(1) }
     }
-    Ok(())
 }
 
 struct Logger;
@@ -48,22 +49,27 @@ impl log::Log for Logger {
             b"ERROR logger: log message does not fit into buffer\n"
         };
 
-        unsafe {
-            libc::write(libc::STDERR_FILENO, bytes.as_ptr().cast(), bytes.len());
-        }
+        eprint(bytes);
     }
 
     fn flush(&self) {}
 }
 
-fn level_from_env() -> Result<LevelFilter> {
+fn level_from_env() -> LevelFilter {
     let Some(level) = getenv(c"RUST_LOG") else {
-        return Ok(LevelFilter::Info);
+        return LevelFilter::Error;
     };
 
-    let level = core::str::from_utf8(level).context("non-utf8 $RUST_LOG")?;
-    LevelFilter::from_str(level)
-        .map_err(|_| anyhow::anyhow!("unsupported $RUST_LOG value: {level}"))
+    let Ok(level) = core::str::from_utf8(level) else {
+        eprint(b"non-utf8 $RUST_LOG\n");
+        unsafe { libc::exit(1) }
+    };
+    if let Ok(v) = LevelFilter::from_str(level) {
+        v
+    } else {
+        eprint(b"unsupported $RUST_LOG value\n");
+        unsafe { libc::exit(1) }
+    }
 }
 
 const RESET: &str = "\x1b[0m";
@@ -81,5 +87,11 @@ const fn color_for_level(level: log::Level) -> &'static str {
         log::Level::Info => GREEN,
         log::Level::Debug => CYAN,
         log::Level::Trace => MAGENTA,
+    }
+}
+
+fn eprint(bytes: &[u8]) {
+    unsafe {
+        libc::write(libc::STDERR_FILENO, bytes.as_ptr().cast(), bytes.len());
     }
 }
