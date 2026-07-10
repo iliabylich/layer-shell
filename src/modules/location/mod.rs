@@ -4,8 +4,8 @@ use crate::{
 };
 use alloc::string::ToString as _;
 use anyhow::Result;
-use core::net::SocketAddr;
 use response::LocationResponse;
+use rustix::net::SocketAddrAny;
 
 mod response;
 
@@ -22,7 +22,7 @@ impl Location {
         })
     }
 
-    pub(crate) fn wants(&mut self, dns_addr: &SocketAddr) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self, dns_addr: &SocketAddrAny) -> Result<Option<Wants>> {
         self.https.try_wants(dns_addr)
     }
 

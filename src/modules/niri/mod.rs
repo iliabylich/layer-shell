@@ -7,7 +7,7 @@ use crate::{
 use alloc::{boxed::Box, string::String, vec, vec::Vec};
 use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};
-use rustix::net::SocketAddrUnix;
+use rustix::net::{SocketAddrAny, SocketAddrUnix};
 
 mod buffer;
 
@@ -23,9 +23,10 @@ pub(crate) struct Niri {
 }
 
 impl Niri {
-    pub(crate) fn address() -> Result<SocketAddrUnix> {
+    pub(crate) fn address() -> Result<SocketAddrAny> {
         let path = getenv(c"NIRI_SOCKET").context("no $NIRI_SOCKET")?;
-        SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))
+        let addr = SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))?;
+        Ok(addr.into())
     }
 
     pub(crate) fn new() -> Result<Self> {
@@ -36,7 +37,7 @@ impl Niri {
         })
     }
 
-    pub(crate) fn wants(&mut self, addr: &SocketAddrUnix) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
         match &mut self.state {
             State::Writer(writer) => writer.wants(addr),
             State::Reader(reader) => reader.wants(addr),

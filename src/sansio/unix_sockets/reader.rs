@@ -1,6 +1,6 @@
 use crate::sansio::Wants;
 use anyhow::{Result, bail, ensure};
-use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
+use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
 
 #[derive(Debug)]
 enum State {
@@ -15,7 +15,7 @@ enum State {
 }
 
 impl State {
-    fn wants(self, buf: &mut [u8], addr: &SocketAddrUnix) -> (Self, Option<Wants>) {
+    fn wants(self, buf: &mut [u8], addr: &SocketAddrAny) -> (Self, Option<Wants>) {
         match self {
             Self::ReadyToSocket => (
                 Self::WaitingForSocket,
@@ -29,7 +29,7 @@ impl State {
                 Self::WaitingForConnect { fd },
                 Some(Wants::Connect {
                     fd,
-                    addr: addr.clone().into(),
+                    addr: addr.clone(),
                 }),
             ),
 
@@ -46,7 +46,7 @@ impl State {
         }
     }
 
-    fn wants_in_place(&mut self, buf: &mut [u8], addr: &SocketAddrUnix) -> Option<Wants> {
+    fn wants_in_place(&mut self, buf: &mut [u8], addr: &SocketAddrAny) -> Option<Wants> {
         let mut this: Self = unsafe { core::mem::zeroed() };
         core::mem::swap(self, &mut this);
         let (next, wants) = this.wants(buf, addr);
@@ -75,7 +75,7 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &SocketAddrUnix) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &SocketAddrAny) -> Option<Wants> {
         self.state.wants_in_place(&mut self.buf, addr)
     }
 

@@ -3,7 +3,7 @@ use alloc::boxed::Box;
 use anyhow::{Result, bail};
 use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};
-use rustix::net::{AddressFamily, SocketType};
+use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct DNS {
@@ -50,8 +50,8 @@ impl core::fmt::Debug for State {
 }
 
 impl DNS {
-    pub(crate) const fn address() -> SocketAddr {
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53)
+    pub(crate) fn address() -> SocketAddrAny {
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53).into()
     }
 
     pub(crate) fn new(domain: &'static str) -> Self {
@@ -63,7 +63,7 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_wants(&mut self, addr: &SocketAddr) -> Result<Option<Wants>> {
+    pub(crate) fn try_wants(&mut self, addr: &SocketAddrAny) -> Result<Option<Wants>> {
         match self.state {
             State::CanSocket => {
                 self.state = State::WaitingForSocket;
@@ -77,7 +77,7 @@ impl DNS {
                 self.state = State::WaitingForConnect { fd };
                 Ok(Some(Wants::Connect {
                     fd,
-                    addr: (*addr).into(),
+                    addr: addr.clone(),
                 }))
             }
 

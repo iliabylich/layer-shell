@@ -10,7 +10,8 @@ use alloc::{
     string::{String, ToString as _},
 };
 use anyhow::Result;
-use core::{fmt::Write, net::SocketAddr};
+use core::fmt::Write;
+use rustix::net::SocketAddrAny;
 pub use weather_code::WeatherCode;
 pub use weather_response::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherOnDay, WeatherOnHour,
@@ -51,7 +52,7 @@ impl Weather {
         }
     }
 
-    pub(crate) fn wants(&mut self, dns_addr: &SocketAddr) -> Result<Option<Wants>> {
+    pub(crate) fn wants(&mut self, dns_addr: &SocketAddrAny) -> Result<Option<Wants>> {
         match self {
             Self::Ready { https, .. } => https.try_wants(dns_addr),
             Self::WaitingForLocation => Ok(None),

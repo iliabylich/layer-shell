@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use dbus::IncomingMessage;
-use rustix::net::SocketAddrUnix;
+use rustix::net::{SocketAddrAny, SocketAddrUnix};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SystemDBus {
@@ -12,7 +12,7 @@ pub(crate) struct SystemDBus {
 }
 
 impl SystemDBus {
-    pub(crate) fn address() -> Result<SocketAddrUnix> {
+    pub(crate) fn address() -> Result<SocketAddrAny> {
         let path = match getenv(c"DBUS_SYSTEM_BUS_ADDRESS") {
             Some(address) => {
                 let mut iter = address.split(|b| *b == b'=');
@@ -22,7 +22,8 @@ impl SystemDBus {
             None => b"/var/run/dbus/system_bus_socket",
         };
 
-        SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))
+        let addr = SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))?;
+        Ok(addr.into())
     }
 
     pub(crate) const fn new() -> Self {
@@ -35,7 +36,7 @@ impl SystemDBus {
         &mut self,
         readbuf: &mut [u8],
         queue: &SystemDBusQueue,
-        addr: &SocketAddrUnix,
+        addr: &SocketAddrAny,
     ) -> Option<Wants> {
         self.state.wants(addr, readbuf, queue)
     }

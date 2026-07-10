@@ -3,7 +3,7 @@ use dbus::{
     DBusConnection, DBusConnector, DBusConnectorWants, DBusWantsRead, DBusWantsWrite,
     IncomingMessage, OutgoingQueue,
 };
-use rustix::net::{AddressFamily, SocketAddrUnix, SocketType};
+use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
 
 use crate::sansio::{Satisfy, Wants};
 
@@ -29,7 +29,7 @@ pub(crate) enum DBusState {
 impl DBusState {
     pub(crate) fn try_wants(
         &mut self,
-        addr: &SocketAddrUnix,
+        addr: &SocketAddrAny,
         readbuf: &mut [u8],
         queue: &impl OutgoingQueue,
     ) -> Result<Option<Wants>> {
@@ -46,7 +46,7 @@ impl DBusState {
                 *self = Self::WaitingForConnect { fd };
                 Ok(Some(Wants::Connect {
                     fd,
-                    addr: addr.clone().into(),
+                    addr: addr.clone(),
                 }))
             }
 
@@ -124,7 +124,7 @@ impl DBusState {
 
     pub(crate) fn wants(
         &mut self,
-        addr: &SocketAddrUnix,
+        addr: &SocketAddrAny,
         readbuf: &mut [u8],
         queue: &impl OutgoingQueue,
     ) -> Option<Wants> {

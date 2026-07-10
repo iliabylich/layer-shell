@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use dbus::IncomingMessage;
-use rustix::net::SocketAddrUnix;
+use rustix::net::{SocketAddrAny, SocketAddrUnix};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SessionDBus {
@@ -12,13 +12,14 @@ pub(crate) struct SessionDBus {
 }
 
 impl SessionDBus {
-    pub(crate) fn address() -> Result<SocketAddrUnix> {
+    pub(crate) fn address() -> Result<SocketAddrAny> {
         let address =
             getenv(c"DBUS_SESSION_BUS_ADDRESS").context("$DBUS_SESSION_BUS_ADDRESS is not set")?;
         let mut iter = address.split(|b| *b == b'=');
         let _prefix = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
         let path = iter.next().context("malformed $DBUS_SESSION_BUS_ADDRESS")?;
-        SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))
+        let addr = SocketAddrUnix::new(path).map_err(|errno| anyhow::anyhow!(errno))?;
+        Ok(addr.into())
     }
 
     pub(crate) const fn new() -> Self {
@@ -31,7 +32,7 @@ impl SessionDBus {
         &mut self,
         readbuf: &mut [u8],
         queue: &SessionDBusQueue,
-        addr: &SocketAddrUnix,
+        addr: &SocketAddrAny,
     ) -> Option<Wants> {
         self.state.wants(addr, readbuf, queue)
     }

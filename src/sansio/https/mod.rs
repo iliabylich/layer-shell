@@ -17,7 +17,7 @@ pub(crate) use state::OpenSslContext;
 use anyhow::{Result, bail};
 use handshake::OpenSslHandshake;
 use read_write::OpenSslReadWrite;
-use rustix::net::{AddressFamily, SocketType};
+use rustix::net::{AddressFamily, SocketAddrAny, SocketType};
 use state::OpenSslState;
 
 use crate::sansio::{DNS, Satisfy, Wants};
@@ -78,7 +78,7 @@ impl Https {
         })
     }
 
-    pub(crate) fn try_wants(&mut self, dns_addr: &SocketAddr) -> Result<Option<Wants>> {
+    pub(crate) fn try_wants(&mut self, dns_addr: &SocketAddrAny) -> Result<Option<Wants>> {
         match &mut self.state {
             State::Dns(dns) => dns.try_wants(dns_addr),
 
