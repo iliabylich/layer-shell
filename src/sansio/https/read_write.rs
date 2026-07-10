@@ -3,7 +3,7 @@ use crate::external::{
     SSL_ERROR_ZERO_RETURN, SSL_get_error, SSL_read, SSL_write,
 };
 use crate::sansio::{Satisfy, Wants, https::OpenSslState};
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 use anyhow::{Context as _, Result, bail, ensure};
 
 #[derive(Debug, Clone, Copy)]
@@ -18,7 +18,7 @@ enum State {
 pub(crate) struct OpenSslReadWrite {
     state: State,
 
-    tls: Rc<OpenSslState>,
+    tls: OpenSslState,
 
     readbuf: Box<[u8; 4_096]>,
     writebuf: Vec<u8>,
@@ -28,7 +28,7 @@ pub(crate) struct OpenSslReadWrite {
 }
 
 impl OpenSslReadWrite {
-    pub(crate) fn new(ssl: Rc<OpenSslState>, request: Vec<u8>) -> Result<Self> {
+    pub(crate) fn new(ssl: OpenSslState, request: Vec<u8>) -> Result<Self> {
         let mut this = Self {
             state: State::ReadyToWrite,
 
@@ -184,6 +184,7 @@ impl OpenSslReadWrite {
                             }
 
                             SSL_ERROR_ZERO_RETURN => {
+                                self.tls.free();
                                 return Ok(Some(core::mem::take(&mut self.response)));
                             }
 

@@ -5,7 +5,6 @@ use crate::external::{
     SSL_set_connect_state, TLS_client_method, TLS1_2_VERSION, X509_VERIFY_PARAM_set_hostflags,
     X509_VERIFY_PARAM_set1_host,
 };
-use alloc::rc::Rc;
 use anyhow::{Result, ensure};
 use core::ffi::CStr;
 
@@ -37,6 +36,7 @@ impl Drop for OpenSslContext {
     }
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct OpenSslState {
     pub(crate) ssl: *mut SSL,
     pub(crate) rbio: *mut BIO,
@@ -44,7 +44,7 @@ pub(crate) struct OpenSslState {
 }
 
 impl OpenSslState {
-    pub(crate) fn new(hostname: &CStr, ctx: *mut SSL_CTX) -> Result<Rc<Self>> {
+    pub(crate) fn new(hostname: &CStr, ctx: *mut SSL_CTX) -> Result<Self> {
         let ssl = unsafe { SSL_new(ctx) };
         ensure!(!ssl.is_null(), "SSL is NULL");
 
@@ -65,12 +65,10 @@ impl OpenSslState {
 
         unsafe { SSL_set_connect_state(ssl) };
 
-        Ok(Rc::new(Self { ssl, rbio, wbio }))
+        Ok(Self { ssl, rbio, wbio })
     }
-}
 
-impl Drop for OpenSslState {
-    fn drop(&mut self) {
+    pub(crate) fn free(&mut self) {
         unsafe { SSL_free(self.ssl) };
     }
 }

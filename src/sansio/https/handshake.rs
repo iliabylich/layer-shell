@@ -5,7 +5,7 @@ use crate::external::{
     SSL_get_error,
 };
 use crate::sansio::{Satisfy, Wants, https::state::OpenSslState};
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 use anyhow::{Context as _, Result, bail, ensure};
 
 #[derive(Debug, Clone, Copy)]
@@ -20,7 +20,7 @@ enum State {
 pub(crate) struct OpenSslHandshake {
     state: State,
 
-    tls: Rc<OpenSslState>,
+    tls: OpenSslState,
 
     readbuf: Box<[u8; 4_096]>,
     writebuf: Vec<u8>,
@@ -112,7 +112,7 @@ impl OpenSslHandshake {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<Rc<OpenSslState>>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<OpenSslState>> {
         match (self.state, satisfy) {
             (State::WaitingForRead, Satisfy::Read(res)) => {
                 let bytes_read = res?;
@@ -146,7 +146,7 @@ impl OpenSslHandshake {
         }
 
         match self.determine_state()? {
-            Progress::Done => Ok(Some(Rc::clone(&self.tls))),
+            Progress::Done => Ok(Some(self.tls)),
             Progress::NextState(state) => {
                 self.state = state;
                 Ok(None)
