@@ -1,3 +1,5 @@
+use core::ffi::CStr;
+
 use crate::external::{
     BIO_ctrl, BIO_read, BIO_write, SSL_CTX, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_connect,
     SSL_get_error,
@@ -30,7 +32,7 @@ enum Progress {
 }
 
 impl OpenSslHandshake {
-    pub(crate) fn new(hostname: &str, ctx: *mut SSL_CTX) -> Result<Self> {
+    pub(crate) fn new(hostname: &CStr, ctx: *mut SSL_CTX) -> Result<Self> {
         let mut this = Self {
             state: State::ReadyToRead,
 

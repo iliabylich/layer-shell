@@ -5,10 +5,9 @@ use crate::external::{
     SSL_set_connect_state, TLS_client_method, TLS1_2_VERSION, X509_VERIFY_PARAM_set_hostflags,
     X509_VERIFY_PARAM_set1_host,
 };
-use alloc::ffi::CString;
 use alloc::rc::Rc;
-use anyhow::{Context as _, Result, ensure};
-use core::str::FromStr;
+use anyhow::{Result, ensure};
+use core::ffi::CStr;
 
 pub(crate) struct OpenSslContext(*mut SSL_CTX);
 
@@ -42,15 +41,13 @@ pub(crate) struct OpenSslState {
     pub(crate) ssl: *mut SSL,
     pub(crate) rbio: *mut BIO,
     pub(crate) wbio: *mut BIO,
-    _hostname: CString,
 }
 
 impl OpenSslState {
-    pub(crate) fn new(hostname: &str, ctx: *mut SSL_CTX) -> Result<Rc<Self>> {
+    pub(crate) fn new(hostname: &CStr, ctx: *mut SSL_CTX) -> Result<Rc<Self>> {
         let ssl = unsafe { SSL_new(ctx) };
         ensure!(!ssl.is_null(), "SSL is NULL");
 
-        let hostname = CString::from_str(hostname).context("hostname contains NULL")?;
         let res = unsafe { __openssl_SSL_set_tlsext_host_name(ssl, hostname.as_ptr().cast_mut()) };
         ensure!(res == 1, "SSL_set_tlsext_host_name failed");
 
@@ -68,12 +65,7 @@ impl OpenSslState {
 
         unsafe { SSL_set_connect_state(ssl) };
 
-        Ok(Rc::new(Self {
-            ssl,
-            rbio,
-            wbio,
-            _hostname: hostname,
-        }))
+        Ok(Rc::new(Self { ssl, rbio, wbio }))
     }
 }
 

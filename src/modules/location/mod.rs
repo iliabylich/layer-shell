@@ -1,3 +1,5 @@
+use core::ffi::CStr;
+
 use crate::{
     event_queue::EventQueue,
     sansio::{HttpRequest, Https, OpenSslContext, Satisfy, Wants},
@@ -14,7 +16,7 @@ pub(crate) struct Location {
 }
 
 impl Location {
-    pub(crate) const HOST: &str = "myip.ibylich.dev";
+    pub(crate) const HOST: &CStr = c"myip.ibylich.dev";
 
     pub(crate) fn new(ctx: &OpenSslContext) -> Result<Self> {
         Ok(Self {

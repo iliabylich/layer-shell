@@ -1,14 +1,17 @@
 use crate::sansio::{Satisfy, Wants};
 use alloc::boxed::Box;
-use anyhow::{Result, bail};
-use core::net::{IpAddr, Ipv4Addr, SocketAddr};
+use anyhow::{Context, Result, bail};
+use core::{
+    ffi::CStr,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 use dns::{Dns, DnsRecordType, DnsWants, MAX_DNS_PACKET_LEN};
 use rustix::net::SocketAddrAny;
 
 #[expect(clippy::upper_case_acronyms)]
 pub(crate) struct DNS {
     state: State,
-    domain: &'static str,
+    domain: &'static CStr,
     output: Option<SocketAddr>,
     buf: Box<[u8; MAX_DNS_PACKET_LEN]>,
 }
@@ -54,7 +57,7 @@ impl DNS {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53).into()
     }
 
-    pub(crate) fn new(domain: &'static str) -> Self {
+    pub(crate) fn new(domain: &'static CStr) -> Self {
         Self {
             state: State::CanSocket,
             domain,
@@ -134,7 +137,11 @@ impl DNS {
             (State::WaitingForConnect { fd }, Satisfy::Connect(res)) => {
                 res?;
                 self.state = State::CanWrite {
-                    dns: Dns::new(self.domain, DnsRecordType::A, &mut self.buf)?,
+                    dns: Dns::new(
+                        self.domain.to_str().context("non-utf8 domain")?,
+                        DnsRecordType::A,
+                        &mut self.buf,
+                    )?,
                     fd,
                 };
                 Ok(None)

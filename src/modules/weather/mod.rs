@@ -10,7 +10,7 @@ use alloc::{
     string::{String, ToString as _},
 };
 use anyhow::Result;
-use core::fmt::Write;
+use core::{ffi::CStr, fmt::Write};
 use rustix::net::SocketAddrAny;
 pub use weather_code::WeatherCode;
 pub use weather_response::{
@@ -25,7 +25,7 @@ pub(crate) struct Weather {
 }
 
 impl Weather {
-    pub(crate) const HOST: &str = "api.open-meteo.com";
+    pub(crate) const HOST: &CStr = c"api.open-meteo.com";
 
     pub(crate) fn new(lat: f64, lng: f64, ctx: &OpenSslContext) -> Result<Self> {
         Ok(Self {

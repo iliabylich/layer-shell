@@ -4,6 +4,8 @@ mod request;
 mod response;
 mod state;
 
+use core::ffi::CStr;
+
 use crate::external::SSL_CTX;
 use alloc::{vec, vec::Vec};
 pub(crate) use request::HttpRequest;
@@ -54,7 +56,7 @@ pub(crate) struct Https {
     state: State,
     ctx: *mut SSL_CTX,
     request: Vec<u8>,
-    domain: &'static str,
+    domain: &'static CStr,
     response: Vec<u8>,
 }
 
