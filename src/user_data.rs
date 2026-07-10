@@ -4,8 +4,10 @@ use anyhow::{Result, ensure};
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum ModuleId {
-    Weather,
+    LocationDNS,
     Location,
+    WeatherDNS,
+    Weather,
 
     KbMod,
     Niri,
@@ -24,8 +26,10 @@ const MAX: ModuleId = ModuleId::Timer;
 impl ModuleId {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
-            Self::Weather => "Weather",
+            Self::LocationDNS => "LocationDNS",
             Self::Location => "Location",
+            Self::WeatherDNS => "WeatherDNS",
+            Self::Weather => "Weather",
             Self::KbMod => "KbMod",
             Self::Niri => "Niri",
             Self::SessionDBus => "SessionDBus",

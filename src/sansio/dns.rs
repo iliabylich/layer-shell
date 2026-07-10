@@ -119,7 +119,7 @@ impl DNS {
         }
     }
 
-    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<SocketAddr>> {
+    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy) -> Result<Option<SocketAddrAny>> {
         let mut state = State::Finished;
         core::mem::swap(&mut self.state, &mut state);
 
@@ -156,10 +156,11 @@ impl DNS {
 
             (State::WaitingForClose, Satisfy::Close(res)) => {
                 res?;
-                let Some(output) = self.output.take() else {
+                let Some(mut addr) = self.output.take() else {
                     return Ok(None);
                 };
-                Ok(Some(output))
+                addr.set_port(443);
+                Ok(Some(addr.into()))
             }
 
             (_, satisfy) => bail!("malformed state: {:?} vs {satisfy:?}", self.state),

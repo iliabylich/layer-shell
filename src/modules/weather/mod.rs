@@ -20,72 +20,48 @@ pub use weather_response::{
 mod weather_code;
 mod weather_response;
 
-const HOST: &str = "api.open-meteo.com";
-
-pub(crate) enum Weather {
-    WaitingForLocation,
-    Ready {
-        lat: f64,
-        lng: f64,
-        https: Box<Https>,
-    },
+pub(crate) struct Weather {
+    https: Box<Https>,
 }
 
 impl Weather {
-    pub(crate) const fn new() -> Self {
-        Self::WaitingForLocation
+    pub(crate) const HOST: &str = "api.open-meteo.com";
+
+    pub(crate) fn new(lat: f64, lng: f64, ctx: &OpenSslContext) -> Result<Self> {
+        Ok(Self {
+            https: Box::new(Https::new(
+                HttpRequest::get(Self::HOST, path(lat, lng)?),
+                ctx,
+            )?),
+        })
     }
 
-    pub(crate) fn start(&mut self, lat: f64, lng: f64, ctx: &OpenSslContext) -> Result<()> {
-        *self = Self::Ready {
-            lat,
-            lng,
-            https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)?), ctx)?),
-        };
-        Ok(())
-    }
-
-    const fn latlng(&self) -> Option<(f64, f64)> {
-        match self {
-            Self::WaitingForLocation => None,
-            Self::Ready { lat, lng, .. } => Some((*lat, *lng)),
-        }
-    }
-
-    pub(crate) fn wants(&mut self, dns_addr: &SocketAddrAny) -> Result<Option<Wants>> {
-        match self {
-            Self::Ready { https, .. } => https.try_wants(dns_addr),
-            Self::WaitingForLocation => Ok(None),
-        }
+    pub(crate) fn wants(&mut self, remote_server_addr: &SocketAddrAny) -> Option<Wants> {
+        self.https.wants(remote_server_addr)
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
-        match self {
-            Self::Ready { https, .. } => {
-                let Some(response) = https.try_satisfy(satisfy)? else {
-                    return Ok(());
-                };
-                let response = WeatherResponse::parse(&response)?;
-                let event = Event::try_from(response)?;
-                events.push_back(event);
-                Ok(())
-            }
-            Self::WaitingForLocation => Ok(()),
-        }
+        let Some(response) = self.https.satisfy(satisfy)? else {
+            return Ok(());
+        };
+        let response = WeatherResponse::parse(&response)?;
+        let event = Event::try_from(response)?;
+        events.push_back(event);
+        Ok(())
     }
 
-    pub(crate) fn tick(&mut self, tick: u64, ctx: &OpenSslContext) -> Result<()> {
+    pub(crate) fn tick(
+        &mut self,
+        tick: u64,
+        lat: f64,
+        lng: f64,
+        ctx: &OpenSslContext,
+    ) -> Result<()> {
         if !tick.is_multiple_of(60) {
             return Ok(());
         }
 
-        if let Some((lat, lng)) = self.latlng() {
-            *self = Self::Ready {
-                lat,
-                lng,
-                https: Box::new(Https::new(HttpRequest::get(HOST, path(lat, lng)?), ctx)?),
-            };
-        }
+        *self = Self::new(lat, lng, ctx)?;
 
         Ok(())
     }
