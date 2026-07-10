@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 #![expect(static_mut_refs)]
 #![warn(trivial_casts)]
 #![warn(trivial_numeric_casts)]
