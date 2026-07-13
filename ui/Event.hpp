@@ -185,7 +185,7 @@ struct Event {
   };
 
   struct Sound {
-    uint32_t volume;
+    uint8_t volume;
     bool muted;
 
     Sound(const IO_Event::IO_Sound_Body &data);

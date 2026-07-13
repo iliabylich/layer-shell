@@ -189,7 +189,7 @@ QString weather_summary(float temperature, IO_WeatherCode code) {
       .arg(weather_description(code));
 }
 
-QString sound(uint32_t volume, bool muted) {
+QString sound(uint8_t volume, bool muted) {
   QString icon = "";
   if (volume == 0 || muted) {
     icon = "󰝟";

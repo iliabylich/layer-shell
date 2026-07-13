@@ -11,6 +11,7 @@ pub(crate) enum ModuleId {
 
     KbMod,
     NM,
+    PW,
     Niri,
 
     SessionDBus,
@@ -32,6 +33,7 @@ impl ModuleId {
             Self::Weather => "Weather",
             Self::KbMod => "KbMod",
             Self::NM => "NM",
+            Self::PW => "PW",
             Self::Niri => "Niri",
             Self::SessionDBus => "SessionDBus",
             Self::CPU => "CPU",

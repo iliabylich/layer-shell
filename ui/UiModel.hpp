@@ -54,7 +54,7 @@ Q_SIGNALS:
   void networkUploadSpeedChanged(const QString &text);
   void networkSsidAndStrengthChanged(const QString &text);
   void sessionToggleRequested();
-  void soundChanged(uint32_t volume, const QString &icon);
+  void soundChanged(uint8_t volume, const QString &icon);
   void trayAppAdded(const QString &app_id, const QIcon &icon,
                     const QVector<Event::Tray::MenuItem> &items);
   void trayAppIconUpdated(const QString &app_id, const QIcon &icon);

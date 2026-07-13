@@ -65,7 +65,7 @@ SoundOverlay::SoundOverlay(UiModel *model) : Overlay(model) {
   hide_timer_->setSingleShot(true);
   hide_timer_->setInterval(1000);
   connect(model, &UiModel::soundChanged, this,
-          [this](uint32_t volume, const QString &icon) {
+          [this](uint8_t volume, const QString &icon) {
             bar_->setValue(volume);
             icon_->setText(icon);
             show();

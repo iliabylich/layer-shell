@@ -7,7 +7,7 @@ use crate::{
     external::{sockaddr_in, sockaddr_un},
     liburing::IoUring,
     modules::{
-        CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, NM, Niri, SessionDBus, Sound,
+        CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, NM, Niri, PW, SessionDBus,
         Timer, Tray, Weather,
     },
     sansio::{DNS, OpenSslContext, Satisfy},
@@ -31,11 +31,13 @@ pub struct IO {
     session_dbus_addr: sockaddr_un,
     session_dbus_readbuf: HeapBlob,
     session_dbus_queue: SessionDBusQueue,
-    sound: Sound,
     tray: Tray,
 
-    nm_addr: sockaddr_un,
+    pw: Option<PW>,
+    pw_addr: sockaddr_un,
+
     nm: Option<NM>,
+    nm_addr: sockaddr_un,
 
     location_dns: DNS,
     location_addr: Option<sockaddr_in>,
@@ -88,7 +90,6 @@ impl IO {
         let session_dbus_addr = SessionDBus::address()?;
         let session_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
         let mut session_dbus_queue = SessionDBusQueue::new()?;
-        let sound = Sound::new(&mut session_dbus_queue);
         let tray = Tray::new(&mut session_dbus_queue)?;
         Control::init(&mut session_dbus_queue)?;
 
@@ -109,6 +110,9 @@ impl IO {
         let niri = Niri::new()?;
         let niri_addr = Niri::address()?;
 
+        let pw = PW::new();
+        let pw_addr = PW::address()?;
+
         Ok(Self {
             ring,
             events,
@@ -124,11 +128,13 @@ impl IO {
             session_dbus_addr,
             session_dbus_readbuf,
             session_dbus_queue,
-            sound,
             tray,
 
-            nm: Some(nm),
+            pw_addr,
+            pw: Some(pw),
+
             nm_addr,
+            nm: Some(nm),
 
             location_dns,
             location_addr: None,
@@ -168,6 +174,10 @@ impl IO {
 
         if let Some(nm) = &mut self.nm {
             schedule_nm(nm, &mut self.ring, &self.nm_addr);
+        }
+
+        if let Some(pw) = &mut self.pw {
+            schedule_pw(pw, &mut self.ring, &self.pw_addr);
         }
 
         schedule_location_dns(
@@ -220,6 +230,7 @@ impl IO {
                 ModuleId::Weather => self.satisfy_weather(satisfy)?,
                 ModuleId::KbMod => self.satisfy_kb_mod(satisfy),
                 ModuleId::NM => self.satisfy_nm(satisfy),
+                ModuleId::PW => self.satisfy_pw(satisfy),
                 ModuleId::Niri => self.satisfy_niri(satisfy),
                 ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy),
                 ModuleId::CPU => self.satisfy_cpu(satisfy)?,
@@ -349,6 +360,14 @@ fn schedule_nm(nm: &mut NM, ring: &mut IoUring, addr: &sockaddr_un) {
     }
 }
 
+fn schedule_pw(pw: &mut PW, ring: &mut IoUring, addr: &sockaddr_un) {
+    if let Some(wants) = pw.wants(addr) {
+        log::trace!(target: "pw", "{wants:?}");
+        core::assert_matches!(pw.wants(addr), None);
+        ring.schedule(ModuleId::PW, wants);
+    }
+}
+
 fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &sockaddr_un) {
     if let Some(wants) = niri.wants(addr) {
         log::trace!(target: "Niri", "{wants:?}");
@@ -415,15 +434,6 @@ impl IO {
 
                 self.memory.tick();
                 schedule_memory(&mut self.memory, &mut self.ring)?;
-
-                self.sound.tick(tick, &mut self.session_dbus_queue);
-                schedule_session_dbus(
-                    &mut self.session_dbus,
-                    self.session_dbus_readbuf.as_slice(),
-                    &self.session_dbus_addr,
-                    &self.session_dbus_queue,
-                    &mut self.ring,
-                );
             }
             Ok(None) => {}
             Err(err) => {
@@ -479,6 +489,22 @@ impl IO {
             Err(err) => {
                 log::error!(target: "NM", "{err:?}");
                 self.nm = None;
+            }
+        }
+    }
+}
+
+impl IO {
+    fn satisfy_pw(&mut self, satisfy: Satisfy) {
+        let Some(pw) = &mut self.pw else {
+            return;
+        };
+
+        match pw.satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_pw(pw, &mut self.ring, &self.pw_addr),
+            Err(err) => {
+                log::error!(target: "PW", "{err:?}");
+                self.pw = None;
             }
         }
     }
@@ -576,8 +602,6 @@ impl IO {
         );
 
         if let Some(message) = message {
-            self.sound
-                .handle(message, &mut self.events, &mut self.session_dbus_queue);
             self.tray
                 .handle(message, &mut self.events, &mut self.session_dbus_queue);
 

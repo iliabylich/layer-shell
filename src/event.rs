@@ -64,7 +64,7 @@ pub enum Event {
     },
     Exit,
     Sound {
-        volume: u32,
+        volume: u8,
         muted: bool,
     },
 }
