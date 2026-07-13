@@ -1,5 +1,7 @@
 [Unit]
 Description=Layer Shell
+Requires=pipewire-mon.socket niri.service
+After=pipewire-mon.socket niri.service
 
 [Service]
 ExecStart=layer-shell
