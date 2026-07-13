@@ -7,15 +7,12 @@ use crate::{
     external::{sockaddr_in, sockaddr_un},
     liburing::IoUring,
     modules::{
-        CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, Network, Niri, SessionDBus,
-        Sound, SystemDBus, Timer, Tray, Weather,
+        CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, NM, Niri, SessionDBus, Sound,
+        Timer, Tray, Weather,
     },
     sansio::{DNS, OpenSslContext, Satisfy},
     user_data::{ModuleId, UserData},
-    utils::{
-        HeapBlob,
-        dbus::queue::{SessionDBusQueue, SystemDBusQueue},
-    },
+    utils::{HeapBlob, dbus::queue::SessionDBusQueue},
 };
 use anyhow::{Context as _, Result};
 
@@ -37,11 +34,8 @@ pub struct IO {
     sound: Sound,
     tray: Tray,
 
-    system_dbus: SystemDBus,
-    system_dbus_addr: sockaddr_un,
-    system_dbus_readbuf: HeapBlob,
-    system_dbus_queue: SystemDBusQueue,
-    network: Network,
+    nm_addr: sockaddr_un,
+    nm: Option<NM>,
 
     location_dns: DNS,
     location_addr: Option<sockaddr_in>,
@@ -98,11 +92,8 @@ impl IO {
         let tray = Tray::new(&mut session_dbus_queue)?;
         Control::init(&mut session_dbus_queue)?;
 
-        let system_dbus = SystemDBus::new();
-        let system_dbus_addr = SystemDBus::address()?;
-        let system_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
-        let mut system_dbus_queue = SystemDBusQueue::new()?;
-        let network = Network::new(&mut system_dbus_queue);
+        let nm = NM::new();
+        let nm_addr = NM::address()?;
 
         let location_dns = DNS::new(Location::HOST);
 
@@ -136,11 +127,8 @@ impl IO {
             sound,
             tray,
 
-            system_dbus,
-            system_dbus_addr,
-            system_dbus_readbuf,
-            system_dbus_queue,
-            network,
+            nm: Some(nm),
+            nm_addr,
 
             location_dns,
             location_addr: None,
@@ -178,13 +166,9 @@ impl IO {
             &mut self.ring,
         );
 
-        schedule_system_dbus(
-            &mut self.system_dbus,
-            self.system_dbus_readbuf.as_slice(),
-            &self.system_dbus_addr,
-            &self.system_dbus_queue,
-            &mut self.ring,
-        );
+        if let Some(nm) = &mut self.nm {
+            schedule_nm(nm, &mut self.ring, &self.nm_addr);
+        }
 
         schedule_location_dns(
             &mut self.location_dns,
@@ -235,9 +219,9 @@ impl IO {
                 ModuleId::WeatherDNS => self.satisfy_weather_dns(satisfy)?,
                 ModuleId::Weather => self.satisfy_weather(satisfy)?,
                 ModuleId::KbMod => self.satisfy_kb_mod(satisfy),
+                ModuleId::NM => self.satisfy_nm(satisfy),
                 ModuleId::Niri => self.satisfy_niri(satisfy),
                 ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy),
-                ModuleId::SystemDBus => self.satisfy_system_dbus(satisfy),
                 ModuleId::CPU => self.satisfy_cpu(satisfy)?,
                 ModuleId::Memory => self.satisfy_memory(satisfy)?,
                 ModuleId::Timer => self.satisfy_timer(satisfy)?,
@@ -357,6 +341,14 @@ fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &sockaddr_un) {
     }
 }
 
+fn schedule_nm(nm: &mut NM, ring: &mut IoUring, addr: &sockaddr_un) {
+    if let Some(wants) = nm.wants(addr) {
+        log::trace!(target: "NM", "{wants:?}");
+        core::assert_matches!(nm.wants(addr), None);
+        ring.schedule(ModuleId::NM, wants);
+    }
+}
+
 fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &sockaddr_un) {
     if let Some(wants) = niri.wants(addr) {
         log::trace!(target: "Niri", "{wants:?}");
@@ -387,21 +379,6 @@ fn schedule_session_dbus(
     core::assert_matches!(module.wants(readbuf, queue, addr), None);
     ring.schedule(ModuleId::SessionDBus, wants);
 }
-fn schedule_system_dbus(
-    module: &mut SystemDBus,
-    readbuf: &mut [u8],
-    addr: &sockaddr_un,
-    queue: &SystemDBusQueue,
-    ring: &mut IoUring,
-) {
-    let Some(wants) = module.wants(readbuf, queue, addr) else {
-        return;
-    };
-    log::trace!(target: "SystemDBus", "{wants:?}");
-    core::assert_matches!(module.wants(readbuf, queue, addr), None);
-    ring.schedule(ModuleId::SystemDBus, wants);
-}
-
 macro_rules! generate_simple_satisfy_impl {
     ($fn:ident, $module:ident, $schedule:ident) => {
         impl IO {
@@ -486,6 +463,22 @@ impl IO {
             Err(err) => {
                 log::error!(target: "KbMod", "{err:?}");
                 self.kb_mod = None;
+            }
+        }
+    }
+}
+
+impl IO {
+    fn satisfy_nm(&mut self, satisfy: Satisfy) {
+        let Some(nm) = &mut self.nm else {
+            return;
+        };
+
+        match nm.satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_nm(nm, &mut self.ring, &self.nm_addr),
+            Err(err) => {
+                log::error!(target: "NM", "{err:?}");
+                self.nm = None;
             }
         }
     }
@@ -598,29 +591,6 @@ impl IO {
             self.session_dbus_readbuf.as_slice(),
             &self.session_dbus_addr,
             &self.session_dbus_queue,
-            &mut self.ring,
-        );
-    }
-}
-
-impl IO {
-    fn satisfy_system_dbus(&mut self, satisfy: Satisfy) {
-        let message = self.system_dbus.satisfy(
-            satisfy,
-            self.system_dbus_readbuf.as_slice(),
-            &mut self.system_dbus_queue,
-        );
-
-        if let Some(message) = message {
-            self.network
-                .handle(message, &mut self.events, &mut self.system_dbus_queue);
-        }
-
-        schedule_system_dbus(
-            &mut self.system_dbus,
-            self.system_dbus_readbuf.as_slice(),
-            &self.system_dbus_addr,
-            &self.system_dbus_queue,
             &mut self.ring,
         );
     }

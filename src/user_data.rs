@@ -10,10 +10,10 @@ pub(crate) enum ModuleId {
     Weather,
 
     KbMod,
+    NM,
     Niri,
 
     SessionDBus,
-    SystemDBus,
 
     #[expect(clippy::upper_case_acronyms)]
     CPU,
@@ -31,9 +31,9 @@ impl ModuleId {
             Self::WeatherDNS => "WeatherDNS",
             Self::Weather => "Weather",
             Self::KbMod => "KbMod",
+            Self::NM => "NM",
             Self::Niri => "Niri",
             Self::SessionDBus => "SessionDBus",
-            Self::SystemDBus => "SystemDBus",
             Self::CPU => "CPU",
             Self::Memory => "Memory",
             Self::Timer => "Timer",
