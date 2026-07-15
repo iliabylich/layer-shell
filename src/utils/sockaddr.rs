@@ -1,15 +1,4 @@
-use crate::external::{AF_INET, AF_UNIX, in_addr, sa_family_t, sockaddr_in, sockaddr_un};
-
-pub(crate) const fn new_sockaddr_in(ip: [u8; 4], port: u16) -> sockaddr_in {
-    sockaddr_in {
-        sin_family: AF_INET as sa_family_t,
-        sin_port: port.to_be(),
-        sin_addr: in_addr {
-            s_addr: u32::from_be_bytes(ip).to_be(),
-        },
-        sin_zero: [0; 8],
-    }
-}
+use crate::external::{AF_UNIX, sa_family_t, sockaddr_un};
 
 pub(crate) const fn new_sockaddr_un(
     path: &[u8],

@@ -28,6 +28,7 @@ mod command;
 mod config;
 mod event;
 mod event_queue;
+
 /// cbindgen:ignore
 #[expect(
     dead_code,

@@ -7,7 +7,7 @@ pub(crate) enum Satisfy {
     Connect(Result<()>),
     Write(Result<usize>),
     Read(Result<usize>),
-    Close(Result<()>),
+    Close(#[expect(dead_code)] Result<()>),
     OpenAt(Result<i32>),
 }
 

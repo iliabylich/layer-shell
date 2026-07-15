@@ -35,16 +35,9 @@ pub(crate) const O_RDONLY: i32 = 0;
 pub(crate) const O_WRONLY: i32 = 1;
 pub(crate) const AT_FDCWD: i32 = -100;
 pub(crate) const AF_UNIX: i32 = 1;
-pub(crate) const AF_INET: i32 = 2;
 pub(crate) const CLOCK_MONOTONIC: i32 = 1;
 pub(crate) const STDOUT_FILENO: i32 = 1;
 pub(crate) const STDERR_FILENO: i32 = 2;
-pub(crate) const BIO_CTRL_PENDING: i32 = 10;
-pub(crate) const TLS1_2_VERSION: i32 = 771;
-pub(crate) const SSL_VERIFY_PEER: i32 = 1;
-pub(crate) const SSL_ERROR_WANT_READ: i32 = 2;
-pub(crate) const SSL_ERROR_WANT_WRITE: i32 = 3;
-pub(crate) const SSL_ERROR_ZERO_RETURN: i32 = 6;
 pub(crate) type __mode_t = ::core::ffi::c_uint;
 pub(crate) type __pid_t = ::core::ffi::c_int;
 pub(crate) type __time_t = ::core::ffi::c_long;
@@ -436,28 +429,6 @@ const _: () = {
     ["Alignment of in_addr"][::core::mem::align_of::<in_addr>() - 4usize];
     ["Offset of field: in_addr::s_addr"][::core::mem::offset_of!(in_addr, s_addr) - 0usize];
 };
-pub(crate) type in_port_t = u16;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub(crate) struct sockaddr_in {
-    pub(crate) sin_family: sa_family_t,
-    pub(crate) sin_port: in_port_t,
-    pub(crate) sin_addr: in_addr,
-    pub(crate) sin_zero: [::core::ffi::c_uchar; 8usize],
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of sockaddr_in"][::core::mem::size_of::<sockaddr_in>() - 16usize];
-    ["Alignment of sockaddr_in"][::core::mem::align_of::<sockaddr_in>() - 4usize];
-    ["Offset of field: sockaddr_in::sin_family"]
-        [::core::mem::offset_of!(sockaddr_in, sin_family) - 0usize];
-    ["Offset of field: sockaddr_in::sin_port"]
-        [::core::mem::offset_of!(sockaddr_in, sin_port) - 2usize];
-    ["Offset of field: sockaddr_in::sin_addr"]
-        [::core::mem::offset_of!(sockaddr_in, sin_addr) - 4usize];
-    ["Offset of field: sockaddr_in::sin_zero"]
-        [::core::mem::offset_of!(sockaddr_in, sin_zero) - 8usize];
-};
 unsafe extern "C" {
     pub(crate) fn malloc(__size: ::core::ffi::c_ulong) -> *mut ::core::ffi::c_void;
 }
@@ -519,11 +490,7 @@ unsafe extern "C" {
     ) -> isize;
 }
 unsafe extern "C" {
-    pub(crate) fn write(
-        __fd: ::core::ffi::c_int,
-        __buf: *const ::core::ffi::c_void,
-        __n: usize,
-    ) -> isize;
+    pub(crate) fn write(__fd: ::core::ffi::c_int, __buf: *const ::core::ffi::c_void, __n: usize) -> isize;
 }
 unsafe extern "C" {
     pub(crate) fn dup2(__fd: ::core::ffi::c_int, __fd2: ::core::ffi::c_int) -> ::core::ffi::c_int;
@@ -624,124 +591,4 @@ unsafe extern "C" {
         flags: ::core::ffi::c_int,
         mode: mode_t,
     );
-}
-pub(crate) type BIO = u8;
-pub(crate) type X509_STORE_CTX = u8;
-pub(crate) type X509_VERIFY_PARAM = u8;
-pub(crate) type SSL = u8;
-pub(crate) type SSL_CTX = u8;
-pub(crate) type BIO_METHOD = u8;
-unsafe extern "C" {
-    pub(crate) fn BIO_new(type_: *const BIO_METHOD) -> *mut BIO;
-}
-unsafe extern "C" {
-    pub(crate) fn BIO_read(
-        b: *mut BIO,
-        data: *mut ::core::ffi::c_void,
-        dlen: ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn BIO_write(
-        b: *mut BIO,
-        data: *const ::core::ffi::c_void,
-        dlen: ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn BIO_ctrl(
-        bp: *mut BIO,
-        cmd: ::core::ffi::c_int,
-        larg: ::core::ffi::c_long,
-        parg: *mut ::core::ffi::c_void,
-    ) -> ::core::ffi::c_long;
-}
-unsafe extern "C" {
-    pub(crate) fn BIO_s_mem() -> *const BIO_METHOD;
-}
-unsafe extern "C" {
-    pub(crate) fn X509_VERIFY_PARAM_set1_host(
-        param: *mut X509_VERIFY_PARAM,
-        name: *const ::core::ffi::c_char,
-        namelen: usize,
-    ) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn X509_VERIFY_PARAM_set_hostflags(
-        param: *mut X509_VERIFY_PARAM,
-        flags: ::core::ffi::c_uint,
-    );
-}
-pub(crate) type SSL_METHOD = u8;
-pub(crate) type SSL_verify_cb = ::core::option::Option<
-    unsafe extern "C" fn(
-        preverify_ok: ::core::ffi::c_int,
-        x509_ctx: *mut X509_STORE_CTX,
-    ) -> ::core::ffi::c_int,
->;
-unsafe extern "C" {
-    pub(crate) fn SSL_CTX_new(meth: *const SSL_METHOD) -> *mut SSL_CTX;
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_CTX_free(arg1: *mut SSL_CTX);
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_set_bio(s: *mut SSL, rbio: *mut BIO, wbio: *mut BIO);
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_CTX_set_verify(
-        ctx: *mut SSL_CTX,
-        mode: ::core::ffi::c_int,
-        callback: SSL_verify_cb,
-    );
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_new(ctx: *mut SSL_CTX) -> *mut SSL;
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_get0_param(ssl: *mut SSL) -> *mut X509_VERIFY_PARAM;
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_free(ssl: *mut SSL);
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_connect(ssl: *mut SSL) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_read(
-        ssl: *mut SSL,
-        buf: *mut ::core::ffi::c_void,
-        num: ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_write(
-        ssl: *mut SSL,
-        buf: *const ::core::ffi::c_void,
-        num: ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_get_error(s: *const SSL, ret_code: ::core::ffi::c_int) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn TLS_client_method() -> *const SSL_METHOD;
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_set_connect_state(s: *mut SSL);
-}
-unsafe extern "C" {
-    pub(crate) fn SSL_CTX_set_default_verify_paths(ctx: *mut SSL_CTX) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn __openssl_SSL_CTX_set_min_proto_version(
-        ctx: *mut SSL_CTX,
-        version: ::core::ffi::c_int,
-    ) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
-    pub(crate) fn __openssl_SSL_set_tlsext_host_name(
-        ssl: *mut SSL,
-        name: *mut ::core::ffi::c_char,
-    ) -> ::core::ffi::c_long;
 }

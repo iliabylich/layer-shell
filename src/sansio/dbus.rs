@@ -70,7 +70,7 @@ impl DBusState {
                 }
             }
 
-            Self::Ready { fd, mut connection } => match connection.wants(queue, readbuf)? {
+            Self::Ready { fd, connection } => match connection.wants(queue, readbuf)? {
                 (
                     DBusWantsRead { buf: readbuf, .. },
                     Some(DBusWantsWrite { buf: writebuf, .. }),
@@ -94,7 +94,7 @@ impl DBusState {
                 }
             },
 
-            Self::ReadyWaitingRead { fd, mut connection } => {
+            Self::ReadyWaitingRead { fd, connection } => {
                 let (_, Some(DBusWantsWrite { buf, .. })) = connection.wants(queue, readbuf)?
                 else {
                     return Ok(None);
@@ -107,7 +107,7 @@ impl DBusState {
                 }))
             }
 
-            Self::ReadyWaitingWrite { fd, mut connection } => {
+            Self::ReadyWaitingWrite { fd, connection } => {
                 let (DBusWantsRead { buf, .. }, _) = connection.wants(queue, readbuf)?;
                 *self = Self::ReadyWaitingReadWrite { fd, connection };
                 Ok(Some(Wants::Read {

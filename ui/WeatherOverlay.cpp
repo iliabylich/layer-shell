@@ -163,12 +163,12 @@ WeatherOverlay::WeatherOverlay(UiModel *model) : Overlay(model) {
 
   connect(model, &UiModel::weatherChanged, this,
           [this]([[maybe_unused]] const QString &summary,
-                 const std::array<WeatherDayForecast,
-                                  Event::Weather::OnDay::COUNT> &daily_data,
                  const std::array<WeatherHourForecast,
-                                  Event::Weather::OnHour::COUNT> &hourly_data) {
-            daily->update(daily_data);
+                                  Event::Weather::OnHour::COUNT> &hourly_data,
+                 const std::array<WeatherDayForecast,
+                                  Event::Weather::OnDay::COUNT> &daily_data) {
             hourly->update(hourly_data);
+            daily->update(daily_data);
           });
 
   layer->setScope("LayerShell/Weather");

@@ -264,6 +264,16 @@ void UiModel::operator()(const Event::Language &e) {
 void UiModel::operator()(const Event::Weather &e) {
   QString summary = fmt::weather_summary(e.temperature, e.code);
 
+  std::array<WeatherHourForecast, Event::Weather::OnHour::COUNT> hourly;
+  for (size_t i = 0; i < Event::Weather::OnHour::COUNT; i++) {
+    hourly[i] = {
+        .unix_seconds = e.hourly_forecast[i].unix_seconds,
+        .temperature = e.hourly_forecast[i].temperature,
+        .icon = fmt::weather_icon(e.hourly_forecast[i].code),
+        .description = fmt::weather_description(e.hourly_forecast[i].code),
+    };
+  }
+
   std::array<WeatherDayForecast, Event::Weather::OnDay::COUNT> daily;
   for (size_t i = 0; i < Event::Weather::OnDay::COUNT; i++) {
     daily[i] = {
@@ -275,17 +285,7 @@ void UiModel::operator()(const Event::Weather &e) {
     };
   }
 
-  std::array<WeatherHourForecast, Event::Weather::OnHour::COUNT> hourly;
-  for (size_t i = 0; i < Event::Weather::OnDay::COUNT; i++) {
-    hourly[i] = {
-        .unix_seconds = e.hourly_forecast[i].unix_seconds,
-        .temperature = e.hourly_forecast[i].temperature,
-        .icon = fmt::weather_icon(e.hourly_forecast[i].code),
-        .description = fmt::weather_description(e.hourly_forecast[i].code),
-    };
-  }
-
-  Q_EMIT weatherChanged(summary, daily, hourly);
+  Q_EMIT weatherChanged(summary, hourly, daily);
 }
 void UiModel::operator()(const Event::Network &e) {
   Q_EMIT networkSsidAndStrengthChanged(fmt::network_name(e.ssid, e.strength));

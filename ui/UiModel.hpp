@@ -61,11 +61,11 @@ Q_SIGNALS:
   void trayAppMenuUpdated(const QString &app_id,
                           const QVector<Event::Tray::MenuItem> &items);
   void trayAppRemoved(const QString &app_id);
-  void weatherChanged(
-      const QString &summary,
-      const std::array<WeatherDayForecast, Event::Weather::OnDay::COUNT> &daily,
-      const std::array<WeatherHourForecast, Event::Weather::OnHour::COUNT>
-          &hourly);
+  void weatherChanged(const QString &summary,
+                      const std::array<WeatherHourForecast,
+                                       Event::Weather::OnHour::COUNT> &hourly,
+                      const std::array<WeatherDayForecast,
+                                       Event::Weather::OnDay::COUNT> &daily);
   void exitRequested();
 
 private:

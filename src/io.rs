@@ -4,23 +4,21 @@ use crate::{
     command::Command,
     config::Config,
     event_queue::EventQueue,
-    external::{sockaddr_in, sockaddr_un},
+    external::sockaddr_un,
     liburing::IoUring,
     modules::{
-        CPU, Clock, Control, ControlRequest, KbMod, Location, Memory, NM, Niri, PW, SessionDBus,
-        Timer, Tray, Weather,
+        CPU, Clock, Control, ControlRequest, KbMod, Memory, NM, Niri, PW, SessionDBus, Timer, Tray,
+        Weather,
     },
-    sansio::{DNS, OpenSslContext, Satisfy},
+    sansio::Satisfy,
     user_data::{ModuleId, UserData},
     utils::{HeapBlob, dbus::queue::SessionDBusQueue},
 };
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 
 pub struct IO {
     ring: IoUring,
     events: EventQueue,
-    openssl_ctx: OpenSslContext,
-    dns_server_addr: sockaddr_in,
 
     pub(crate) config: Config,
 
@@ -39,14 +37,8 @@ pub struct IO {
     nm: Option<NM>,
     nm_addr: sockaddr_un,
 
-    location_dns: DNS,
-    location_addr: Option<sockaddr_in>,
-    location: Option<Location>,
-    latlng: Option<(f64, f64)>,
-
-    weather_dns: DNS,
-    weather_addr: Option<sockaddr_in>,
     weather: Option<Weather>,
+    weather_addr: sockaddr_un,
 
     cpu: CPU,
     memory: Memory,
@@ -80,8 +72,6 @@ impl IO {
 
         let ring = IoUring::new(10, 0);
         let events = EventQueue::new();
-        let openssl_ctx = OpenSslContext::new()?;
-        let dns_server_addr = DNS::address();
 
         let timer = Timer::new()?;
         let timerbuf = [0; 8];
@@ -96,10 +86,6 @@ impl IO {
         let nm = NM::new();
         let nm_addr = NM::address()?;
 
-        let location_dns = DNS::new(Location::HOST);
-
-        let weather_dns = DNS::new(Weather::HOST);
-
         let cpu = CPU::new();
 
         let memory = Memory::new();
@@ -113,11 +99,12 @@ impl IO {
         let pw = PW::new();
         let pw_addr = PW::address()?;
 
+        let weather = Weather::new();
+        let weather_addr = Weather::address()?;
+
         Ok(Self {
             ring,
             events,
-            openssl_ctx,
-            dns_server_addr,
 
             config,
 
@@ -136,14 +123,8 @@ impl IO {
             nm_addr,
             nm: Some(nm),
 
-            location_dns,
-            location_addr: None,
-            location: None,
-            latlng: None,
-
-            weather_dns,
-            weather_addr: None,
-            weather: None,
+            weather: Some(weather),
+            weather_addr,
 
             cpu,
             memory,
@@ -180,15 +161,13 @@ impl IO {
             schedule_pw(pw, &mut self.ring, &self.pw_addr);
         }
 
-        schedule_location_dns(
-            &mut self.location_dns,
-            &mut self.ring,
-            &self.dns_server_addr,
-        )?;
-
         schedule_cpu(&mut self.cpu, &mut self.ring)?;
 
         schedule_memory(&mut self.memory, &mut self.ring)?;
+
+        if let Some(weather) = &mut self.weather {
+            schedule_weather(weather, &mut self.ring, &self.weather_addr);
+        }
 
         if let Some(kb_mod) = &mut self.kb_mod {
             schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr);
@@ -224,10 +203,7 @@ impl IO {
             log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?}");
 
             match module_id {
-                ModuleId::LocationDNS => self.satisfy_location_dns(satisfy)?,
-                ModuleId::Location => self.satisfy_location(satisfy)?,
-                ModuleId::WeatherDNS => self.satisfy_weather_dns(satisfy)?,
-                ModuleId::Weather => self.satisfy_weather(satisfy)?,
+                ModuleId::Weather => self.satisfy_weather(satisfy),
                 ModuleId::KbMod => self.satisfy_kb_mod(satisfy),
                 ModuleId::NM => self.satisfy_nm(satisfy),
                 ModuleId::PW => self.satisfy_pw(satisfy),
@@ -306,49 +282,19 @@ macro_rules! generate_simple_schedule_impl {
 generate_simple_schedule_impl!(schedule_cpu, CPU);
 generate_simple_schedule_impl!(schedule_memory, Memory);
 
-fn schedule_location_dns(dns: &mut DNS, ring: &mut IoUring, dns_addr: &sockaddr_in) -> Result<()> {
-    if let Some(wants) = dns.try_wants(dns_addr)? {
-        log::trace!(target: "LocationDNS", "{wants:?}");
-        core::assert_matches!(dns.try_wants(dns_addr), Ok(None));
-        ring.schedule(ModuleId::LocationDNS, wants);
-    }
-    Ok(())
-}
-
-fn schedule_location(
-    location: &mut Location,
-    ring: &mut IoUring,
-    remote_server_addr: &sockaddr_in,
-) {
-    if let Some(wants) = location.wants(remote_server_addr) {
-        log::trace!(target: "Location", "{wants:?}");
-        core::assert_matches!(location.wants(remote_server_addr), None);
-        ring.schedule(ModuleId::Location, wants);
-    }
-}
-
-fn schedule_weather_dns(dns: &mut DNS, ring: &mut IoUring, dns_addr: &sockaddr_in) -> Result<()> {
-    if let Some(wants) = dns.try_wants(dns_addr)? {
-        log::trace!(target: "WeatherDNS", "{wants:?}");
-        core::assert_matches!(dns.try_wants(dns_addr), Ok(None));
-        ring.schedule(ModuleId::WeatherDNS, wants);
-    }
-    Ok(())
-}
-
-fn schedule_weather(weather: &mut Weather, ring: &mut IoUring, remote_server_addr: &sockaddr_in) {
-    if let Some(wants) = weather.wants(remote_server_addr) {
-        log::trace!(target: "Weather", "{wants:?}");
-        core::assert_matches!(weather.wants(remote_server_addr), None);
-        ring.schedule(ModuleId::Weather, wants);
-    }
-}
-
 fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &sockaddr_un) {
     if let Some(wants) = kb_mod.wants(addr) {
         log::trace!(target: "KbMod", "{wants:?}");
         core::assert_matches!(kb_mod.wants(addr), None);
         ring.schedule(ModuleId::KbMod, wants);
+    }
+}
+
+fn schedule_weather(weather: &mut Weather, ring: &mut IoUring, addr: &sockaddr_un) {
+    if let Some(wants) = weather.wants(addr) {
+        log::trace!(target: "Weather", "{wants:?}");
+        core::assert_matches!(weather.wants(addr), None);
+        ring.schedule(ModuleId::Weather, wants);
     }
 }
 
@@ -417,17 +363,10 @@ impl IO {
         };
 
         match timer.satisfy(satisfy, self.timerbuf) {
-            Ok(Some(tick)) => {
+            Ok(Some(_tick)) => {
                 schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
 
                 Clock::tick(&mut self.events)?;
-
-                if let Some(weather) = &mut self.weather
-                    && let Some((lat, lng)) = self.latlng
-                {
-                    weather.tick(tick, lat, lng, &self.openssl_ctx)?;
-                    schedule_weather(weather, &mut self.ring, &self.dns_server_addr);
-                }
 
                 self.cpu.tick();
                 schedule_cpu(&mut self.cpu, &mut self.ring)?;
@@ -479,6 +418,22 @@ impl IO {
 }
 
 impl IO {
+    fn satisfy_weather(&mut self, satisfy: Satisfy) {
+        let Some(weather) = &mut self.weather else {
+            return;
+        };
+
+        match weather.satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_weather(weather, &mut self.ring, &self.weather_addr),
+            Err(err) => {
+                log::error!(target: "Weather", "{err:?}");
+                self.weather = None;
+            }
+        }
+    }
+}
+
+impl IO {
     fn satisfy_nm(&mut self, satisfy: Satisfy) {
         let Some(nm) = &mut self.nm else {
             return;
@@ -505,86 +460,6 @@ impl IO {
             Err(err) => {
                 log::error!(target: "PW", "{err:?}");
                 self.pw = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_location_dns(&mut self, satisfy: Satisfy) -> Result<()> {
-        match self.location_dns.try_satisfy(satisfy)? {
-            Some(addr) => {
-                let location_addr = self.location_addr.insert(addr);
-                let location = self.location.insert(Location::new(&self.openssl_ctx)?);
-                schedule_location(location, &mut self.ring, location_addr);
-            }
-            None => {
-                schedule_location_dns(
-                    &mut self.location_dns,
-                    &mut self.ring,
-                    &self.dns_server_addr,
-                )?;
-            }
-        }
-        Ok(())
-    }
-    fn satisfy_location(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some(location) = &mut self.location else {
-            return Ok(());
-        };
-
-        match location.satisfy(satisfy, &mut self.events)? {
-            Some((lat, lng)) => {
-                self.latlng = Some((lat, lng));
-                schedule_weather_dns(&mut self.weather_dns, &mut self.ring, &self.dns_server_addr)?;
-            }
-            None => {
-                schedule_location(
-                    location,
-                    &mut self.ring,
-                    self.location_addr.as_ref().context("no location_addr")?,
-                );
-            }
-        }
-        Ok(())
-    }
-}
-
-impl IO {
-    fn satisfy_weather_dns(&mut self, satisfy: Satisfy) -> Result<()> {
-        match self.weather_dns.try_satisfy(satisfy)? {
-            Some(addr) => {
-                let weather_addr = self.weather_addr.insert(addr);
-                let (lat, lng) = self.latlng.context("no latlng")?;
-                let weather = self
-                    .weather
-                    .insert(Weather::new(lat, lng, &self.openssl_ctx)?);
-                schedule_weather(weather, &mut self.ring, weather_addr);
-            }
-            None => {
-                schedule_weather_dns(&mut self.weather_dns, &mut self.ring, &self.dns_server_addr)?;
-            }
-        }
-        Ok(())
-    }
-    fn satisfy_weather(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some(weather) = &mut self.weather else {
-            return Ok(());
-        };
-
-        match weather.satisfy(satisfy, &mut self.events) {
-            Ok(()) => {
-                schedule_weather(
-                    weather,
-                    &mut self.ring,
-                    self.weather_addr.as_ref().context("no weather_addr")?,
-                );
-                Ok(())
-            }
-            Err(err) => {
-                log::error!(target: "Weather", "{err:?}");
-                self.weather = None;
-                Ok(())
             }
         }
     }

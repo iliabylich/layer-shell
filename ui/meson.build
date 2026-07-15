@@ -80,7 +80,6 @@ executable(
         layershellqt_dep,
         qtermwidget_dep,
         dependency('liburing'),
-        dependency('openssl'),
     ],
     include_directories: include_directories('..'),
     install: true,
