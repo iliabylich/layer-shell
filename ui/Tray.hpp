@@ -15,15 +15,15 @@ public:
   explicit TrayRegistry(UiModel *model, QWidget *parent, QBoxLayout *layout);
 
 public Q_SLOTS:
-  void add(const QString &app_id, const QIcon &icon,
+  void add(uint32_t service, const QIcon &icon,
            const QVector<Event::Tray::MenuItem> &items);
-  void updateIcon(const QString &app_id, const QIcon &icon);
-  void updateMenu(const QString &app_id,
+  void updateIcon(uint32_t service, const QIcon &icon);
+  void updateMenu(uint32_t service,
                   const QVector<Event::Tray::MenuItem> &items);
-  void remove(const QString &app_id);
+  void remove(uint32_t service);
 
 private:
-  QHash<QString, TrayButtonWithMenu *> data;
+  QHash<uint32_t, TrayButtonWithMenu *> data;
   UiModel *model;
   QWidget *parent;
   QBoxLayout *layout;

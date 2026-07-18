@@ -65,7 +65,7 @@ pub use ffi::FFIArray;
 use crate::{
     external::{__u64, exit, malloc},
     io::IO,
-    utils::{StringRef, StringRefExt as _},
+    utils::StringRef,
 };
 use anyhow::{Context, Result};
 
@@ -145,14 +145,11 @@ pub unsafe extern "C" fn io_logout(mut io: NonNull<IO>) {
     io.process_command(Command::Logout);
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, uuid: *const core::ffi::c_char) {
+pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, service: u32, id: i32) {
     exit_if_err(move || {
         let io = unsafe { io.as_mut() };
-        let uuid = unsafe { core::ffi::CStr::from_ptr(uuid) }.to_str()?;
 
-        io.process_command(Command::TriggerTray {
-            uuid: StringRef::new(uuid),
-        });
+        io.process_command(Command::TriggerTray { service, id });
         Ok(())
     });
 }

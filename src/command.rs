@@ -1,5 +1,3 @@
-use crate::utils::StringRef;
-
 #[derive(Debug)]
 #[must_use]
 pub(crate) enum Command {
@@ -13,5 +11,5 @@ pub(crate) enum Command {
     SpawnSystemMonitor,
     ChangeWallpaper,
 
-    TriggerTray { uuid: StringRef },
+    TriggerTray { service: u32, id: i32 },
 }

@@ -1,7 +1,7 @@
 [Unit]
 Description=Layer Shell
-Requires=pipewire-mon.socket weather-mon.socket niri.service
-After=pipewire-mon.socket weather-mon.socket niri.service
+Requires=pipewire-mon.socket weather-mon.socket niri.service tray-mon.socket
+After=pipewire-mon.socket weather-mon.socket niri.service tray-mon.socket
 
 [Service]
 ExecStart=layer-shell

@@ -29,7 +29,6 @@ pub struct IO {
     session_dbus_addr: sockaddr_un,
     session_dbus_readbuf: HeapBlob,
     session_dbus_queue: SessionDBusQueue,
-    tray: Tray,
 
     pw: Option<PW>,
     pw_addr: sockaddr_un,
@@ -48,6 +47,9 @@ pub struct IO {
 
     niri: Option<Niri>,
     niri_addr: sockaddr_un,
+
+    tray: Option<Tray>,
+    tray_addr: sockaddr_un,
 
     on_event: (
         extern "C" fn(event: &Event, *mut core::ffi::c_void),
@@ -80,7 +82,6 @@ impl IO {
         let session_dbus_addr = SessionDBus::address()?;
         let session_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
         let mut session_dbus_queue = SessionDBusQueue::new()?;
-        let tray = Tray::new(&mut session_dbus_queue)?;
         Control::init(&mut session_dbus_queue)?;
 
         let nm = NM::new();
@@ -102,6 +103,9 @@ impl IO {
         let weather = Weather::new();
         let weather_addr = Weather::address()?;
 
+        let tray = Tray::new();
+        let tray_addr = Tray::address()?;
+
         Ok(Self {
             ring,
             events,
@@ -115,7 +119,6 @@ impl IO {
             session_dbus_addr,
             session_dbus_readbuf,
             session_dbus_queue,
-            tray,
 
             pw_addr,
             pw: Some(pw),
@@ -134,6 +137,9 @@ impl IO {
 
             niri: Some(niri),
             niri_addr,
+
+            tray: Some(tray),
+            tray_addr: tray_addr,
 
             on_event,
             running: true,
@@ -177,6 +183,10 @@ impl IO {
             schedule_niri(niri, &mut self.ring, &self.niri_addr);
         }
 
+        if let Some(tray) = &mut self.tray {
+            schedule_tray(tray, &mut self.ring, &self.tray_addr);
+        }
+
         self.ring.submit_if_dirty();
 
         Ok(())
@@ -208,6 +218,7 @@ impl IO {
                 ModuleId::NM => self.satisfy_nm(satisfy),
                 ModuleId::PW => self.satisfy_pw(satisfy),
                 ModuleId::Niri => self.satisfy_niri(satisfy),
+                ModuleId::Tray => self.satisfy_tray(satisfy),
                 ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy),
                 ModuleId::CPU => self.satisfy_cpu(satisfy)?,
                 ModuleId::Memory => self.satisfy_memory(satisfy)?,
@@ -247,16 +258,13 @@ impl IO {
             Command::SpawnSystemMonitor => spawn(self.config.open_system_monitor.as_str()),
             Command::ChangeWallpaper => spawn(self.config.change_wallpaper.as_str()),
 
-            Command::TriggerTray { uuid } => {
-                self.tray
-                    .trigger(uuid.as_str(), &mut self.session_dbus_queue);
-                schedule_session_dbus(
-                    &mut self.session_dbus,
-                    self.session_dbus_readbuf.as_slice(),
-                    &self.session_dbus_addr,
-                    &self.session_dbus_queue,
-                    &mut self.ring,
-                );
+            Command::TriggerTray { service, id } => {
+                if let Some(tray) = &mut self.tray
+                    && let Some(wants) = tray.wants_trigger(service, id)
+                {
+                    log::error!("tray trigger: {service:?} - {id}");
+                    self.ring.schedule(ModuleId::Tray, wants);
+                }
             }
         }
 
@@ -319,6 +327,14 @@ fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &sockaddr_un) {
         log::trace!(target: "Niri", "{wants:?}");
         core::assert_matches!(niri.wants(addr), None);
         ring.schedule(ModuleId::Niri, wants);
+    }
+}
+
+fn schedule_tray(tray: &mut Tray, ring: &mut IoUring, addr: &sockaddr_un) {
+    if let Some(wants) = tray.wants(addr) {
+        log::trace!(target: "Tray", "{wants:?}");
+        core::assert_matches!(tray.wants(addr), None);
+        ring.schedule(ModuleId::Tray, wants);
     }
 }
 
@@ -402,6 +418,22 @@ impl IO {
 }
 
 impl IO {
+    fn satisfy_tray(&mut self, satisfy: Satisfy) {
+        let Some(tray) = &mut self.tray else {
+            return;
+        };
+
+        match tray.satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_tray(tray, &mut self.ring, &self.tray_addr),
+            Err(err) => {
+                log::error!(target: "Tray", "{err:?}");
+                self.tray = None;
+            }
+        }
+    }
+}
+
+impl IO {
     fn satisfy_kb_mod(&mut self, satisfy: Satisfy) {
         let Some(kb_mod) = &mut self.kb_mod else {
             return;
@@ -477,9 +509,6 @@ impl IO {
         );
 
         if let Some(message) = message {
-            self.tray
-                .handle(message, &mut self.events, &mut self.session_dbus_queue);
-
             if let Some(req) = Control::handle(message, &mut self.session_dbus_queue) {
                 self.on_control_req(req);
             }

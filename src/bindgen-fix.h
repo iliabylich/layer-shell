@@ -1,3 +1,3 @@
 #pragma once
 
-using IO_StringRef = const char*;
+using IO_StringRef = const char *;

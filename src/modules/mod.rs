@@ -21,11 +21,10 @@ pub(crate) use nm::NM;
 pub(crate) use pw::PW;
 pub(crate) use session_dbus::SessionDBus;
 pub(crate) use timer::Timer;
-pub(crate) use tray::Tray;
+pub(crate) use tray::{Tray, TrayMenu};
 pub(crate) use weather::Weather;
 
 pub use kb_mod::KbModKind;
-pub use tray::{TrayIcon, TrayIconPixmap, TrayItem};
 pub use weather::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherCode, WeatherOnDay,
     WeatherOnHour,

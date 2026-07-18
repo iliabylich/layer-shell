@@ -1,8 +1,8 @@
 use crate::{
     ffi::FFIArray,
     modules::{
-        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind, TrayIcon,
-        TrayItem, WeatherCode, WeatherOnDay, WeatherOnHour,
+        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind, TrayMenu,
+        WeatherCode, WeatherOnDay, WeatherOnHour,
     },
     utils::StringRef,
 };
@@ -42,20 +42,20 @@ pub enum Event {
         bytes_per_sec: u64,
     },
     TrayAppAdded {
-        service: StringRef,
-        items: FFIArray<TrayItem>,
-        icon: TrayIcon,
+        service: u32,
+        menu: TrayMenu,
+        icon: StringRef,
     },
     TrayAppIconUpdated {
-        service: StringRef,
-        icon: TrayIcon,
+        service: u32,
+        icon: StringRef,
     },
     TrayAppMenuUpdated {
-        service: StringRef,
-        items: FFIArray<TrayItem>,
+        service: u32,
+        menu: TrayMenu,
     },
     TrayAppRemoved {
-        service: StringRef,
+        service: u32,
     },
     ToggleSessionScreen,
     KbModToggled {

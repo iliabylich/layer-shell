@@ -81,73 +81,55 @@ struct Event {
   };
 
   struct Tray {
-    class MenuItem {
+    struct MenuItem {
     public:
       struct Regular {
-        int id;
-        QString uuid;
+        int32_t id;
+        uint32_t service;
         QString label;
-
-        Regular(const IO_TrayItem::IO_Regular_Body &data);
       };
 
       struct Disabled {
-        int id;
-        QString uuid;
+        int32_t id;
+        uint32_t service;
         QString label;
-
-        Disabled(const IO_TrayItem::IO_Disabled_Body &data);
       };
 
       struct Checkbox {
-        int id;
-        QString uuid;
+        int32_t id;
+        uint32_t service;
         QString label;
         bool checked;
-
-        Checkbox(const IO_TrayItem::IO_Checkbox_Body &data);
       };
 
       struct Radio {
-        int id;
-        QString uuid;
+        int32_t id;
+        uint32_t service;
         QString label;
         bool selected;
-
-        Radio(const IO_TrayItem::IO_Radio_Body &data);
       };
 
       struct Nested {
-        int id;
-        QString uuid;
+        int32_t id;
+        uint32_t service;
         QString label;
         QVector<MenuItem> children;
-
-        Nested(const IO_TrayItem::IO_Nested_Body &data);
       };
 
       struct Section {
         QVector<MenuItem> children;
-
-        Section(const IO_TrayItem::IO_Section_Body &data);
       };
 
       using Value =
           std::variant<Regular, Disabled, Checkbox, Radio, Nested, Section>;
 
-      static MenuItem from(const IO_TrayItem &item);
-
-      static QVector<MenuItem> Many(const IO_FFIArray<IO_TrayItem> &items);
-
       const Value &value() const;
 
-    private:
       Value value_;
-      MenuItem(Value value);
     };
 
     struct AppAdded {
-      QString service;
+      uint32_t service;
       QList<MenuItem> items;
       QIcon icon;
 
@@ -155,21 +137,21 @@ struct Event {
     };
 
     struct AppIconUpdated {
-      QString service;
+      uint32_t service;
       QIcon icon;
 
       AppIconUpdated(const IO_Event::IO_TrayAppIconUpdated_Body &data);
     };
 
     struct AppMenuUpdated {
-      QString service;
+      uint32_t service;
       QList<MenuItem> items;
 
       AppMenuUpdated(const IO_Event::IO_TrayAppMenuUpdated_Body &data);
     };
 
     struct AppRemoved {
-      QString service;
+      uint32_t service;
 
       AppRemoved(const IO_Event::IO_TrayAppRemoved_Body &data);
     };

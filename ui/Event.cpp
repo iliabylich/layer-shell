@@ -1,4 +1,5 @@
 #include "Event.hpp"
+#include "bindings.hpp"
 #include <QCoreApplication>
 #include <QDebug>
 
@@ -53,88 +54,102 @@ const Event::Tray::MenuItem::Value &Event::Tray::MenuItem::value() const {
   return value_;
 }
 
-Event::Tray::MenuItem::Regular::Regular(
-    const IO_TrayItem::IO_Regular_Body &data)
-    : id(data.id), uuid(data.uuid), label(data.label) {}
-Event::Tray::MenuItem::Disabled::Disabled(
-    const IO_TrayItem::IO_Disabled_Body &data)
-    : id(data.id), uuid(data.uuid), label(data.label) {}
-Event::Tray::MenuItem::Checkbox::Checkbox(
-    const IO_TrayItem::IO_Checkbox_Body &data)
-    : id(data.id), uuid(data.uuid), label(data.label), checked(data.checked) {}
-Event::Tray::MenuItem::Radio::Radio(const IO_TrayItem::IO_Radio_Body &data)
-    : id(data.id), uuid(data.uuid), label(data.label), selected(data.selected) {
-
+QString qstring_from_label(IO_TrayLabel label) {
+  return QString::fromUtf8((const char *)label.buf, label.len);
 }
-Event::Tray::MenuItem::Nested::Nested(const IO_TrayItem::IO_Nested_Body &data)
-    : id(data.id), uuid(data.uuid), label(data.label),
-      children(Event::Tray::MenuItem::Many(data.children)) {}
-Event::Tray::MenuItem::Section::Section(
-    const IO_TrayItem::IO_Section_Body &data)
-    : children(Event::Tray::MenuItem::Many(data.children)) {}
 
-Event::Tray::MenuItem Event::Tray::MenuItem::from(const IO_TrayItem &item) {
+Event::Tray::MenuItem map_item_at(const IO_TrayMenu &menu, size_t idx,
+                                  uint32_t service);
+
+QVector<Event::Tray::MenuItem> map_children_at(const IO_TrayMenu &menu,
+                                               size_t start_idx, size_t end_idx,
+                                               uint32_t service) {
+  QVector<Event::Tray::MenuItem> out;
+  for (size_t idx = start_idx; idx < end_idx; idx++) {
+    out.push_back(map_item_at(menu, idx, service));
+  }
+  return out;
+}
+
+Event::Tray::MenuItem map_item_at(const IO_TrayMenu &menu, size_t idx,
+                                  uint32_t service) {
+  auto item = menu._0[idx].element;
   switch (item.tag) {
-  case IO_TrayItem::Tag::Regular:
-    return Event::Tray::MenuItem(item.regular);
-  case IO_TrayItem::Tag::Disabled:
-    return Event::Tray::MenuItem(item.disabled);
-  case IO_TrayItem::Tag::Checkbox:
-    return Event::Tray::MenuItem(item.checkbox);
-  case IO_TrayItem::Tag::Radio:
-    return Event::Tray::MenuItem(item.radio);
-  case IO_TrayItem::Tag::Nested:
-    return Event::Tray::MenuItem(item.nested);
-  case IO_TrayItem::Tag::Section:
-    return Event::Tray::MenuItem(item.section);
+  case IO_TrayElement::Tag::Regular:
+    return Event::Tray::MenuItem{
+        .value_ = Event::Tray::MenuItem::Value(Event::Tray::MenuItem::Regular{
+            .id = item.regular.id,
+            .service = service,
+            .label = qstring_from_label(item.regular.label),
+        })};
+  case IO_TrayElement::Tag::Disabled:
+    return Event::Tray::MenuItem{
+        .value_ = Event::Tray::MenuItem::Value(Event::Tray::MenuItem::Disabled{
+            .id = item.disabled.id,
+            .service = service,
+            .label = qstring_from_label(item.disabled.label),
+        })};
+  case IO_TrayElement::Tag::Checkbox:
+    return Event::Tray::MenuItem{
+        .value_ = Event::Tray::MenuItem::Value(Event::Tray::MenuItem::Checkbox{
+            .id = item.checkbox.id,
+            .service = service,
+            .label = qstring_from_label(item.checkbox.label),
+            .checked = item.checkbox.checked,
+        })};
+  case IO_TrayElement::Tag::Radio:
+    return Event::Tray::MenuItem{
+        .value_ = Event::Tray::MenuItem::Value(Event::Tray::MenuItem::Radio{
+            .id = item.radio.id,
+            .service = service,
+            .label = qstring_from_label(item.radio.label),
+            .selected = item.radio.selected,
+        })};
+  case IO_TrayElement::Tag::Nested:
+    return Event::Tray::MenuItem{
+        .value_ = Event::Tray::MenuItem::Value(Event::Tray::MenuItem::Nested{
+            .id = item.nested.id,
+            .service = service,
+            .label = qstring_from_label(item.nested.label),
+            .children = map_children_at(menu, item.nested.child_start_idx,
+                                        item.nested.child_end_idx, service),
+        })};
+  case IO_TrayElement::Tag::Section:
+    return Event::Tray::MenuItem{
+        .value_ = Event::Tray::MenuItem::Value(Event::Tray::MenuItem::Section{
+            .children = map_children_at(menu, item.section.child_start_idx,
+                                        item.section.child_end_idx, service),
+        })};
+  case IO_TrayElement::Tag::None:
+    break;
   }
 
   qDebug() << "unknown IO_TrayItem::Tag " << static_cast<int>(item.tag) << "\n";
   std::abort();
 }
 
-Event::Tray::MenuItem::MenuItem(Value value) : value_(value) {}
-
-QVector<Event::Tray::MenuItem>
-Event::Tray::MenuItem::Many(const IO_FFIArray<IO_TrayItem> &items) {
+QVector<Event::Tray::MenuItem> map_root_items(const IO_TrayMenu &menu,
+                                              uint32_t service) {
   QVector<Event::Tray::MenuItem> out;
-  for (size_t i = 0; i < items.len; i++) {
-    out.push_back(Event::Tray::MenuItem::from(items.ptr[i]));
+  for (size_t i = 0; i < IO_TRAY_MENU_ITEMS_COUNT; i++) {
+    auto item = menu._0[i];
+    if (!item.root) {
+      break;
+    }
+    out.push_back(map_item_at(menu, i, service));
   }
   return out;
 }
 
-QIcon qicon_from_io_tray_icon(const IO_TrayIcon &icon) {
-  switch (icon.tag) {
-  case IO_TrayIcon::Tag::Path:
-    return QIcon(icon.path.path);
-  case IO_TrayIcon::Tag::Name:
-    return QIcon::fromTheme(icon.name.name);
-  case IO_TrayIcon::Tag::Pixmap: {
-    auto pixmap = icon.pixmap._0;
-    auto width = pixmap.width;
-    auto height = pixmap.height;
-    QImage image(pixmap.bytes.ptr, width, height, width * 4,
-                 QImage::Format_RGBA8888);
-    return QIcon(QPixmap::fromImage(image.copy()));
-  }
-  case IO_TrayIcon::Tag::Unset:
-    return QIcon::fromTheme("process-stop");
-  }
-
-  qDebug() << "unknown IO_TrayIcon::Tag " << static_cast<int>(icon.tag) << "\n";
-  std::abort();
-}
-
 Event::Tray::AppAdded::AppAdded(const IO_Event::IO_TrayAppAdded_Body &data)
-    : service(data.service), items(Event::Tray::MenuItem::Many(data.items)),
-      icon(qicon_from_io_tray_icon(data.icon)) {}
+    : service(data.service), items(map_root_items(data.menu, data.service)),
+      icon(data.icon) {}
 Event::Tray::AppIconUpdated::AppIconUpdated(
     const IO_Event::IO_TrayAppIconUpdated_Body &data)
-    : service(data.service), icon(qicon_from_io_tray_icon(data.icon)) {}
+    : service(data.service), icon(data.icon) {}
 Event::Tray::AppMenuUpdated::AppMenuUpdated(
     const IO_Event::IO_TrayAppMenuUpdated_Body &data)
-    : service(data.service), items(Event::Tray::MenuItem::Many(data.items)) {}
+    : service(data.service), items(map_root_items(data.menu, data.service)) {}
 Event::Tray::AppRemoved::AppRemoved(
     const IO_Event::IO_TrayAppRemoved_Body &data)
     : service(data.service) {}

@@ -42,7 +42,7 @@ public:
   void spawnBluetoothEditor();
   void spawnWifiEditor();
   void spawnSystemMonitor();
-  void triggerTrayItem(const QString &uuid);
+  void triggerTrayItem(uint32_t service, uint32_t id);
 
 Q_SIGNALS:
   void timeTextChanged(const QString &text);
@@ -55,12 +55,12 @@ Q_SIGNALS:
   void networkSsidAndStrengthChanged(const QString &text);
   void sessionToggleRequested();
   void soundChanged(uint8_t volume, const QString &icon);
-  void trayAppAdded(const QString &app_id, const QIcon &icon,
+  void trayAppAdded(uint32_t service, const QIcon &icon,
                     const QVector<Event::Tray::MenuItem> &items);
-  void trayAppIconUpdated(const QString &app_id, const QIcon &icon);
-  void trayAppMenuUpdated(const QString &app_id,
+  void trayAppIconUpdated(uint32_t service, const QIcon &icon);
+  void trayAppMenuUpdated(uint32_t service,
                           const QVector<Event::Tray::MenuItem> &items);
-  void trayAppRemoved(const QString &app_id);
+  void trayAppRemoved(uint32_t service);
   void weatherChanged(const QString &summary,
                       const std::array<WeatherHourForecast,
                                        Event::Weather::OnHour::COUNT> &hourly,

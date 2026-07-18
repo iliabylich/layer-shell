@@ -234,9 +234,8 @@ void UiModel::spawnWifiEditor() { io_spawn_wifi_editor(io); }
 
 void UiModel::spawnSystemMonitor() { io_spawn_system_monitor(io); }
 
-void UiModel::triggerTrayItem(const QString &uuid) {
-  QByteArray bytes = uuid.toUtf8();
-  io_trigger_tray(io, bytes.constData());
+void UiModel::triggerTrayItem(uint32_t service, uint32_t id) {
+  io_trigger_tray(io, service, id);
 }
 
 void UiModel::eventReceived(const IO_Event *event, void *data) {
