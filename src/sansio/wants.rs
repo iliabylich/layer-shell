@@ -1,16 +1,16 @@
-use crate::external::{sockaddr, socklen_t};
 use core::ffi::CStr;
+use libc::sockaddr;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Wants {
     Socket {
         domain: i32,
-        type_: u32,
+        type_: i32,
     },
     Connect {
         fd: i32,
         addr: *const sockaddr,
-        addrlen: socklen_t,
+        addrlen: u32,
     },
     Read {
         fd: i32,

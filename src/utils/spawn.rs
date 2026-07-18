@@ -1,9 +1,7 @@
-use crate::{
-    external::{_exit, O_WRONLY, STDERR_FILENO, STDOUT_FILENO, close, dup2, execvp, fork, open},
-    utils::{StringRef, StringRefExt as _, getenv},
-};
+use crate::utils::{StringRef, StringRefExt as _, getenv};
 use alloc::vec::Vec;
 use anyhow::{Context as _, Result, bail};
+use libc::{_exit, O_WRONLY, STDERR_FILENO, STDOUT_FILENO, close, dup2, execvp, fork, open};
 
 pub(crate) fn spawn(cmd: &str) -> Result<()> {
     let home =
@@ -38,7 +36,7 @@ pub(crate) fn spawn(cmd: &str) -> Result<()> {
                     close(fd);
                 }
             }
-            execvp(exe.as_const_ptr(), c_argv.as_ptr());
+            execvp(exe.as_const_ptr(), c_argv.as_ptr().cast());
             _exit(127);
         }
 

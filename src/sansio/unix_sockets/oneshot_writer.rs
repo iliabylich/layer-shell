@@ -1,10 +1,7 @@
-use crate::{
-    external::{__socket_type_SOCK_STREAM as SOCK_STREAM, AF_UNIX, sockaddr_un, socklen_t},
-    sansio::Wants,
-    utils::ArrayWriter,
-};
+use crate::{sansio::Wants, utils::ArrayWriter};
 use anyhow::{Context, Result, bail, ensure};
 use core::{fmt::Write, mem::size_of};
+use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 
 pub(crate) struct UnixSocketOneshotWriter {
     writebuf: [u8; 4_096],
@@ -55,7 +52,7 @@ impl State {
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<sockaddr_un>() as socklen_t,
+                    addrlen: size_of::<sockaddr_un>() as u32,
                 }),
             ),
 

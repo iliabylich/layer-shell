@@ -1,12 +1,12 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    external::sockaddr_un,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::new_sockaddr_un,
 };
 use alloc::boxed::Box;
 use anyhow::{Context, Result, bail};
+use libc::sockaddr_un;
 
 pub(crate) struct KbMod {
     reader: Box<UnixSocketReader>,

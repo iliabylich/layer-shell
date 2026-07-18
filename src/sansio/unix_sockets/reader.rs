@@ -1,9 +1,7 @@
-use crate::{
-    external::{__socket_type_SOCK_STREAM as SOCK_STREAM, AF_UNIX, sockaddr_un, socklen_t},
-    sansio::Wants,
-};
+use crate::sansio::Wants;
 use anyhow::{Result, bail, ensure};
 use core::mem::size_of;
+use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 
 #[derive(Debug)]
 enum State {
@@ -33,7 +31,7 @@ impl State {
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<sockaddr_un>() as socklen_t,
+                    addrlen: size_of::<sockaddr_un>() as u32,
                 }),
             ),
 

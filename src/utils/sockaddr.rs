@@ -1,4 +1,4 @@
-use crate::external::{AF_UNIX, sa_family_t, sockaddr_un};
+use libc::{AF_UNIX, sa_family_t, sockaddr_un};
 
 pub(crate) const fn new_sockaddr_un(
     path: &[u8],

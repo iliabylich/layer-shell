@@ -1,10 +1,8 @@
-use crate::{
-    external::{O_RDONLY, close, exit, open, read},
-    utils::{ArrayWriter, StringRef, StringRefExt as _, getenv},
-};
+use crate::utils::{ArrayWriter, StringRef, StringRefExt as _, getenv};
 use alloc::vec::Vec;
 use anyhow::{Context as _, Result, ensure};
 use core::fmt::Write;
+use libc::{O_RDONLY, close, exit, open, read};
 use toml_parser::{
     ErrorSink, ParseError, Raw, Source, Span, decoder::Encoding, parser::EventReceiver,
 };

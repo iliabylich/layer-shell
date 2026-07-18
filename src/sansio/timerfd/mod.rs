@@ -1,6 +1,6 @@
-use crate::external::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
 use crate::sansio::{Satisfy, Wants};
 use anyhow::{Context, Result, bail, ensure};
+use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct TimerFd {

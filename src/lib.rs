@@ -35,7 +35,6 @@ mod event_queue;
     unsafe_op_in_unsafe_fn,
     trivial_casts,
     non_camel_case_types,
-    non_upper_case_globals,
     clippy::indexing_slicing,
     clippy::ptr_as_ptr,
     clippy::ref_as_ptr,
@@ -57,16 +56,13 @@ mod utils;
 
 use alloc::boxed::Box;
 use core::ptr::NonNull;
+use libc::{exit, malloc};
 
 use command::Command;
 pub use event::Event;
 pub use ffi::FFIArray;
 
-use crate::{
-    external::{__u64, exit, malloc},
-    io::IO,
-    utils::StringRef,
-};
+use crate::{io::IO, utils::StringRef};
 use anyhow::{Context, Result};
 
 fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
@@ -88,7 +84,7 @@ pub extern "C" fn io_init(
 
     exit_if_err(|| {
         Ok(unsafe {
-            let mut ptr = NonNull::new(malloc(size_of::<IO>() as __u64))
+            let mut ptr = NonNull::new(malloc(size_of::<IO>()))
                 .context("failed to malloc IO")?
                 .cast::<IO>();
             ptr.write(IO::new((callback, data))?);

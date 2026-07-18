@@ -1,10 +1,10 @@
 use crate::{
-    external::sockaddr_un,
     sansio::{DBusState, Satisfy, Wants},
     utils::{dbus::queue::SessionDBusQueue, getenv, new_sockaddr_un},
 };
 use anyhow::{Context, Result};
 use dbus::IncomingMessage;
+use libc::sockaddr_un;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SessionDBus {

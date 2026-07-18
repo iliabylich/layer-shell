@@ -4,7 +4,6 @@ use crate::{
     command::Command,
     config::Config,
     event_queue::EventQueue,
-    external::sockaddr_un,
     liburing::IoUring,
     modules::{
         CPU, Clock, Control, ControlRequest, KbMod, Memory, NM, Niri, PW, SessionDBus, Timer, Tray,
@@ -15,6 +14,7 @@ use crate::{
     utils::{HeapBlob, dbus::queue::SessionDBusQueue},
 };
 use anyhow::Result;
+use libc::sockaddr_un;
 
 pub struct IO {
     ring: IoUring,

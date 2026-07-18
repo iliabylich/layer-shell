@@ -1,4 +1,4 @@
-use crate::external::exit;
+use libc::exit;
 use string_bath::StringPool;
 
 const SLOTS_COUNT: usize = 100;

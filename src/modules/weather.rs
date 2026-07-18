@@ -1,11 +1,11 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    external::sockaddr_un,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{getenv, new_sockaddr_un},
 };
 use anyhow::{Context, Result, bail};
+use libc::sockaddr_un;
 
 pub(crate) struct Weather {
     reader: Box<UnixSocketReader>,

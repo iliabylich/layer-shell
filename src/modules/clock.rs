@@ -1,11 +1,11 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    external::{localtime_r, strftime, time, tm},
     utils::{StringRef, StringRefExt},
 };
 use alloc::string::String;
 use anyhow::{Result, bail};
+use libc::{localtime_r, strftime, time, tm};
 
 pub(crate) struct Clock;
 

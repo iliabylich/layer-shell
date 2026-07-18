@@ -2,7 +2,7 @@ pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use crate::external::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
     __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait, __liburing_wait_cqe,
-    __liburing_wait_cqe_timeout, ETIME, exit, io_uring, io_uring_cqe, strerror,
+    __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
 };
 use crate::{
     sansio::{Op, Wants},
@@ -10,6 +10,7 @@ use crate::{
 };
 use anyhow::{Result, bail};
 use core::mem::MaybeUninit;
+use libc::{ETIME, exit, strerror};
 
 mod cqe;
 mod sqe;
@@ -111,7 +112,7 @@ impl IoUring {
         match wants {
             Wants::Socket { domain, type_, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_socket(domain, type_.cast_signed(), 0, 0);
+                sqe.prep_socket(domain, type_, 0, 0);
                 sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
             Wants::Connect { fd, addr, addrlen } => {

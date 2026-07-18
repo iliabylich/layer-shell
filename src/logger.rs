@@ -1,8 +1,6 @@
-use crate::{
-    external::{STDERR_FILENO, exit, write},
-    utils::{ArrayWriter, getenv},
-};
+use crate::utils::{ArrayWriter, getenv};
 use core::{fmt::Write as _, str::FromStr as _};
+use libc::{STDERR_FILENO, exit, write};
 use log::{LevelFilter, Metadata, Record};
 
 static LOGGER: Logger = Logger;

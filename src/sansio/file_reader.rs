@@ -1,9 +1,7 @@
-use crate::{
-    external::{AT_FDCWD, O_RDONLY},
-    sansio::{Satisfy, Wants},
-};
+use crate::sansio::{Satisfy, Wants};
 use anyhow::{Context as _, Result, bail};
 use core::ffi::CStr;
+use libc::{AT_FDCWD, O_RDONLY};
 
 pub(crate) struct FileReader {
     path: &'static CStr,

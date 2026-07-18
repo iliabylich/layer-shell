@@ -1,13 +1,13 @@
 use crate::{
     Event,
     event_queue::EventQueue,
-    external::sockaddr_un,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     utils::{StringRef, StringRefExt as _, getenv, new_sockaddr_un},
 };
 use alloc::{boxed::Box, string::String, vec, vec::Vec};
 use anyhow::{Context, Result, bail};
 use buffer::{Buffer, NiriEvent};
+use libc::sockaddr_un;
 
 mod buffer;
 
