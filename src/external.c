@@ -9,9 +9,6 @@ int __liburing_submit(struct io_uring *ring) { return io_uring_submit(ring); }
 int __liburing_submit_and_wait(struct io_uring *ring, unsigned int wait_nr) {
   return io_uring_submit_and_wait(ring, wait_nr);
 }
-int __liburing_wait_cqe(struct io_uring *ring, struct io_uring_cqe **cqe_ptr) {
-  return io_uring_wait_cqe(ring, cqe_ptr);
-}
 int __liburing_wait_cqe_timeout(struct io_uring *ring,
                                 struct io_uring_cqe **cqe_ptr,
                                 struct __kernel_timespec *ts) {
@@ -41,13 +38,6 @@ void __liburing_prep_write(struct io_uring_sqe *sqe, int fd, const void *buf,
 void __liburing_prep_read(struct io_uring_sqe *sqe, int fd, void *buf,
                           unsigned int nbytes, __u64 offset) {
   io_uring_prep_read(sqe, fd, buf, nbytes, offset);
-}
-void __liburing_prep_close(struct io_uring_sqe *sqe, int fd) {
-  io_uring_prep_close(sqe, fd);
-}
-void __liburing_prep_openat(struct io_uring_sqe *sqe, int dfd, const char *path,
-                            int flags, mode_t mode) {
-  io_uring_prep_openat(sqe, dfd, path, flags, mode);
 }
 void __liburing_prep_accept(struct io_uring_sqe *sqe, int fd,
                             struct sockaddr *addr, socklen_t *addrlen,

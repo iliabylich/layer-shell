@@ -114,7 +114,10 @@ impl Buffer {
             .0
             .split_first_chunk::<{ TrayEvent::SERIALIZED_BYTESIZE }>()
         {
-            let event = TrayEvent::deserialize(*first);
+            let Some(event) = TrayEvent::deserialize(first) else {
+                log::error!("failed to deserialize event");
+                continue;
+            };
             events.push(event);
             self.0 = rest.to_vec();
         }
@@ -125,6 +128,7 @@ impl Buffer {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
+#[expect(clippy::large_enum_variant)]
 pub(crate) enum TrayEvent {
     AppAdded {
         service: u32,
@@ -149,35 +153,35 @@ impl TrayEvent {
         + TrayFixedSizeString::SERIALIZED_BYTESIZE
         + TrayMenu::SERIALIZED_BYTESIZE;
 
-    pub(crate) fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> Self {
+    pub(crate) fn deserialize(buf: &[u8; Self::SERIALIZED_BYTESIZE]) -> Option<Self> {
         let mut buf = &buf[..];
 
-        match read_u8(&mut buf) {
+        match read_u8(&mut buf)? {
             1 => {
-                let service = read_u32(&mut buf);
-                let icon = read_fixed_size_string(&mut buf);
-                let menu = read_menu(&mut buf);
-                Self::AppAdded {
+                let service = read_u32(&mut buf)?;
+                let icon = read_fixed_size_string(&mut buf)?;
+                let menu = read_menu(&mut buf)?;
+                Some(Self::AppAdded {
                     service,
                     icon,
                     menu,
-                }
+                })
             }
             2 => {
-                let service = read_u32(&mut buf);
-                Self::AppRemoved { service }
+                let service = read_u32(&mut buf)?;
+                Some(Self::AppRemoved { service })
             }
             3 => {
-                let service = read_u32(&mut buf);
-                let menu = read_menu(&mut buf);
-                Self::MenuUpdated { service, menu }
+                let service = read_u32(&mut buf)?;
+                let menu = read_menu(&mut buf)?;
+                Some(Self::MenuUpdated { service, menu })
             }
             4 => {
-                let service = read_u32(&mut buf);
-                let icon = read_fixed_size_string(&mut buf);
-                Self::IconUpdated { service, icon }
+                let service = read_u32(&mut buf)?;
+                let icon = read_fixed_size_string(&mut buf)?;
+                Some(Self::IconUpdated { service, icon })
             }
-            _ => unreachable!(),
+            _ => None,
         }
     }
 }
@@ -242,63 +246,63 @@ impl TrayElement {
         + TrayLabel::SERIALIZED_BYTESIZE
         + size_of::<u64>() * 2;
 
-    pub fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> (Self, bool) {
+    pub fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> Option<(Self, bool)> {
         let mut buf = &buf[..];
 
-        match read_u8(&mut buf) {
-            0 => (Self::None, false),
+        match read_u8(&mut buf)? {
+            0 => Some((Self::None, false)),
 
             1 => {
-                let id = read_i32(&mut buf);
-                let root = read_u8(&mut buf) == 1;
-                let label = read_label(&mut buf);
-                (Self::Regular { id, label }, root)
+                let id = read_i32(&mut buf)?;
+                let root = read_u8(&mut buf)? == 1;
+                let label = read_label(&mut buf)?;
+                Some((Self::Regular { id, label }, root))
             }
 
             2 => {
-                let id = read_i32(&mut buf);
-                let root = read_u8(&mut buf) == 1;
-                let label = read_label(&mut buf);
-                (Self::Disabled { id, label }, root)
+                let id = read_i32(&mut buf)?;
+                let root = read_u8(&mut buf)? == 1;
+                let label = read_label(&mut buf)?;
+                Some((Self::Disabled { id, label }, root))
             }
 
             3 => {
-                let id = read_i32(&mut buf);
-                let root = read_u8(&mut buf) == 1;
-                let checked = read_u8(&mut buf);
-                let label = read_label(&mut buf);
-                (
+                let id = read_i32(&mut buf)?;
+                let root = read_u8(&mut buf)? == 1;
+                let checked = read_u8(&mut buf)?;
+                let label = read_label(&mut buf)?;
+                Some((
                     Self::Checkbox {
                         id,
                         label,
                         checked: checked == 1,
                     },
                     root,
-                )
+                ))
             }
 
             4 => {
-                let id = read_i32(&mut buf);
-                let root = read_u8(&mut buf) == 1;
-                let selected = read_u8(&mut buf);
-                let label = read_label(&mut buf);
-                (
+                let id = read_i32(&mut buf)?;
+                let root = read_u8(&mut buf)? == 1;
+                let selected = read_u8(&mut buf)?;
+                let label = read_label(&mut buf)?;
+                Some((
                     Self::Radio {
                         id,
                         label,
                         selected: selected == 1,
                     },
                     root,
-                )
+                ))
             }
 
             5 => {
-                let id = read_i32(&mut buf);
-                let root = read_u8(&mut buf) == 1;
-                let child_start_idx = read_u64(&mut buf);
-                let child_end_idx = read_u64(&mut buf);
-                let label = read_label(&mut buf);
-                (
+                let id = read_i32(&mut buf)?;
+                let root = read_u8(&mut buf)? == 1;
+                let child_start_idx = read_u64(&mut buf)?;
+                let child_end_idx = read_u64(&mut buf)?;
+                let label = read_label(&mut buf)?;
+                Some((
                     Self::Nested {
                         id,
                         label,
@@ -306,23 +310,23 @@ impl TrayElement {
                         child_end_idx,
                     },
                     root,
-                )
+                ))
             }
 
             6 => {
-                let root = read_u8(&mut buf) == 1;
-                let child_start_idx = read_u64(&mut buf);
-                let child_end_idx = read_u64(&mut buf);
-                (
+                let root = read_u8(&mut buf)? == 1;
+                let child_start_idx = read_u64(&mut buf)?;
+                let child_end_idx = read_u64(&mut buf)?;
+                Some((
                     Self::Section {
                         child_start_idx,
                         child_end_idx,
                     },
                     root,
-                )
+                ))
             }
 
-            _ => unreachable!(),
+            _ => None,
         }
     }
 }
@@ -346,8 +350,15 @@ impl TrayLabel {
         Self { len, buf: s }
     }
 
-    pub(crate) fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
-        std::str::from_utf8(&self.buf[..self.len as usize])
+    pub(crate) fn as_bytes(&self) -> Result<&[u8]> {
+        self.buf
+            .get(..self.len as usize)
+            .context("malformed TrayFixedSizeString")
+    }
+
+    pub(crate) fn as_str(&self) -> Result<&str> {
+        let s = core::str::from_utf8(self.as_bytes()?)?;
+        Ok(s)
     }
 }
 impl core::fmt::Debug for TrayLabel {
@@ -366,78 +377,88 @@ impl TrayFixedSizeString {
     pub(crate) const STR_BYTESIZE: usize = 256;
     pub(crate) const SERIALIZED_BYTESIZE: usize = Self::STR_BYTESIZE + 4;
 
-    pub(crate) fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> Self {
+    pub(crate) fn deserialize(buf: &[u8; Self::SERIALIZED_BYTESIZE]) -> Self {
         let len = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         let mut s = [0; _];
         s.copy_from_slice(&buf[4..]);
         Self { len, buf: s }
     }
 
-    pub(crate) fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
-        std::str::from_utf8(&self.buf[..self.len as usize])
+    pub(crate) fn as_bytes(&self) -> Result<&[u8]> {
+        self.buf
+            .get(..self.len as usize)
+            .context("malformed TrayFixedSizeString")
+    }
+
+    pub(crate) fn as_str(&self) -> Result<&str> {
+        let s = core::str::from_utf8(self.as_bytes()?)?;
+        Ok(s)
     }
 }
 impl core::fmt::Debug for TrayFixedSizeString {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{:?}",
-            String::from_utf8_lossy(&self.buf[..self.len as usize])
-        )
+        write!(f, "{:?}", self.as_str())
     }
 }
 
-fn read_u8(buf: &mut &[u8]) -> u8 {
-    let n = buf[0];
-    *buf = &buf[1..];
-    n
+fn read_u8(buf: &mut &[u8]) -> Option<u8> {
+    let n = *buf.first()?;
+    *buf = buf.get(1..)?;
+    Some(n)
 }
-fn read_i32(buf: &mut &[u8]) -> i32 {
-    let n = i32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
-    *buf = &buf[4..];
-    n
+fn read_i32(buf: &mut &[u8]) -> Option<i32> {
+    let n = i32::from_be_bytes([*buf.first()?, *buf.get(1)?, *buf.get(2)?, *buf.get(3)?]);
+    *buf = buf.get(4..)?;
+    Some(n)
 }
-fn read_u32(buf: &mut &[u8]) -> u32 {
-    let n = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
-    *buf = &buf[4..];
-    n
+fn read_u32(buf: &mut &[u8]) -> Option<u32> {
+    let n = u32::from_be_bytes([*buf.first()?, *buf.get(1)?, *buf.get(2)?, *buf.get(3)?]);
+    *buf = buf.get(4..)?;
+    Some(n)
 }
-fn read_label(buf: &mut &[u8]) -> TrayLabel {
+fn read_label(buf: &mut &[u8]) -> Option<TrayLabel> {
     let mut textbuf = [0; _];
-    textbuf.copy_from_slice(&buf[0..TrayLabel::SERIALIZED_BYTESIZE]);
+    textbuf.copy_from_slice(buf.get(0..TrayLabel::SERIALIZED_BYTESIZE)?);
     let text = TrayLabel::deserialize(textbuf);
-    *buf = &buf[TrayLabel::SERIALIZED_BYTESIZE..];
-    text
+    *buf = buf.get(TrayLabel::SERIALIZED_BYTESIZE..)?;
+    Some(text)
 }
-fn read_fixed_size_string(buf: &mut &[u8]) -> TrayFixedSizeString {
+fn read_fixed_size_string(buf: &mut &[u8]) -> Option<TrayFixedSizeString> {
     let mut textbuf = [0; _];
-    textbuf.copy_from_slice(&buf[0..TrayFixedSizeString::SERIALIZED_BYTESIZE]);
-    let text = TrayFixedSizeString::deserialize(textbuf);
-    *buf = &buf[TrayFixedSizeString::SERIALIZED_BYTESIZE..];
-    text
+    textbuf.copy_from_slice(buf.get(0..TrayFixedSizeString::SERIALIZED_BYTESIZE)?);
+    let text = TrayFixedSizeString::deserialize(&textbuf);
+    *buf = buf.get(TrayFixedSizeString::SERIALIZED_BYTESIZE..)?;
+    Some(text)
 }
-fn read_u64(buf: &mut &[u8]) -> u64 {
+fn read_u64(buf: &mut &[u8]) -> Option<u64> {
     let n = u64::from_be_bytes([
-        buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7],
+        *buf.first()?,
+        *buf.get(1)?,
+        *buf.get(2)?,
+        *buf.get(3)?,
+        *buf.get(4)?,
+        *buf.get(5)?,
+        *buf.get(6)?,
+        *buf.get(7)?,
     ]);
-    *buf = &buf[8..];
-    n
+    *buf = buf.get(8..)?;
+    Some(n)
 }
-fn read_element(buf: &mut &[u8]) -> (TrayElement, bool) {
+fn read_element(buf: &mut &[u8]) -> Option<(TrayElement, bool)> {
     let mut elementbuf = [0; _];
-    elementbuf.copy_from_slice(&buf[0..TrayElement::SERIALIZED_BYTESIZE]);
-    let (text, root) = TrayElement::deserialize(elementbuf);
-    *buf = &buf[TrayElement::SERIALIZED_BYTESIZE..];
-    (text, root)
+    elementbuf.copy_from_slice(buf.get(..TrayElement::SERIALIZED_BYTESIZE)?);
+    let (text, root) = TrayElement::deserialize(elementbuf)?;
+    *buf = buf.get(TrayElement::SERIALIZED_BYTESIZE..)?;
+    Some((text, root))
 }
-fn read_menu(buf: &mut &[u8]) -> TrayMenu {
+fn read_menu(buf: &mut &[u8]) -> Option<TrayMenu> {
     let mut menu = [MaybeRootTrayElement {
         root: false,
         element: TrayElement::None,
     }; TRAY_MENU_ITEMS_COUNT];
     for menu_item in &mut menu {
-        let (element, root) = read_element(buf);
+        let (element, root) = read_element(buf)?;
         *menu_item = MaybeRootTrayElement { root, element };
     }
-    TrayMenu(menu)
+    Some(TrayMenu(menu))
 }

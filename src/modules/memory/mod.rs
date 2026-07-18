@@ -20,11 +20,11 @@ pub(crate) enum Memory {
 }
 
 impl Memory {
-    pub(crate) fn new() -> Self {
-        Self::Running {
-            reader: FileReader::new(c"/proc/meminfo"),
+    pub(crate) fn new() -> Result<Self> {
+        Ok(Self::Running {
+            reader: FileReader::new(c"/proc/meminfo")?,
             buf: Box::new([0; _]),
-        }
+        })
     }
 
     pub(crate) const fn tick(&mut self) {

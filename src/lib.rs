@@ -39,10 +39,7 @@ mod event_queue;
     clippy::ptr_as_ptr,
     clippy::ref_as_ptr,
     clippy::missing_const_for_fn,
-    clippy::use_self,
-    clippy::upper_case_acronyms,
-    clippy::unreadable_literal,
-    clippy::struct_field_names
+    clippy::use_self
 )]
 mod external;
 mod ffi;

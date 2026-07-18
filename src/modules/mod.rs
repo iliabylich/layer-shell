@@ -12,7 +12,7 @@ mod weather;
 
 pub(crate) use clock::Clock;
 pub(crate) use control::Control;
-pub(crate) use cpu::CPU;
+pub(crate) use cpu::Cpu;
 pub(crate) use kb_mod::KbMod;
 pub(crate) use memory::Memory;
 pub(crate) use niri::Niri;

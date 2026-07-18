@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[must_use]
 pub(crate) enum Command {
     Lock,

@@ -1,14 +1,13 @@
 pub(crate) use self::{cqe::Cqe, sqe::Sqe};
 use crate::external::{
     __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
-    __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait, __liburing_wait_cqe,
+    __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait,
     __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
 };
 use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
-use anyhow::{Result, bail};
 use core::mem::MaybeUninit;
 use libc::{ETIME, exit, strerror};
 
@@ -65,17 +64,6 @@ impl IoUring {
         self.dirty = false;
     }
 
-    #[expect(dead_code)]
-    pub(crate) fn wait_cqe(&mut self) -> Result<Cqe> {
-        let mut cqe: *mut io_uring_cqe = core::ptr::null_mut();
-        let errno = unsafe { __liburing_wait_cqe(&raw mut self.ring, &raw mut cqe) };
-        checkerr(errno);
-        if cqe.is_null() {
-            bail!("got NULL from io_uring_wait_cqe");
-        }
-        Ok(Cqe { cqe })
-    }
-
     pub(crate) fn try_get_cqe(&mut self) -> Option<Cqe> {
         let mut cqe: *mut io_uring_cqe = core::ptr::null_mut();
         let mut notimeout = __kernel_timespec {
@@ -129,22 +117,6 @@ impl IoUring {
                 let mut sqe = self.get_sqe();
                 sqe.prep_write(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
-            }
-            Wants::OpenAt {
-                dfd,
-                path,
-                flags,
-                mode,
-                ..
-            } => {
-                let mut sqe = self.get_sqe();
-                sqe.prep_openat(dfd, path.as_ptr(), flags, mode);
-                sqe.set_user_data(UserData::new(module_id, Op::OpenAt));
-            }
-            Wants::Close { fd, .. } => {
-                let mut sqe = self.get_sqe();
-                sqe.prep_close(fd);
-                sqe.set_user_data(UserData::new(module_id, Op::Close));
             }
             Wants::Accept { fd } => {
                 let mut sqe = self.get_sqe();

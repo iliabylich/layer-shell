@@ -112,7 +112,7 @@ impl UnixSocketReader {
         Ok((buf, bytes_read))
     }
 
-    pub(crate) fn fd(&self) -> Option<i32> {
+    pub(crate) const fn fd(&self) -> Option<i32> {
         match &self.state {
             State::ReadyToSocket | State::WaitingForSocket => None,
 

@@ -32,7 +32,7 @@ impl Control {
         }
     }
 
-    pub(crate) fn satisfy(&self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
         let Satisfy::Accept(fd) = satisfy else {
             bail!("Control may only process prep_accept, received: {satisfy:?}");
         };
@@ -91,7 +91,6 @@ fn ensure_addr_is_free(addr: &SocketAddrUnix) -> Result<()> {
         .map_err(|err| anyhow::anyhow!(err))?;
     if rustix::net::connect(&fd, addr).is_ok() {
         bail!("there's already a server listenning at {addr:?}");
-    } else {
-        Ok(())
     }
+    Ok(())
 }

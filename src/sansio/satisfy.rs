@@ -8,7 +8,6 @@ pub(crate) enum Satisfy {
     Write(Result<usize>),
     Read(Result<usize>),
     Close(#[expect(dead_code)] Result<()>),
-    OpenAt(Result<i32>),
     Accept(Result<i32>),
 }
 
@@ -48,14 +47,6 @@ impl Satisfy {
                     Err(anyhow::anyhow!("Op::Close returned error: {res}"))
                 };
                 Self::Close(res)
-            }
-            Op::OpenAt => {
-                let fd = if res >= 0 {
-                    Ok(res)
-                } else {
-                    Err(anyhow::anyhow!("Op::OpenAt returned error: {res}"))
-                };
-                Self::OpenAt(fd)
             }
             Op::Accept => {
                 let fd = if res >= 0 {

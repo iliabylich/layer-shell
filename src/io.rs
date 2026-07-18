@@ -5,7 +5,7 @@ use crate::{
     config::Config,
     event_queue::EventQueue,
     liburing::IoUring,
-    modules::{CPU, Clock, Control, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
+    modules::{Clock, Control, Cpu, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
     sansio::Satisfy,
     user_data::{ModuleId, UserData},
 };
@@ -30,7 +30,7 @@ pub struct IO {
     weather: Option<Weather>,
     weather_addr: sockaddr_un,
 
-    cpu: CPU,
+    cpu: Cpu,
     memory: Memory,
 
     kb_mod: Option<KbMod>,
@@ -74,9 +74,9 @@ impl IO {
         let nm = NM::new();
         let nm_addr = NM::address()?;
 
-        let cpu = CPU::new();
+        let cpu = Cpu::new()?;
 
-        let memory = Memory::new();
+        let memory = Memory::new()?;
 
         let kb_mod = KbMod::new();
         let kb_mod_addr = KbMod::address()?;
@@ -123,7 +123,7 @@ impl IO {
             niri_addr,
 
             tray: Some(tray),
-            tray_addr: tray_addr,
+            tray_addr,
 
             control,
 
@@ -165,7 +165,7 @@ impl IO {
             schedule_tray(tray, &mut self.ring, &self.tray_addr);
         }
 
-        schedule_control(&mut self.control, &mut self.ring);
+        schedule_control(&self.control, &mut self.ring);
 
         self.ring.submit_if_dirty();
 
@@ -193,7 +193,7 @@ impl IO {
                 ModuleId::Niri => self.satisfy_niri(satisfy),
                 ModuleId::Tray => self.satisfy_tray(satisfy),
                 ModuleId::Control => self.satisfy_control(satisfy),
-                ModuleId::CPU => self.satisfy_cpu(satisfy)?,
+                ModuleId::Cpu => self.satisfy_cpu(satisfy)?,
                 ModuleId::Memory => self.satisfy_memory(satisfy)?,
                 ModuleId::Timer => self.satisfy_timer(satisfy)?,
             }
@@ -260,7 +260,7 @@ macro_rules! generate_simple_schedule_impl {
     };
 }
 
-generate_simple_schedule_impl!(schedule_cpu, CPU);
+generate_simple_schedule_impl!(schedule_cpu, Cpu);
 generate_simple_schedule_impl!(schedule_memory, Memory);
 
 fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &sockaddr_un) {
@@ -311,7 +311,7 @@ fn schedule_tray(tray: &mut Tray, ring: &mut IoUring, addr: &sockaddr_un) {
     }
 }
 
-fn schedule_control(control: &mut Control, ring: &mut IoUring) {
+fn schedule_control(control: &Control, ring: &mut IoUring) {
     let wants = control.wants();
     log::trace!(target: "Control", "{wants:?}");
     ring.schedule(ModuleId::Control, wants);
@@ -400,8 +400,8 @@ impl IO {
 
 impl IO {
     fn satisfy_control(&mut self, satisfy: Satisfy) {
-        match self.control.satisfy(satisfy, &mut self.events) {
-            Ok(()) => schedule_control(&mut self.control, &mut self.ring),
+        match Control::satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_control(&self.control, &mut self.ring),
             Err(err) => {
                 log::error!(target: "Tray", "{err:?}");
                 self.tray = None;

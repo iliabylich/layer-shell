@@ -11,8 +11,7 @@ use parser::{CoreUsage, Parser};
 
 mod parser;
 
-#[expect(clippy::upper_case_acronyms)]
-pub(crate) enum CPU {
+pub(crate) enum Cpu {
     Running {
         reader: FileReader,
         buf: Box<[u8; 1_024]>,
@@ -21,13 +20,13 @@ pub(crate) enum CPU {
     Stopped,
 }
 
-impl CPU {
-    pub(crate) fn new() -> Self {
-        Self::Running {
-            reader: FileReader::new(c"/proc/stat"),
+impl Cpu {
+    pub(crate) fn new() -> Result<Self> {
+        Ok(Self::Running {
+            reader: FileReader::new(c"/proc/stat")?,
             buf: Box::new([0; _]),
             state: None,
-        }
+        })
     }
 
     pub(crate) const fn tick(&mut self) {
@@ -38,8 +37,8 @@ impl CPU {
     }
 }
 
-impl TryWantsTrySatisfy for CPU {
-    const ID: ModuleId = ModuleId::CPU;
+impl TryWantsTrySatisfy for Cpu {
+    const ID: ModuleId = ModuleId::Cpu;
     type Output = ();
 
     fn try_wants(&mut self) -> Result<Option<Wants>> {
@@ -67,7 +66,7 @@ impl TryWantsTrySatisfy for CPU {
     }
 }
 
-impl CanStop for CPU {
+impl CanStop for Cpu {
     fn stopped(&mut self) -> Self {
         Self::Stopped
     }

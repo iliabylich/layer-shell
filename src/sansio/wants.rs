@@ -1,4 +1,3 @@
-use core::ffi::CStr;
 use libc::sockaddr;
 
 #[derive(Debug, Clone, Copy)]
@@ -21,15 +20,6 @@ pub(crate) enum Wants {
         fd: i32,
         buf: *const u8,
         len: usize,
-    },
-    OpenAt {
-        dfd: i32,
-        path: &'static CStr,
-        flags: i32,
-        mode: u32,
-    },
-    Close {
-        fd: i32,
     },
     Accept {
         fd: i32,

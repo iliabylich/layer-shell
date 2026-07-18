@@ -6,8 +6,6 @@ use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 pub(crate) struct UnixSocketOneshotWriter {
     writebuf: [u8; 4_096],
     writebuflen: usize,
-    readbuf: [u8; 4_096],
-    readbuflen: usize,
     state: State,
 }
 
@@ -22,22 +20,11 @@ enum State {
     ReadyToWrite { fd: i32 },
     WaitingForWrite { fd: i32 },
 
-    ReadyToRead { fd: i32 },
-    WaitingForRead { fd: i32 },
-
-    ReadyToClose { fd: i32 },
-    WaitingForClose,
-
     Done,
 }
 
 impl State {
-    const fn wants(
-        self,
-        addr: &sockaddr_un,
-        writebuf: &[u8],
-        readbuf: &mut [u8],
-    ) -> (Self, Option<Wants>) {
+    const fn wants(self, addr: &sockaddr_un, writebuf: &[u8]) -> (Self, Option<Wants>) {
         match self {
             Self::ReadyToSocket => (
                 Self::WaitingForSocket,
@@ -65,30 +52,14 @@ impl State {
                 }),
             ),
 
-            Self::ReadyToRead { fd } => (
-                Self::WaitingForRead { fd },
-                Some(Wants::Read {
-                    fd,
-                    buf: readbuf.as_mut_ptr(),
-                    len: readbuf.len(),
-                }),
-            ),
-
-            Self::ReadyToClose { fd } => (Self::WaitingForClose, Some(Wants::Close { fd })),
-
             waiting => (waiting, None),
         }
     }
 
-    const fn wants_in_place(
-        &mut self,
-        addr: &sockaddr_un,
-        writebuf: &[u8],
-        readbuf: &mut [u8],
-    ) -> Option<Wants> {
+    const fn wants_in_place(&mut self, addr: &sockaddr_un, writebuf: &[u8]) -> Option<Wants> {
         let mut this = Self::Done;
         core::mem::swap(self, &mut this);
-        let (next, wants) = this.wants(addr, writebuf, readbuf);
+        let (next, wants) = this.wants(addr, writebuf);
         *self = next;
         wants
     }
@@ -104,8 +75,6 @@ impl UnixSocketOneshotWriter {
         Ok(Self {
             writebuf,
             writebuflen,
-            readbuf: [0; _],
-            readbuflen: 0,
             state: State::ReadyToSocket,
         })
     }
@@ -116,7 +85,6 @@ impl UnixSocketOneshotWriter {
             self.writebuf
                 .get(..self.writebuflen)
                 .unwrap_or_else(|| unreachable!()),
-            &mut self.readbuf,
         )
     }
 
@@ -140,35 +108,12 @@ impl UnixSocketOneshotWriter {
         Ok(())
     }
 
-    pub(crate) fn satisfy_write(&mut self) -> Result<()> {
-        let State::WaitingForWrite { fd } = self.state else {
+    pub(crate) fn satisfy_write(&self) -> Result<()> {
+        let State::WaitingForWrite { .. } = self.state else {
             bail!("malformed state: expected Write, got {:?}", self.state)
         };
 
-        self.state = State::ReadyToRead { fd };
         Ok(())
-    }
-
-    #[expect(dead_code)]
-    pub(crate) fn satisfy_read(&mut self, bytes_read: usize) -> Result<()> {
-        let State::WaitingForRead { fd } = self.state else {
-            bail!("malformed state: expected Read, got {:?}", self.state)
-        };
-
-        self.readbuflen = bytes_read;
-        self.state = State::ReadyToClose { fd };
-        Ok(())
-    }
-
-    #[expect(dead_code)]
-    pub(crate) fn satisfy_close(&self) -> Result<&[u8]> {
-        let State::WaitingForClose = self.state else {
-            bail!("malformed state: expected Close, got {:?}", self.state)
-        };
-
-        self.readbuf
-            .get(..self.readbuflen)
-            .context("buf is too short")
     }
 
     pub(crate) fn fd(&self) -> Result<i32> {
@@ -176,15 +121,9 @@ impl UnixSocketOneshotWriter {
             State::ReadyToConnect { fd }
             | State::WaitingForConnect { fd }
             | State::ReadyToWrite { fd }
-            | State::WaitingForWrite { fd }
-            | State::ReadyToRead { fd }
-            | State::WaitingForRead { fd }
-            | State::ReadyToClose { fd } => Ok(fd),
+            | State::WaitingForWrite { fd } => Ok(fd),
 
-            State::ReadyToSocket
-            | State::WaitingForSocket
-            | State::WaitingForClose
-            | State::Done => bail!(
+            State::ReadyToSocket | State::WaitingForSocket | State::Done => bail!(
                 "UnixSocketOneshotWriter doesn't have FD in {:?} state",
                 self.state
             ),

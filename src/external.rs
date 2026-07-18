@@ -30,9 +30,7 @@ impl<T> ::core::fmt::Debug for __IncompleteArrayField<T> {
         fmt.write_str("__IncompleteArrayField")
     }
 }
-pub(crate) type __mode_t = ::core::ffi::c_uint;
 pub(crate) type __socklen_t = ::core::ffi::c_uint;
-pub(crate) type mode_t = __mode_t;
 pub(crate) type socklen_t = __socklen_t;
 #[repr(C)]
 #[repr(align(2))]
@@ -330,12 +328,6 @@ unsafe extern "C" {
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
-    pub(crate) fn __liburing_wait_cqe(
-        ring: *mut io_uring,
-        cqe_ptr: *mut *mut io_uring_cqe,
-    ) -> ::core::ffi::c_int;
-}
-unsafe extern "C" {
     pub(crate) fn __liburing_wait_cqe_timeout(
         ring: *mut io_uring,
         cqe_ptr: *mut *mut io_uring_cqe,
@@ -384,18 +376,6 @@ unsafe extern "C" {
         buf: *mut ::core::ffi::c_void,
         nbytes: ::core::ffi::c_uint,
         offset: __u64,
-    );
-}
-unsafe extern "C" {
-    pub(crate) fn __liburing_prep_close(sqe: *mut io_uring_sqe, fd: ::core::ffi::c_int);
-}
-unsafe extern "C" {
-    pub(crate) fn __liburing_prep_openat(
-        sqe: *mut io_uring_sqe,
-        dfd: ::core::ffi::c_int,
-        path: *const ::core::ffi::c_char,
-        flags: ::core::ffi::c_int,
-        mode: mode_t,
     );
 }
 unsafe extern "C" {
