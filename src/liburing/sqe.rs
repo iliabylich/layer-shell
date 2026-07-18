@@ -1,6 +1,6 @@
 use crate::external::{
-    __liburing_prep_close, __liburing_prep_connect, __liburing_prep_openat, __liburing_prep_read,
-    __liburing_prep_socket, __liburing_prep_write, io_uring_sqe,
+    __liburing_prep_accept, __liburing_prep_close, __liburing_prep_connect, __liburing_prep_openat,
+    __liburing_prep_read, __liburing_prep_socket, __liburing_prep_write, io_uring_sqe,
 };
 use libc::{mode_t, sockaddr, socklen_t};
 
@@ -27,6 +27,15 @@ impl Sqe {
     }
     pub(crate) fn prep_openat(&mut self, dfd: i32, path: *const i8, flags: i32, mode: mode_t) {
         unsafe { __liburing_prep_openat(self.sqe, dfd, path, flags, mode) }
+    }
+    pub(crate) fn prep_accept(
+        &mut self,
+        fd: i32,
+        addr: *mut sockaddr,
+        addrlen: *mut socklen_t,
+        flags: i32,
+    ) {
+        unsafe { __liburing_prep_accept(self.sqe, fd, addr.cast(), addrlen, flags) }
     }
 
     pub(crate) fn set_user_data(&mut self, data: impl Into<u64>) {

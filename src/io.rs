@@ -5,13 +5,9 @@ use crate::{
     config::Config,
     event_queue::EventQueue,
     liburing::IoUring,
-    modules::{
-        CPU, Clock, Control, ControlRequest, KbMod, Memory, NM, Niri, PW, SessionDBus, Timer, Tray,
-        Weather,
-    },
+    modules::{CPU, Clock, Control, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
     sansio::Satisfy,
     user_data::{ModuleId, UserData},
-    utils::{HeapBlob, dbus::queue::SessionDBusQueue},
 };
 use anyhow::Result;
 use libc::sockaddr_un;
@@ -24,11 +20,6 @@ pub struct IO {
 
     timer: Option<Timer>,
     timerbuf: [u8; 8],
-
-    session_dbus: SessionDBus,
-    session_dbus_addr: sockaddr_un,
-    session_dbus_readbuf: HeapBlob,
-    session_dbus_queue: SessionDBusQueue,
 
     pw: Option<PW>,
     pw_addr: sockaddr_un,
@@ -50,6 +41,8 @@ pub struct IO {
 
     tray: Option<Tray>,
     tray_addr: sockaddr_un,
+
+    control: Control,
 
     on_event: (
         extern "C" fn(event: &Event, *mut core::ffi::c_void),
@@ -78,12 +71,6 @@ impl IO {
         let timer = Timer::new()?;
         let timerbuf = [0; 8];
 
-        let session_dbus = SessionDBus::new();
-        let session_dbus_addr = SessionDBus::address()?;
-        let session_dbus_readbuf = HeapBlob::new(400 * 1_024)?;
-        let mut session_dbus_queue = SessionDBusQueue::new()?;
-        Control::init(&mut session_dbus_queue)?;
-
         let nm = NM::new();
         let nm_addr = NM::address()?;
 
@@ -106,6 +93,8 @@ impl IO {
         let tray = Tray::new();
         let tray_addr = Tray::address()?;
 
+        let control = Control::new()?;
+
         Ok(Self {
             ring,
             events,
@@ -114,11 +103,6 @@ impl IO {
 
             timer: Some(timer),
             timerbuf,
-
-            session_dbus,
-            session_dbus_addr,
-            session_dbus_readbuf,
-            session_dbus_queue,
 
             pw_addr,
             pw: Some(pw),
@@ -141,6 +125,8 @@ impl IO {
             tray: Some(tray),
             tray_addr: tray_addr,
 
+            control,
+
             on_event,
             running: true,
         })
@@ -150,14 +136,6 @@ impl IO {
         if let Some(timer) = &mut self.timer {
             schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
         }
-
-        schedule_session_dbus(
-            &mut self.session_dbus,
-            self.session_dbus_readbuf.as_slice(),
-            &self.session_dbus_addr,
-            &self.session_dbus_queue,
-            &mut self.ring,
-        );
 
         if let Some(nm) = &mut self.nm {
             schedule_nm(nm, &mut self.ring, &self.nm_addr);
@@ -187,16 +165,11 @@ impl IO {
             schedule_tray(tray, &mut self.ring, &self.tray_addr);
         }
 
+        schedule_control(&mut self.control, &mut self.ring);
+
         self.ring.submit_if_dirty();
 
         Ok(())
-    }
-
-    fn on_control_req(&mut self, req: ControlRequest) {
-        self.events.push_back(match req {
-            ControlRequest::Exit => Event::Exit,
-            ControlRequest::ToggleSessionScreen => Event::ToggleSessionScreen,
-        });
     }
 
     pub(crate) fn handle_readable(&mut self) -> Result<()> {
@@ -219,7 +192,7 @@ impl IO {
                 ModuleId::PW => self.satisfy_pw(satisfy),
                 ModuleId::Niri => self.satisfy_niri(satisfy),
                 ModuleId::Tray => self.satisfy_tray(satisfy),
-                ModuleId::SessionDBus => self.satisfy_session_dbus(satisfy),
+                ModuleId::Control => self.satisfy_control(satisfy),
                 ModuleId::CPU => self.satisfy_cpu(satisfy)?,
                 ModuleId::Memory => self.satisfy_memory(satisfy)?,
                 ModuleId::Timer => self.satisfy_timer(satisfy)?,
@@ -338,6 +311,12 @@ fn schedule_tray(tray: &mut Tray, ring: &mut IoUring, addr: &sockaddr_un) {
     }
 }
 
+fn schedule_control(control: &mut Control, ring: &mut IoUring) {
+    let wants = control.wants();
+    log::trace!(target: "Control", "{wants:?}");
+    ring.schedule(ModuleId::Control, wants);
+}
+
 fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) {
     if let Some(wants) = timer.wants(buf) {
         log::trace!(target: "Timer", "{wants:?}");
@@ -346,20 +325,6 @@ fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) {
     }
 }
 
-fn schedule_session_dbus(
-    module: &mut SessionDBus,
-    readbuf: &mut [u8],
-    addr: &sockaddr_un,
-    queue: &SessionDBusQueue,
-    ring: &mut IoUring,
-) {
-    let Some(wants) = module.wants(readbuf, queue, addr) else {
-        return;
-    };
-    log::trace!(target: "SessionDBus", "{wants:?}");
-    core::assert_matches!(module.wants(readbuf, queue, addr), None);
-    ring.schedule(ModuleId::SessionDBus, wants);
-}
 macro_rules! generate_simple_satisfy_impl {
     ($fn:ident, $module:ident, $schedule:ident) => {
         impl IO {
@@ -434,6 +399,18 @@ impl IO {
 }
 
 impl IO {
+    fn satisfy_control(&mut self, satisfy: Satisfy) {
+        match self.control.satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_control(&mut self.control, &mut self.ring),
+            Err(err) => {
+                log::error!(target: "Tray", "{err:?}");
+                self.tray = None;
+            }
+        }
+    }
+}
+
+impl IO {
     fn satisfy_kb_mod(&mut self, satisfy: Satisfy) {
         let Some(kb_mod) = &mut self.kb_mod else {
             return;
@@ -499,30 +476,6 @@ impl IO {
 
 generate_simple_satisfy_impl!(satisfy_cpu, cpu, schedule_cpu);
 generate_simple_satisfy_impl!(satisfy_memory, memory, schedule_memory);
-
-impl IO {
-    fn satisfy_session_dbus(&mut self, satisfy: Satisfy) {
-        let message = self.session_dbus.satisfy(
-            satisfy,
-            self.session_dbus_readbuf.as_slice(),
-            &mut self.session_dbus_queue,
-        );
-
-        if let Some(message) = message {
-            if let Some(req) = Control::handle(message, &mut self.session_dbus_queue) {
-                self.on_control_req(req);
-            }
-        }
-
-        schedule_session_dbus(
-            &mut self.session_dbus,
-            self.session_dbus_readbuf.as_slice(),
-            &self.session_dbus_addr,
-            &self.session_dbus_queue,
-            &mut self.ring,
-        );
-    }
-}
 
 fn spawn(cmd: &str) {
     if let Err(err) = crate::utils::spawn(cmd) {

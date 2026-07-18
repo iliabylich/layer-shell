@@ -10,8 +10,7 @@ pub(crate) enum ModuleId {
     Niri,
     Weather,
     Tray,
-
-    SessionDBus,
+    Control,
 
     #[expect(clippy::upper_case_acronyms)]
     CPU,
@@ -30,7 +29,7 @@ impl ModuleId {
             Self::PW => "PW",
             Self::Niri => "Niri",
             Self::Tray => "Tray",
-            Self::SessionDBus => "SessionDBus",
+            Self::Control => "Control",
             Self::CPU => "CPU",
             Self::Memory => "Memory",
             Self::Timer => "Timer",

@@ -22,13 +22,6 @@ pub(crate) enum Wants {
         buf: *const u8,
         len: usize,
     },
-    ReadWrite {
-        fd: i32,
-        readbuf: *mut u8,
-        readlen: usize,
-        writebuf: *const u8,
-        writelen: usize,
-    },
     OpenAt {
         dfd: i32,
         path: &'static CStr,
@@ -36,6 +29,9 @@ pub(crate) enum Wants {
         mode: u32,
     },
     Close {
+        fd: i32,
+    },
+    Accept {
         fd: i32,
     },
 }

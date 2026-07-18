@@ -130,22 +130,6 @@ impl IoUring {
                 sqe.prep_write(fd, buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
-            Wants::ReadWrite {
-                fd,
-                readbuf,
-                readlen,
-                writebuf,
-                writelen,
-                ..
-            } => {
-                let mut sqe = self.get_sqe();
-                sqe.prep_read(fd, readbuf, readlen);
-                sqe.set_user_data(UserData::new(module_id, Op::Read));
-
-                let mut sqe = self.get_sqe();
-                sqe.prep_write(fd, writebuf, writelen);
-                sqe.set_user_data(UserData::new(module_id, Op::Write));
-            }
             Wants::OpenAt {
                 dfd,
                 path,
@@ -161,6 +145,11 @@ impl IoUring {
                 let mut sqe = self.get_sqe();
                 sqe.prep_close(fd);
                 sqe.set_user_data(UserData::new(module_id, Op::Close));
+            }
+            Wants::Accept { fd } => {
+                let mut sqe = self.get_sqe();
+                sqe.prep_accept(fd, core::ptr::null_mut(), core::ptr::null_mut(), 0);
+                sqe.set_user_data(UserData::new(module_id, Op::Accept));
             }
         }
     }

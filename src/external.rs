@@ -398,3 +398,12 @@ unsafe extern "C" {
         mode: mode_t,
     );
 }
+unsafe extern "C" {
+    pub(crate) fn __liburing_prep_accept(
+        sqe: *mut io_uring_sqe,
+        fd: ::core::ffi::c_int,
+        addr: *mut sockaddr,
+        addrlen: *mut socklen_t,
+        flags: ::core::ffi::c_int,
+    );
+}

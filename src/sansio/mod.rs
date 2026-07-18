@@ -1,4 +1,3 @@
-mod dbus;
 mod file_reader;
 mod op;
 mod satisfy;
@@ -6,7 +5,6 @@ mod timerfd;
 mod unix_sockets;
 mod wants;
 
-pub(crate) use dbus::DBusState;
 pub(crate) use file_reader::FileReader;
 pub(crate) use op::Op;
 pub(crate) use satisfy::Satisfy;
