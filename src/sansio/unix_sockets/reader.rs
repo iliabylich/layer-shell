@@ -4,7 +4,7 @@ use core::mem::size_of;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 
 #[derive(Debug, Clone, Copy)]
-enum State {
+pub(crate) enum UnixSocketReader {
     ReadyToSocket,
     WaitingForSocket,
 
@@ -15,38 +15,27 @@ enum State {
     WaitingForRead { fd: i32 },
 }
 
-pub(crate) struct UnixSocketReader {
-    buf: [u8; 1_024],
-    state: State,
-}
-
 impl UnixSocketReader {
     pub(crate) const fn new() -> Self {
-        Self {
-            buf: [0; _],
-            state: State::ReadyToSocket,
-        }
+        Self::ReadyToSocket
     }
 
     pub(crate) const fn new_connected_from_fd(fd: i32) -> Self {
-        Self {
-            buf: [0; _],
-            state: State::ReadyToRead { fd },
-        }
+        Self::ReadyToRead { fd }
     }
 
-    pub(crate) const fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        match self.state {
-            State::ReadyToSocket => {
-                self.state = State::WaitingForSocket;
+    pub(crate) const fn wants(&mut self, addr: &sockaddr_un, buf: &mut [u8]) -> Option<Wants> {
+        match *self {
+            Self::ReadyToSocket => {
+                *self = Self::WaitingForSocket;
                 Some(Wants::Socket {
                     domain: AF_UNIX,
                     type_: SOCK_STREAM,
                 })
             }
 
-            State::ReadyToConnect { fd } => {
-                self.state = State::WaitingForConnect { fd };
+            Self::ReadyToConnect { fd } => {
+                *self = Self::WaitingForConnect { fd };
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
@@ -54,12 +43,12 @@ impl UnixSocketReader {
                 })
             }
 
-            State::ReadyToRead { fd } => {
-                self.state = State::WaitingForRead { fd };
+            Self::ReadyToRead { fd } => {
+                *self = Self::WaitingForRead { fd };
                 Some(Wants::Read {
                     fd,
-                    buf: self.buf.as_mut_ptr(),
-                    len: self.buf.len(),
+                    buf: buf.as_mut_ptr(),
+                    len: buf.len(),
                 })
             }
 
@@ -67,28 +56,26 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<([u8; 1_024], usize)>> {
-        match (self.state, satisfy) {
-            (State::WaitingForSocket, Satisfy::Socket(res)) => {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<usize>> {
+        match (*self, satisfy) {
+            (Self::WaitingForSocket, Satisfy::Socket(res)) => {
                 let fd = res?;
-                self.state = State::ReadyToConnect { fd };
+                *self = Self::ReadyToConnect { fd };
                 Ok(None)
             }
 
-            (State::WaitingForConnect { fd }, Satisfy::Connect(res)) => {
+            (Self::WaitingForConnect { fd }, Satisfy::Connect(res)) => {
                 res?;
-                self.state = State::ReadyToRead { fd };
+                *self = Self::ReadyToRead { fd };
                 Ok(None)
             }
 
-            (State::WaitingForRead { fd }, Satisfy::Read(res)) => {
+            (Self::WaitingForRead { fd }, Satisfy::Read(res)) => {
                 let bytes_read = res?;
                 ensure!(bytes_read != 0, "EOF");
-                let buf = self.buf;
-                self.buf = [0; _];
-                self.state = State::ReadyToRead { fd };
+                *self = Self::ReadyToRead { fd };
 
-                Ok(Some((buf, bytes_read)))
+                Ok(Some(bytes_read))
             }
 
             (state, satisfy) => {
@@ -97,14 +84,14 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) const fn fd(&self) -> Option<i32> {
-        match &self.state {
-            State::ReadyToSocket | State::WaitingForSocket => None,
+    pub(crate) const fn fd(self) -> Option<i32> {
+        match self {
+            Self::ReadyToSocket | Self::WaitingForSocket => None,
 
-            State::ReadyToConnect { fd }
-            | State::WaitingForConnect { fd }
-            | State::ReadyToRead { fd }
-            | State::WaitingForRead { fd } => Some(*fd),
+            Self::ReadyToConnect { fd }
+            | Self::WaitingForConnect { fd }
+            | Self::ReadyToRead { fd }
+            | Self::WaitingForRead { fd } => Some(fd),
         }
     }
 }

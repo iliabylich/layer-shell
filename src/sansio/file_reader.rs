@@ -3,6 +3,7 @@ use anyhow::{Context as _, Result, bail};
 use core::ffi::CStr;
 use libc::{AT_FDCWD, O_RDONLY};
 
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct FileReader {
     fd: i32,
     state: State,

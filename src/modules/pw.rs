@@ -2,14 +2,14 @@ use crate::{
     Event,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{getenv, new_sockaddr_un},
+    utils::{FixedSizeBuffer, getenv, new_sockaddr_un},
 };
 use anyhow::{Context, Result, bail};
 use libc::sockaddr_un;
 
+#[derive(Clone, Copy)]
 pub(crate) struct PW {
-    reader: Box<UnixSocketReader>,
-    buf: Buffer,
+    reader: UnixSocketReader,
     volume: Option<u8>,
     muted: Option<bool>,
     events_left_to_drop: u8,
@@ -17,6 +17,8 @@ pub(crate) struct PW {
 }
 
 impl PW {
+    pub(crate) const BUFFER_SIZE: usize = PWEvent::SERIALIZED_LENGTH;
+
     pub(crate) fn address() -> Result<sockaddr_un> {
         let xdg_runtime_dir =
             core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
@@ -25,10 +27,9 @@ impl PW {
         Ok(addr)
     }
 
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
-            reader: Box::new(UnixSocketReader::new()),
-            buf: Buffer::new(),
+            reader: UnixSocketReader::new(),
             volume: None,
             muted: None,
             events_left_to_drop: 1,
@@ -36,30 +37,35 @@ impl PW {
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        self.reader.wants(addr)
+    pub(crate) fn wants(
+        &mut self,
+        addr: &sockaddr_un,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Option<Wants> {
+        self.reader.wants(addr, buf.remainder())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
-            return Ok(());
-        };
-        let bytes = buf.get(..len).context("buf is too short")?;
-
-        for event in self.buf.push(bytes) {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Result<()> {
+        if let Some(written) = self.reader.satisfy(satisfy)?
+            && let Some(buf) = buf.written(written)
+        {
+            let event = PWEvent::deserialize(buf)?;
             match event {
                 PWEvent::Volume(volume) => self.volume = Some(volume),
                 PWEvent::Mute(muted) => self.muted = Some(muted),
             }
-        }
-
-        if let Some(volume) = self.volume
-            && let Some(muted) = self.muted
-        {
-            if self.events_left_to_drop == 0 {
-                self.emitter.emit(&Event::Sound { volume, muted });
+            if let Some(volume) = self.volume
+                && let Some(muted) = self.muted
+            {
+                if self.events_left_to_drop == 0 {
+                    self.emitter.emit(&Event::Sound { volume, muted });
+                }
+                self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
             }
-            self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
         }
 
         Ok(())
@@ -88,30 +94,5 @@ impl PWEvent {
 
             _ => bail!("malformed input"),
         }
-    }
-}
-
-struct Buffer(Vec<u8>);
-impl Buffer {
-    const fn new() -> Self {
-        Self(vec![])
-    }
-
-    fn push(&mut self, bytes: &[u8]) -> Vec<PWEvent> {
-        self.0.extend_from_slice(bytes);
-        let mut events = vec![];
-
-        while let Some((first, rest)) = self.0.split_first_chunk::<{ PWEvent::SERIALIZED_LENGTH }>()
-        {
-            match PWEvent::deserialize(*first) {
-                Ok(event) => events.push(event),
-                Err(err) => {
-                    log::error!(target: "PW", "{err:?}");
-                }
-            }
-            self.0 = rest.to_vec();
-        }
-
-        events
     }
 }

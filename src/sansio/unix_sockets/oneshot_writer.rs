@@ -2,6 +2,7 @@ use crate::sansio::{Satisfy, Wants};
 use anyhow::{Result, bail};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct UnixSocketOneshotWriter {
     data: &'static [u8],
     offset: usize,

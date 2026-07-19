@@ -2,18 +2,19 @@ use crate::{
     Event,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{StringRef, StringRefExt, new_sockaddr_un},
+    utils::{FixedSizeBuffer, StringRef, StringRefExt, new_sockaddr_un},
 };
 use anyhow::{Context, Result, bail};
 use libc::sockaddr_un;
 
+#[derive(Clone, Copy)]
 pub(crate) struct NM {
-    reader: Box<UnixSocketReader>,
-    buf: Buffer,
+    reader: UnixSocketReader,
     emitter: Emitter,
 }
 
 impl NM {
+    pub(crate) const BUFFER_SIZE: usize = NMEvent::SERIALIZED_LENGTH;
     const SPEED_THRESHOLD: u64 = 5_000;
 
     pub(crate) fn address() -> Result<sockaddr_un> {
@@ -21,25 +22,30 @@ impl NM {
         Ok(addr)
     }
 
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
-            reader: Box::new(UnixSocketReader::new()),
-            buf: Buffer::new(),
+            reader: UnixSocketReader::new(),
             emitter,
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        self.reader.wants(addr)
+    pub(crate) fn wants(
+        &mut self,
+        addr: &sockaddr_un,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Option<Wants> {
+        self.reader.wants(addr, buf.remainder())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
-            return Ok(());
-        };
-        let bytes = buf.get(..len).context("buf is too short")?;
-
-        for event in self.buf.push(bytes) {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Result<()> {
+        if let Some(written) = self.reader.satisfy(satisfy)?
+            && let Some(buf) = buf.written(written)
+        {
+            let event = NMEvent::deserialize(buf)?;
             let event = match event {
                 NMEvent::UploadSpeed { mut bytes_per_sec } => {
                     if bytes_per_sec < Self::SPEED_THRESHOLD {
@@ -102,30 +108,5 @@ impl NMEvent {
                 bail!("malformed byte sequence: {buf:?}")
             }
         }
-    }
-}
-
-struct Buffer(Vec<u8>);
-impl Buffer {
-    const fn new() -> Self {
-        Self(vec![])
-    }
-
-    fn push(&mut self, bytes: &[u8]) -> Vec<NMEvent> {
-        self.0.extend_from_slice(bytes);
-        let mut events = vec![];
-
-        while let Some((first, rest)) = self.0.split_first_chunk::<{ NMEvent::SERIALIZED_LENGTH }>()
-        {
-            match NMEvent::deserialize(*first) {
-                Ok(event) => events.push(event),
-                Err(err) => {
-                    log::error!(target: "NM", "{err:?}");
-                }
-            }
-            self.0 = rest.to_vec();
-        }
-
-        events
     }
 }

@@ -2,14 +2,14 @@ use crate::{
     Event,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{getenv, new_sockaddr_un},
+    utils::{FixedSizeBuffer, getenv, new_sockaddr_un},
 };
 use anyhow::{Context, Result};
 use libc::sockaddr_un;
 
+#[derive(Clone, Copy)]
 pub(crate) struct Weather {
-    reader: Box<UnixSocketReader>,
-    buf: Buffer,
+    reader: UnixSocketReader,
     emitter: Emitter,
 }
 
@@ -17,6 +17,8 @@ pub const HOURLY_WEATHER_FORECAST_LENGTH: usize = 10;
 pub const DAILY_WEATHER_FORECAST_LENGTH: usize = 6;
 
 impl Weather {
+    pub(crate) const BUFFER_SIZE: usize = WeatherData::BYTESIZE;
+
     pub(crate) fn address() -> Result<sockaddr_un> {
         let xdg_runtime_dir =
             core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
@@ -25,25 +27,30 @@ impl Weather {
         Ok(addr)
     }
 
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
-            reader: Box::new(UnixSocketReader::new()),
-            buf: Buffer::new(),
+            reader: UnixSocketReader::new(),
             emitter,
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        self.reader.wants(addr)
+    pub(crate) fn wants(
+        &mut self,
+        addr: &sockaddr_un,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Option<Wants> {
+        self.reader.wants(addr, buf.remainder())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
-            return Ok(());
-        };
-        let bytes = buf.get(..len).context("buf is too short")?;
-
-        for event in self.buf.push(bytes) {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Result<()> {
+        if let Some(written) = self.reader.satisfy(satisfy)?
+            && let Some(buf) = buf.written(written)
+        {
+            let event = WeatherData::deserialize(&buf);
             self.emitter.emit(&Event::Weather {
                 temperature: event.current.t,
                 code: event.current.code,
@@ -51,27 +58,8 @@ impl Weather {
                 daily_forecast: event.daily,
             });
         }
+
         Ok(())
-    }
-}
-
-struct Buffer(Vec<u8>);
-impl Buffer {
-    const fn new() -> Self {
-        Self(vec![])
-    }
-
-    fn push(&mut self, bytes: &[u8]) -> Vec<WeatherData> {
-        self.0.extend_from_slice(bytes);
-        let mut events = vec![];
-
-        while let Some((first, rest)) = self.0.split_first_chunk::<{ WeatherData::BYTESIZE }>() {
-            let weather = WeatherData::deserialize(first);
-            events.push(weather);
-            self.0 = rest.to_vec();
-        }
-
-        events
     }
 }
 

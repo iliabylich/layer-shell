@@ -2,19 +2,21 @@ use crate::{
     Event,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{StringRef, StringRefExt, getenv, new_sockaddr_un},
+    utils::{FixedSizeBuffer, StringRef, StringRefExt, getenv, new_sockaddr_un},
 };
 use anyhow::{Context, Result};
 use libc::sockaddr_un;
 
+#[derive(Clone, Copy)]
 pub(crate) struct Tray {
-    reader: Box<UnixSocketReader>,
-    buf: Buffer,
+    reader: UnixSocketReader,
     writebuf: [u8; 8],
     emitter: Emitter,
 }
 
 impl Tray {
+    pub(crate) const BUFFER_SIZE: usize = TrayEvent::SERIALIZED_BYTESIZE;
+
     pub(crate) fn address() -> Result<sockaddr_un> {
         let xdg_runtime_dir =
             core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
@@ -23,26 +25,36 @@ impl Tray {
         Ok(addr)
     }
 
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
-            reader: Box::new(UnixSocketReader::new()),
-            buf: Buffer::new(),
+            reader: UnixSocketReader::new(),
             writebuf: [0; _],
             emitter,
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        self.reader.wants(addr)
+    pub(crate) fn wants(
+        &mut self,
+        addr: &sockaddr_un,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Option<Wants> {
+        self.reader.wants(addr, buf.remainder())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Result<()> {
+        if matches!(satisfy, Satisfy::Write { .. }) {
             return Ok(());
-        };
-        let bytes = buf.get(..len).context("buf is too short")?;
+        }
 
-        for event in self.buf.push(bytes) {
+        if let Some(written) = self.reader.satisfy(satisfy)?
+            && let Some(buf) = buf.written(written)
+        {
+            let event = TrayEvent::deserialize(&buf).context("failed to deserialize TrayEvent")?;
+
             let event = match event {
                 TrayEvent::AppAdded {
                     service,
@@ -80,36 +92,10 @@ impl Tray {
     }
 }
 
-struct Buffer(Vec<u8>);
-impl Buffer {
-    const fn new() -> Self {
-        Self(vec![])
-    }
-
-    fn push(&mut self, bytes: &[u8]) -> Vec<TrayEvent> {
-        self.0.extend_from_slice(bytes);
-        let mut events = vec![];
-
-        while let Some((first, rest)) = self
-            .0
-            .split_first_chunk::<{ TrayEvent::SERIALIZED_BYTESIZE }>()
-        {
-            let Some(event) = TrayEvent::deserialize(first) else {
-                log::error!("failed to deserialize event");
-                continue;
-            };
-            events.push(event);
-            self.0 = rest.to_vec();
-        }
-
-        events
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
 #[expect(clippy::large_enum_variant)]
-pub(crate) enum TrayEvent {
+enum TrayEvent {
     AppAdded {
         service: u32,
         icon: TrayFixedSizeString,
@@ -128,12 +114,12 @@ pub(crate) enum TrayEvent {
     },
 }
 impl TrayEvent {
-    pub(crate) const SERIALIZED_BYTESIZE: usize = 1
+    const SERIALIZED_BYTESIZE: usize = 1
         + size_of::<u32>()
         + TrayFixedSizeString::SERIALIZED_BYTESIZE
         + TrayMenu::SERIALIZED_BYTESIZE;
 
-    pub(crate) fn deserialize(buf: &[u8; Self::SERIALIZED_BYTESIZE]) -> Option<Self> {
+    fn deserialize(buf: &[u8; Self::SERIALIZED_BYTESIZE]) -> Option<Self> {
         let mut buf = &buf[..];
 
         match read_u8(&mut buf)? {
@@ -173,8 +159,7 @@ pub const TRAY_MENU_ITEMS_COUNT: usize = 20;
 pub struct TrayMenu(pub [MaybeRootTrayElement; TRAY_MENU_ITEMS_COUNT]);
 
 impl TrayMenu {
-    pub(crate) const SERIALIZED_BYTESIZE: usize =
-        TRAY_MENU_ITEMS_COUNT * TrayElement::SERIALIZED_BYTESIZE;
+    const SERIALIZED_BYTESIZE: usize = TRAY_MENU_ITEMS_COUNT * TrayElement::SERIALIZED_BYTESIZE;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -220,13 +205,13 @@ pub enum TrayElement {
     None,
 }
 impl TrayElement {
-    pub const SERIALIZED_BYTESIZE: usize = size_of::<u8>()
+    const SERIALIZED_BYTESIZE: usize = size_of::<u8>()
         + size_of::<i32>()
         + size_of::<u8>()
         + TrayLabel::SERIALIZED_BYTESIZE
         + size_of::<u64>() * 2;
 
-    pub fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> Option<(Self, bool)> {
+    fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> Option<(Self, bool)> {
         let mut buf = &buf[..];
 
         match read_u8(&mut buf)? {
@@ -321,22 +306,22 @@ pub struct TrayLabel {
     len: u32,
 }
 impl TrayLabel {
-    pub(crate) const SERIALIZED_BYTESIZE: usize = TRAY_LABEL_BYTESIZE + 4;
+    const SERIALIZED_BYTESIZE: usize = TRAY_LABEL_BYTESIZE + 4;
 
-    pub(crate) fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> Self {
+    fn deserialize(buf: [u8; Self::SERIALIZED_BYTESIZE]) -> Self {
         let len = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         let mut s = [0; _];
         s.copy_from_slice(&buf[4..]);
         Self { len, buf: s }
     }
 
-    pub(crate) fn as_bytes(&self) -> Result<&[u8]> {
+    fn as_bytes(&self) -> Result<&[u8]> {
         self.buf
             .get(..self.len as usize)
             .context("malformed TrayFixedSizeString")
     }
 
-    pub(crate) fn as_str(&self) -> Result<&str> {
+    fn as_str(&self) -> Result<&str> {
         let s = core::str::from_utf8(self.as_bytes()?)?;
         Ok(s)
     }
@@ -354,23 +339,23 @@ pub(crate) struct TrayFixedSizeString {
     len: u32,
 }
 impl TrayFixedSizeString {
-    pub(crate) const STR_BYTESIZE: usize = 256;
-    pub(crate) const SERIALIZED_BYTESIZE: usize = Self::STR_BYTESIZE + 4;
+    const STR_BYTESIZE: usize = 256;
+    const SERIALIZED_BYTESIZE: usize = Self::STR_BYTESIZE + 4;
 
-    pub(crate) fn deserialize(buf: &[u8; Self::SERIALIZED_BYTESIZE]) -> Self {
+    fn deserialize(buf: &[u8; Self::SERIALIZED_BYTESIZE]) -> Self {
         let len = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         let mut s = [0; _];
         s.copy_from_slice(&buf[4..]);
         Self { len, buf: s }
     }
 
-    pub(crate) fn as_bytes(&self) -> Result<&[u8]> {
+    fn as_bytes(&self) -> Result<&[u8]> {
         self.buf
             .get(..self.len as usize)
             .context("malformed TrayFixedSizeString")
     }
 
-    pub(crate) fn as_str(&self) -> Result<&str> {
+    fn as_str(&self) -> Result<&str> {
         let s = core::str::from_utf8(self.as_bytes()?)?;
         Ok(s)
     }

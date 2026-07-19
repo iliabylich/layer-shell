@@ -2,44 +2,51 @@ use crate::{
     Event,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::new_sockaddr_un,
+    utils::{FixedSizeBuffer, new_sockaddr_un},
 };
-use alloc::boxed::Box;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use libc::sockaddr_un;
 
+#[derive(Clone, Copy)]
 pub(crate) struct KbMod {
-    reader: Box<UnixSocketReader>,
+    reader: UnixSocketReader,
     events_left_to_drop: u8,
     emitter: Emitter,
 }
 
 impl KbMod {
+    pub(crate) const BUFFER_SIZE: usize = 1;
+
     pub(crate) fn address() -> Result<sockaddr_un> {
         let addr = new_sockaddr_un(b"/run/kb-mod-monitor-systemd.sock")?;
         Ok(addr)
     }
 
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
-            reader: Box::new(UnixSocketReader::new()),
+            reader: UnixSocketReader::new(),
             events_left_to_drop: 2,
             emitter,
         }
     }
 
-    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        self.reader.wants(addr)
+    pub(crate) fn wants(
+        &mut self,
+        addr: &sockaddr_un,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Option<Wants> {
+        self.reader.wants(addr, buf.remainder())
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
-            return Ok(());
-        };
-        let bytes = buf.get(..len).context("buf is too short")?;
-
-        for byte in bytes {
-            let (kind, enabled) = match *byte {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
+    ) -> Result<()> {
+        if let Some(written) = self.reader.satisfy(satisfy)?
+            && let Some(buf) = buf.written(written)
+        {
+            let (kind, enabled) = match buf[0] {
                 b'0' => (KbModKind::CapsLock, false),
                 b'1' => (KbModKind::CapsLock, true),
                 b'2' => (KbModKind::NumLock, false),

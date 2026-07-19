@@ -7,6 +7,7 @@ use alloc::string::String;
 use anyhow::{Result, bail};
 use libc::{localtime_r, strftime, time, tm};
 
+#[derive(Clone, Copy)]
 pub(crate) struct Clock {
     emitter: Emitter,
 }

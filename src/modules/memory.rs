@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct Memory {
     reader: FileReader,
     emitter: Emitter,
