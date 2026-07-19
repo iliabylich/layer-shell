@@ -1,11 +1,8 @@
 use crate::utils::{ArrayWriter, StringRef, StringRefExt as _, getenv};
 use alloc::vec::Vec;
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result, bail, ensure};
 use core::fmt::Write;
-use libc::{O_RDONLY, close, exit, open, read};
-use toml_parser::{
-    ErrorSink, ParseError, Raw, Source, Span, decoder::Encoding, parser::EventReceiver,
-};
+use libc::{O_RDONLY, close, open, read};
 
 #[derive(Debug)]
 pub(crate) struct Config {
@@ -55,72 +52,57 @@ impl Config {
     }
 
     fn from_toml(contents: &str) -> Result<Self> {
-        let source = Source::new(contents);
-        let lexer = source.lex();
-        let tokens = lexer.collect::<Vec<_>>();
+        let mut lock = None;
+        let mut reboot = None;
+        let mut shutdown = None;
+        let mut logout = None;
+        let mut edit_wifi = None;
+        let mut edit_bluetooth = None;
+        let mut open_system_monitor = None;
+        let mut change_wallpaper = None;
+        let mut ping = None;
+        let mut terminal_label = None;
+        let mut terminal_command = None;
 
-        let mut errhandler = |error: ParseError| {
-            log::error!("failed to parse TOML config: {error:?}");
-            unsafe { exit(1) };
-        };
+        for line in contents.lines() {
+            let (key, value) = line.split_once('=').context("malformed line")?;
+            let key = key.trim();
+            let value = value
+                .trim()
+                .strip_prefix('"')
+                .context("value doesn't have \" prefix")?
+                .strip_suffix('"')
+                .context("value doesn't have \" suffix")?;
 
-        let mut receiver = ConfigReceiver::new(contents);
-        toml_parser::parser::parse_document(&tokens, &mut receiver, &mut errhandler);
-
-        receiver.into_config()
-    }
-}
-
-struct ConfigReceiver<'a> {
-    source: Source<'a>,
-    pending_key: Option<&'a str>,
-
-    lock: Option<&'a str>,
-    reboot: Option<&'a str>,
-    shutdown: Option<&'a str>,
-    logout: Option<&'a str>,
-    edit_wifi: Option<&'a str>,
-    edit_bluetooth: Option<&'a str>,
-    open_system_monitor: Option<&'a str>,
-    change_wallpaper: Option<&'a str>,
-    ping: Option<&'a str>,
-    terminal_label: Option<&'a str>,
-    terminal_command: Option<&'a str>,
-}
-
-impl<'a> ConfigReceiver<'a> {
-    fn new(input: &'a str) -> Self {
-        Self {
-            source: Source::new(input),
-            pending_key: None,
-            lock: None,
-            reboot: None,
-            shutdown: None,
-            logout: None,
-            edit_wifi: None,
-            edit_bluetooth: None,
-            open_system_monitor: None,
-            change_wallpaper: None,
-            ping: None,
-            terminal_label: None,
-            terminal_command: None,
+            match key {
+                "lock" => lock = Some(value),
+                "reboot" => reboot = Some(value),
+                "shutdown" => shutdown = Some(value),
+                "logout" => logout = Some(value),
+                "edit_wifi" => edit_wifi = Some(value),
+                "edit_bluetooth" => edit_bluetooth = Some(value),
+                "open_system_monitor" => open_system_monitor = Some(value),
+                "change_wallpaper" => change_wallpaper = Some(value),
+                "ping" => ping = Some(value),
+                "terminal_label" => terminal_label = Some(value),
+                "terminal_command" => terminal_command = Some(value),
+                _ => bail!("unknown config key {key}"),
+            }
         }
-    }
 
-    fn into_config(self) -> Result<Config> {
-        let lock = self.lock.context("no lock")?;
-        let reboot = self.reboot.context("no reboot")?;
-        let shutdown = self.shutdown.context("no shutdown")?;
-        let logout = self.logout.context("no logout")?;
-        let edit_wifi = self.edit_wifi.context("no edit_wifi")?;
-        let edit_bluetooth = self.edit_bluetooth.context("no edit_bluetooth")?;
-        let open_system_monitor = self.open_system_monitor.context("no open_system_monitor")?;
-        let change_wallpaper = self.change_wallpaper.context("no change_wallpaper")?;
-        let ping = self.ping.context("no ping")?;
-        let terminal_label = self.terminal_label.context("no terminal_label")?;
-        let terminal_command = self.terminal_command.context("no terminal_command")?;
+        let lock = lock.context("no lock")?;
+        let reboot = reboot.context("no reboot")?;
+        let shutdown = shutdown.context("no shutdown")?;
+        let logout = logout.context("no logout")?;
+        let edit_wifi = edit_wifi.context("no edit_wifi")?;
+        let edit_bluetooth = edit_bluetooth.context("no edit_bluetooth")?;
+        let open_system_monitor = open_system_monitor.context("no open_system_monitor")?;
+        let change_wallpaper = change_wallpaper.context("no change_wallpaper")?;
+        let ping = ping.context("no ping")?;
+        let terminal_label = terminal_label.context("no terminal_label")?;
+        let terminal_command = terminal_command.context("no terminal_command")?;
 
-        Ok(Config {
+        Ok(Self {
             lock: StringRef::new(lock),
             reboot: StringRef::new(reboot),
             shutdown: StringRef::new(shutdown),
@@ -138,95 +120,6 @@ impl<'a> ConfigReceiver<'a> {
                     .collect(),
             },
         })
-    }
-}
-
-impl EventReceiver for ConfigReceiver<'_> {
-    fn simple_key(&mut self, span: Span, _kind: Option<Encoding>, error: &mut dyn ErrorSink) {
-        let Some(key) = self.source.get(span) else {
-            error.report_error(ParseError::new("can't get source of span"));
-            return;
-        };
-        if self.pending_key.is_some() {
-            error.report_error(ParseError::new("unhandled key"));
-            return;
-        }
-        self.pending_key = Some(key.as_str());
-    }
-
-    fn scalar(&mut self, span: Span, encoding: Option<Encoding>, error: &mut dyn ErrorSink) {
-        let Some(key) = self.pending_key.take() else {
-            error.report_error(ParseError::new("value without a key"));
-            return;
-        };
-        let mut value = "";
-        let Some(raw) = self
-            .source
-            .get(span)
-            .map(|raw| Raw::new_unchecked(raw.as_str(), encoding, span))
-        else {
-            error.report_error(ParseError::new("failed to get source of span"));
-            return;
-        };
-        let _ = raw.decode_scalar(&mut value, error);
-        match key {
-            "lock" => self.lock = Some(value),
-            "reboot" => self.reboot = Some(value),
-            "shutdown" => self.shutdown = Some(value),
-            "logout" => self.logout = Some(value),
-            "edit_wifi" => self.edit_wifi = Some(value),
-            "edit_bluetooth" => self.edit_bluetooth = Some(value),
-            "open_system_monitor" => self.open_system_monitor = Some(value),
-            "change_wallpaper" => self.change_wallpaper = Some(value),
-            "ping" => self.ping = Some(value),
-            "terminal_label" => self.terminal_label = Some(value),
-            "terminal_command" => self.terminal_command = Some(value),
-            _ => {
-                log::error!("unknown config key {key}");
-                error.report_error(ParseError::new("unknown config key"));
-            }
-        }
-    }
-
-    fn key_val_sep(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
-    fn whitespace(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
-    fn comment(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
-    fn newline(&mut self, _span: Span, _error: &mut dyn ErrorSink) {}
-
-    fn error(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("got parse error"));
-    }
-
-    fn inline_table_open(&mut self, _span: Span, _error: &mut dyn ErrorSink) -> bool {
-        true
-    }
-    fn array_open(&mut self, _span: Span, _error: &mut dyn ErrorSink) -> bool {
-        true
-    }
-
-    fn std_table_open(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported std_table_open"));
-    }
-    fn std_table_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported std_table_close"));
-    }
-    fn array_table_open(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported array_table_open"));
-    }
-    fn array_table_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported array_table_close"));
-    }
-    fn inline_table_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported inline_table_close"));
-    }
-    fn array_close(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported array_close"));
-    }
-    fn key_sep(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported key_sep"));
-    }
-    fn value_sep(&mut self, _span: Span, error: &mut dyn ErrorSink) {
-        error.report_error(ParseError::new("unsupported value_sep"));
     }
 }
 
