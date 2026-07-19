@@ -31,7 +31,10 @@ pub struct IO {
     weather_addr: sockaddr_un,
 
     cpu: Option<Cpu>,
+    cpubuf: [u8; 1_024],
+
     memory: Option<Memory>,
+    memorybuf: [u8; 1_024],
 
     kb_mod: Option<KbMod>,
     kb_mod_addr: sockaddr_un,
@@ -111,7 +114,10 @@ impl IO {
             weather_addr,
 
             cpu: Some(cpu),
+            cpubuf: [0; _],
+
             memory: Some(memory),
+            memorybuf: [0; _],
 
             kb_mod: Some(kb_mod),
             kb_mod_addr,
@@ -142,11 +148,11 @@ impl IO {
         }
 
         if let Some(cpu) = &mut self.cpu {
-            schedule_cpu(cpu, &mut self.ring);
+            schedule_cpu(cpu, &mut self.ring, &mut self.cpubuf);
         }
 
         if let Some(memory) = &mut self.memory {
-            schedule_memory(memory, &mut self.ring);
+            schedule_memory(memory, &mut self.ring, &mut self.memorybuf);
         }
 
         if let Some(weather) = &mut self.weather {
@@ -241,18 +247,18 @@ impl IO {
     }
 }
 
-fn schedule_cpu(cpu: &mut Cpu, ring: &mut IoUring) {
-    if let Some(wants) = cpu.wants() {
+fn schedule_cpu(cpu: &mut Cpu, ring: &mut IoUring, buf: &mut [u8]) {
+    if let Some(wants) = cpu.wants(buf) {
         log::trace!(target: "Cpu", "{wants:?}");
-        core::assert_matches!(cpu.wants(), None);
+        core::assert_matches!(cpu.wants(buf), None);
         ring.schedule(ModuleId::Cpu, wants);
     }
 }
 
-fn schedule_memory(memory: &mut Memory, ring: &mut IoUring) {
-    if let Some(wants) = memory.wants() {
+fn schedule_memory(memory: &mut Memory, ring: &mut IoUring, buf: &mut [u8]) {
+    if let Some(wants) = memory.wants(buf) {
         log::trace!(target: "Memory", "{wants:?}");
-        core::assert_matches!(memory.wants(), None);
+        core::assert_matches!(memory.wants(buf), None);
         ring.schedule(ModuleId::Memory, wants);
     }
 }
@@ -338,12 +344,12 @@ impl IO {
 
                 if let Some(cpu) = &mut self.cpu {
                     cpu.tick();
-                    schedule_cpu(cpu, &mut self.ring);
+                    schedule_cpu(cpu, &mut self.ring, &mut self.cpubuf);
                 }
 
                 if let Some(memory) = &mut self.memory {
                     memory.tick();
-                    schedule_memory(memory, &mut self.ring);
+                    schedule_memory(memory, &mut self.ring, &mut self.memorybuf);
                 }
             }
             Ok(None) => {}
@@ -469,8 +475,8 @@ impl IO {
             return;
         };
 
-        match cpu.satisfy(satisfy) {
-            Ok(()) => schedule_cpu(cpu, &mut self.ring),
+        match cpu.satisfy(satisfy, &self.cpubuf) {
+            Ok(()) => schedule_cpu(cpu, &mut self.ring, &mut self.cpubuf),
             Err(err) => {
                 log::error!(target: "Cpu", "{err:?}");
                 self.cpu = None;
@@ -485,8 +491,8 @@ impl IO {
             return;
         };
 
-        match memory.satisfy(satisfy) {
-            Ok(()) => schedule_memory(memory, &mut self.ring),
+        match memory.satisfy(satisfy, &self.memorybuf) {
+            Ok(()) => schedule_memory(memory, &mut self.ring, &mut self.memorybuf),
             Err(err) => {
                 log::error!(target: "Memory", "{err:?}");
                 self.memory = None;

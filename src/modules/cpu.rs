@@ -3,12 +3,11 @@ use crate::{
     emitter::Emitter,
     sansio::{FileReader, Satisfy, Wants},
 };
-use alloc::{boxed::Box, vec, vec::Vec};
+use alloc::{vec, vec::Vec};
 use anyhow::{Context as _, Result, bail};
 
 pub(crate) struct Cpu {
     reader: FileReader,
-    buf: Box<[u8; 1_024]>,
     state: Option<Vec<CoreUsage>>,
     emitter: Emitter,
 }
@@ -17,7 +16,6 @@ impl Cpu {
     pub(crate) fn new(emitter: Emitter) -> Result<Self> {
         Ok(Self {
             reader: FileReader::new(c"/proc/stat")?,
-            buf: Box::new([0; _]),
             state: None,
             emitter,
         })
@@ -27,12 +25,12 @@ impl Cpu {
         self.reader.tick();
     }
 
-    pub(crate) fn wants(&mut self) -> Option<Wants> {
-        self.reader.wants(&mut *self.buf)
+    pub(crate) const fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
+        self.reader.wants(buf)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        let Some(buf) = self.reader.try_satisfy(satisfy, &*self.buf)? else {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: &[u8]) -> Result<()> {
+        let Some(buf) = self.reader.try_satisfy(satisfy, buf)? else {
             return Ok(());
         };
 
