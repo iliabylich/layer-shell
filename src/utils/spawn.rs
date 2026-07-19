@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use anyhow::{Context as _, Result, bail};
 use libc::{_exit, O_WRONLY, STDERR_FILENO, STDOUT_FILENO, close, dup2, execvp, fork, open};
 
-pub(crate) fn spawn(cmd: &str) -> Result<()> {
+fn try_spawn(cmd: &str) -> Result<()> {
     let home =
         core::str::from_utf8(getenv(c"HOME").context("no $HOME")?).context("non-utf8 $HOME")?;
 
@@ -41,5 +41,11 @@ pub(crate) fn spawn(cmd: &str) -> Result<()> {
         }
 
         Ok(())
+    }
+}
+
+pub(crate) fn spawn(cmd: &str) {
+    if let Err(err) = try_spawn(cmd) {
+        log::error!("{err:?}");
     }
 }

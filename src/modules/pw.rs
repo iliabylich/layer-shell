@@ -12,7 +12,7 @@ pub(crate) struct PW {
     buf: Buffer,
     volume: Option<u8>,
     muted: Option<bool>,
-    ignored_first_event: bool,
+    events_left_to_drop: u8,
     emitter: Emitter,
 }
 
@@ -31,7 +31,7 @@ impl PW {
             buf: Buffer::new(),
             volume: None,
             muted: None,
-            ignored_first_event: false,
+            events_left_to_drop: 1,
             emitter,
         }
     }
@@ -69,11 +69,10 @@ impl PW {
                 if let Some(volume) = self.volume
                     && let Some(muted) = self.muted
                 {
-                    if self.ignored_first_event {
+                    if self.events_left_to_drop == 0 {
                         self.emitter.emit(&Event::Sound { volume, muted });
-                    } else {
-                        self.ignored_first_event = true;
                     }
+                    self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
                 }
 
                 Ok(())

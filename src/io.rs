@@ -7,6 +7,7 @@ use crate::{
     modules::{Clock, Control, Cpu, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
     sansio::Satisfy,
     user_data::{ModuleId, UserData},
+    utils::spawn,
 };
 use anyhow::Result;
 use libc::sockaddr_un;
@@ -135,43 +136,16 @@ impl IO {
     }
 
     pub(crate) fn start(&mut self) {
-        if let Some(timer) = &mut self.timer {
-            schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
-        }
-
-        if let Some(nm) = &mut self.nm {
-            schedule_nm(nm, &mut self.ring, &self.nm_addr);
-        }
-
-        if let Some(pw) = &mut self.pw {
-            schedule_pw(pw, &mut self.ring, &self.pw_addr);
-        }
-
-        if let Some(cpu) = &mut self.cpu {
-            schedule_cpu(cpu, &mut self.ring, &mut self.cpubuf);
-        }
-
-        if let Some(memory) = &mut self.memory {
-            schedule_memory(memory, &mut self.ring, &mut self.memorybuf);
-        }
-
-        if let Some(weather) = &mut self.weather {
-            schedule_weather(weather, &mut self.ring, &self.weather_addr);
-        }
-
-        if let Some(kb_mod) = &mut self.kb_mod {
-            schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr);
-        }
-
-        if let Some(niri) = &mut self.niri {
-            schedule_niri(niri, &mut self.ring, &self.niri_addr);
-        }
-
-        if let Some(tray) = &mut self.tray {
-            schedule_tray(tray, &mut self.ring, &self.tray_addr);
-        }
-
-        schedule_control(&self.control, &mut self.ring);
+        IoSlice::<Timer>::schedule(self);
+        IoSlice::<NM>::schedule(self);
+        IoSlice::<PW>::schedule(self);
+        IoSlice::<Cpu>::schedule(self);
+        IoSlice::<Memory>::schedule(self);
+        IoSlice::<Weather>::schedule(self);
+        IoSlice::<KbMod>::schedule(self);
+        IoSlice::<Niri>::schedule(self);
+        IoSlice::<Tray>::schedule(self);
+        IoSlice::<Control>::schedule(self);
 
         self.ring.submit_if_dirty();
     }
@@ -190,16 +164,16 @@ impl IO {
             log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?}");
 
             match module_id {
-                ModuleId::Weather => self.satisfy_weather(satisfy),
-                ModuleId::KbMod => self.satisfy_kb_mod(satisfy),
-                ModuleId::NM => self.satisfy_nm(satisfy),
-                ModuleId::PW => self.satisfy_pw(satisfy),
-                ModuleId::Niri => self.satisfy_niri(satisfy),
-                ModuleId::Tray => self.satisfy_tray(satisfy),
-                ModuleId::Control => self.satisfy_control(satisfy),
-                ModuleId::Cpu => self.satisfy_cpu(satisfy),
-                ModuleId::Memory => self.satisfy_memory(satisfy),
-                ModuleId::Timer => self.satisfy_timer(satisfy),
+                ModuleId::Weather => IoSlice::<Weather>::satisfy(self, satisfy),
+                ModuleId::KbMod => IoSlice::<KbMod>::satisfy(self, satisfy),
+                ModuleId::NM => IoSlice::<NM>::satisfy(self, satisfy),
+                ModuleId::PW => IoSlice::<PW>::satisfy(self, satisfy),
+                ModuleId::Niri => IoSlice::<Niri>::satisfy(self, satisfy),
+                ModuleId::Tray => IoSlice::<Tray>::satisfy(self, satisfy),
+                ModuleId::Control => IoSlice::<Control>::satisfy(self, satisfy),
+                ModuleId::Cpu => IoSlice::<Cpu>::satisfy(self, satisfy),
+                ModuleId::Memory => IoSlice::<Memory>::satisfy(self, satisfy),
+                ModuleId::Timer => IoSlice::<Timer>::satisfy(self, satisfy),
             }
 
             self.ring.cqe_seen(cqe);
@@ -247,93 +221,240 @@ impl IO {
     }
 }
 
-fn schedule_cpu(cpu: &mut Cpu, ring: &mut IoUring, buf: &mut [u8]) {
-    if let Some(wants) = cpu.wants(buf) {
-        log::trace!(target: "Cpu", "{wants:?}");
-        core::assert_matches!(cpu.wants(buf), None);
-        ring.schedule(ModuleId::Cpu, wants);
+trait IoSlice<T> {
+    fn schedule(&mut self);
+    fn satisfy(&mut self, satisfy: Satisfy);
+}
+
+impl IoSlice<Cpu> for IO {
+    fn schedule(&mut self) {
+        if let Some(cpu) = &mut self.cpu
+            && let Some(wants) = cpu.wants(&mut self.cpubuf)
+        {
+            log::trace!(target: "Cpu", "{wants:?}");
+            core::assert_matches!(cpu.wants(&mut self.cpubuf), None);
+            self.ring.schedule(ModuleId::Cpu, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(cpu) = &mut self.cpu {
+            match cpu.satisfy(satisfy, &self.cpubuf) {
+                Ok(()) => IoSlice::<Cpu>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "Cpu", "{err:?}");
+                    self.cpu = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_memory(memory: &mut Memory, ring: &mut IoUring, buf: &mut [u8]) {
-    if let Some(wants) = memory.wants(buf) {
-        log::trace!(target: "Memory", "{wants:?}");
-        core::assert_matches!(memory.wants(buf), None);
-        ring.schedule(ModuleId::Memory, wants);
+impl IoSlice<Memory> for IO {
+    fn schedule(&mut self) {
+        if let Some(memory) = &mut self.memory
+            && let Some(wants) = memory.wants(&mut self.memorybuf)
+        {
+            log::trace!(target: "Memory", "{wants:?}");
+            core::assert_matches!(memory.wants(&mut self.memorybuf), None);
+            self.ring.schedule(ModuleId::Memory, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(memory) = &mut self.memory {
+            match memory.satisfy(satisfy, &self.memorybuf) {
+                Ok(()) => IoSlice::<Memory>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "Memory", "{err:?}");
+                    self.memory = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &sockaddr_un) {
-    if let Some(wants) = kb_mod.wants(addr) {
-        log::trace!(target: "KbMod", "{wants:?}");
-        core::assert_matches!(kb_mod.wants(addr), None);
-        ring.schedule(ModuleId::KbMod, wants);
+impl IoSlice<KbMod> for IO {
+    fn schedule(&mut self) {
+        if let Some(kb_mod) = &mut self.kb_mod
+            && let Some(wants) = kb_mod.wants(&self.kb_mod_addr)
+        {
+            log::trace!(target: "KbMod", "{wants:?}");
+            core::assert_matches!(kb_mod.wants(&self.kb_mod_addr), None);
+            self.ring.schedule(ModuleId::KbMod, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(kb_mod) = &mut self.kb_mod {
+            match kb_mod.satisfy(satisfy) {
+                Ok(()) => IoSlice::<KbMod>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "KbMod", "{err:?}");
+                    self.kb_mod = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_weather(weather: &mut Weather, ring: &mut IoUring, addr: &sockaddr_un) {
-    if let Some(wants) = weather.wants(addr) {
-        log::trace!(target: "Weather", "{wants:?}");
-        core::assert_matches!(weather.wants(addr), None);
-        ring.schedule(ModuleId::Weather, wants);
+impl IoSlice<Weather> for IO {
+    fn schedule(&mut self) {
+        if let Some(weather) = &mut self.weather
+            && let Some(wants) = weather.wants(&self.weather_addr)
+        {
+            log::trace!(target: "Weather", "{wants:?}");
+            core::assert_matches!(weather.wants(&self.weather_addr), None);
+            self.ring.schedule(ModuleId::Weather, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(weather) = &mut self.weather {
+            match weather.satisfy(satisfy) {
+                Ok(()) => IoSlice::<Weather>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "Weather", "{err:?}");
+                    self.weather = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_nm(nm: &mut NM, ring: &mut IoUring, addr: &sockaddr_un) {
-    if let Some(wants) = nm.wants(addr) {
-        log::trace!(target: "NM", "{wants:?}");
-        core::assert_matches!(nm.wants(addr), None);
-        ring.schedule(ModuleId::NM, wants);
+impl IoSlice<NM> for IO {
+    fn schedule(&mut self) {
+        if let Some(nm) = &mut self.nm
+            && let Some(wants) = nm.wants(&self.nm_addr)
+        {
+            log::trace!(target: "NM", "{wants:?}");
+            core::assert_matches!(nm.wants(&self.nm_addr), None);
+            self.ring.schedule(ModuleId::NM, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(nm) = &mut self.nm {
+            match nm.satisfy(satisfy) {
+                Ok(()) => IoSlice::<NM>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "NM", "{err:?}");
+                    self.nm = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_pw(pw: &mut PW, ring: &mut IoUring, addr: &sockaddr_un) {
-    if let Some(wants) = pw.wants(addr) {
-        log::trace!(target: "pw", "{wants:?}");
-        core::assert_matches!(pw.wants(addr), None);
-        ring.schedule(ModuleId::PW, wants);
+impl IoSlice<PW> for IO {
+    fn schedule(&mut self) {
+        if let Some(pw) = &mut self.pw
+            && let Some(wants) = pw.wants(&self.pw_addr)
+        {
+            log::trace!(target: "PW", "{wants:?}");
+            core::assert_matches!(pw.wants(&self.pw_addr), None);
+            self.ring.schedule(ModuleId::PW, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(pw) = &mut self.pw {
+            match pw.satisfy(satisfy) {
+                Ok(()) => IoSlice::<PW>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "PW", "{err:?}");
+                    self.pw = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_niri(niri: &mut Niri, ring: &mut IoUring, addr: &sockaddr_un) {
-    if let Some(wants) = niri.wants(addr) {
-        log::trace!(target: "Niri", "{wants:?}");
-        core::assert_matches!(niri.wants(addr), None);
-        ring.schedule(ModuleId::Niri, wants);
+impl IoSlice<Niri> for IO {
+    fn schedule(&mut self) {
+        if let Some(niri) = &mut self.niri
+            && let Some(wants) = niri.wants(&self.niri_addr)
+        {
+            log::trace!(target: "Niri", "{wants:?}");
+            core::assert_matches!(niri.wants(&self.niri_addr), None);
+            self.ring.schedule(ModuleId::Niri, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(niri) = &mut self.niri {
+            match niri.satisfy(satisfy) {
+                Ok(()) => IoSlice::<Niri>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "Niri", "{err:?}");
+                    self.niri = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_tray(tray: &mut Tray, ring: &mut IoUring, addr: &sockaddr_un) {
-    if let Some(wants) = tray.wants(addr) {
-        log::trace!(target: "Tray", "{wants:?}");
-        core::assert_matches!(tray.wants(addr), None);
-        ring.schedule(ModuleId::Tray, wants);
+impl IoSlice<Tray> for IO {
+    fn schedule(&mut self) {
+        if let Some(tray) = &mut self.tray
+            && let Some(wants) = tray.wants(&self.tray_addr)
+        {
+            log::trace!(target: "Tray", "{wants:?}");
+            core::assert_matches!(tray.wants(&self.tray_addr), None);
+            self.ring.schedule(ModuleId::Tray, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        if let Some(tray) = &mut self.tray {
+            match tray.satisfy(satisfy) {
+                Ok(()) => IoSlice::<Tray>::schedule(self),
+                Err(err) => {
+                    log::error!(target: "Tray", "{err:?}");
+                    self.tray = None;
+                }
+            }
+        }
     }
 }
 
-fn schedule_control(control: &Control, ring: &mut IoUring) {
-    let wants = control.wants();
-    log::trace!(target: "Control", "{wants:?}");
-    ring.schedule(ModuleId::Control, wants);
-}
+impl IoSlice<Control> for IO {
+    fn schedule(&mut self) {
+        let wants = self.control.wants();
+        log::trace!(target: "Control", "{wants:?}");
+        self.ring.schedule(ModuleId::Control, wants);
+    }
 
-fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) {
-    if let Some(wants) = timer.wants(buf) {
-        log::trace!(target: "Timer", "{wants:?}");
-        core::assert_matches!(timer.wants(buf), None);
-        ring.schedule(ModuleId::Timer, wants);
+    fn satisfy(&mut self, satisfy: Satisfy) {
+        match self.control.satisfy(satisfy) {
+            Ok(()) => IoSlice::<Control>::schedule(self),
+            Err(err) => {
+                log::error!(target: "Tray", "{err:?}");
+                self.tray = None;
+            }
+        }
     }
 }
 
-impl IO {
-    fn satisfy_timer(&mut self, satisfy: Satisfy) {
+impl IoSlice<Timer> for IO {
+    fn schedule(&mut self) {
+        if let Some(timer) = &mut self.timer
+            && let Some(wants) = timer.wants(&mut self.timerbuf)
+        {
+            log::trace!(target: "Timer", "{wants:?}");
+            core::assert_matches!(timer.wants(&mut self.timerbuf), None);
+            self.ring.schedule(ModuleId::Timer, wants);
+        }
+    }
+
+    fn satisfy(&mut self, satisfy: Satisfy) {
         let Some(timer) = &mut self.timer else {
             return;
         };
 
         match timer.satisfy(satisfy, self.timerbuf) {
             Ok(Some(_tick)) => {
-                schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
+                IoSlice::<Timer>::schedule(self);
 
                 if let Some(clock) = &self.clock
                     && let Err(err) = clock.tick()
@@ -344,12 +465,12 @@ impl IO {
 
                 if let Some(cpu) = &mut self.cpu {
                     cpu.tick();
-                    schedule_cpu(cpu, &mut self.ring, &mut self.cpubuf);
+                    IoSlice::<Cpu>::schedule(self);
                 }
 
                 if let Some(memory) = &mut self.memory {
                     memory.tick();
-                    schedule_memory(memory, &mut self.ring, &mut self.memorybuf);
+                    IoSlice::<Memory>::schedule(self);
                 }
             }
             Ok(None) => {}
@@ -358,151 +479,5 @@ impl IO {
                 self.timer = None;
             }
         }
-    }
-}
-
-impl IO {
-    fn satisfy_niri(&mut self, satisfy: Satisfy) {
-        let Some(niri) = &mut self.niri else {
-            return;
-        };
-
-        match niri.satisfy(satisfy) {
-            Ok(()) => schedule_niri(niri, &mut self.ring, &self.niri_addr),
-            Err(err) => {
-                log::error!(target: "Niri", "{err:?}");
-                self.niri = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_tray(&mut self, satisfy: Satisfy) {
-        let Some(tray) = &mut self.tray else {
-            return;
-        };
-
-        match tray.satisfy(satisfy) {
-            Ok(()) => schedule_tray(tray, &mut self.ring, &self.tray_addr),
-            Err(err) => {
-                log::error!(target: "Tray", "{err:?}");
-                self.tray = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_control(&mut self, satisfy: Satisfy) {
-        match self.control.satisfy(satisfy) {
-            Ok(()) => schedule_control(&self.control, &mut self.ring),
-            Err(err) => {
-                log::error!(target: "Tray", "{err:?}");
-                self.tray = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_kb_mod(&mut self, satisfy: Satisfy) {
-        let Some(kb_mod) = &mut self.kb_mod else {
-            return;
-        };
-
-        match kb_mod.satisfy(satisfy) {
-            Ok(()) => schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr),
-            Err(err) => {
-                log::error!(target: "KbMod", "{err:?}");
-                self.kb_mod = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_weather(&mut self, satisfy: Satisfy) {
-        let Some(weather) = &mut self.weather else {
-            return;
-        };
-
-        match weather.satisfy(satisfy) {
-            Ok(()) => schedule_weather(weather, &mut self.ring, &self.weather_addr),
-            Err(err) => {
-                log::error!(target: "Weather", "{err:?}");
-                self.weather = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_nm(&mut self, satisfy: Satisfy) {
-        let Some(nm) = &mut self.nm else {
-            return;
-        };
-
-        match nm.satisfy(satisfy) {
-            Ok(()) => schedule_nm(nm, &mut self.ring, &self.nm_addr),
-            Err(err) => {
-                log::error!(target: "NM", "{err:?}");
-                self.nm = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_pw(&mut self, satisfy: Satisfy) {
-        let Some(pw) = &mut self.pw else {
-            return;
-        };
-
-        match pw.satisfy(satisfy) {
-            Ok(()) => schedule_pw(pw, &mut self.ring, &self.pw_addr),
-            Err(err) => {
-                log::error!(target: "PW", "{err:?}");
-                self.pw = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_cpu(&mut self, satisfy: Satisfy) {
-        let Some(cpu) = &mut self.cpu else {
-            return;
-        };
-
-        match cpu.satisfy(satisfy, &self.cpubuf) {
-            Ok(()) => schedule_cpu(cpu, &mut self.ring, &mut self.cpubuf),
-            Err(err) => {
-                log::error!(target: "Cpu", "{err:?}");
-                self.cpu = None;
-            }
-        }
-    }
-}
-
-impl IO {
-    fn satisfy_memory(&mut self, satisfy: Satisfy) {
-        let Some(memory) = &mut self.memory else {
-            return;
-        };
-
-        match memory.satisfy(satisfy, &self.memorybuf) {
-            Ok(()) => schedule_memory(memory, &mut self.ring, &mut self.memorybuf),
-            Err(err) => {
-                log::error!(target: "Memory", "{err:?}");
-                self.memory = None;
-            }
-        }
-    }
-}
-
-fn spawn(cmd: &str) {
-    if let Err(err) = crate::utils::spawn(cmd) {
-        log::error!("{err:?}");
     }
 }
