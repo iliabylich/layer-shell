@@ -2,9 +2,10 @@ use crate::{
     Event,
     emitter::Emitter,
     sansio::{Satisfy, Wants},
-    utils::getenv,
+    utils::{ArrayWriter, getenv},
 };
 use anyhow::{Context, Result, bail};
+use core::fmt::Write;
 use rustix::{
     fd::{AsRawFd, OwnedFd},
     fs::Mode,
@@ -21,8 +22,11 @@ impl Control {
     pub(crate) fn new(emitter: Emitter) -> Result<Self> {
         let xdg_runtime_dir =
             core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
-        let path = format!("{xdg_runtime_dir}/layer-shell.sock");
-        let fd = socket_at(&path)?;
+        let mut buf = [0; 200];
+        let mut writer = ArrayWriter::new(&mut buf);
+        write!(&mut writer, "{xdg_runtime_dir}/layer-shell.sock")?;
+        let path = writer.as_str()?;
+        let fd = socket_at(path)?;
         Ok(Self { fd, emitter })
     }
 

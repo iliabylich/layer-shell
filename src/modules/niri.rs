@@ -4,7 +4,11 @@ use crate::{
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     utils::{NlSeparatedBuffer, StringRef, StringRefExt as _, get_json, getenv, new_sockaddr_un},
 };
-use alloc::{string::String, vec, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use anyhow::{Context, Result};
 use libc::sockaddr_un;
 use microjson::JSONValue;

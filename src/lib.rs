@@ -50,9 +50,7 @@ mod sansio;
 mod user_data;
 mod utils;
 
-use alloc::boxed::Box;
 use core::ptr::NonNull;
-use libc::{exit, malloc};
 
 use command::Command;
 pub use event::Event;
@@ -66,7 +64,7 @@ fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
         Ok(out) => out,
         Err(err) => {
             log::error!("error returned: {err:?}");
-            unsafe { exit(1) };
+            unsafe { libc::exit(1) };
         }
     }
 }
@@ -80,7 +78,7 @@ pub extern "C" fn io_init(
 
     exit_if_err(|| {
         Ok(unsafe {
-            let mut ptr = NonNull::new(malloc(size_of::<IO>()))
+            let mut ptr = NonNull::new(libc::malloc(size_of::<IO>()))
                 .context("failed to malloc IO")?
                 .cast::<IO>();
             ptr.write(IO::new(callback, data)?);
@@ -91,9 +89,12 @@ pub extern "C" fn io_init(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_deinit(io: NonNull<IO>) {
-    let mut io = unsafe { Box::from_raw(io.as_ptr()) };
-    io.stop();
+pub unsafe extern "C" fn io_deinit(mut io: NonNull<IO>) {
+    unsafe {
+        io.as_mut().stop();
+        core::ptr::drop_in_place(io.as_mut());
+        libc::free(io.as_ptr().cast());
+    }
 }
 
 #[unsafe(no_mangle)]

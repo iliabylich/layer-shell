@@ -2,9 +2,10 @@ use crate::{
     Event,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, getenv, new_sockaddr_un},
+    utils::{ArrayWriter, FixedSizeBuffer, getenv, new_sockaddr_un},
 };
 use anyhow::{Context, Result, bail};
+use core::fmt::Write;
 use libc::sockaddr_un;
 
 #[derive(Clone, Copy)]
@@ -22,8 +23,11 @@ impl PW {
     pub(crate) fn address() -> Result<sockaddr_un> {
         let xdg_runtime_dir =
             core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
-        let path = format!("{xdg_runtime_dir}/pipewire-mon.sock");
-        let addr = new_sockaddr_un(path.as_bytes())?;
+        let mut buf = [0; 200];
+        let mut writer = ArrayWriter::new(&mut buf);
+        write!(&mut writer, "{xdg_runtime_dir}/pipewire-mon.sock")?;
+        let path = writer.as_bytes()?;
+        let addr = new_sockaddr_un(path)?;
         Ok(addr)
     }
 
