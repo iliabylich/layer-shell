@@ -34,54 +34,34 @@ impl NM {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        match satisfy {
-            Satisfy::Socket(res) => {
-                let fd = res?;
-                self.reader.satisfy_socket(fd)?;
-                Ok(())
-            }
+        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
+            return Ok(());
+        };
+        let bytes = buf.get(..len).context("buf is too short")?;
 
-            Satisfy::Connect(res) => {
-                res?;
-                self.reader.satisfy_connect()?;
-                Ok(())
-            }
-
-            Satisfy::Read(res) => {
-                let bytes_read = res?;
-                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
-                let bytes = buf.get(..len).context("buf is too short")?;
-
-                for event in self.buf.push(bytes) {
-                    let event = match event {
-                        NMEvent::UploadSpeed { mut bytes_per_sec } => {
-                            if bytes_per_sec < Self::SPEED_THRESHOLD {
-                                bytes_per_sec = 0;
-                            }
-                            Event::UploadSpeed { bytes_per_sec }
-                        }
-                        NMEvent::DownloadSpeed { mut bytes_per_sec } => {
-                            if bytes_per_sec < Self::SPEED_THRESHOLD {
-                                bytes_per_sec = 0;
-                            }
-                            Event::DownloadSpeed { bytes_per_sec }
-                        }
-                        NMEvent::SsidAndStrength { ssid, strength } => {
-                            Event::NetworkSsidAndStrength {
-                                ssid: ssid.clone(),
-                                strength,
-                            }
-                        }
-                    };
-
-                    self.emitter.emit(&event);
+        for event in self.buf.push(bytes) {
+            let event = match event {
+                NMEvent::UploadSpeed { mut bytes_per_sec } => {
+                    if bytes_per_sec < Self::SPEED_THRESHOLD {
+                        bytes_per_sec = 0;
+                    }
+                    Event::UploadSpeed { bytes_per_sec }
                 }
+                NMEvent::DownloadSpeed { mut bytes_per_sec } => {
+                    if bytes_per_sec < Self::SPEED_THRESHOLD {
+                        bytes_per_sec = 0;
+                    }
+                    Event::DownloadSpeed { bytes_per_sec }
+                }
+                NMEvent::SsidAndStrength { ssid, strength } => Event::NetworkSsidAndStrength {
+                    ssid: ssid.clone(),
+                    strength,
+                },
+            };
 
-                Ok(())
-            }
-
-            _ => bail!("NM only accepts Socket, Connect and Read, got: {satisfy:?}"),
+            self.emitter.emit(&event);
         }
+        Ok(())
     }
 }
 

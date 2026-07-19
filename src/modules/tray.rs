@@ -4,7 +4,7 @@ use crate::{
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{StringRef, StringRefExt, getenv, new_sockaddr_un},
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use libc::sockaddr_un;
 
 pub(crate) struct Tray {
@@ -37,60 +37,36 @@ impl Tray {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        match satisfy {
-            Satisfy::Socket(res) => {
-                let fd = res?;
-                self.reader.satisfy_socket(fd)?;
-                Ok(())
-            }
+        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
+            return Ok(());
+        };
+        let bytes = buf.get(..len).context("buf is too short")?;
 
-            Satisfy::Connect(res) => {
-                res?;
-                self.reader.satisfy_connect()?;
-                Ok(())
-            }
-
-            Satisfy::Write(res) => {
-                res?;
-                Ok(())
-            }
-
-            Satisfy::Read(res) => {
-                let bytes_read = res?;
-                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
-                let bytes = buf.get(..len).context("buf is too short")?;
-
-                for event in self.buf.push(bytes) {
-                    let event = match event {
-                        TrayEvent::AppAdded {
-                            service,
-                            icon,
-                            menu,
-                        } => Event::TrayAppAdded {
-                            service,
-                            menu,
-                            icon: StringRef::new(icon.as_str()?),
-                        },
-                        TrayEvent::AppRemoved { service } => Event::TrayAppRemoved { service },
-                        TrayEvent::MenuUpdated { service, menu } => {
-                            Event::TrayAppMenuUpdated { service, menu }
-                        }
-                        TrayEvent::IconUpdated { service, icon } => Event::TrayAppIconUpdated {
-                            service,
-                            icon: StringRef::new(icon.as_str()?),
-                        },
-                    };
-
-                    self.emitter.emit(&event);
+        for event in self.buf.push(bytes) {
+            let event = match event {
+                TrayEvent::AppAdded {
+                    service,
+                    icon,
+                    menu,
+                } => Event::TrayAppAdded {
+                    service,
+                    menu,
+                    icon: StringRef::new(icon.as_str()?),
+                },
+                TrayEvent::AppRemoved { service } => Event::TrayAppRemoved { service },
+                TrayEvent::MenuUpdated { service, menu } => {
+                    Event::TrayAppMenuUpdated { service, menu }
                 }
+                TrayEvent::IconUpdated { service, icon } => Event::TrayAppIconUpdated {
+                    service,
+                    icon: StringRef::new(icon.as_str()?),
+                },
+            };
 
-                Ok(())
-            }
-
-            Satisfy::Accept(_) => {
-                bail!("KbMod only accepts Socket, Connect and Read, got: {satisfy:?}")
-            }
+            self.emitter.emit(&event);
         }
+
+        Ok(())
     }
 
     pub(crate) fn wants_trigger(&mut self, service: u32, id: i32) -> Option<Wants> {

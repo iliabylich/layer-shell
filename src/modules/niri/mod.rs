@@ -5,7 +5,7 @@ use crate::{
     utils::{StringRef, StringRefExt as _, getenv, new_sockaddr_un},
 };
 use alloc::{boxed::Box, string::String, vec, vec::Vec};
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use buffer::{Buffer, NiriEvent};
 use libc::sockaddr_un;
 
@@ -55,26 +55,13 @@ impl Niri {
                 }
             }
 
-            State::Reader(reader) => match satisfy {
-                Satisfy::Socket(res) => {
-                    let fd = res?;
-                    reader.satisfy_socket(fd)?;
-                }
-
-                Satisfy::Connect(res) => {
-                    res?;
-                    reader.satisfy_connect()?;
-                }
-
-                Satisfy::Read(res) => {
-                    let bytes_read = res?;
-                    let (buf, len) = reader.satisfy_read(bytes_read)?;
-                    let buf = buf.get(..len).context("buf is too short")?;
-                    self.process(buf)?;
-                }
-
-                _ => bail!("Niri reader only accepts Socket, Connect and Read, got: {satisfy:?}"),
-            },
+            State::Reader(reader) => {
+                let Some((buf, len)) = reader.satisfy(satisfy)? else {
+                    return Ok(());
+                };
+                let buf = buf.get(..len).context("buf is too short")?;
+                self.process(buf)?;
+            }
         }
 
         Ok(())

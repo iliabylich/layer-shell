@@ -4,7 +4,7 @@ use crate::{
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{getenv, new_sockaddr_un},
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use libc::sockaddr_un;
 
 pub(crate) struct Weather {
@@ -38,38 +38,20 @@ impl Weather {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        match satisfy {
-            Satisfy::Socket(res) => {
-                let fd = res?;
-                self.reader.satisfy_socket(fd)?;
-                Ok(())
-            }
+        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
+            return Ok(());
+        };
+        let bytes = buf.get(..len).context("buf is too short")?;
 
-            Satisfy::Connect(res) => {
-                res?;
-                self.reader.satisfy_connect()?;
-                Ok(())
-            }
-
-            Satisfy::Read(res) => {
-                let bytes_read = res?;
-                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
-                let bytes = buf.get(..len).context("buf is too short")?;
-
-                for event in self.buf.push(bytes) {
-                    self.emitter.emit(&Event::Weather {
-                        temperature: event.current.t,
-                        code: event.current.code,
-                        hourly_forecast: event.hourly,
-                        daily_forecast: event.daily,
-                    });
-                }
-
-                Ok(())
-            }
-
-            _ => bail!("Weather only accepts Socket, Connect and Read, got: {satisfy:?}"),
+        for event in self.buf.push(bytes) {
+            self.emitter.emit(&Event::Weather {
+                temperature: event.current.t,
+                code: event.current.code,
+                hourly_forecast: event.hourly,
+                daily_forecast: event.daily,
+            });
         }
+        Ok(())
     }
 }
 

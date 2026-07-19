@@ -41,45 +41,28 @@ impl PW {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        match satisfy {
-            Satisfy::Socket(res) => {
-                let fd = res?;
-                self.reader.satisfy_socket(fd)?;
-                Ok(())
+        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
+            return Ok(());
+        };
+        let bytes = buf.get(..len).context("buf is too short")?;
+
+        for event in self.buf.push(bytes) {
+            match event {
+                PWEvent::Volume(volume) => self.volume = Some(volume),
+                PWEvent::Mute(muted) => self.muted = Some(muted),
             }
-
-            Satisfy::Connect(res) => {
-                res?;
-                self.reader.satisfy_connect()?;
-                Ok(())
-            }
-
-            Satisfy::Read(res) => {
-                let bytes_read = res?;
-                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
-                let bytes = buf.get(..len).context("buf is too short")?;
-
-                for event in self.buf.push(bytes) {
-                    match event {
-                        PWEvent::Volume(volume) => self.volume = Some(volume),
-                        PWEvent::Mute(muted) => self.muted = Some(muted),
-                    }
-                }
-
-                if let Some(volume) = self.volume
-                    && let Some(muted) = self.muted
-                {
-                    if self.events_left_to_drop == 0 {
-                        self.emitter.emit(&Event::Sound { volume, muted });
-                    }
-                    self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
-                }
-
-                Ok(())
-            }
-
-            _ => bail!("PW only accepts Socket, Connect and Read, got: {satisfy:?}"),
         }
+
+        if let Some(volume) = self.volume
+            && let Some(muted) = self.muted
+        {
+            if self.events_left_to_drop == 0 {
+                self.emitter.emit(&Event::Sound { volume, muted });
+            }
+            self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
+        }
+
+        Ok(())
     }
 }
 

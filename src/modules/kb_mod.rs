@@ -5,7 +5,7 @@ use crate::{
     utils::new_sockaddr_un,
 };
 use alloc::boxed::Box;
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use libc::sockaddr_un;
 
 pub(crate) struct KbMod {
@@ -33,44 +33,26 @@ impl KbMod {
     }
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
-        match satisfy {
-            Satisfy::Socket(res) => {
-                let fd = res?;
-                self.reader.satisfy_socket(fd)?;
-                Ok(())
+        let Some((buf, len)) = self.reader.satisfy(satisfy)? else {
+            return Ok(());
+        };
+        let bytes = buf.get(..len).context("buf is too short")?;
+
+        for byte in bytes {
+            let (kind, enabled) = match *byte {
+                b'0' => (KbModKind::CapsLock, false),
+                b'1' => (KbModKind::CapsLock, true),
+                b'2' => (KbModKind::NumLock, false),
+                b'3' => (KbModKind::NumLock, true),
+                _ => return Ok(()),
+            };
+
+            if self.events_left_to_drop == 0 {
+                self.emitter.emit(&Event::KbModToggled { kind, enabled });
             }
-
-            Satisfy::Connect(res) => {
-                res?;
-                self.reader.satisfy_connect()?;
-                Ok(())
-            }
-
-            Satisfy::Read(res) => {
-                let bytes_read = res?;
-                let (buf, len) = self.reader.satisfy_read(bytes_read)?;
-                let bytes = buf.get(..len).context("buf is too short")?;
-
-                for byte in bytes {
-                    let (kind, enabled) = match *byte {
-                        b'0' => (KbModKind::CapsLock, false),
-                        b'1' => (KbModKind::CapsLock, true),
-                        b'2' => (KbModKind::NumLock, false),
-                        b'3' => (KbModKind::NumLock, true),
-                        _ => return Ok(()),
-                    };
-
-                    if self.events_left_to_drop == 0 {
-                        self.emitter.emit(&Event::KbModToggled { kind, enabled });
-                    }
-                    self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
-                }
-
-                Ok(())
-            }
-
-            _ => bail!("KbMod only accepts Socket, Connect and Read, got: {satisfy:?}"),
+            self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
         }
+        Ok(())
     }
 }
 
