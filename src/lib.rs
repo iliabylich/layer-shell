@@ -23,7 +23,6 @@
 
 extern crate alloc;
 
-mod actor;
 mod command;
 mod config;
 mod event;
@@ -85,7 +84,7 @@ pub extern "C" fn io_init(
                 .context("failed to malloc IO")?
                 .cast::<IO>();
             ptr.write(IO::new((callback, data))?);
-            ptr.as_mut().start()?;
+            ptr.as_mut().start();
             ptr
         })
     })

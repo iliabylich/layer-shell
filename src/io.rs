@@ -1,6 +1,5 @@
 use crate::{
     Event,
-    actor::WantsSatisfy,
     command::Command,
     config::Config,
     event_queue::EventQueue,
@@ -30,8 +29,8 @@ pub struct IO {
     weather: Option<Weather>,
     weather_addr: sockaddr_un,
 
-    cpu: Cpu,
-    memory: Memory,
+    cpu: Option<Cpu>,
+    memory: Option<Memory>,
 
     kb_mod: Option<KbMod>,
     kb_mod_addr: sockaddr_un,
@@ -113,8 +112,8 @@ impl IO {
             weather: Some(weather),
             weather_addr,
 
-            cpu,
-            memory,
+            cpu: Some(cpu),
+            memory: Some(memory),
 
             kb_mod: Some(kb_mod),
             kb_mod_addr,
@@ -132,7 +131,7 @@ impl IO {
         })
     }
 
-    pub(crate) fn start(&mut self) -> Result<()> {
+    pub(crate) fn start(&mut self) {
         if let Some(timer) = &mut self.timer {
             schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
         }
@@ -145,9 +144,13 @@ impl IO {
             schedule_pw(pw, &mut self.ring, &self.pw_addr);
         }
 
-        schedule_cpu(&mut self.cpu, &mut self.ring)?;
+        if let Some(cpu) = &mut self.cpu {
+            schedule_cpu(cpu, &mut self.ring);
+        }
 
-        schedule_memory(&mut self.memory, &mut self.ring)?;
+        if let Some(memory) = &mut self.memory {
+            schedule_memory(memory, &mut self.ring);
+        }
 
         if let Some(weather) = &mut self.weather {
             schedule_weather(weather, &mut self.ring, &self.weather_addr);
@@ -168,8 +171,6 @@ impl IO {
         schedule_control(&self.control, &mut self.ring);
 
         self.ring.submit_if_dirty();
-
-        Ok(())
     }
 
     pub(crate) fn handle_readable(&mut self) -> Result<()> {
@@ -193,8 +194,8 @@ impl IO {
                 ModuleId::Niri => self.satisfy_niri(satisfy),
                 ModuleId::Tray => self.satisfy_tray(satisfy),
                 ModuleId::Control => self.satisfy_control(satisfy),
-                ModuleId::Cpu => self.satisfy_cpu(satisfy)?,
-                ModuleId::Memory => self.satisfy_memory(satisfy)?,
+                ModuleId::Cpu => self.satisfy_cpu(satisfy),
+                ModuleId::Memory => self.satisfy_memory(satisfy),
                 ModuleId::Timer => self.satisfy_timer(satisfy)?,
             }
 
@@ -249,19 +250,21 @@ impl IO {
     }
 }
 
-macro_rules! generate_simple_schedule_impl {
-    ($fn:ident, $module:ident) => {
-        fn $fn(module: &mut $module, ring: &mut IoUring) -> Result<()> {
-            if let Some(wants) = module.wants() {
-                ring.schedule(ModuleId::$module, wants);
-            };
-            Ok(())
-        }
-    };
+fn schedule_cpu(cpu: &mut Cpu, ring: &mut IoUring) {
+    if let Some(wants) = cpu.wants() {
+        log::trace!(target: "Cpu", "{wants:?}");
+        core::assert_matches!(cpu.wants(), None);
+        ring.schedule(ModuleId::Cpu, wants);
+    }
 }
 
-generate_simple_schedule_impl!(schedule_cpu, Cpu);
-generate_simple_schedule_impl!(schedule_memory, Memory);
+fn schedule_memory(memory: &mut Memory, ring: &mut IoUring) {
+    if let Some(wants) = memory.wants() {
+        log::trace!(target: "Memory", "{wants:?}");
+        core::assert_matches!(memory.wants(), None);
+        ring.schedule(ModuleId::Memory, wants);
+    }
+}
 
 fn schedule_kb_mod(kb_mod: &mut KbMod, ring: &mut IoUring, addr: &sockaddr_un) {
     if let Some(wants) = kb_mod.wants(addr) {
@@ -325,18 +328,6 @@ fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) {
     }
 }
 
-macro_rules! generate_simple_satisfy_impl {
-    ($fn:ident, $module:ident, $schedule:ident) => {
-        impl IO {
-            fn $fn(&mut self, satisfy: Satisfy) -> Result<()> {
-                self.$module.satisfy(satisfy, &mut self.events);
-                $schedule(&mut self.$module, &mut self.ring)?;
-                Ok(())
-            }
-        }
-    };
-}
-
 impl IO {
     fn satisfy_timer(&mut self, satisfy: Satisfy) -> Result<()> {
         let Some(timer) = &mut self.timer else {
@@ -349,11 +340,15 @@ impl IO {
 
                 Clock::tick(&mut self.events)?;
 
-                self.cpu.tick();
-                schedule_cpu(&mut self.cpu, &mut self.ring)?;
+                if let Some(cpu) = &mut self.cpu {
+                    cpu.tick();
+                    schedule_cpu(cpu, &mut self.ring);
+                }
 
-                self.memory.tick();
-                schedule_memory(&mut self.memory, &mut self.ring)?;
+                if let Some(memory) = &mut self.memory {
+                    memory.tick();
+                    schedule_memory(memory, &mut self.ring);
+                }
             }
             Ok(None) => {}
             Err(err) => {
@@ -474,8 +469,37 @@ impl IO {
     }
 }
 
-generate_simple_satisfy_impl!(satisfy_cpu, cpu, schedule_cpu);
-generate_simple_satisfy_impl!(satisfy_memory, memory, schedule_memory);
+impl IO {
+    fn satisfy_cpu(&mut self, satisfy: Satisfy) {
+        let Some(cpu) = &mut self.cpu else {
+            return;
+        };
+
+        match cpu.satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_cpu(cpu, &mut self.ring),
+            Err(err) => {
+                log::error!(target: "Cpu", "{err:?}");
+                self.cpu = None;
+            }
+        }
+    }
+}
+
+impl IO {
+    fn satisfy_memory(&mut self, satisfy: Satisfy) {
+        let Some(memory) = &mut self.memory else {
+            return;
+        };
+
+        match memory.satisfy(satisfy, &mut self.events) {
+            Ok(()) => schedule_memory(memory, &mut self.ring),
+            Err(err) => {
+                log::error!(target: "Memory", "{err:?}");
+                self.memory = None;
+            }
+        }
+    }
+}
 
 fn spawn(cmd: &str) {
     if let Err(err) = crate::utils::spawn(cmd) {
