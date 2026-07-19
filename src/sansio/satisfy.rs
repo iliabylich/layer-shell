@@ -7,7 +7,6 @@ pub(crate) enum Satisfy {
     Connect(Result<()>),
     Write(Result<usize>),
     Read(Result<usize>),
-    Close(#[expect(dead_code)] Result<()>),
     Accept(Result<i32>),
 }
 
@@ -39,14 +38,6 @@ impl Satisfy {
                 let len = usize::try_from(res)
                     .map_err(|_| anyhow::anyhow!("Op::Read returned error: {res}"));
                 Self::Read(len)
-            }
-            Op::Close => {
-                let res = if res >= 0 {
-                    Ok(())
-                } else {
-                    Err(anyhow::anyhow!("Op::Close returned error: {res}"))
-                };
-                Self::Close(res)
             }
             Op::Accept => {
                 let fd = if res >= 0 {

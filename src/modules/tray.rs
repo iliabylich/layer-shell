@@ -87,7 +87,9 @@ impl Tray {
                 Ok(())
             }
 
-            _ => bail!("KbMod only accepts Socket, Connect and Read, got: {satisfy:?}"),
+            Satisfy::Accept(_) => {
+                bail!("KbMod only accepts Socket, Connect and Read, got: {satisfy:?}")
+            }
         }
     }
 

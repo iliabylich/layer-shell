@@ -7,7 +7,6 @@ pub(crate) enum Op {
     Connect,
     Write,
     Read,
-    Close,
     Accept,
 }
 
@@ -29,8 +28,6 @@ impl TryFrom<u8> for Op {
             Ok(Self::Write)
         } else if value == Self::Read as u8 {
             Ok(Self::Read)
-        } else if value == Self::Close as u8 {
-            Ok(Self::Close)
         } else if value == Self::Accept as u8 {
             Ok(Self::Accept)
         } else {
