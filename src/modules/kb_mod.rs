@@ -10,6 +10,7 @@ use libc::sockaddr_un;
 
 pub(crate) struct KbMod {
     reader: Box<UnixSocketReader>,
+    events_left_to_drop: u8,
 }
 
 impl KbMod {
@@ -21,6 +22,7 @@ impl KbMod {
     pub(crate) fn new() -> Self {
         Self {
             reader: Box::new(UnixSocketReader::new()),
+            events_left_to_drop: 2,
         }
     }
 
@@ -56,7 +58,10 @@ impl KbMod {
                         _ => return Ok(()),
                     };
 
-                    events.push_back(Event::KbModToggled { kind, enabled });
+                    if self.events_left_to_drop == 0 {
+                        events.push_back(Event::KbModToggled { kind, enabled });
+                    }
+                    self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
                 }
 
                 Ok(())
