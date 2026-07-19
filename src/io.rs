@@ -81,7 +81,7 @@ impl IO {
         let kb_mod = KbMod::new(emitter);
         let kb_mod_addr = KbMod::address()?;
 
-        let niri = Niri::new(emitter)?;
+        let niri = Niri::new(emitter);
         let niri_addr = Niri::address()?;
 
         let pw = PW::new(emitter);

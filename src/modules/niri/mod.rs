@@ -12,7 +12,7 @@ use libc::sockaddr_un;
 mod buffer;
 
 enum State {
-    Writer(Box<UnixSocketOneshotWriter>),
+    Writer(UnixSocketOneshotWriter),
     Reader(Box<UnixSocketReader>),
 }
 
@@ -30,13 +30,13 @@ impl Niri {
         Ok(addr)
     }
 
-    pub(crate) fn new(emitter: Emitter) -> Result<Self> {
-        Ok(Self {
-            state: State::Writer(Box::new(UnixSocketOneshotWriter::new("\"EventStream\"\n")?)),
+    pub(crate) const fn new(emitter: Emitter) -> Self {
+        Self {
+            state: State::Writer(UnixSocketOneshotWriter::new(b"\"EventStream\"\n")),
             buffer: Buffer::new(),
             layouts: vec![],
             emitter,
-        })
+        }
     }
 
     pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
@@ -48,27 +48,12 @@ impl Niri {
 
     pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match &mut self.state {
-            State::Writer(writer) => match satisfy {
-                Satisfy::Socket(res) => {
-                    let fd = res?;
-                    writer.satisfy_socket(fd)?;
+            State::Writer(writer) => {
+                if let Some(fd) = writer.satisfy(satisfy)? {
+                    self.state =
+                        State::Reader(Box::new(UnixSocketReader::new_connected_from_fd(fd)));
                 }
-
-                Satisfy::Connect(res) => {
-                    res?;
-                    writer.satisfy_connect()?;
-                }
-
-                Satisfy::Write(res) => {
-                    let _ = res?;
-                    writer.satisfy_write()?;
-                    self.state = State::Reader(Box::new(UnixSocketReader::new_connected_from_fd(
-                        writer.fd()?,
-                    )));
-                }
-
-                _ => bail!("Niri writer only accepts Socket, Connect and Write, got: {satisfy:?}"),
-            },
+            }
 
             State::Reader(reader) => match satisfy {
                 Satisfy::Socket(res) => {

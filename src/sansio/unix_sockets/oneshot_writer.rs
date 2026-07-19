@@ -1,15 +1,14 @@
-use crate::{sansio::Wants, utils::ArrayWriter};
-use anyhow::{Context, Result, bail, ensure};
-use core::{fmt::Write, mem::size_of};
+use crate::sansio::{Satisfy, Wants};
+use anyhow::{Result, bail};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 
 pub(crate) struct UnixSocketOneshotWriter {
-    writebuf: [u8; 4_096],
-    writebuflen: usize,
+    data: &'static [u8],
+    offset: usize,
     state: State,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum State {
     ReadyToSocket,
     WaitingForSocket,
@@ -19,114 +18,80 @@ enum State {
 
     ReadyToWrite { fd: i32 },
     WaitingForWrite { fd: i32 },
-
-    Done,
 }
 
-impl State {
-    const fn wants(self, addr: &sockaddr_un, writebuf: &[u8]) -> (Self, Option<Wants>) {
-        match self {
-            Self::ReadyToSocket => (
-                Self::WaitingForSocket,
+impl UnixSocketOneshotWriter {
+    pub(crate) const fn new(data: &'static [u8]) -> Self {
+        Self {
+            data,
+            offset: 0,
+            state: State::ReadyToSocket,
+        }
+    }
+
+    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
+        match self.state {
+            State::ReadyToSocket => {
+                self.state = State::WaitingForSocket;
                 Some(Wants::Socket {
                     domain: AF_UNIX,
                     type_: SOCK_STREAM,
-                }),
-            ),
+                })
+            }
 
-            Self::ReadyToConnect { fd } => (
-                Self::WaitingForConnect { fd },
+            State::ReadyToConnect { fd } => {
+                self.state = State::WaitingForConnect { fd };
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
                     addrlen: size_of::<sockaddr_un>() as u32,
-                }),
-            ),
+                })
+            }
 
-            Self::ReadyToWrite { fd } => (
-                Self::WaitingForWrite { fd },
+            State::ReadyToWrite { fd } => {
+                self.state = State::WaitingForWrite { fd };
+                let buf = self
+                    .data
+                    .get(self.offset..)
+                    .unwrap_or_else(|| unreachable!());
+
                 Some(Wants::Write {
                     fd,
-                    buf: writebuf.as_ptr(),
-                    len: writebuf.len(),
-                }),
-            ),
+                    buf: buf.as_ptr(),
+                    len: buf.len(),
+                })
+            }
 
-            waiting => (waiting, None),
+            _ => None,
         }
     }
 
-    const fn wants_in_place(&mut self, addr: &sockaddr_un, writebuf: &[u8]) -> Option<Wants> {
-        let mut this = Self::Done;
-        core::mem::swap(self, &mut this);
-        let (next, wants) = this.wants(addr, writebuf);
-        *self = next;
-        wants
-    }
-}
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<i32>> {
+        match (self.state, satisfy) {
+            (State::WaitingForSocket, Satisfy::Socket(res)) => {
+                let fd = res?;
+                self.state = State::ReadyToConnect { fd };
+                Ok(None)
+            }
 
-impl UnixSocketOneshotWriter {
-    pub(crate) fn new(data: &str) -> Result<Self> {
-        let mut writebuf = [0; 4_096];
-        let mut writer = ArrayWriter::new(&mut writebuf);
-        write!(&mut writer, "{data}").context("failed to write command to buffer")?;
-        let writebuflen = writer.offset;
+            (State::WaitingForConnect { fd }, Satisfy::Connect(res)) => {
+                res?;
+                self.state = State::ReadyToWrite { fd };
+                Ok(None)
+            }
 
-        Ok(Self {
-            writebuf,
-            writebuflen,
-            state: State::ReadyToSocket,
-        })
-    }
+            (State::WaitingForWrite { fd }, Satisfy::Write(res)) => {
+                self.offset += res?;
+                if self.offset == self.data.len() {
+                    Ok(Some(fd))
+                } else {
+                    Ok(None)
+                }
+            }
 
-    pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        self.state.wants_in_place(
-            addr,
-            self.writebuf
-                .get(..self.writebuflen)
-                .unwrap_or_else(|| unreachable!()),
-        )
-    }
-
-    pub(crate) fn satisfy_socket(&mut self, fd: i32) -> Result<()> {
-        ensure!(
-            matches!(self.state, State::WaitingForSocket),
-            "malformed state: expected Socket, got {:?}",
-            self.state
-        );
-
-        self.state = State::ReadyToConnect { fd };
-        Ok(())
-    }
-
-    pub(crate) fn satisfy_connect(&mut self) -> Result<()> {
-        let State::WaitingForConnect { fd } = self.state else {
-            bail!("malformed state: expected Connect, got {:?}", self.state)
-        };
-
-        self.state = State::ReadyToWrite { fd };
-        Ok(())
-    }
-
-    pub(crate) fn satisfy_write(&self) -> Result<()> {
-        let State::WaitingForWrite { .. } = self.state else {
-            bail!("malformed state: expected Write, got {:?}", self.state)
-        };
-
-        Ok(())
-    }
-
-    pub(crate) fn fd(&self) -> Result<i32> {
-        match self.state {
-            State::ReadyToConnect { fd }
-            | State::WaitingForConnect { fd }
-            | State::ReadyToWrite { fd }
-            | State::WaitingForWrite { fd } => Ok(fd),
-
-            State::ReadyToSocket | State::WaitingForSocket | State::Done => bail!(
-                "UnixSocketOneshotWriter doesn't have FD in {:?} state",
-                self.state
-            ),
+            (state, satisfy) => {
+                bail!("malformed state: {state:?} vs {satisfy:?}")
+            }
         }
     }
 }
