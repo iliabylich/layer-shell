@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{getenv, new_sockaddr_un},
 };
@@ -10,15 +10,7 @@ use libc::sockaddr_un;
 pub(crate) struct Weather {
     reader: Box<UnixSocketReader>,
     buf: Buffer,
-    state: State,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum State {
-    ProxyUntilRead,
-    WaitingForWrite(Wants),
-    WriteFinished(Wants),
-    Proxy,
+    emitter: Emitter,
 }
 
 pub const HOURLY_WEATHER_FORECAST_LENGTH: usize = 10;
@@ -33,39 +25,19 @@ impl Weather {
         Ok(addr)
     }
 
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
         Self {
             reader: Box::new(UnixSocketReader::new()),
             buf: Buffer::new(),
-            state: State::ProxyUntilRead,
+            emitter,
         }
     }
 
     pub(crate) fn wants(&mut self, addr: &sockaddr_un) -> Option<Wants> {
-        match self.state {
-            State::ProxyUntilRead => {
-                let wants = self.reader.wants(addr);
-                if let Some(wants @ Wants::Read { fd, .. }) = wants {
-                    self.state = State::WaitingForWrite(wants);
-                    Some(Wants::Write {
-                        fd,
-                        buf: b"1".as_ptr(),
-                        len: 1,
-                    })
-                } else {
-                    wants
-                }
-            }
-            State::WaitingForWrite(_) => None,
-            State::WriteFinished(wants) => {
-                self.state = State::Proxy;
-                Some(wants)
-            }
-            State::Proxy => self.reader.wants(addr),
-        }
+        self.reader.wants(addr)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match satisfy {
             Satisfy::Socket(res) => {
                 let fd = res?;
@@ -79,23 +51,13 @@ impl Weather {
                 Ok(())
             }
 
-            Satisfy::Write(res) => {
-                res?;
-                if let State::WaitingForWrite(wants) = self.state {
-                    self.state = State::WriteFinished(wants);
-                } else {
-                    bail!("malformed state");
-                }
-                Ok(())
-            }
-
             Satisfy::Read(res) => {
                 let bytes_read = res?;
                 let (buf, len) = self.reader.satisfy_read(bytes_read)?;
                 let bytes = buf.get(..len).context("buf is too short")?;
 
                 for event in self.buf.push(bytes) {
-                    events.push_back(Event::Weather {
+                    self.emitter.emit(&Event::Weather {
                         temperature: event.current.t,
                         code: event.current.code,
                         hourly_forecast: event.hourly,

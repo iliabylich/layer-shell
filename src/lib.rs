@@ -25,8 +25,8 @@ extern crate alloc;
 
 mod command;
 mod config;
+mod emitter;
 mod event;
-mod event_queue;
 
 /// cbindgen:ignore
 #[expect(
@@ -83,7 +83,7 @@ pub extern "C" fn io_init(
             let mut ptr = NonNull::new(malloc(size_of::<IO>()))
                 .context("failed to malloc IO")?
                 .cast::<IO>();
-            ptr.write(IO::new((callback, data))?);
+            ptr.write(IO::new(callback, data)?);
             ptr.as_mut().start();
             ptr
         })

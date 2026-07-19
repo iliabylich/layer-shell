@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::new_sockaddr_un,
 };
@@ -11,6 +11,7 @@ use libc::sockaddr_un;
 pub(crate) struct KbMod {
     reader: Box<UnixSocketReader>,
     events_left_to_drop: u8,
+    emitter: Emitter,
 }
 
 impl KbMod {
@@ -19,10 +20,11 @@ impl KbMod {
         Ok(addr)
     }
 
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
         Self {
             reader: Box::new(UnixSocketReader::new()),
             events_left_to_drop: 2,
+            emitter,
         }
     }
 
@@ -30,7 +32,7 @@ impl KbMod {
         self.reader.wants(addr)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match satisfy {
             Satisfy::Socket(res) => {
                 let fd = res?;
@@ -59,7 +61,7 @@ impl KbMod {
                     };
 
                     if self.events_left_to_drop == 0 {
-                        events.push_back(Event::KbModToggled { kind, enabled });
+                        self.emitter.emit(&Event::KbModToggled { kind, enabled });
                     }
                     self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
                 }

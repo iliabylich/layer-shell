@@ -1,18 +1,24 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     utils::{StringRef, StringRefExt},
 };
 use alloc::string::String;
 use anyhow::{Result, bail};
 use libc::{localtime_r, strftime, time, tm};
 
-pub(crate) struct Clock;
+pub(crate) struct Clock {
+    emitter: Emitter,
+}
 
 impl Clock {
-    pub(crate) fn tick(events: &mut EventQueue) -> Result<()> {
+    pub(crate) const fn new(emitter: Emitter) -> Self {
+        Self { emitter }
+    }
+
+    pub(crate) fn tick(&self) -> Result<()> {
         let now = StringRef::new(&local_time_string()?);
-        events.push_back(Event::Time { now });
+        self.emitter.emit(&Event::Time { now });
         Ok(())
     }
 }

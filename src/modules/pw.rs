@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{getenv, new_sockaddr_un},
 };
@@ -13,6 +13,7 @@ pub(crate) struct PW {
     volume: Option<u8>,
     muted: Option<bool>,
     ignored_first_event: bool,
+    emitter: Emitter,
 }
 
 impl PW {
@@ -24,13 +25,14 @@ impl PW {
         Ok(addr)
     }
 
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
         Self {
             reader: Box::new(UnixSocketReader::new()),
             buf: Buffer::new(),
             volume: None,
             muted: None,
             ignored_first_event: false,
+            emitter,
         }
     }
 
@@ -38,7 +40,7 @@ impl PW {
         self.reader.wants(addr)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match satisfy {
             Satisfy::Socket(res) => {
                 let fd = res?;
@@ -68,7 +70,7 @@ impl PW {
                     && let Some(muted) = self.muted
                 {
                     if self.ignored_first_event {
-                        events.push_back(Event::Sound { volume, muted });
+                        self.emitter.emit(&Event::Sound { volume, muted });
                     } else {
                         self.ignored_first_event = true;
                     }

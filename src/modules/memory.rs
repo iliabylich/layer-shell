@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     sansio::{FileReader, Satisfy, Wants},
 };
 use alloc::boxed::Box;
@@ -9,13 +9,15 @@ use anyhow::{Context, Result};
 pub(crate) struct Memory {
     reader: FileReader,
     buf: Box<[u8; 1_024]>,
+    emitter: Emitter,
 }
 
 impl Memory {
-    pub(crate) fn new() -> Result<Self> {
+    pub(crate) fn new(emitter: Emitter) -> Result<Self> {
         Ok(Self {
             reader: FileReader::new(c"/proc/meminfo")?,
             buf: Box::new([0; _]),
+            emitter,
         })
     }
 
@@ -27,13 +29,13 @@ impl Memory {
         self.reader.wants(&mut *self.buf)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         let Some(buf) = self.reader.try_satisfy(satisfy, &*self.buf)? else {
             return Ok(());
         };
 
         let (used, total) = parse(buf)?;
-        events.push_back(Event::Memory { used, total });
+        self.emitter.emit(&Event::Memory { used, total });
         Ok(())
     }
 }

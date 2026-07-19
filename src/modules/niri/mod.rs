@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     utils::{StringRef, StringRefExt as _, getenv, new_sockaddr_un},
 };
@@ -20,6 +20,7 @@ pub(crate) struct Niri {
     state: State,
     buffer: Buffer,
     layouts: Vec<String>,
+    emitter: Emitter,
 }
 
 impl Niri {
@@ -29,11 +30,12 @@ impl Niri {
         Ok(addr)
     }
 
-    pub(crate) fn new() -> Result<Self> {
+    pub(crate) fn new(emitter: Emitter) -> Result<Self> {
         Ok(Self {
             state: State::Writer(Box::new(UnixSocketOneshotWriter::new("\"EventStream\"\n")?)),
             buffer: Buffer::new(),
             layouts: vec![],
+            emitter,
         })
     }
 
@@ -44,7 +46,7 @@ impl Niri {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match &mut self.state {
             State::Writer(writer) => match satisfy {
                 Satisfy::Socket(res) => {
@@ -83,7 +85,7 @@ impl Niri {
                     let bytes_read = res?;
                     let (buf, len) = reader.satisfy_read(bytes_read)?;
                     let buf = buf.get(..len).context("buf is too short")?;
-                    self.process(buf, events)?;
+                    self.process(buf)?;
                 }
 
                 _ => bail!("Niri reader only accepts Socket, Connect and Read, got: {satisfy:?}"),
@@ -93,7 +95,7 @@ impl Niri {
         Ok(())
     }
 
-    fn process(&mut self, buf: &[u8], events: &mut EventQueue) -> Result<()> {
+    fn process(&mut self, buf: &[u8]) -> Result<()> {
         let niri_events = self.buffer.push(buf)?;
         let mut layouts = None;
         let mut current_layout_idx = None;
@@ -128,7 +130,7 @@ impl Niri {
                 lang = "??";
             }
 
-            events.push_back(Event::Language {
+            self.emitter.emit(&Event::Language {
                 lang: StringRef::new(lang),
             });
         }

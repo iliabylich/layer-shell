@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     sansio::{FileReader, Satisfy, Wants},
 };
 use alloc::{boxed::Box, vec, vec::Vec};
@@ -10,14 +10,16 @@ pub(crate) struct Cpu {
     reader: FileReader,
     buf: Box<[u8; 1_024]>,
     state: Option<Vec<CoreUsage>>,
+    emitter: Emitter,
 }
 
 impl Cpu {
-    pub(crate) fn new() -> Result<Self> {
+    pub(crate) fn new(emitter: Emitter) -> Result<Self> {
         Ok(Self {
             reader: FileReader::new(c"/proc/stat")?,
             buf: Box::new([0; _]),
             state: None,
+            emitter,
         })
     }
 
@@ -29,7 +31,7 @@ impl Cpu {
         self.reader.wants(&mut *self.buf)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         let Some(buf) = self.reader.try_satisfy(satisfy, &*self.buf)? else {
             return Ok(());
         };
@@ -39,7 +41,7 @@ impl Cpu {
 
         let usage_per_core = diff(prev.as_deref(), &next)?.into();
         self.state = Some(next);
-        events.push_back(Event::CpuUsage { usage_per_core });
+        self.emitter.emit(&Event::CpuUsage { usage_per_core });
         Ok(())
     }
 }

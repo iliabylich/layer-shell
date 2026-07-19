@@ -1,6 +1,6 @@
 use crate::{
     Event,
-    event_queue::EventQueue,
+    emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{StringRef, StringRefExt, getenv, new_sockaddr_un},
 };
@@ -11,6 +11,7 @@ pub(crate) struct Tray {
     reader: Box<UnixSocketReader>,
     buf: Buffer,
     writebuf: [u8; 8],
+    emitter: Emitter,
 }
 
 impl Tray {
@@ -22,11 +23,12 @@ impl Tray {
         Ok(addr)
     }
 
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
         Self {
             reader: Box::new(UnixSocketReader::new()),
             buf: Buffer::new(),
             writebuf: [0; _],
+            emitter,
         }
     }
 
@@ -34,7 +36,7 @@ impl Tray {
         self.reader.wants(addr)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, events: &mut EventQueue) -> Result<()> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<()> {
         match satisfy {
             Satisfy::Socket(res) => {
                 let fd = res?;
@@ -79,7 +81,7 @@ impl Tray {
                         },
                     };
 
-                    events.push_back(event);
+                    self.emitter.emit(&event);
                 }
 
                 Ok(())

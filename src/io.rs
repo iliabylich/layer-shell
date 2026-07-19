@@ -2,7 +2,7 @@ use crate::{
     Event,
     command::Command,
     config::Config,
-    event_queue::EventQueue,
+    emitter::Emitter,
     liburing::IoUring,
     modules::{Clock, Control, Cpu, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
     sansio::Satisfy,
@@ -13,12 +13,13 @@ use libc::sockaddr_un;
 
 pub struct IO {
     ring: IoUring,
-    events: EventQueue,
 
     pub(crate) config: Config,
 
     timer: Option<Timer>,
     timerbuf: [u8; 8],
+
+    clock: Option<Clock>,
 
     pw: Option<PW>,
     pw_addr: sockaddr_un,
@@ -43,10 +44,6 @@ pub struct IO {
 
     control: Control,
 
-    on_event: (
-        extern "C" fn(event: &Event, *mut core::ffi::c_void),
-        *mut core::ffi::c_void,
-    ),
     running: bool,
 }
 
@@ -57,51 +54,52 @@ impl IO {
     }
 
     pub(crate) fn new(
-        on_event: (
-            extern "C" fn(event: &Event, *mut core::ffi::c_void),
-            *mut core::ffi::c_void,
-        ),
+        callback: extern "C" fn(event: &Event, *mut core::ffi::c_void),
+        data: *mut core::ffi::c_void,
     ) -> Result<Self> {
         let config = Config::read()?;
+        let emitter = Emitter::new(callback, data);
 
         let ring = IoUring::new(10, 0);
-        let events = EventQueue::new();
 
         let timer = Timer::new()?;
         let timerbuf = [0; 8];
 
-        let nm = NM::new();
+        let clock = Clock::new(emitter);
+
+        let nm = NM::new(emitter);
         let nm_addr = NM::address()?;
 
-        let cpu = Cpu::new()?;
+        let cpu = Cpu::new(emitter)?;
 
-        let memory = Memory::new()?;
+        let memory = Memory::new(emitter)?;
 
-        let kb_mod = KbMod::new();
+        let kb_mod = KbMod::new(emitter);
         let kb_mod_addr = KbMod::address()?;
 
-        let niri = Niri::new()?;
+        let niri = Niri::new(emitter)?;
         let niri_addr = Niri::address()?;
 
-        let pw = PW::new();
+        let pw = PW::new(emitter);
         let pw_addr = PW::address()?;
 
-        let weather = Weather::new();
+        let weather = Weather::new(emitter);
         let weather_addr = Weather::address()?;
 
-        let tray = Tray::new();
+        let tray = Tray::new(emitter);
         let tray_addr = Tray::address()?;
 
-        let control = Control::new()?;
+        let control = Control::new(emitter)?;
 
         Ok(Self {
             ring,
-            events,
 
             config,
 
             timer: Some(timer),
             timerbuf,
+
+            clock: Some(clock),
 
             pw_addr,
             pw: Some(pw),
@@ -126,7 +124,6 @@ impl IO {
 
             control,
 
-            on_event,
             running: true,
         })
     }
@@ -196,19 +193,13 @@ impl IO {
                 ModuleId::Control => self.satisfy_control(satisfy),
                 ModuleId::Cpu => self.satisfy_cpu(satisfy),
                 ModuleId::Memory => self.satisfy_memory(satisfy),
-                ModuleId::Timer => self.satisfy_timer(satisfy)?,
+                ModuleId::Timer => self.satisfy_timer(satisfy),
             }
 
             self.ring.cqe_seen(cqe);
         }
 
         self.ring.submit_if_dirty();
-
-        while let Some(event) = self.events.pop_front() {
-            log::info!(target: "IO", "{event:?}");
-            let (callback, data) = self.on_event;
-            (callback)(&event, data);
-        }
 
         Ok(())
     }
@@ -329,16 +320,21 @@ fn schedule_timer(timer: &mut Timer, ring: &mut IoUring, buf: &mut [u8; 8]) {
 }
 
 impl IO {
-    fn satisfy_timer(&mut self, satisfy: Satisfy) -> Result<()> {
+    fn satisfy_timer(&mut self, satisfy: Satisfy) {
         let Some(timer) = &mut self.timer else {
-            return Ok(());
+            return;
         };
 
         match timer.satisfy(satisfy, self.timerbuf) {
             Ok(Some(_tick)) => {
                 schedule_timer(timer, &mut self.ring, &mut self.timerbuf);
 
-                Clock::tick(&mut self.events)?;
+                if let Some(clock) = &self.clock
+                    && let Err(err) = clock.tick()
+                {
+                    log::error!(target: "Clock" , "{err:?}");
+                    self.clock = None;
+                }
 
                 if let Some(cpu) = &mut self.cpu {
                     cpu.tick();
@@ -356,8 +352,6 @@ impl IO {
                 self.timer = None;
             }
         }
-
-        Ok(())
     }
 }
 
@@ -367,7 +361,7 @@ impl IO {
             return;
         };
 
-        match niri.satisfy(satisfy, &mut self.events) {
+        match niri.satisfy(satisfy) {
             Ok(()) => schedule_niri(niri, &mut self.ring, &self.niri_addr),
             Err(err) => {
                 log::error!(target: "Niri", "{err:?}");
@@ -383,7 +377,7 @@ impl IO {
             return;
         };
 
-        match tray.satisfy(satisfy, &mut self.events) {
+        match tray.satisfy(satisfy) {
             Ok(()) => schedule_tray(tray, &mut self.ring, &self.tray_addr),
             Err(err) => {
                 log::error!(target: "Tray", "{err:?}");
@@ -395,7 +389,7 @@ impl IO {
 
 impl IO {
     fn satisfy_control(&mut self, satisfy: Satisfy) {
-        match Control::satisfy(satisfy, &mut self.events) {
+        match self.control.satisfy(satisfy) {
             Ok(()) => schedule_control(&self.control, &mut self.ring),
             Err(err) => {
                 log::error!(target: "Tray", "{err:?}");
@@ -411,7 +405,7 @@ impl IO {
             return;
         };
 
-        match kb_mod.satisfy(satisfy, &mut self.events) {
+        match kb_mod.satisfy(satisfy) {
             Ok(()) => schedule_kb_mod(kb_mod, &mut self.ring, &self.kb_mod_addr),
             Err(err) => {
                 log::error!(target: "KbMod", "{err:?}");
@@ -427,7 +421,7 @@ impl IO {
             return;
         };
 
-        match weather.satisfy(satisfy, &mut self.events) {
+        match weather.satisfy(satisfy) {
             Ok(()) => schedule_weather(weather, &mut self.ring, &self.weather_addr),
             Err(err) => {
                 log::error!(target: "Weather", "{err:?}");
@@ -443,7 +437,7 @@ impl IO {
             return;
         };
 
-        match nm.satisfy(satisfy, &mut self.events) {
+        match nm.satisfy(satisfy) {
             Ok(()) => schedule_nm(nm, &mut self.ring, &self.nm_addr),
             Err(err) => {
                 log::error!(target: "NM", "{err:?}");
@@ -459,7 +453,7 @@ impl IO {
             return;
         };
 
-        match pw.satisfy(satisfy, &mut self.events) {
+        match pw.satisfy(satisfy) {
             Ok(()) => schedule_pw(pw, &mut self.ring, &self.pw_addr),
             Err(err) => {
                 log::error!(target: "PW", "{err:?}");
@@ -475,7 +469,7 @@ impl IO {
             return;
         };
 
-        match cpu.satisfy(satisfy, &mut self.events) {
+        match cpu.satisfy(satisfy) {
             Ok(()) => schedule_cpu(cpu, &mut self.ring),
             Err(err) => {
                 log::error!(target: "Cpu", "{err:?}");
@@ -491,7 +485,7 @@ impl IO {
             return;
         };
 
-        match memory.satisfy(satisfy, &mut self.events) {
+        match memory.satisfy(satisfy) {
             Ok(()) => schedule_memory(memory, &mut self.ring),
             Err(err) => {
                 log::error!(target: "Memory", "{err:?}");
