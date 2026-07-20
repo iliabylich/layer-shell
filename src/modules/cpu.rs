@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    FixedSizeArrray, IoEvent,
     emitter::Emitter,
     sansio::{FileReader, Satisfy, Wants},
 };
@@ -7,7 +7,7 @@ use anyhow::{Context as _, Result, bail};
 
 pub(crate) struct Cpu {
     reader: FileReader,
-    state: Option<([CoreUsage; MAX_CPU_COUNT], usize)>,
+    state: Option<FixedSizeArrray<MAX_CPU_COUNT, CoreUsage>>,
     emitter: Emitter,
 }
 
@@ -38,35 +38,34 @@ impl Cpu {
         let prev = self.state.take();
         let next = CoreUsage::parse_many(buf)?;
 
-        let (usage_per_core, count) = diff(prev.as_ref(), &next)?;
+        let usage_per_core = diff(prev.as_ref(), &next)?;
         self.state = Some(next);
-        self.emitter.emit(&Event::CpuUsage {
-            usage_per_core,
-            count,
-        });
+        self.emitter.emit(&IoEvent::CpuUsage { usage_per_core });
         Ok(())
     }
 }
 
 fn diff(
-    prev: Option<&([CoreUsage; MAX_CPU_COUNT], usize)>,
-    (next, nextlen): &([CoreUsage; MAX_CPU_COUNT], usize),
-) -> Result<([u8; MAX_CPU_COUNT], usize)> {
-    let Some((prev, prevlen)) = prev else {
-        return Ok(([0; _], *nextlen));
+    prev: Option<&FixedSizeArrray<MAX_CPU_COUNT, CoreUsage>>,
+    next: &FixedSizeArrray<MAX_CPU_COUNT, CoreUsage>,
+) -> Result<FixedSizeArrray<MAX_CPU_COUNT, u8>> {
+    let Some(prev) = prev else {
+        return Ok(FixedSizeArrray::filled(0, next.len()));
     };
 
-    debug_assert_eq!(prevlen, nextlen);
-    let len = *nextlen;
+    debug_assert_eq!(prev.len(), next.len());
+    let len = next.len();
 
-    let mut out = [0; _];
+    let mut out = FixedSizeArrray::new();
 
-    for (idx, (prev, next)) in prev.iter().zip(next).take(len).enumerate() {
-        let slot = out.get_mut(idx).context("malformed state")?;
-        *slot = next.load_comparing_to(*prev)?;
+    for idx in 0..len {
+        let prev_per_core = prev.get(idx).context("malformed state")?;
+        let next_per_core = next.get(idx).context("malformed state")?;
+        let diff = next_per_core.load_comparing_to(*prev_per_core)?;
+        out.push(diff).context("malformed state")?;
     }
 
-    Ok((out, len))
+    Ok(out)
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -77,25 +76,22 @@ pub(crate) struct CoreUsage {
 }
 
 impl CoreUsage {
-    pub(crate) fn parse_many(buf: &[u8]) -> Result<([Self; MAX_CPU_COUNT], usize)> {
+    pub(crate) fn parse_many(buf: &[u8]) -> Result<FixedSizeArrray<MAX_CPU_COUNT, Self>> {
         let s = core::str::from_utf8(buf).context("decoding error")?;
 
         let is_cpu_line = |line: &str| -> bool {
             line.starts_with("cpu") && line.as_bytes().get(3).is_some_and(u8::is_ascii_digit)
         };
 
-        let mut out = [Self::default(); _];
-        let mut count = 0;
+        let mut out = FixedSizeArrray::new();
 
         for line in s.lines() {
             if is_cpu_line(line) {
-                let slot = out.get_mut(count).context("too many CPU cores")?;
-                *slot = Self::parse(line)?;
-                count += 1;
+                out.push(Self::parse(line)?).context("too many CPU cores")?;
             }
         }
 
-        Ok((out, count))
+        Ok(out)
     }
 
     fn parse(line: &str) -> Result<Self> {

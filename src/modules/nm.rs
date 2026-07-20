@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{FixedSizeBuffer, StringRef, StringRefExt, new_sockaddr_un},
@@ -51,15 +51,15 @@ impl NM {
                     if bytes_per_sec < Self::SPEED_THRESHOLD {
                         bytes_per_sec = 0;
                     }
-                    Event::UploadSpeed { bytes_per_sec }
+                    IoEvent::UploadSpeed { bytes_per_sec }
                 }
                 NMEvent::DownloadSpeed { mut bytes_per_sec } => {
                     if bytes_per_sec < Self::SPEED_THRESHOLD {
                         bytes_per_sec = 0;
                     }
-                    Event::DownloadSpeed { bytes_per_sec }
+                    IoEvent::DownloadSpeed { bytes_per_sec }
                 }
-                NMEvent::SsidAndStrength { ssid, strength } => Event::NetworkSsidAndStrength {
+                NMEvent::SsidAndStrength { ssid, strength } => IoEvent::NetworkSsidAndStrength {
                     ssid: ssid.clone(),
                     strength,
                 },

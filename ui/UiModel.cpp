@@ -30,107 +30,107 @@ QString network_speed(uint64_t bytes_per_sec) {
   return QStringLiteral("%1%2").arg(value).arg(QString::fromUtf8(suffix));
 }
 
-QString weather_description(IO_WeatherCode code) {
+QString weather_description(WeatherCode code) {
   switch (code) {
-  case IO_WeatherCode::ClearSky:
+  case WeatherCode::ClearSky:
     return "Clear Sky";
-  case IO_WeatherCode::MainlyClear:
+  case WeatherCode::MainlyClear:
     return "Mainly Clear";
-  case IO_WeatherCode::PartlyCloudy:
+  case WeatherCode::PartlyCloudy:
     return "Partly Cloudy";
-  case IO_WeatherCode::Overcast:
+  case WeatherCode::Overcast:
     return "Overcast";
-  case IO_WeatherCode::FogDepositingRime:
+  case WeatherCode::FogDepositingRime:
     return "Fog (Depositing Rime)";
-  case IO_WeatherCode::FogNormal:
+  case WeatherCode::FogNormal:
     return "Fog (Normal)";
-  case IO_WeatherCode::DrizzleLight:
+  case WeatherCode::DrizzleLight:
     return "Drizzle (Light)";
-  case IO_WeatherCode::DrizzleModerate:
+  case WeatherCode::DrizzleModerate:
     return "Drizzle (Moderate)";
-  case IO_WeatherCode::DrizzleDense:
+  case WeatherCode::DrizzleDense:
     return "Drizzle (Dense)";
-  case IO_WeatherCode::FreezingDrizzleLight:
+  case WeatherCode::FreezingDrizzleLight:
     return "Freezing Drizzle (Light)";
-  case IO_WeatherCode::FreezingDrizzleDense:
+  case WeatherCode::FreezingDrizzleDense:
     return "Freezing Drizzle (Dense)";
-  case IO_WeatherCode::RainSlight:
+  case WeatherCode::RainSlight:
     return "Rain (Slight)";
-  case IO_WeatherCode::RainModerate:
+  case WeatherCode::RainModerate:
     return "Rain (Moderate)";
-  case IO_WeatherCode::RainHeavy:
+  case WeatherCode::RainHeavy:
     return "Rain (Heavy)";
-  case IO_WeatherCode::FreezingRainLight:
+  case WeatherCode::FreezingRainLight:
     return "Freezing Rain (Light)";
-  case IO_WeatherCode::FreezingRainHeavy:
+  case WeatherCode::FreezingRainHeavy:
     return "Freezing Rain (Heavy)";
-  case IO_WeatherCode::SnowFallSlight:
+  case WeatherCode::SnowFallSlight:
     return "Snow Fall (Slight)";
-  case IO_WeatherCode::SnowFallModerate:
+  case WeatherCode::SnowFallModerate:
     return "Snow Fall (Moderate)";
-  case IO_WeatherCode::SnowFallHeavy:
+  case WeatherCode::SnowFallHeavy:
     return "Snow Fall (Heavy)";
-  case IO_WeatherCode::SnowGrains:
+  case WeatherCode::SnowGrains:
     return "Snow Grains";
-  case IO_WeatherCode::RainShowersSlight:
+  case WeatherCode::RainShowersSlight:
     return "Rain Showers (Slight)";
-  case IO_WeatherCode::RainShowersModerate:
+  case WeatherCode::RainShowersModerate:
     return "Rain Showers (Moderate)";
-  case IO_WeatherCode::RainShowersViolent:
+  case WeatherCode::RainShowersViolent:
     return "Rain Showers (Violent)";
-  case IO_WeatherCode::SnowShowersSlight:
+  case WeatherCode::SnowShowersSlight:
     return "Snow Showers (Slight)";
-  case IO_WeatherCode::SnowShowersHeavy:
+  case WeatherCode::SnowShowersHeavy:
     return "Snow Showers (Heavy)";
-  case IO_WeatherCode::Thunderstorm:
+  case WeatherCode::Thunderstorm:
     return "Thunderstorm";
-  case IO_WeatherCode::ThunderstormWithHailSight:
+  case WeatherCode::ThunderstormWithHailSight:
     return "Thunderstorm With Hail (Sight)";
-  case IO_WeatherCode::ThunderstormWithHailHeavy:
+  case WeatherCode::ThunderstormWithHailHeavy:
     return "Thunderstorm With Hail (Heavy)";
-  case IO_WeatherCode::Unknown:
+  case WeatherCode::Unknown:
   default:
     return "Unknown";
   }
 }
 
-QString weather_icon(IO_WeatherCode code) {
+QString weather_icon(WeatherCode code) {
   switch (code) {
-  case IO_WeatherCode::ClearSky:
-  case IO_WeatherCode::MainlyClear:
+  case WeatherCode::ClearSky:
+  case WeatherCode::MainlyClear:
     return "󰖙";
-  case IO_WeatherCode::PartlyCloudy:
-  case IO_WeatherCode::Overcast:
+  case WeatherCode::PartlyCloudy:
+  case WeatherCode::Overcast:
     return "󰖐";
-  case IO_WeatherCode::FogDepositingRime:
-  case IO_WeatherCode::FogNormal:
+  case WeatherCode::FogDepositingRime:
+  case WeatherCode::FogNormal:
     return "󰖑";
-  case IO_WeatherCode::DrizzleDense:
-  case IO_WeatherCode::DrizzleLight:
-  case IO_WeatherCode::DrizzleModerate:
-  case IO_WeatherCode::FreezingDrizzleLight:
-  case IO_WeatherCode::FreezingDrizzleDense:
-  case IO_WeatherCode::RainSlight:
-  case IO_WeatherCode::RainModerate:
-  case IO_WeatherCode::RainHeavy:
-  case IO_WeatherCode::FreezingRainLight:
-  case IO_WeatherCode::FreezingRainHeavy:
-  case IO_WeatherCode::RainShowersSlight:
-  case IO_WeatherCode::RainShowersModerate:
-  case IO_WeatherCode::RainShowersViolent:
+  case WeatherCode::DrizzleDense:
+  case WeatherCode::DrizzleLight:
+  case WeatherCode::DrizzleModerate:
+  case WeatherCode::FreezingDrizzleLight:
+  case WeatherCode::FreezingDrizzleDense:
+  case WeatherCode::RainSlight:
+  case WeatherCode::RainModerate:
+  case WeatherCode::RainHeavy:
+  case WeatherCode::FreezingRainLight:
+  case WeatherCode::FreezingRainHeavy:
+  case WeatherCode::RainShowersSlight:
+  case WeatherCode::RainShowersModerate:
+  case WeatherCode::RainShowersViolent:
     return "󰖗";
-  case IO_WeatherCode::SnowFallSlight:
-  case IO_WeatherCode::SnowFallModerate:
-  case IO_WeatherCode::SnowFallHeavy:
-  case IO_WeatherCode::SnowGrains:
-  case IO_WeatherCode::SnowShowersSlight:
-  case IO_WeatherCode::SnowShowersHeavy:
+  case WeatherCode::SnowFallSlight:
+  case WeatherCode::SnowFallModerate:
+  case WeatherCode::SnowFallHeavy:
+  case WeatherCode::SnowGrains:
+  case WeatherCode::SnowShowersSlight:
+  case WeatherCode::SnowShowersHeavy:
     return "󰖘";
-  case IO_WeatherCode::Thunderstorm:
-  case IO_WeatherCode::ThunderstormWithHailSight:
-  case IO_WeatherCode::ThunderstormWithHailHeavy:
+  case WeatherCode::Thunderstorm:
+  case WeatherCode::ThunderstormWithHailSight:
+  case WeatherCode::ThunderstormWithHailHeavy:
     return "";
-  case IO_WeatherCode::Unknown:
+  case WeatherCode::Unknown:
   default:
     return "";
   }
@@ -183,7 +183,7 @@ QString network_name(const QString &ssid, uint8_t strength) {
   return QStringLiteral("%1 (%2)%").arg(ssid).arg(strength);
 }
 
-QString weather_summary(float temperature, IO_WeatherCode code) {
+QString weather_summary(float temperature, WeatherCode code) {
   return QStringLiteral("%1℃ %2")
       .arg(static_cast<double>(temperature), 0, 'f', 1)
       .arg(weather_description(code));
@@ -214,7 +214,7 @@ UiModel::UiModel(QObject *parent) : QObject(parent) {
           [this] { io_handle_readable(io); });
 }
 
-IO_IO *UiModel::getIO() const { return io; }
+IO *UiModel::getIO() const { return io; }
 
 UiModel::~UiModel() { io_deinit(io); }
 
@@ -238,12 +238,12 @@ void UiModel::triggerTrayItem(uint32_t service, uint32_t id) {
   io_trigger_tray(io, service, id);
 }
 
-void UiModel::eventReceived(const IO_Event *event, void *data) {
+void UiModel::eventReceived(const IoEvent *event, void *data) {
   auto self = reinterpret_cast<UiModel *>(data);
   self->handleEvent(*event);
 }
 
-void UiModel::handleEvent(const IO_Event &event) {
+void UiModel::handleEvent(const IoEvent &event) {
   std::visit([this](const auto &event) { (*this)(event); },
              Event::from(event).value());
 }

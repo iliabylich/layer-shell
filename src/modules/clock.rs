@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     utils::{StringRef, StringRefExt},
 };
@@ -19,7 +19,7 @@ impl Clock {
 
     pub(crate) fn tick(&self) -> Result<()> {
         let now = StringRef::new(&local_time_string()?);
-        self.emitter.emit(&Event::Time { now });
+        self.emitter.emit(&IoEvent::Time { now });
         Ok(())
     }
 }

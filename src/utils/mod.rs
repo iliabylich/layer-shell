@@ -1,4 +1,5 @@
 mod array_writer;
+mod fixed_size_array;
 mod fixed_size_buffer;
 mod get_json;
 mod getenv;
@@ -8,6 +9,7 @@ mod spawn;
 mod string_pool;
 
 pub(crate) use array_writer::ArrayWriter;
+pub use fixed_size_array::FixedSizeArrray;
 pub(crate) use fixed_size_buffer::FixedSizeBuffer;
 pub(crate) use get_json::get_json;
 pub(crate) use getenv::getenv;

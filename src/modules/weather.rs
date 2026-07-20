@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{ArrayWriter, FixedSizeBuffer, getenv, new_sockaddr_un},
@@ -55,7 +55,7 @@ impl Weather {
             && let Some(buf) = buf.written(written)
         {
             let event = WeatherData::deserialize(&buf);
-            self.emitter.emit(&Event::Weather {
+            self.emitter.emit(&IoEvent::Weather {
                 temperature: event.current.t,
                 code: event.current.code,
                 hourly_forecast: event.hourly,

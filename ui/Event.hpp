@@ -11,73 +11,73 @@ struct Event {
     double used;
     double total;
 
-    Memory(const IO_Event::IO_Memory_Body &data);
+    Memory(const IoEvent::Memory_Body &data);
   };
 
   struct CPU {
     QList<uint8_t> usage_per_core;
 
-    CPU(const IO_Event::IO_CpuUsage_Body &data);
+    CPU(const IoEvent::CpuUsage_Body &data);
   };
 
   struct Time {
     QString now;
 
-    Time(const IO_Event::IO_Time_Body &data);
+    Time(const IoEvent::Time_Body &data);
   };
 
   struct Language {
     QString lang;
 
-    Language(const IO_Event::IO_Language_Body &data);
+    Language(const IoEvent::Language_Body &data);
   };
 
   struct Weather {
     struct OnHour {
-      static constexpr size_t COUNT = IO_HOURLY_WEATHER_FORECAST_LENGTH;
+      static constexpr size_t COUNT = HOURLY_WEATHER_FORECAST_LENGTH;
       using Array = std::array<OnHour, COUNT>;
 
       int64_t unix_seconds;
       float temperature;
-      enum IO_WeatherCode code;
+      enum WeatherCode code;
     };
 
     struct OnDay {
-      static constexpr size_t COUNT = IO_DAILY_WEATHER_FORECAST_LENGTH;
+      static constexpr size_t COUNT = DAILY_WEATHER_FORECAST_LENGTH;
       using Array = std::array<OnDay, COUNT>;
 
       int64_t unix_seconds;
       float temperature_min;
       float temperature_max;
-      enum IO_WeatherCode code;
+      enum WeatherCode code;
     };
 
     float temperature;
-    enum IO_WeatherCode code;
+    enum WeatherCode code;
 
     OnHour::Array hourly_forecast;
     OnDay::Array daily_forecast;
 
-    Weather(const IO_Event::IO_Weather_Body &data);
+    Weather(const IoEvent::Weather_Body &data);
   };
 
   struct Network {
     QString ssid;
     uint8_t strength;
 
-    Network(const IO_Event::IO_NetworkSsidAndStrength_Body &data);
+    Network(const IoEvent::NetworkSsidAndStrength_Body &data);
   };
 
   struct UploadSpeed {
     uint64_t bytes_per_sec;
 
-    UploadSpeed(const IO_Event::IO_UploadSpeed_Body &data);
+    UploadSpeed(const IoEvent::UploadSpeed_Body &data);
   };
 
   struct DownloadSpeed {
     uint64_t bytes_per_sec;
 
-    DownloadSpeed(const IO_Event::IO_DownloadSpeed_Body &data);
+    DownloadSpeed(const IoEvent::DownloadSpeed_Body &data);
   };
 
   struct Tray {
@@ -133,27 +133,27 @@ struct Event {
       QList<MenuItem> items;
       QIcon icon;
 
-      AppAdded(const IO_Event::IO_TrayAppAdded_Body &data);
+      AppAdded(const IoEvent::TrayAppAdded_Body &data);
     };
 
     struct AppIconUpdated {
       uint32_t service;
       QIcon icon;
 
-      AppIconUpdated(const IO_Event::IO_TrayAppIconUpdated_Body &data);
+      AppIconUpdated(const IoEvent::TrayAppIconUpdated_Body &data);
     };
 
     struct AppMenuUpdated {
       uint32_t service;
       QList<MenuItem> items;
 
-      AppMenuUpdated(const IO_Event::IO_TrayAppMenuUpdated_Body &data);
+      AppMenuUpdated(const IoEvent::TrayAppMenuUpdated_Body &data);
     };
 
     struct AppRemoved {
       uint32_t service;
 
-      AppRemoved(const IO_Event::IO_TrayAppRemoved_Body &data);
+      AppRemoved(const IoEvent::TrayAppRemoved_Body &data);
     };
   };
 
@@ -163,14 +163,14 @@ struct Event {
     Kind kind;
     bool enabled;
 
-    KbModToggled(const IO_Event::IO_KbModToggled_Body &data);
+    KbModToggled(const IoEvent::KbModToggled_Body &data);
   };
 
   struct Sound {
     uint8_t volume;
     bool muted;
 
-    Sound(const IO_Event::IO_Sound_Body &data);
+    Sound(const IoEvent::Sound_Body &data);
   };
 
   struct ToggleSessionScreen {};
@@ -182,7 +182,7 @@ struct Event {
                    Tray::AppMenuUpdated, Tray::AppRemoved, KbModToggled, Sound,
                    ToggleSessionScreen, Exit>;
 
-  static Event from(const IO_Event &event);
+  static Event from(const IoEvent &nt);
 
   const Value &value() const;
 

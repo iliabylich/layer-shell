@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     command::Command,
     config::Config,
     emitter::Emitter,
@@ -63,7 +63,7 @@ impl IO {
     }
 
     pub(crate) fn new(
-        callback: extern "C" fn(event: &Event, *mut core::ffi::c_void),
+        callback: extern "C" fn(event: &IoEvent, *mut core::ffi::c_void),
         data: *mut core::ffi::c_void,
     ) -> Result<Self> {
         let config = Config::read()?;

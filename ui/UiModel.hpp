@@ -32,7 +32,7 @@ public:
   explicit UiModel(QObject *parent = nullptr);
   ~UiModel() override;
 
-  IO_IO *getIO() const;
+  IO *getIO() const;
 
   void changeWallpaper();
   void lock();
@@ -69,8 +69,8 @@ Q_SIGNALS:
   void exitRequested();
 
 private:
-  static void eventReceived(const IO_Event *event, void *data);
-  void handleEvent(const struct IO_Event &event);
+  static void eventReceived(const IoEvent *event, void *data);
+  void handleEvent(const struct IoEvent &event);
 
   void operator()(const Event::Memory &e);
   void operator()(const Event::CPU &e);
@@ -89,6 +89,6 @@ private:
   void operator()(const Event::ToggleSessionScreen &e);
   void operator()(const Event::Exit &e);
 
-  IO_IO *io;
+  IO *io;
   QSocketNotifier *io_notifier_ = nullptr;
 };

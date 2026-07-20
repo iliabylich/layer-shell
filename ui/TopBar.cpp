@@ -80,7 +80,7 @@ public:
 
 class Terminal : public __Button {
 public:
-  explicit Terminal(TopBar *parent, IO_IO *io)
+  explicit Terminal(TopBar *parent, IO *io)
       : __Button(Config::getTerminalLabel(io)) {
     setObjectName("Terminal");
 
@@ -208,7 +208,7 @@ public:
   }
 };
 
-TopBar::TopBar(UiModel *model, IO_IO *io) : Overlay(model), model(model) {
+TopBar::TopBar(UiModel *model, IO *io) : Overlay(model), model(model) {
   setObjectName("TopBarOverlay");
   setFixedHeight(TopBarHeight);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);

@@ -2,17 +2,12 @@ language = "C++"
 
 pragma_once = true
 usize_is_size_t = true
-# style = "both"
 
 includes = ["src/bindgen-fix.h"]
 
 [parse]
 parse_deps = false
 include = []
-
-[export]
-prefix = "IO_"
-include = ["TrayItem"]
 
 [fn]
 must_use = "__attribute__((warn_unused_result))"

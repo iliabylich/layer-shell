@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{ArrayWriter, FixedSizeBuffer, StringRef, StringRefExt, getenv, new_sockaddr_un},
@@ -64,16 +64,16 @@ impl Tray {
                     service,
                     icon,
                     menu,
-                } => Event::TrayAppAdded {
+                } => IoEvent::TrayAppAdded {
                     service,
                     menu,
                     icon: StringRef::new(icon.as_str()?),
                 },
-                TrayEvent::AppRemoved { service } => Event::TrayAppRemoved { service },
+                TrayEvent::AppRemoved { service } => IoEvent::TrayAppRemoved { service },
                 TrayEvent::MenuUpdated { service, menu } => {
-                    Event::TrayAppMenuUpdated { service, menu }
+                    IoEvent::TrayAppMenuUpdated { service, menu }
                 }
-                TrayEvent::IconUpdated { service, icon } => Event::TrayAppIconUpdated {
+                TrayEvent::IconUpdated { service, icon } => IoEvent::TrayAppIconUpdated {
                     service,
                     icon: StringRef::new(icon.as_str()?),
                 },

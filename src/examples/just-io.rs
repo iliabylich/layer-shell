@@ -1,14 +1,14 @@
 #![no_std]
 
 use core::sync::atomic::{AtomicBool, Ordering};
-use layer_shell_io::{Event, io_deinit, io_handle_readable, io_init, io_wait_readable};
+use layer_shell_io::{IoEvent, io_deinit, io_handle_readable, io_init, io_wait_readable};
 
 static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
 
-extern "C" fn on_event(event: &Event, _data: *mut core::ffi::c_void) {
+extern "C" fn on_event(event: &IoEvent, _data: *mut core::ffi::c_void) {
     log::trace!(target: "just-io", "{event:?}");
 
-    if matches!(event, Event::Exit) {
+    if matches!(event, IoEvent::Exit) {
         SHOULD_EXIT.store(true, Ordering::Relaxed);
     }
 }

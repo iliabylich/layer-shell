@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{FileReader, Satisfy, Wants},
 };
@@ -33,7 +33,7 @@ impl Memory {
         };
 
         let (used, total) = parse(buf)?;
-        self.emitter.emit(&Event::Memory { used, total });
+        self.emitter.emit(&IoEvent::Memory { used, total });
         Ok(())
     }
 }

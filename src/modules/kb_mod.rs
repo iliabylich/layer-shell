@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{FixedSizeBuffer, new_sockaddr_un},
@@ -55,7 +55,7 @@ impl KbMod {
             };
 
             if self.events_left_to_drop == 0 {
-                self.emitter.emit(&Event::KbModToggled { kind, enabled });
+                self.emitter.emit(&IoEvent::KbModToggled { kind, enabled });
             }
             self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
         }

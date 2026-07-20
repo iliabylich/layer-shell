@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     utils::{NlSeparatedBuffer, StringRef, StringRefExt as _, get_json, getenv, new_sockaddr_un},
@@ -110,7 +110,7 @@ impl Niri {
                 lang = "??";
             }
 
-            self.emitter.emit(&Event::Language {
+            self.emitter.emit(&IoEvent::Language {
                 lang: StringRef::new(lang),
             });
         }

@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, Wants},
     utils::{ArrayWriter, getenv},
@@ -48,8 +48,8 @@ impl Control {
 
         if bytes_read == 1 {
             let event = match buf[0] {
-                b's' => Event::ToggleSessionScreen,
-                b'e' => Event::Exit,
+                b's' => IoEvent::ToggleSessionScreen,
+                b'e' => IoEvent::Exit,
                 _ => {
                     log::warn!(
                         "Control received unknown command over control UNIX socket: {}",

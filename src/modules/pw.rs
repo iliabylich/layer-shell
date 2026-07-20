@@ -1,5 +1,5 @@
 use crate::{
-    Event,
+    IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{ArrayWriter, FixedSizeBuffer, getenv, new_sockaddr_un},
@@ -66,7 +66,7 @@ impl PW {
                 && let Some(muted) = self.muted
             {
                 if self.events_left_to_drop == 0 {
-                    self.emitter.emit(&Event::Sound { volume, muted });
+                    self.emitter.emit(&IoEvent::Sound { volume, muted });
                 }
                 self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
             }

@@ -52,10 +52,11 @@ mod utils;
 use core::ptr::NonNull;
 
 use command::Command;
-pub use event::Event;
+pub use event::IoEvent;
 
 use crate::{io::IO, utils::StringRef};
 use anyhow::{Context, Result};
+pub use utils::FixedSizeArrray;
 
 fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
     match f() {
@@ -69,7 +70,7 @@ fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init(
-    callback: extern "C" fn(event: &Event, *mut core::ffi::c_void),
+    callback: extern "C" fn(event: &IoEvent, *mut core::ffi::c_void),
     data: *mut core::ffi::c_void,
 ) -> NonNull<IO> {
     logger::init();
