@@ -56,6 +56,7 @@ pub use event::IoEvent;
 
 use crate::{io::IO, utils::StringRef};
 use anyhow::{Context, Result};
+pub use modules::{TrayElement, TrayLabel, TrayMenu};
 pub use utils::FixedSizeArrray;
 
 fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {

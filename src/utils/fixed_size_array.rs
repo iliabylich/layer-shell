@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 
+#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct FixedSizeArrray<const N: usize, T> {
     items: [T; N],
@@ -17,7 +18,7 @@ impl<const N: usize, T> FixedSizeArrray<N, T> {
         }
     }
 
-    pub(crate) fn filled(item: T, count: usize) -> Self
+    pub(crate) const fn filled(item: T, count: usize) -> Self
     where
         T: Copy,
     {

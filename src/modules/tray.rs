@@ -1,5 +1,5 @@
 use crate::{
-    IoEvent,
+    FixedSizeArrray, IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{ArrayWriter, FixedSizeBuffer, StringRef, StringRefExt, getenv, new_sockaddr_un},
@@ -96,7 +96,7 @@ impl Tray {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 #[must_use]
 #[expect(clippy::large_enum_variant)]
 enum TrayEvent {
@@ -158,23 +158,32 @@ impl TrayEvent {
 
 pub const TRAY_MENU_ITEMS_COUNT: usize = 20;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
-pub struct TrayMenu(pub [MaybeRootTrayElement; TRAY_MENU_ITEMS_COUNT]);
+pub struct TrayMenu(pub FixedSizeArrray<TRAY_MENU_ITEMS_COUNT, MaybeRootTrayElement>);
 
 impl TrayMenu {
     const SERIALIZED_BYTESIZE: usize = TRAY_MENU_ITEMS_COUNT * TrayElement::SERIALIZED_BYTESIZE;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Default)]
 #[must_use]
 #[repr(C)]
 pub struct MaybeRootTrayElement {
     root: bool,
     element: TrayElement,
 }
+impl core::fmt::Debug for MaybeRootTrayElement {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if self.root {
+            write!(f, "Root({:?})", self.element)
+        } else {
+            write!(f, "Child({:?})", self.element)
+        }
+    }
+}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default)]
 #[must_use]
 #[repr(C)]
 pub enum TrayElement {
@@ -206,6 +215,7 @@ pub enum TrayElement {
         child_start_idx: u64,
         child_end_idx: u64,
     },
+    #[default]
     None,
 }
 impl TrayElement {
@@ -302,7 +312,7 @@ impl TrayElement {
 
 pub const TRAY_LABEL_BYTESIZE: usize = 50;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 #[must_use]
 #[repr(C)]
 pub struct TrayLabel {
@@ -336,7 +346,7 @@ impl core::fmt::Debug for TrayLabel {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 #[must_use]
 pub(crate) struct TrayFixedSizeString {
     buf: [u8; Self::STR_BYTESIZE],
@@ -421,13 +431,14 @@ fn read_element(buf: &mut &[u8]) -> Option<(TrayElement, bool)> {
     Some((text, root))
 }
 fn read_menu(buf: &mut &[u8]) -> Option<TrayMenu> {
-    let mut menu = [MaybeRootTrayElement {
-        root: false,
-        element: TrayElement::None,
-    }; TRAY_MENU_ITEMS_COUNT];
-    for menu_item in &mut menu {
+    let mut menu = FixedSizeArrray::new();
+    for _ in 0..TRAY_MENU_ITEMS_COUNT {
         let (element, root) = read_element(buf)?;
-        *menu_item = MaybeRootTrayElement { root, element };
+        if matches!(element, TrayElement::None) {
+            break;
+        }
+        menu.push(MaybeRootTrayElement { root, element })
+            .unwrap_or_else(|_| unreachable!("constants don't match"));
     }
     Some(TrayMenu(menu))
 }

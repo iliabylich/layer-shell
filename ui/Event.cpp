@@ -73,7 +73,7 @@ QVector<Event::Tray::MenuItem> map_children_at(const TrayMenu &menu,
 
 Event::Tray::MenuItem map_item_at(const TrayMenu &menu, size_t idx,
                                   uint32_t service) {
-  auto item = menu._0[idx].element;
+  auto item = menu._0.items[idx].element;
   switch (item.tag) {
   case TrayElement::Tag::Regular:
     return Event::Tray::MenuItem{
@@ -131,8 +131,8 @@ Event::Tray::MenuItem map_item_at(const TrayMenu &menu, size_t idx,
 QVector<Event::Tray::MenuItem> map_root_items(const TrayMenu &menu,
                                               uint32_t service) {
   QVector<Event::Tray::MenuItem> out;
-  for (size_t i = 0; i < TRAY_MENU_ITEMS_COUNT; i++) {
-    auto item = menu._0[i];
+  for (size_t i = 0; i < menu._0.count; i++) {
+    auto item = menu._0.items[i];
     if (!item.root) {
       break;
     }
