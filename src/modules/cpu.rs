@@ -3,14 +3,15 @@ use crate::{
     emitter::Emitter,
     sansio::{FileReader, Satisfy, Wants},
 };
-use alloc::{vec, vec::Vec};
 use anyhow::{Context as _, Result, bail};
 
 pub(crate) struct Cpu {
     reader: FileReader,
-    state: Option<Vec<CoreUsage>>,
+    state: Option<([CoreUsage; MAX_CPU_COUNT], usize)>,
     emitter: Emitter,
 }
+
+pub const MAX_CPU_COUNT: usize = 32;
 
 impl Cpu {
     pub(crate) fn new(emitter: Emitter) -> Result<Self> {
@@ -37,25 +38,38 @@ impl Cpu {
         let prev = self.state.take();
         let next = CoreUsage::parse_many(buf)?;
 
-        let usage_per_core = diff(prev.as_deref(), &next)?.into();
+        let (usage_per_core, count) = diff(prev.as_ref(), &next)?;
         self.state = Some(next);
-        self.emitter.emit(&Event::CpuUsage { usage_per_core });
+        self.emitter.emit(&Event::CpuUsage {
+            usage_per_core,
+            count,
+        });
         Ok(())
     }
 }
 
-fn diff(prev: Option<&[CoreUsage]>, next: &[CoreUsage]) -> Result<Vec<u8>> {
-    let Some(prev) = prev else {
-        return Ok(vec![0; next.len()]);
+fn diff(
+    prev: Option<&([CoreUsage; MAX_CPU_COUNT], usize)>,
+    (next, nextlen): &([CoreUsage; MAX_CPU_COUNT], usize),
+) -> Result<([u8; MAX_CPU_COUNT], usize)> {
+    let Some((prev, prevlen)) = prev else {
+        return Ok(([0; _], *nextlen));
     };
 
-    prev.iter()
-        .zip(next.iter())
-        .map(|(prev, next)| next.load_comparing_to(*prev))
-        .collect()
+    debug_assert_eq!(prevlen, nextlen);
+    let len = *nextlen;
+
+    let mut out = [0; _];
+
+    for (idx, (prev, next)) in prev.iter().zip(next).take(len).enumerate() {
+        let slot = out.get_mut(idx).context("malformed state")?;
+        *slot = next.load_comparing_to(*prev)?;
+    }
+
+    Ok((out, len))
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct CoreUsage {
     pub(crate) id: u8,
     pub(crate) idle: u64,
@@ -63,17 +77,25 @@ pub(crate) struct CoreUsage {
 }
 
 impl CoreUsage {
-    pub(crate) fn parse_many(buf: &[u8]) -> Result<Vec<Self>> {
+    pub(crate) fn parse_many(buf: &[u8]) -> Result<([Self; MAX_CPU_COUNT], usize)> {
         let s = core::str::from_utf8(buf).context("decoding error")?;
 
         let is_cpu_line = |line: &str| -> bool {
             line.starts_with("cpu") && line.as_bytes().get(3).is_some_and(u8::is_ascii_digit)
         };
 
-        s.lines()
-            .filter(|line| is_cpu_line(line))
-            .map(Self::parse)
-            .collect()
+        let mut out = [Self::default(); _];
+        let mut count = 0;
+
+        for line in s.lines() {
+            if is_cpu_line(line) {
+                let slot = out.get_mut(count).context("too many CPU cores")?;
+                *slot = Self::parse(line)?;
+                count += 1;
+            }
+        }
+
+        Ok((out, count))
     }
 
     fn parse(line: &str) -> Result<Self> {

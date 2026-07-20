@@ -22,6 +22,7 @@ pub(crate) use timer::Timer;
 pub(crate) use tray::{Tray, TrayMenu};
 pub(crate) use weather::Weather;
 
+pub use cpu::MAX_CPU_COUNT;
 pub use kb_mod::KbModKind;
 pub use weather::{
     DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, WeatherCode, WeatherOnDay,

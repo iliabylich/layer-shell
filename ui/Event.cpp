@@ -7,8 +7,8 @@ Event::Memory::Memory(const IO_Event::IO_Memory_Body &data)
     : used(data.used), total(data.total) {}
 
 Event::CPU::CPU(const IO_Event::IO_CpuUsage_Body &data) {
-  for (size_t i = 0; i < data.usage_per_core.len; i++) {
-    usage_per_core.push_front(data.usage_per_core.ptr[i]);
+  for (size_t i = 0; i < data.count; i++) {
+    usage_per_core.push_front(data.usage_per_core[i]);
   }
 }
 

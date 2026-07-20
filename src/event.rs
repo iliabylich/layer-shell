@@ -1,8 +1,7 @@
 use crate::{
-    ffi::FFIArray,
     modules::{
-        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind, TrayMenu,
-        WeatherCode, WeatherOnDay, WeatherOnHour,
+        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind, MAX_CPU_COUNT,
+        TrayMenu, WeatherCode, WeatherOnDay, WeatherOnHour,
     },
     utils::StringRef,
 };
@@ -16,7 +15,8 @@ pub enum Event {
         total: f64,
     },
     CpuUsage {
-        usage_per_core: FFIArray<u8>,
+        usage_per_core: [u8; MAX_CPU_COUNT],
+        count: usize,
     },
     Time {
         now: StringRef,

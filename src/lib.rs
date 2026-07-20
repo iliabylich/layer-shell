@@ -41,7 +41,6 @@ mod event;
     clippy::use_self
 )]
 mod external;
-mod ffi;
 mod io;
 mod liburing;
 mod logger;
@@ -54,7 +53,6 @@ use core::ptr::NonNull;
 
 use command::Command;
 pub use event::Event;
-pub use ffi::FFIArray;
 
 use crate::{io::IO, utils::StringRef};
 use anyhow::{Context, Result};
