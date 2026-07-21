@@ -1,5 +1,7 @@
-use crate::utils::{ArrayWriter, StringRef, StringRefExt as _, getenv};
-use alloc::vec::Vec;
+use crate::{
+    FixedSizeArrray,
+    utils::{ArrayWriter, StringRef, StringRefExt as _, getenv},
+};
 use anyhow::{Context as _, Result, bail, ensure};
 use core::fmt::Write;
 use libc::{O_RDONLY, close, open, read};
@@ -15,13 +17,13 @@ pub(crate) struct Config {
     pub(crate) open_system_monitor: StringRef,
     pub(crate) change_wallpaper: StringRef,
 
-    pub(crate) ping: Vec<StringRef>,
+    pub(crate) ping: FixedSizeArrray<10, StringRef>,
     pub(crate) terminal: Terminal,
 }
 #[derive(Debug)]
 pub(crate) struct Terminal {
     pub(crate) label: StringRef,
-    pub(crate) command: Vec<StringRef>,
+    pub(crate) command: FixedSizeArrray<10, StringRef>,
 }
 
 impl Config {
@@ -111,13 +113,24 @@ impl Config {
             edit_bluetooth: StringRef::new(edit_bluetooth),
             open_system_monitor: StringRef::new(open_system_monitor),
             change_wallpaper: StringRef::new(change_wallpaper),
-            ping: ping.split_whitespace().map(StringRef::new).collect(),
+            ping: {
+                let mut out = FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
+                for part in ping.split_whitespace() {
+                    let part = StringRef::new(part);
+                    out.push(part)?;
+                }
+                out
+            },
             terminal: Terminal {
                 label: StringRef::new(terminal_label),
-                command: terminal_command
-                    .split_whitespace()
-                    .map(StringRef::new)
-                    .collect(),
+                command: {
+                    let mut out = FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
+                    for part in terminal_command.split_whitespace() {
+                        let part = StringRef::new(part);
+                        out.push(part)?;
+                    }
+                    out
+                },
             },
         })
     }

@@ -28,6 +28,14 @@ impl<const N: usize, T> FixedSizeArrray<N, T> {
         }
     }
 
+    pub(crate) fn empty_with_default_fn<F>(f: F) -> Self
+    where
+        F: Fn() -> T,
+    {
+        let items: [T; N] = core::array::from_fn(|_idx| f());
+        Self { items, count: 0 }
+    }
+
     pub(crate) fn push(&mut self, item: T) -> Result<()> {
         let slot = self
             .items
@@ -52,6 +60,10 @@ impl<const N: usize, T> FixedSizeArrray<N, T> {
             None
         }
     }
+
+    pub(crate) const fn as_ptr(&self) -> *const T {
+        self.items.as_ptr()
+    }
 }
 
 impl<const N: usize, T> core::fmt::Debug for FixedSizeArrray<N, T>
@@ -66,6 +78,7 @@ where
             }
             write!(f, "{item:?}")?;
         }
+        write!(f, "]")?;
         Ok(())
     }
 }

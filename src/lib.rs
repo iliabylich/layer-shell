@@ -21,8 +21,6 @@
 #![expect(clippy::arithmetic_side_effects)]
 #![expect(clippy::missing_safety_doc)]
 
-extern crate alloc;
-
 mod command;
 mod config;
 mod emitter;

@@ -1,13 +1,8 @@
 use crate::{
-    IoEvent,
+    FixedSizeArrray, IoEvent,
     emitter::Emitter,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
     utils::{NlSeparatedBuffer, StringRef, StringRefExt as _, get_json, getenv, new_sockaddr_un},
-};
-use alloc::{
-    string::{String, ToString},
-    vec,
-    vec::Vec,
 };
 use anyhow::{Context, Result};
 use libc::sockaddr_un;
@@ -21,7 +16,7 @@ enum State {
 
 pub(crate) struct Niri {
     state: State,
-    layouts: Vec<String>,
+    layouts: FixedSizeArrray<10, StringRef>,
     emitter: Emitter,
 }
 
@@ -32,10 +27,10 @@ impl Niri {
         Ok(addr)
     }
 
-    pub(crate) const fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
         Self {
             state: State::Writer(UnixSocketOneshotWriter::new(b"\"EventStream\"\n")),
-            layouts: vec![],
+            layouts: FixedSizeArrray::empty_with_default_fn(|| StringRef::new("")),
             emitter,
         }
     }
@@ -122,7 +117,7 @@ impl Niri {
 #[derive(Debug)]
 pub(crate) enum NiriEvent {
     KeyboardLayoutsChanged {
-        layout_names: Vec<String>,
+        layout_names: FixedSizeArrray<10, StringRef>,
         current_idx: usize,
     },
     KeyboardLayoutSwitched {
@@ -168,18 +163,18 @@ impl NiriEvent {
             .get_key_value("names")
             .map_err(|err| anyhow::anyhow!(err))?
             .iter_array()
-            .map_err(|err| anyhow::anyhow!(err))?
-            .map(|name| {
-                name.read_string()
-                    .map(ToString::to_string)
-                    .map_err(|err| anyhow::anyhow!(err))
-            })
-            .collect::<Result<Vec<_>>>()?;
+            .map_err(|err| anyhow::anyhow!(err))?;
+
+        let mut layout_names = FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
+        for name in names {
+            let name = name.read_string().map_err(|err| anyhow::anyhow!(err))?;
+            layout_names.push(StringRef::new(name))?;
+        }
 
         let current_idx = get_json!(keyboard_layouts, "current_idx", read_integer);
         let current_idx = usize::try_from(current_idx).context("negative keyboard current_idx")?;
         Ok(Self::KeyboardLayoutsChanged {
-            layout_names: names,
+            layout_names,
             current_idx,
         })
     }

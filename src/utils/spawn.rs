@@ -1,5 +1,7 @@
-use crate::utils::{StringRef, StringRefExt as _, getenv};
-use alloc::vec::Vec;
+use crate::{
+    FixedSizeArrray,
+    utils::{StringRef, StringRefExt as _, getenv},
+};
 use anyhow::{Context as _, Result, bail};
 use libc::{_exit, O_WRONLY, STDERR_FILENO, STDOUT_FILENO, close, dup2, execvp, fork, open};
 
@@ -9,14 +11,21 @@ fn try_spawn(cmd: &str) -> Result<()> {
 
     let mut cmd = cmd.split_whitespace();
     let exe = StringRef::new(cmd.next().context("command can't be parsed")?);
-    let argv = core::iter::once(exe.clone())
-        .chain(cmd.map(|arg| StringRef::new(&arg.replace('~', home))))
-        .collect::<Vec<_>>();
-    let mut c_argv = argv
-        .iter()
-        .map(|arg| arg.as_const_ptr().cast_mut())
-        .collect::<Vec<_>>();
-    c_argv.push(core::ptr::null_mut());
+
+    let mut argv: FixedSizeArrray<10, StringRef> =
+        FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
+    argv.push(exe.clone())?;
+    for arg in cmd {
+        let arg = StringRef::new(&arg.replace('~', home));
+        argv.push(arg)?;
+    }
+
+    let mut c_argv = FixedSizeArrray::<10, *mut i8>::new();
+    for idx in 0..argv.len() {
+        let arg = argv.get(idx).context("malformed state")?;
+        c_argv.push(arg.as_const_ptr().cast_mut())?;
+    }
+    c_argv.push(core::ptr::null_mut())?;
 
     unsafe {
         let childpid = fork();
