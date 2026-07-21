@@ -1,5 +1,4 @@
 use crate::sansio::Op;
-use anyhow::{Result, ensure};
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -16,8 +15,6 @@ pub(crate) enum ModuleId {
     Timer,
 }
 
-const MAX: ModuleId = ModuleId::Timer;
-
 impl ModuleId {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
@@ -33,23 +30,31 @@ impl ModuleId {
             Self::Timer => "Timer",
         }
     }
-}
 
-impl From<ModuleId> for u8 {
-    fn from(value: ModuleId) -> Self {
-        value as Self
-    }
-}
-
-impl TryFrom<u8> for ModuleId {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u8) -> Result<Self> {
-        ensure!(
-            value <= MAX as u8,
-            "received malformed ModuleId from io_uring: {value}"
-        );
-        Ok(unsafe { core::mem::transmute::<u8, Self>(value) })
+    fn new(value: u8) -> Self {
+        if value == Self::Weather as u8 {
+            Self::Weather
+        } else if value == Self::KbMod as u8 {
+            Self::KbMod
+        } else if value == Self::NM as u8 {
+            Self::NM
+        } else if value == Self::PW as u8 {
+            Self::PW
+        } else if value == Self::Niri as u8 {
+            Self::Niri
+        } else if value == Self::Tray as u8 {
+            Self::Tray
+        } else if value == Self::Control as u8 {
+            Self::Control
+        } else if value == Self::Cpu as u8 {
+            Self::Cpu
+        } else if value == Self::Memory as u8 {
+            Self::Memory
+        } else if value == Self::Timer as u8 {
+            Self::Timer
+        } else {
+            unreachable!("can't build ModuleId from {value}")
+        }
     }
 }
 
@@ -77,30 +82,24 @@ impl UserData {
             req: next_request_id(),
         }
     }
-}
 
-impl From<UserData> for u64 {
-    fn from(user_data: UserData) -> Self {
+    pub(crate) fn encode(self) -> u64 {
         let mut bytes = [0_u8; 8];
-        bytes[0] = user_data.module_id.into();
-        bytes[1] = user_data.op as u8;
-        bytes[2..6].copy_from_slice(&user_data.req.to_le_bytes());
-        Self::from_le_bytes(bytes)
+        bytes[0] = self.module_id as u8;
+        bytes[1] = self.op as u8;
+        bytes[2..6].copy_from_slice(&self.req.to_le_bytes());
+        u64::from_le_bytes(bytes)
     }
-}
 
-impl TryFrom<u64> for UserData {
-    type Error = anyhow::Error;
-
-    fn try_from(value: u64) -> Result<Self> {
+    pub(crate) fn decode(value: u64) -> Self {
         let bytes: [u8; 8] = value.to_le_bytes();
-        let module_id = ModuleId::try_from(bytes[0])?;
-        let op = Op::try_from(bytes[1])?;
+        let module_id = ModuleId::new(bytes[0]);
+        let op = Op::new(bytes[1]);
         let req = {
             let mut req = [0; 4];
             req.copy_from_slice(&bytes[2..6]);
             u32::from_le_bytes(req)
         };
-        Ok(Self { module_id, op, req })
+        Self { module_id, op, req }
     }
 }

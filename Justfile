@@ -43,7 +43,7 @@ strace-io:
     strace target/debug/examples/just-io
 
 io log="info":
-    RUST_BACKTRACE=1 RUST_LOG={{log}} cargo run --example just-io --features debug-backtrace
+    RUST_LOG={{log}} cargo run --example just-io
 
 test-install:
     @just clean

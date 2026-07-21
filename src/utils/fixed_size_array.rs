@@ -1,5 +1,3 @@
-use anyhow::{Context, Result};
-
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct FixedSizeArrray<const N: usize, T> {
@@ -36,17 +34,11 @@ impl<const N: usize, T> FixedSizeArrray<N, T> {
         Self { items, count: 0 }
     }
 
-    pub(crate) fn push(&mut self, item: T) -> Result<()> {
-        let slot = self
-            .items
-            .get_mut(self.count)
-            .context("fixed sized array overlow")?;
+    pub(crate) fn push(&mut self, item: T) -> Option<()> {
+        let slot = self.items.get_mut(self.count)?;
         *slot = item;
-        self.count = self
-            .count
-            .checked_add(1)
-            .context("too many items in fixed size array")?;
-        Ok(())
+        self.count = self.count.wrapping_add(1);
+        Some(())
     }
 
     pub(crate) const fn len(&self) -> usize {

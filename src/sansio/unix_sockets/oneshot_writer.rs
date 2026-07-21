@@ -1,6 +1,9 @@
-use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail};
+use crate::{
+    error::IoError,
+    sansio::{Satisfy, Wants},
+};
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
+use rustix::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct UnixSocketOneshotWriter {
@@ -14,11 +17,23 @@ enum State {
     ReadyToSocket,
     WaitingForSocket,
 
-    ReadyToConnect { fd: i32 },
-    WaitingForConnect { fd: i32 },
+    ReadyToConnect { fd: BorrowedFd<'static> },
+    WaitingForConnect { fd: BorrowedFd<'static> },
 
-    ReadyToWrite { fd: i32 },
-    WaitingForWrite { fd: i32 },
+    ReadyToWrite { fd: BorrowedFd<'static> },
+    WaitingForWrite { fd: BorrowedFd<'static> },
+}
+impl State {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::ReadyToSocket => "ReadyToSocket",
+            Self::WaitingForSocket => "WaitingForSocket",
+            Self::ReadyToConnect { .. } => "ReadyToConnect",
+            Self::WaitingForConnect { .. } => "WaitingForConnect",
+            Self::ReadyToWrite { .. } => "ReadyToWrite",
+            Self::WaitingForWrite { .. } => "WaitingForWrite",
+        }
+    }
 }
 
 impl UnixSocketOneshotWriter {
@@ -67,7 +82,10 @@ impl UnixSocketOneshotWriter {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<i32>> {
+    pub(crate) fn satisfy(
+        &mut self,
+        satisfy: Satisfy,
+    ) -> Result<Option<BorrowedFd<'static>>, IoError> {
         match (self.state, satisfy) {
             (State::WaitingForSocket, Satisfy::Socket(res)) => {
                 let fd = res?;
@@ -90,9 +108,10 @@ impl UnixSocketOneshotWriter {
                 }
             }
 
-            (state, satisfy) => {
-                bail!("malformed state: {state:?} vs {satisfy:?}")
-            }
+            _ => Err(IoError::WrongSatisfy {
+                state: self.state.as_str(),
+                satisfy: satisfy.as_str(),
+            }),
         }
     }
 }

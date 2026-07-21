@@ -1,9 +1,9 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
+    error::IoError,
     utils::{StringRef, StringRefExt},
 };
-use anyhow::{Context, Result, bail};
 use libc::{localtime_r, strftime, time, tm};
 
 #[derive(Clone, Copy)]
@@ -16,14 +16,14 @@ impl Clock {
         Self { emitter }
     }
 
-    pub(crate) fn tick(&self) -> Result<()> {
+    pub(crate) fn tick(&self) -> Result<(), IoError> {
         let now = local_time_string()?;
         self.emitter.emit(&IoEvent::Time { now });
         Ok(())
     }
 }
 
-fn local_time_string() -> Result<StringRef> {
+fn local_time_string() -> Result<StringRef, IoError> {
     unsafe {
         let mut now = 0;
         time(&raw mut now);
@@ -31,7 +31,7 @@ fn local_time_string() -> Result<StringRef> {
         let mut tm: tm = core::mem::zeroed();
 
         if localtime_r(&raw const now, &raw mut tm).is_null() {
-            bail!("failed to get time");
+            return Err(IoError::new_failed_to("localtime"));
         }
 
         let fmt = c"%H:%M:%S | %b %d | %a";
@@ -45,10 +45,15 @@ fn local_time_string() -> Result<StringRef> {
         );
 
         if n == 0 {
-            bail!("failed to format time");
+            return Err(IoError::new_failed_to("strftime"));
         }
 
-        let time = core::str::from_utf8(buf.get(..n).context("malfirmed localtime result")?)?;
+        let Some(buf) = buf.get(..n) else {
+            unreachable!("buffer is too short: {} vs {}", buf.len(), n);
+        };
+        let Ok(time) = core::str::from_utf8(buf) else {
+            unreachable!("non-utf8 strftime result")
+        };
         Ok(StringRef::new(time))
     }
 }

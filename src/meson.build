@@ -1,10 +1,12 @@
-find_program('cargo')
-cargo_args = ['--manifest-path', meson.project_source_root() / 'Cargo.toml']
+cargo = find_program('cargo')
+cargo_args = [
+    '--manifest-path', meson.project_source_root() / 'Cargo.toml',
+    '-p', 'layer-shell-io-staticlib',
+]
 if get_option('buildtype') == 'release'
     cargo_args += ['--release']
-else
-    cargo_args += ['--features debug-backtrace']
 endif
+cargo_args += ['--features standalone-staticlib']
 
 rustlib = custom_target(
     'liblayer_shell_io.a',

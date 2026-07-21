@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 #![expect(static_mut_refs)]
 #![warn(trivial_casts)]
 #![warn(trivial_numeric_casts)]
@@ -24,6 +24,7 @@
 mod command;
 mod config;
 mod emitter;
+mod error;
 mod event;
 
 /// cbindgen:ignore
@@ -43,6 +44,8 @@ mod io;
 mod liburing;
 mod logger;
 mod modules;
+#[cfg(feature = "standalone-staticlib")]
+mod panic_handler;
 mod sansio;
 mod user_data;
 mod utils;
@@ -53,19 +56,8 @@ use command::Command;
 pub use event::IoEvent;
 
 use crate::{io::IO, utils::StringRef};
-use anyhow::{Context, Result};
 pub use modules::{TrayElement, TrayLabel, TrayMenu};
 pub use utils::FixedSizeArrray;
-
-fn exit_if_err<T>(f: impl FnOnce() -> Result<T>) -> T {
-    match f() {
-        Ok(out) => out,
-        Err(err) => {
-            log::error!("error returned: {err:?}");
-            unsafe { libc::exit(1) };
-        }
-    }
-}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init(
@@ -74,16 +66,24 @@ pub extern "C" fn io_init(
 ) -> NonNull<IO> {
     logger::init();
 
-    exit_if_err(|| {
-        Ok(unsafe {
-            let mut ptr = NonNull::new(libc::malloc(size_of::<IO>()))
-                .context("failed to malloc IO")?
-                .cast::<IO>();
-            ptr.write(IO::new(callback, data)?);
-            ptr.as_mut().start();
-            ptr
-        })
-    })
+    unsafe {
+        let mut ptr = NonNull::new(libc::malloc(size_of::<IO>()))
+            .unwrap_or_else(|| {
+                log::error!("failed to malloc()");
+                libc::exit(1);
+            })
+            .cast::<IO>();
+        let io = match IO::new(callback, data) {
+            Ok(io) => io,
+            Err(err) => {
+                log::error!("failed to build IO: {err:?}");
+                libc::exit(1);
+            }
+        };
+        ptr.write(io);
+        ptr.as_mut().start();
+        ptr
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -97,10 +97,8 @@ pub unsafe extern "C" fn io_deinit(mut io: NonNull<IO>) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_handle_readable(mut io: NonNull<IO>) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
-        io.handle_readable()
-    });
+    let io = unsafe { io.as_mut() };
+    io.handle_readable();
 }
 
 #[unsafe(no_mangle)]
@@ -137,12 +135,9 @@ pub unsafe extern "C" fn io_logout(mut io: NonNull<IO>) {
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, service: u32, id: i32) {
-    exit_if_err(move || {
-        let io = unsafe { io.as_mut() };
+    let io = unsafe { io.as_mut() };
 
-        io.process_command(Command::TriggerTray { service, id });
-        Ok(())
-    });
+    io.process_command(Command::TriggerTray { service, id });
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn io_spawn_wifi_editor(mut io: NonNull<IO>) {

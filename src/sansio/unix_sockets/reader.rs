@@ -1,18 +1,21 @@
-use crate::sansio::{Satisfy, Wants};
-use anyhow::{Result, bail, ensure};
+use crate::{
+    error::IoError,
+    sansio::{Satisfy, Wants},
+};
 use core::mem::size_of;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
+use rustix::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum UnixSocketReader {
     ReadyToSocket,
     WaitingForSocket,
 
-    ReadyToConnect { fd: i32 },
-    WaitingForConnect { fd: i32 },
+    ReadyToConnect { fd: BorrowedFd<'static> },
+    WaitingForConnect { fd: BorrowedFd<'static> },
 
-    ReadyToRead { fd: i32 },
-    WaitingForRead { fd: i32 },
+    ReadyToRead { fd: BorrowedFd<'static> },
+    WaitingForRead { fd: BorrowedFd<'static> },
 }
 
 impl UnixSocketReader {
@@ -20,7 +23,7 @@ impl UnixSocketReader {
         Self::ReadyToSocket
     }
 
-    pub(crate) const fn new_connected_from_fd(fd: i32) -> Self {
+    pub(crate) const fn new_connected_from_fd(fd: BorrowedFd<'static>) -> Self {
         Self::ReadyToRead { fd }
     }
 
@@ -56,7 +59,7 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<usize>> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<usize>, IoError> {
         match (*self, satisfy) {
             (Self::WaitingForSocket, Satisfy::Socket(res)) => {
                 let fd = res?;
@@ -72,19 +75,22 @@ impl UnixSocketReader {
 
             (Self::WaitingForRead { fd }, Satisfy::Read(res)) => {
                 let bytes_read = res?;
-                ensure!(bytes_read != 0, "EOF");
+                if bytes_read == 0 {
+                    return Err(IoError::EofError);
+                }
                 *self = Self::ReadyToRead { fd };
 
                 Ok(Some(bytes_read))
             }
 
-            (state, satisfy) => {
-                bail!("malformed state: {state:?} vs {satisfy:?}")
-            }
+            _ => Err(IoError::WrongSatisfy {
+                state: self.as_str(),
+                satisfy: satisfy.as_str(),
+            }),
         }
     }
 
-    pub(crate) const fn fd(self) -> Option<i32> {
+    pub(crate) const fn fd(self) -> Option<BorrowedFd<'static>> {
         match self {
             Self::ReadyToSocket | Self::WaitingForSocket => None,
 
@@ -92,6 +98,17 @@ impl UnixSocketReader {
             | Self::WaitingForConnect { fd }
             | Self::ReadyToRead { fd }
             | Self::WaitingForRead { fd } => Some(fd),
+        }
+    }
+
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::ReadyToSocket => "ReadyToSocket",
+            Self::WaitingForSocket => "WaitingForSocket",
+            Self::ReadyToConnect { .. } => "ReadyToConnect",
+            Self::WaitingForConnect { .. } => "WaitingForConnect",
+            Self::ReadyToRead { .. } => "ReadyToRead",
+            Self::WaitingForRead { .. } => "WaitingForRead",
         }
     }
 }

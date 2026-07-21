@@ -10,6 +10,7 @@ use crate::{
 };
 use core::mem::MaybeUninit;
 use libc::{ETIME, exit, strerror};
+use rustix::fd::AsRawFd;
 
 mod cqe;
 mod sqe;
@@ -17,7 +18,9 @@ mod sqe;
 fn checkerr(errno: i32) {
     if errno < 0 {
         let str = unsafe { strerror(errno) };
-        let str = unsafe { core::ffi::CStr::from_ptr(str) }.to_string_lossy();
+        let str = unsafe { core::ffi::CStr::from_ptr(str) }
+            .to_str()
+            .unwrap_or("<non-utf8 strerror>");
         log::error!("IoUring error: {str:?}");
         unsafe { exit(1) }
     }
@@ -105,22 +108,27 @@ impl IoUring {
             }
             Wants::Connect { fd, addr, addrlen } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_connect(fd, addr, addrlen);
+                sqe.prep_connect(fd.as_raw_fd(), addr, addrlen);
                 sqe.set_user_data(UserData::new(module_id, Op::Connect));
             }
             Wants::Read { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_read(fd, buf, len);
+                sqe.prep_read(fd.as_raw_fd(), buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
             }
             Wants::Write { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_write(fd, buf, len);
+                sqe.prep_write(fd.as_raw_fd(), buf, len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::Accept { fd } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_accept(fd, core::ptr::null_mut(), core::ptr::null_mut(), 0);
+                sqe.prep_accept(
+                    fd.as_raw_fd(),
+                    core::ptr::null_mut(),
+                    core::ptr::null_mut(),
+                    0,
+                );
                 sqe.set_user_data(UserData::new(module_id, Op::Accept));
             }
         }

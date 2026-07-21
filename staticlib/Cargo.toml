@@ -1,0 +1,24 @@
+[package]
+name = "layer-shell-io-staticlib"
+version = "0.1.0"
+edition = "2024"
+build = "../build.rs"
+
+[lib]
+crate-type = ["staticlib"]
+name = "layer_shell_io"
+path = "../src/lib.rs"
+
+[dependencies]
+libc = { workspace = true }
+log = { workspace = true }
+microjson = { workspace = true }
+rustix = { workspace = true }
+string-bath = { workspace = true }
+thiserror = { workspace = true }
+
+[features]
+standalone-staticlib = []
+
+[build-dependencies]
+cc = { workspace = true }

@@ -1,10 +1,10 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
+    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{FixedSizeBuffer, new_sockaddr_un},
 };
-use anyhow::Result;
 use libc::sockaddr_un;
 
 #[derive(Clone, Copy)]
@@ -16,11 +16,7 @@ pub(crate) struct KbMod {
 
 impl KbMod {
     pub(crate) const BUFFER_SIZE: usize = 1;
-
-    pub(crate) fn address() -> Result<sockaddr_un> {
-        let addr = new_sockaddr_un(b"/run/kb-mod-monitor-systemd.sock")?;
-        Ok(addr)
-    }
+    pub(crate) const ADDRESS: sockaddr_un = new_sockaddr_un(b"/run/kb-mod-monitor-systemd.sock");
 
     pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
@@ -42,7 +38,7 @@ impl KbMod {
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<()> {
+    ) -> Result<(), IoError> {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {

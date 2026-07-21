@@ -1,6 +1,9 @@
-use crate::external::{
-    __liburing_prep_accept, __liburing_prep_connect, __liburing_prep_read, __liburing_prep_socket,
-    __liburing_prep_write, io_uring_sqe,
+use crate::{
+    external::{
+        __liburing_prep_accept, __liburing_prep_connect, __liburing_prep_read,
+        __liburing_prep_socket, __liburing_prep_write, io_uring_sqe,
+    },
+    user_data::UserData,
 };
 use libc::{sockaddr, socklen_t};
 
@@ -32,7 +35,7 @@ impl Sqe {
         unsafe { __liburing_prep_accept(self.sqe, fd, addr.cast(), addrlen, flags) }
     }
 
-    pub(crate) fn set_user_data(&mut self, data: impl Into<u64>) {
-        (unsafe { &mut *self.sqe }).user_data = data.into();
+    pub(crate) fn set_user_data(&mut self, data: UserData) {
+        (unsafe { &mut *self.sqe }).user_data = data.encode();
     }
 }

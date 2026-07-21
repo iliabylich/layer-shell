@@ -1,12 +1,12 @@
 use crate::{
     FixedSizeArrray, IoEvent,
     emitter::Emitter,
+    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{ArrayWriter, FixedSizeBuffer, StringRef, StringRefExt, getenv, new_sockaddr_un},
+    utils::{FixedSizeBuffer, StringRef, StringRefExt, new_sockaddr_un, write_in_place},
 };
-use anyhow::{Context, Result};
-use core::fmt::Write;
 use libc::sockaddr_un;
+use thiserror::Error;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Tray {
@@ -18,15 +18,10 @@ pub(crate) struct Tray {
 impl Tray {
     pub(crate) const BUFFER_SIZE: usize = TrayEvent::SERIALIZED_BYTESIZE;
 
-    pub(crate) fn address() -> Result<sockaddr_un> {
-        let xdg_runtime_dir =
-            core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
+    pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
         let mut buf = [0; 200];
-        let mut writer = ArrayWriter::new(&mut buf);
-        write!(&mut writer, "{xdg_runtime_dir}/tray-mon.sock")?;
-        let path = writer.as_bytes()?;
-        let addr = new_sockaddr_un(path)?;
-        Ok(addr)
+        let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/tray-mon.sock");
+        new_sockaddr_un(path)
     }
 
     pub(crate) const fn new(emitter: Emitter) -> Self {
@@ -49,7 +44,7 @@ impl Tray {
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<()> {
+    ) -> Result<(), IoError> {
         if matches!(satisfy, Satisfy::Write { .. }) {
             return Ok(());
         }
@@ -57,7 +52,7 @@ impl Tray {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {
-            let event = TrayEvent::deserialize(&buf).context("failed to deserialize TrayEvent")?;
+            let event = TrayEvent::deserialize(&buf).ok_or(TrayError::FailedToDeserialize)?;
 
             let event = match event {
                 TrayEvent::AppAdded {
@@ -67,7 +62,7 @@ impl Tray {
                 } => IoEvent::TrayAppAdded {
                     service,
                     menu,
-                    icon: StringRef::new(icon.as_str()?),
+                    icon: StringRef::new(icon.as_str().ok_or(TrayError::FailedToDeserialize)?),
                 },
                 TrayEvent::AppRemoved { service } => IoEvent::TrayAppRemoved { service },
                 TrayEvent::MenuUpdated { service, menu } => {
@@ -75,7 +70,7 @@ impl Tray {
                 }
                 TrayEvent::IconUpdated { service, icon } => IoEvent::TrayAppIconUpdated {
                     service,
-                    icon: StringRef::new(icon.as_str()?),
+                    icon: StringRef::new(icon.as_str().ok_or(TrayError::FailedToDeserialize)?),
                 },
             };
 
@@ -94,6 +89,12 @@ impl Tray {
             len: self.writebuf.len(),
         })
     }
+}
+
+#[derive(Debug, Error, Clone, Copy)]
+pub(crate) enum TrayError {
+    #[error("failed to deserialize tray event")]
+    FailedToDeserialize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -329,15 +330,12 @@ impl TrayLabel {
         Self { len, buf: s }
     }
 
-    fn as_bytes(&self) -> Result<&[u8]> {
-        self.buf
-            .get(..self.len as usize)
-            .context("malformed TrayFixedSizeString")
+    fn as_bytes(&self) -> Option<&[u8]> {
+        self.buf.get(..self.len as usize)
     }
 
-    fn as_str(&self) -> Result<&str> {
-        let s = core::str::from_utf8(self.as_bytes()?)?;
-        Ok(s)
+    fn as_str(&self) -> Option<&str> {
+        core::str::from_utf8(self.as_bytes()?).ok()
     }
 }
 impl core::fmt::Debug for TrayLabel {
@@ -363,15 +361,12 @@ impl TrayFixedSizeString {
         Self { len, buf: s }
     }
 
-    fn as_bytes(&self) -> Result<&[u8]> {
-        self.buf
-            .get(..self.len as usize)
-            .context("malformed TrayFixedSizeString")
+    fn as_bytes(&self) -> Option<&[u8]> {
+        self.buf.get(..self.len as usize)
     }
 
-    fn as_str(&self) -> Result<&str> {
-        let s = core::str::from_utf8(self.as_bytes()?)?;
-        Ok(s)
+    fn as_str(&self) -> Option<&str> {
+        core::str::from_utf8(self.as_bytes()?).ok()
     }
 }
 impl core::fmt::Debug for TrayFixedSizeString {
@@ -438,7 +433,7 @@ fn read_menu(buf: &mut &[u8]) -> Option<TrayMenu> {
             break;
         }
         menu.push(MaybeRootTrayElement { root, element })
-            .unwrap_or_else(|_| unreachable!("constants don't match"));
+            .ok_or_else(|| unreachable!("constants don't match"));
     }
     Some(TrayMenu(menu))
 }

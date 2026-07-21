@@ -1,14 +1,10 @@
 use libc::{AF_UNIX, sa_family_t, sockaddr_un};
 
-pub(crate) const fn new_sockaddr_un(
-    path: &[u8],
-) -> Result<sockaddr_un, PathIsTooLongForSockaddrUn> {
+pub(crate) const fn new_sockaddr_un(path: &[u8]) -> sockaddr_un {
     let mut addr: sockaddr_un = unsafe { core::mem::zeroed() };
     addr.sun_family = AF_UNIX as sa_family_t;
 
-    if path.len() >= addr.sun_path.len() {
-        return Err(PathIsTooLongForSockaddrUn);
-    }
+    assert!(path.len() < addr.sun_path.len(), "path is too long");
 
     let mut idx = 0;
     #[expect(clippy::indexing_slicing)]
@@ -17,14 +13,5 @@ pub(crate) const fn new_sockaddr_un(
         idx += 1;
     }
 
-    Ok(addr)
+    addr
 }
-
-#[derive(Debug)]
-pub(crate) struct PathIsTooLongForSockaddrUn;
-impl core::fmt::Display for PathIsTooLongForSockaddrUn {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "PathIsTooLongForSockaddrUn")
-    }
-}
-impl core::error::Error for PathIsTooLongForSockaddrUn {}

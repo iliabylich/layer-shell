@@ -42,10 +42,7 @@ impl log::Log for Logger {
         );
 
         let bytes = if res.is_ok() {
-            writer
-                .buf
-                .get(..writer.offset)
-                .unwrap_or(b"ERROR logger: malformed log buffer\n")
+            writer.as_bytes()
         } else {
             b"ERROR logger: log message does not fit into buffer\n"
         };

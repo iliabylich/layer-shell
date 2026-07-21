@@ -1,50 +1,46 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
+    error::IoError,
     sansio::{Satisfy, Wants},
-    utils::{ArrayWriter, getenv},
+    utils::write_in_place,
 };
-use anyhow::{Context, Result, bail};
-use core::fmt::Write;
 use rustix::{
-    fd::{AsRawFd, OwnedFd},
+    fd::{BorrowedFd, IntoRawFd},
     fs::Mode,
     io::Errno,
     net::{AddressFamily, SocketAddrUnix, SocketType},
 };
 
 pub(crate) struct Control {
-    fd: OwnedFd,
+    fd: BorrowedFd<'static>,
     emitter: Emitter,
 }
 
 impl Control {
-    pub(crate) fn new(emitter: Emitter) -> Result<Self> {
-        let xdg_runtime_dir =
-            core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
+    pub(crate) fn new(xdg_runtime_dir: &str, emitter: Emitter) -> Result<Self, IoError> {
         let mut buf = [0; 200];
-        let mut writer = ArrayWriter::new(&mut buf);
-        write!(&mut writer, "{xdg_runtime_dir}/layer-shell.sock")?;
-        let path = writer.as_str()?;
+        let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/layer-shell.sock");
         let fd = socket_at(path)?;
         Ok(Self { fd, emitter })
     }
 
-    pub(crate) fn wants(&self) -> Wants {
-        Wants::Accept {
-            fd: self.fd.as_raw_fd(),
-        }
+    pub(crate) const fn wants(&self) -> Wants {
+        Wants::Accept { fd: self.fd }
     }
 
-    pub(crate) fn satisfy(&self, satisfy: Satisfy) -> Result<()> {
+    pub(crate) fn satisfy(&self, satisfy: Satisfy) -> Result<(), IoError> {
         let Satisfy::Accept(fd) = satisfy else {
-            bail!("Control may only process prep_accept, received: {satisfy:?}");
+            return Err(IoError::WrongSatisfy {
+                satisfy: satisfy.as_str(),
+                state: "any",
+            });
         };
         let fd = fd?;
 
         let mut buf = [0_u8; 1];
-        let bytes_read = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
-        unsafe { libc::close(fd) };
+        let bytes_read = rustix::io::read(fd, &mut buf)
+            .map_err(|errno| IoError::FailedTo { op: "read", errno })?;
 
         if bytes_read == 1 {
             let event = match buf[0] {
@@ -66,35 +62,60 @@ impl Control {
     }
 }
 
-pub fn socket_at(socket_path: &str) -> Result<OwnedFd> {
+pub fn socket_at(socket_path: &[u8]) -> Result<BorrowedFd<'static>, IoError> {
     const SOMAXCONN: i32 = 4_096;
 
-    let addr = SocketAddrUnix::new(socket_path).map_err(|err| anyhow::anyhow!(err))?;
+    let addr = SocketAddrUnix::new(socket_path).map_err(|errno| IoError::FailedTo {
+        op: "create socket addr",
+        errno,
+    })?;
     ensure_addr_is_free(&addr)?;
 
-    let fd = rustix::net::socket(AddressFamily::UNIX, SocketType::STREAM, None)
-        .map_err(|err| anyhow::anyhow!(err))?;
+    let fd =
+        rustix::net::socket(AddressFamily::UNIX, SocketType::STREAM, None).map_err(|errno| {
+            IoError::FailedTo {
+                op: "socket",
+                errno,
+            }
+        })?;
 
     match rustix::fs::unlink(socket_path) {
         Ok(()) => {}
-        Err(err) if err == Errno::NOENT => {}
-        Err(err) if err == Errno::WOULDBLOCK => {}
-        Err(err) => return Err(anyhow::anyhow!(err)),
+        Err(errno) if errno == Errno::NOENT || errno == Errno::WOULDBLOCK => {}
+        Err(errno) => {
+            return Err(IoError::FailedTo {
+                op: "unlink",
+                errno,
+            });
+        }
     }
-    rustix::net::bind(&fd, &addr).map_err(|err| anyhow::anyhow!(err))?;
+    rustix::net::bind(&fd, &addr).map_err(|errno| IoError::FailedTo { op: "bind", errno })?;
     rustix::fs::chmod(socket_path, Mode::from_raw_mode(0o666))
-        .map_err(|err| anyhow::anyhow!(err))?;
-    rustix::net::listen(&fd, SOMAXCONN).map_err(|err| anyhow::anyhow!(err))?;
+        .map_err(|errno| IoError::FailedTo { op: "chmod", errno })?;
+    rustix::net::listen(&fd, SOMAXCONN).map_err(|errno| IoError::FailedTo {
+        op: "listen",
+        errno,
+    })?;
 
-    log::trace!("Listening on {socket_path}");
+    log::trace!("Listening on {addr:?}");
+
+    let fd = unsafe { BorrowedFd::borrow_raw(fd.into_raw_fd()) };
     Ok(fd)
 }
 
-fn ensure_addr_is_free(addr: &SocketAddrUnix) -> Result<()> {
-    let fd = rustix::net::socket(AddressFamily::UNIX, SocketType::STREAM, None)
-        .map_err(|err| anyhow::anyhow!(err))?;
+fn ensure_addr_is_free(addr: &SocketAddrUnix) -> Result<(), IoError> {
+    let fd =
+        rustix::net::socket(AddressFamily::UNIX, SocketType::STREAM, None).map_err(|errno| {
+            IoError::FailedTo {
+                op: "connect",
+                errno,
+            }
+        })?;
     if rustix::net::connect(&fd, addr).is_ok() {
-        bail!("there's already a server listenning at {addr:?}");
+        return Err(IoError::FailedTo {
+            op: "connect",
+            errno: Errno::ADDRINUSE,
+        });
     }
     Ok(())
 }

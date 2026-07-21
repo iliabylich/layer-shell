@@ -3,13 +3,13 @@ use crate::{
     command::Command,
     config::Config,
     emitter::Emitter,
+    error::IoError,
     liburing::IoUring,
     modules::{Clock, Control, Cpu, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
     sansio::Satisfy,
     user_data::{ModuleId, UserData},
-    utils::{FixedSizeBuffer, NlSeparatedBuffer, spawn},
+    utils::{FixedSizeBuffer, NlSeparatedBuffer, getenv, spawn},
 };
-use anyhow::Result;
 use libc::sockaddr_un;
 
 pub struct IO {
@@ -54,6 +54,12 @@ pub struct IO {
 
     control: Option<Control>,
     running: bool,
+
+    home: &'static str,
+    #[expect(dead_code)]
+    xdg_runtime_dir: &'static str,
+    #[expect(dead_code)]
+    xdg_config_dir: Option<&'static str>,
 }
 
 impl IO {
@@ -65,8 +71,26 @@ impl IO {
     pub(crate) fn new(
         callback: extern "C" fn(event: &IoEvent, *mut core::ffi::c_void),
         data: *mut core::ffi::c_void,
-    ) -> Result<Self> {
-        let config = Config::read()?;
+    ) -> Result<Self, IoError> {
+        let Some(home) = getenv(c"HOME") else {
+            unreachable!("no $HOME")
+        };
+        let Ok(home) = core::str::from_utf8(home) else {
+            unreachable!("non-utf8 $HOME")
+        };
+
+        let Some(xdg_runtime_dir) = getenv(c"XDG_RUNTIME_DIR") else {
+            unreachable!("no $XDG_RUNTIME_DIR")
+        };
+        let Ok(xdg_runtime_dir) = core::str::from_utf8(xdg_runtime_dir) else {
+            unreachable!("non-utf8 $XDG_RUNTIME_DIR")
+        };
+
+        let xdg_config_dir = getenv(c"XDG_CONFIG_DIR").map(|var| {
+            core::str::from_utf8(var).unwrap_or_else(|_| unreachable!("non-utf8 $XDG_CONFIG_DIR"))
+        });
+
+        let config = Config::read(xdg_config_dir, home)?;
         let emitter = Emitter::new(callback, data);
 
         let ring = IoUring::new(10, 0);
@@ -77,28 +101,28 @@ impl IO {
         let clock = Clock::new(emitter);
 
         let nm = NM::new(emitter);
-        let nm_addr = NM::address()?;
+        let nm_addr = NM::ADDRESS;
 
         let cpu = Cpu::new(emitter)?;
 
         let memory = Memory::new(emitter)?;
 
         let kb_mod = KbMod::new(emitter);
-        let kb_mod_addr = KbMod::address()?;
+        let kb_mod_addr = KbMod::ADDRESS;
 
         let niri = Niri::new(emitter);
         let niri_addr = Niri::address()?;
 
         let pw = PW::new(emitter);
-        let pw_addr = PW::address()?;
+        let pw_addr = PW::address(xdg_runtime_dir);
 
         let weather = Weather::new(emitter);
-        let weather_addr = Weather::address()?;
+        let weather_addr = Weather::address(xdg_runtime_dir);
 
         let tray = Tray::new(emitter);
-        let tray_addr = Tray::address()?;
+        let tray_addr = Tray::address(xdg_runtime_dir);
 
-        let control = Control::new(emitter)?;
+        let control = Control::new(xdg_runtime_dir, emitter)?;
 
         Ok(Self {
             ring,
@@ -142,6 +166,10 @@ impl IO {
 
             control: Some(control),
             running: true,
+
+            home,
+            xdg_runtime_dir,
+            xdg_config_dir,
         })
     }
 
@@ -160,16 +188,16 @@ impl IO {
         self.ring.submit_if_dirty();
     }
 
-    pub(crate) fn handle_readable(&mut self) -> Result<()> {
+    pub(crate) fn handle_readable(&mut self) {
         if !self.running {
-            return Ok(());
+            return;
         }
 
         while let Some(cqe) = self.ring.try_get_cqe() {
             let res = cqe.res();
             let user_data = cqe.user_data();
 
-            let UserData { module_id, op, .. } = UserData::try_from(user_data)?;
+            let UserData { module_id, op, .. } = UserData::decode(user_data);
             let satisfy = Satisfy::new(op, res);
             log::trace!(target: module_id.as_str(), "Satisfy {satisfy:?}");
 
@@ -190,8 +218,6 @@ impl IO {
         }
 
         self.ring.submit_if_dirty();
-
-        Ok(())
     }
 
     pub(crate) fn wait_readable(&mut self) {
@@ -204,14 +230,14 @@ impl IO {
         }
 
         match cmd {
-            Command::Lock => spawn(self.config.lock.as_str()),
-            Command::Reboot => spawn(self.config.reboot.as_str()),
-            Command::Shutdown => spawn(self.config.shutdown.as_str()),
-            Command::Logout => spawn(self.config.logout.as_str()),
-            Command::SpawnWiFiEditor => spawn(self.config.edit_wifi.as_str()),
-            Command::SpawnBluetoothEditor => spawn(self.config.edit_bluetooth.as_str()),
-            Command::SpawnSystemMonitor => spawn(self.config.open_system_monitor.as_str()),
-            Command::ChangeWallpaper => spawn(self.config.change_wallpaper.as_str()),
+            Command::Lock => self.spawn(self.config.lock.as_str()),
+            Command::Reboot => self.spawn(self.config.reboot.as_str()),
+            Command::Shutdown => self.spawn(self.config.shutdown.as_str()),
+            Command::Logout => self.spawn(self.config.logout.as_str()),
+            Command::SpawnWiFiEditor => self.spawn(self.config.edit_wifi.as_str()),
+            Command::SpawnBluetoothEditor => self.spawn(self.config.edit_bluetooth.as_str()),
+            Command::SpawnSystemMonitor => self.spawn(self.config.open_system_monitor.as_str()),
+            Command::ChangeWallpaper => self.spawn(self.config.change_wallpaper.as_str()),
 
             Command::TriggerTray { service, id } => {
                 if let Some(tray) = &mut self.tray
@@ -223,6 +249,10 @@ impl IO {
         }
 
         self.ring.submit_if_dirty();
+    }
+
+    pub(crate) fn spawn(&self, cmd: &str) {
+        spawn(cmd, self.home);
     }
 
     pub(crate) const fn fd(&self) -> i32 {

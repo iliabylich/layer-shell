@@ -3,29 +3,43 @@ name = "layer-shell-io"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [".", "staticlib"]
+
+[workspace.dependencies]
+cc = "1"
+libc = { version = "0.2", default-features = false }
+log = { version = "0.4", default-features = false }
+microjson = { version = "0.1", default-features = false }
+rustix = { version = "1.1", default-features = false, features = ["net", "fs"] }
+string-bath = { version = "0.2.4" }
+thiserror = { version = "2", default-features = false }
+
 [lib]
-crate-type = ["staticlib", "lib"]
 name = "layer_shell_io"
 
 [dependencies]
-anyhow = { version = "1", default-features = false }
-log = { version = "0.4", default-features = false }
-string-bath = { version = "0.2.4" }
-microjson = { version = "0.1", default-features = false }
-libc = { version = "0.2", default-features = false }
-rustix = { version = "1.1", default-features = false, features = ["net", "fs"] }
+libc = { workspace = true }
+log = { workspace = true }
+microjson = { workspace = true }
+rustix = { workspace = true }
+string-bath = { workspace = true }
+thiserror = { workspace = true }
 
 [features]
-debug-backtrace = ["anyhow/std", "anyhow/backtrace"]
+standalone-staticlib = []
 
 [build-dependencies]
-cc = "1"
+cc = { workspace = true }
 
 [profile.release]
 opt-level = "z"
 lto = true
 panic = "abort"
 codegen-units = 1
+
+[profile.dev]
+panic = "abort"
 
 [[example]]
 name = "just-io"

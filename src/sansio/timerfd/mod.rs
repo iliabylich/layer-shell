@@ -1,10 +1,13 @@
-use crate::sansio::{Satisfy, Wants};
-use anyhow::{Context, Result, bail, ensure};
+use crate::{
+    error::IoError,
+    sansio::{Satisfy, Wants},
+};
 use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
+use rustix::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct TimerFd {
-    fd: i32,
+    fd: BorrowedFd<'static>,
     ticks: u64,
     state: State,
 }
@@ -14,9 +17,17 @@ enum State {
     CanRead,
     WaitingForRead,
 }
+impl State {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::CanRead => "CanRead",
+            Self::WaitingForRead => "WaitingForRead",
+        }
+    }
+}
 
 impl TimerFd {
-    pub(crate) fn new() -> Result<Self> {
+    pub(crate) fn new() -> Result<Self, IoError> {
         Ok(Self {
             fd: create_timer()?,
             ticks: 0,
@@ -39,11 +50,21 @@ impl TimerFd {
         }
     }
 
-    pub(crate) fn try_satisfy(&mut self, satisfy: Satisfy, buf: [u8; 8]) -> Result<Option<u64>> {
+    pub(crate) fn try_satisfy(
+        &mut self,
+        satisfy: Satisfy,
+        buf: [u8; 8],
+    ) -> Result<Option<u64>, IoError> {
         match (self.state, satisfy) {
-            (State::WaitingForRead, Satisfy::Read(len)) => {
-                let bytes_read = len.context("TimerFd: read failed")?;
-                ensure!(bytes_read == buf.len());
+            (State::WaitingForRead, Satisfy::Read(res)) => {
+                let bytes_read = res?;
+                if bytes_read != buf.len() {
+                    unreachable!(
+                        "Timerfd: buffer is too short: {} vs {}",
+                        bytes_read,
+                        buf.len()
+                    );
+                }
                 let expirations = u64::from_ne_bytes(buf);
 
                 let ticks = self.ticks;
@@ -53,17 +74,21 @@ impl TimerFd {
                 Ok(Some(ticks))
             }
 
-            (state, unsupported) => {
-                bail!("unexpected satisfy for TimerFd in {state:?}: {unsupported:?}")
-            }
+            _ => Err(IoError::WrongSatisfy {
+                satisfy: satisfy.as_str(),
+                state: self.state.as_str(),
+            }),
         }
     }
 }
 
-fn create_timer() -> Result<i32> {
-    let fd = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
+fn create_timer() -> Result<BorrowedFd<'static>, IoError> {
+    let res = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
 
-    ensure!(fd != -1, "timerfd_create returned -1");
+    if res < 0 {
+        return Err(IoError::new_failed_to("timerfd_create"));
+    }
+    let fd = res;
 
     let timer_spec = itimerspec {
         it_interval: timespec {
@@ -78,7 +103,9 @@ fn create_timer() -> Result<i32> {
 
     let res = unsafe { timerfd_settime(fd, 0, &raw const timer_spec, core::ptr::null_mut()) };
 
-    ensure!(res != -1, "timerfd_settime returned -1");
+    if res < 0 {
+        return Err(IoError::new_failed_to("timerfd_settime"));
+    }
 
-    Ok(fd)
+    Ok(unsafe { BorrowedFd::borrow_raw(fd) })
 }

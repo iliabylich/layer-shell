@@ -1,11 +1,12 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
+    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{FixedSizeBuffer, StringRef, StringRefExt, new_sockaddr_un},
 };
-use anyhow::{Context, Result, bail};
 use libc::sockaddr_un;
+use thiserror::Error;
 
 #[derive(Clone, Copy)]
 pub(crate) struct NM {
@@ -16,11 +17,7 @@ pub(crate) struct NM {
 impl NM {
     pub(crate) const BUFFER_SIZE: usize = NMEvent::SERIALIZED_LENGTH;
     const SPEED_THRESHOLD: u64 = 5_000;
-
-    pub(crate) fn address() -> Result<sockaddr_un> {
-        let addr = new_sockaddr_un(b"/run/nm-mon-systemd.sock")?;
-        Ok(addr)
-    }
+    pub(crate) const ADDRESS: sockaddr_un = new_sockaddr_un(b"/run/nm-mon-systemd.sock");
 
     pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
@@ -41,7 +38,7 @@ impl NM {
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<()> {
+    ) -> Result<(), IoError> {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {
@@ -80,7 +77,7 @@ enum NMEvent {
 impl NMEvent {
     const SERIALIZED_LENGTH: usize = 32;
 
-    fn deserialize(buf: [u8; Self::SERIALIZED_LENGTH]) -> Result<Self> {
+    fn deserialize(buf: [u8; Self::SERIALIZED_LENGTH]) -> Result<Self, NMError> {
         match buf[0] {
             1 => Ok(Self::UploadSpeed {
                 bytes_per_sec: u64::from_be_bytes([
@@ -97,16 +94,24 @@ impl NMEvent {
             3 => Ok(Self::SsidAndStrength {
                 ssid: {
                     let len = u32::from_be_bytes([buf[4], buf[5], buf[6], buf[7]]) as usize;
-                    let bytes = &buf[8..].get(..len).context("message length is too big")?;
-                    let ssid = core::str::from_utf8(bytes).context("non-utf SSID")?;
+                    let bytes = buf[8..].get(..len).ok_or(NMError::SsidIsTooLong { len })?;
+                    let ssid = core::str::from_utf8(bytes).map_err(NMError::NonUtf8Ssid)?;
                     StringRef::new(ssid)
                 },
                 strength: buf[1],
             }),
 
-            _ => {
-                bail!("malformed byte sequence: {buf:?}")
-            }
+            kind => Err(NMError::MalformedByteSequence { kind }),
         }
     }
+}
+
+#[derive(Debug, Error, Clone, Copy)]
+pub(crate) enum NMError {
+    #[error("message length too big: {len}")]
+    SsidIsTooLong { len: usize },
+    #[error("non-utf8 SSID")]
+    NonUtf8Ssid(core::str::Utf8Error),
+    #[error("malformed network-manager byte sequence: {kind}")]
+    MalformedByteSequence { kind: u8 },
 }

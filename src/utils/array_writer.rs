@@ -1,8 +1,6 @@
-use anyhow::{Context, Result};
-
 pub(crate) struct ArrayWriter<'a> {
-    pub(crate) buf: &'a mut [u8],
-    pub(crate) offset: usize,
+    buf: &'a mut [u8],
+    offset: usize,
 }
 
 impl<'a> ArrayWriter<'a> {
@@ -10,14 +8,14 @@ impl<'a> ArrayWriter<'a> {
         ArrayWriter { buf, offset: 0 }
     }
 
-    pub(crate) fn as_bytes(&self) -> Result<&[u8]> {
-        self.buf
-            .get(..self.offset)
-            .context("malformed ArrayWriter's buffer")
+    pub(crate) const fn as_bytes(&self) -> &[u8] {
+        // SAFETY: self.offset is changed in `impl Write` so it's guaranteed to be valid
+        let (head, _tail) = unsafe { self.buf.split_at_unchecked(self.offset) };
+        head
     }
 
-    pub(crate) fn as_str(&self) -> Result<&str> {
-        core::str::from_utf8(self.as_bytes()?).context("non-utf8 ArrayWriter's buffer")
+    pub(crate) const fn offset(&self) -> usize {
+        self.offset
     }
 }
 
@@ -36,3 +34,15 @@ impl core::fmt::Write for ArrayWriter<'_> {
         Ok(())
     }
 }
+
+macro_rules! write_in_place {
+    ($buf:expr, $($arg:tt)*) => {{
+        use core::fmt::Write;
+        let mut writer = $crate::utils::ArrayWriter::new($buf);
+        write!(&mut writer, $($arg)+).unwrap_or_else(|_| unreachable!());
+        let offset = writer.offset();
+        let (head, _tail) = $buf.split_at_checked(offset).unwrap_or_else(|| unreachable!("Write for ArrayWriter has a bug"));
+        head
+    }};
+}
+pub(crate) use write_in_place;

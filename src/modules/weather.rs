@@ -1,11 +1,10 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
+    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{ArrayWriter, FixedSizeBuffer, getenv, new_sockaddr_un},
+    utils::{FixedSizeBuffer, new_sockaddr_un, write_in_place},
 };
-use anyhow::{Context, Result};
-use core::fmt::Write;
 use libc::sockaddr_un;
 
 #[derive(Clone, Copy)]
@@ -20,15 +19,10 @@ pub const DAILY_WEATHER_FORECAST_LENGTH: usize = 6;
 impl Weather {
     pub(crate) const BUFFER_SIZE: usize = WeatherData::BYTESIZE;
 
-    pub(crate) fn address() -> Result<sockaddr_un> {
-        let xdg_runtime_dir =
-            core::str::from_utf8(getenv(c"XDG_RUNTIME_DIR").context("no $XDG_RUNTIME_DIR")?)?;
+    pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
         let mut buf = [0; 200];
-        let mut writer = ArrayWriter::new(&mut buf);
-        write!(&mut writer, "{xdg_runtime_dir}/weather-mon.sock")?;
-        let path = writer.as_bytes()?;
-        let addr = new_sockaddr_un(path)?;
-        Ok(addr)
+        let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/weather-mon.sock");
+        new_sockaddr_un(path)
     }
 
     pub(crate) const fn new(emitter: Emitter) -> Self {
@@ -50,7 +44,7 @@ impl Weather {
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<()> {
+    ) -> Result<(), IoError> {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {

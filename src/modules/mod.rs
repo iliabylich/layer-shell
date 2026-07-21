@@ -12,14 +12,14 @@ mod weather;
 
 pub(crate) use clock::Clock;
 pub(crate) use control::Control;
-pub(crate) use cpu::Cpu;
+pub(crate) use cpu::{Cpu, CpuError};
 pub(crate) use kb_mod::KbMod;
-pub(crate) use memory::Memory;
-pub(crate) use niri::Niri;
-pub(crate) use nm::NM;
-pub(crate) use pw::PW;
+pub(crate) use memory::{Memory, MemoryError};
+pub(crate) use niri::{Niri, NiriError};
+pub(crate) use nm::{NM, NMError};
+pub(crate) use pw::{PW, PWError};
 pub(crate) use timer::Timer;
-pub(crate) use tray::Tray;
+pub(crate) use tray::{Tray, TrayError};
 pub(crate) use weather::Weather;
 
 pub use cpu::MAX_CPU_COUNT;

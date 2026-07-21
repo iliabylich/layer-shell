@@ -1,11 +1,16 @@
-use crate::sansio::{Satisfy, Wants};
-use anyhow::{Context as _, Result, bail};
+use crate::{
+    error::IoError,
+    sansio::{Satisfy, Wants},
+};
 use core::ffi::CStr;
-use libc::{AT_FDCWD, O_RDONLY};
+use rustix::{
+    fd::{BorrowedFd, IntoRawFd},
+    fs::{Mode, OFlags},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FileReader {
-    fd: i32,
+    fd: BorrowedFd<'static>,
     state: State,
 }
 
@@ -15,16 +20,24 @@ enum State {
     WaitingForRead,
     Sleeping,
 }
+impl State {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::CanRead => "CanRead",
+            Self::WaitingForRead => "WaitingForRead",
+            Self::Sleeping => "Sleeping",
+        }
+    }
+}
 
 impl FileReader {
-    pub(crate) fn new(path: &'static CStr) -> Result<Self> {
-        let res = unsafe { libc::openat(AT_FDCWD, path.as_ptr(), O_RDONLY) };
-        if res < 0 {
-            bail!("failed to open {path:?}");
-        }
+    pub(crate) fn new(path: &'static CStr) -> Result<Self, IoError> {
+        let fd = rustix::fs::open(path, OFlags::RDONLY, Mode::empty())
+            .map_err(|errno| IoError::FailedTo { op: "open", errno })?;
+        let fd = unsafe { BorrowedFd::borrow_raw(fd.into_raw_fd()) };
 
         Ok(Self {
-            fd: res,
+            fd,
             state: State::CanRead,
         })
     }
@@ -48,18 +61,25 @@ impl FileReader {
         &mut self,
         satisfy: Satisfy,
         buf: &'a [u8],
-    ) -> Result<Option<&'a [u8]>> {
+    ) -> Result<Option<&'a [u8]>, IoError> {
         match (self.state, satisfy) {
-            (State::WaitingForRead, Satisfy::Read(bytes_read)) => {
-                let bytes_read = bytes_read?;
-                let out = buf.get(..bytes_read).context("buffer is too short")?;
+            (State::WaitingForRead, Satisfy::Read(res)) => {
+                let bytes_read = res?;
+                let Some(out) = buf.get(..bytes_read) else {
+                    unreachable!(
+                        "FileReader: buffer is too short: {} vs {}",
+                        bytes_read,
+                        buf.len()
+                    )
+                };
                 self.state = State::Sleeping;
                 Ok(Some(out))
             }
 
-            (state, satisfy) => {
-                bail!("malformed FileReader state: {state:?} for {satisfy:?}");
-            }
+            _ => Err(IoError::WrongSatisfy {
+                state: self.state.as_str(),
+                satisfy: satisfy.as_str(),
+            }),
         }
     }
 

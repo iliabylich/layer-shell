@@ -1,10 +1,10 @@
 use crate::{
     FixedSizeArrray,
-    utils::{ArrayWriter, StringRef, StringRefExt as _, getenv},
+    error::IoError,
+    utils::{StringRef, StringRefExt as _, write_in_place},
 };
-use anyhow::{Context as _, Result, bail, ensure};
-use core::fmt::Write;
-use libc::{O_RDONLY, close, open, read};
+use rustix::fs::{Mode, OFlags};
+use thiserror::Error;
 
 #[derive(Debug)]
 pub(crate) struct Config {
@@ -27,25 +27,25 @@ pub(crate) struct Terminal {
 }
 
 impl Config {
-    pub(crate) fn read() -> Result<Self> {
+    pub(crate) fn read(xdg_config_dir: Option<&str>, home: &str) -> Result<Self, IoError> {
         let mut buf = [0; 256];
-        let mut writer = ArrayWriter::new(&mut buf);
-        fmt_config_path(&mut writer)?;
-        let path = writer.as_str()?;
+        let path = if let Some(xdg_config_dir) = xdg_config_dir {
+            write_in_place!(&mut buf, "{xdg_config_dir}/layer-shell/config.toml")
+        } else {
+            write_in_place!(&mut buf, "{home}/.config/layer-shell/config.toml")
+        };
 
-        let fd = unsafe { open(path.as_ptr().cast(), O_RDONLY) };
-        ensure!(fd != -1, "failed to open config at {path:?}");
-        let fd = AutoCloseFd(fd);
+        let fd = rustix::fs::open(path, OFlags::RDONLY, Mode::empty())
+            .map_err(|errno| IoError::FailedTo { op: "open", errno })?;
 
         let mut buf = [0; 1_024];
-        let res = unsafe { read(fd.0, buf.as_mut_ptr().cast(), 1_024) };
-
-        let len = usize::try_from(res).context("failed to read config")?;
+        let len = rustix::io::read(&fd, &mut buf)
+            .map_err(|errno| IoError::FailedTo { op: "read", errno })?;
         let buf = buf
             .get(..len)
-            .context("reading config exceeded buffer size")?;
+            .unwrap_or_else(|| unreachable!("read failed"));
 
-        let contents = core::str::from_utf8(buf).context("non-utf8 config")?;
+        let contents = core::str::from_utf8(buf).map_err(ConfigError::NonUtf8Config)?;
         let config = Self::from_toml(contents)?;
 
         log::info!(target: "Config", "{config:#?}");
@@ -53,7 +53,7 @@ impl Config {
         Ok(config)
     }
 
-    fn from_toml(contents: &str) -> Result<Self> {
+    fn from_toml(contents: &str) -> Result<Self, ConfigError> {
         let mut lock = None;
         let mut reboot = None;
         let mut shutdown = None;
@@ -67,14 +67,16 @@ impl Config {
         let mut terminal_command = None;
 
         for line in contents.lines() {
-            let (key, value) = line.split_once('=').context("malformed line")?;
+            let (key, value) = line
+                .split_once('=')
+                .ok_or(ConfigError::LineHasNoEqDelimiter)?;
             let key = key.trim();
             let value = value
                 .trim()
                 .strip_prefix('"')
-                .context("value doesn't have \" prefix")?
+                .ok_or(ConfigError::ValueMissingQuotePrefix)?
                 .strip_suffix('"')
-                .context("value doesn't have \" suffix")?;
+                .ok_or(ConfigError::ValueMissingQuoteSuffix)?;
 
             match key {
                 "lock" => lock = Some(value),
@@ -88,21 +90,24 @@ impl Config {
                 "ping" => ping = Some(value),
                 "terminal_label" => terminal_label = Some(value),
                 "terminal_command" => terminal_command = Some(value),
-                _ => bail!("unknown config key {key}"),
+                _ => return Err(ConfigError::UnknownKey),
             }
         }
 
-        let lock = lock.context("no lock")?;
-        let reboot = reboot.context("no reboot")?;
-        let shutdown = shutdown.context("no shutdown")?;
-        let logout = logout.context("no logout")?;
-        let edit_wifi = edit_wifi.context("no edit_wifi")?;
-        let edit_bluetooth = edit_bluetooth.context("no edit_bluetooth")?;
-        let open_system_monitor = open_system_monitor.context("no open_system_monitor")?;
-        let change_wallpaper = change_wallpaper.context("no change_wallpaper")?;
-        let ping = ping.context("no ping")?;
-        let terminal_label = terminal_label.context("no terminal_label")?;
-        let terminal_command = terminal_command.context("no terminal_command")?;
+        let lock = lock.ok_or(ConfigError::MissingKey("lock"))?;
+        let reboot = reboot.ok_or(ConfigError::MissingKey("reboot"))?;
+        let shutdown = shutdown.ok_or(ConfigError::MissingKey("shutdown"))?;
+        let logout = logout.ok_or(ConfigError::MissingKey("logout"))?;
+        let edit_wifi = edit_wifi.ok_or(ConfigError::MissingKey("edit_wifi"))?;
+        let edit_bluetooth = edit_bluetooth.ok_or(ConfigError::MissingKey("edit_bluetooth"))?;
+        let open_system_monitor =
+            open_system_monitor.ok_or(ConfigError::MissingKey("open_system_monitor"))?;
+        let change_wallpaper =
+            change_wallpaper.ok_or(ConfigError::MissingKey("change_wallpaper"))?;
+        let ping = ping.ok_or(ConfigError::MissingKey("ping"))?;
+        let terminal_label = terminal_label.ok_or(ConfigError::MissingKey("terminal_label"))?;
+        let terminal_command =
+            terminal_command.ok_or(ConfigError::MissingKey("terminal_command"))?;
 
         Ok(Self {
             lock: StringRef::new(lock),
@@ -117,7 +122,7 @@ impl Config {
                 let mut out = FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
                 for part in ping.split_whitespace() {
                     let part = StringRef::new(part);
-                    out.push(part)?;
+                    out.push(part).ok_or(ConfigError::PingCommandIsTooLong)?;
                 }
                 out
             },
@@ -127,7 +132,8 @@ impl Config {
                     let mut out = FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
                     for part in terminal_command.split_whitespace() {
                         let part = StringRef::new(part);
-                        out.push(part)?;
+                        out.push(part)
+                            .ok_or(ConfigError::TerminalCommandIsTooLong)?;
                     }
                     out
                 },
@@ -136,29 +142,23 @@ impl Config {
     }
 }
 
-fn fmt_config_path(mut w: impl Write) -> Result<()> {
-    let xdg_config_dir = getenv(c"XDG_CONFIG_DIR")
-        .map(core::str::from_utf8)
-        .transpose()
-        .context("non-utf8 $XDG_CONFIG_DIR")?;
-    let home = getenv(c"HOME")
-        .map(core::str::from_utf8)
-        .transpose()
-        .context("non-utf8 $HOME")?
-        .context("no $HOME")?;
+#[derive(Debug, Error, Clone, Copy)]
+pub(crate) enum ConfigError {
+    #[error("non-utf8 config")]
+    NonUtf8Config(core::str::Utf8Error),
 
-    if let Some(xdg_config_dir) = xdg_config_dir {
-        write!(&mut w, "{xdg_config_dir}/layer-shell/config.toml")?;
-    } else {
-        write!(&mut w, "{home}/.config/layer-shell/config.toml")?;
-    }
-    Ok(())
-}
-
-struct AutoCloseFd(i32);
-
-impl Drop for AutoCloseFd {
-    fn drop(&mut self) {
-        unsafe { close(self.0) };
-    }
+    #[error("malformed config line")]
+    LineHasNoEqDelimiter,
+    #[error("value does not have quote prefix")]
+    ValueMissingQuotePrefix,
+    #[error("value does not have quote suffix")]
+    ValueMissingQuoteSuffix,
+    #[error("unknown config key")]
+    UnknownKey,
+    #[error("missing config key: {0:?}")]
+    MissingKey(&'static str),
+    #[error("terminal command is too long")]
+    TerminalCommandIsTooLong,
+    #[error("ping command is too long")]
+    PingCommandIsTooLong,
 }
