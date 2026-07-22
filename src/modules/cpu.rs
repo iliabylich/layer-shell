@@ -3,10 +3,11 @@ use crate::{
     emitter::Emitter,
     error::IoError,
     sansio::{FileReader, Satisfy, Wants},
+    utils::log_err_and_exit,
 };
 use thiserror::Error;
 
-pub(crate) struct Cpu {
+pub struct Cpu {
     reader: FileReader,
     state: Option<FixedSizeArrray<MAX_CPU_COUNT, CoreUsage>>,
     emitter: Emitter,
@@ -15,12 +16,18 @@ pub(crate) struct Cpu {
 pub const MAX_CPU_COUNT: usize = 32;
 
 impl Cpu {
-    pub(crate) fn new(emitter: Emitter) -> Result<Self, IoError> {
-        Ok(Self {
-            reader: FileReader::new(c"/proc/stat")?,
-            state: None,
-            emitter,
-        })
+    pub(crate) fn new(emitter: Emitter) -> Option<Self> {
+        match FileReader::new(c"/proc/stat") {
+            Ok(reader) => Some(Self {
+                reader,
+                state: None,
+                emitter,
+            }),
+            Err(err) => {
+                log::error!(target: "CPU", "{err:?}");
+                None
+            }
+        }
     }
 
     pub(crate) const fn tick(&mut self) {
@@ -54,23 +61,25 @@ fn diff(
         return Ok(FixedSizeArrray::filled(0, next.len()));
     };
 
-    debug_assert_eq!(prev.len(), next.len());
+    if prev.len() != next.len() {
+        log_err_and_exit!("dynamic number of CPU cores");
+    }
     let len = next.len();
 
     let mut out = FixedSizeArrray::new();
 
     for idx in 0..len {
-        let prev_per_core = prev.get(idx).unwrap_or_else(|| unreachable!());
-        let next_per_core = next.get(idx).unwrap_or_else(|| unreachable!());
+        let prev_per_core = prev.get(idx).unwrap_or_else(|| log_err_and_exit!("bug"));
+        let next_per_core = next.get(idx).unwrap_or_else(|| log_err_and_exit!("bug"));
         let diff = next_per_core.load_comparing_to(*prev_per_core)?;
-        out.push(diff).unwrap_or_else(|| unreachable!());
+        out.push(diff).unwrap_or_else(|| log_err_and_exit!("bug"));
     }
 
     Ok(out)
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct CoreUsage {
+pub struct CoreUsage {
     pub(crate) id: u8,
     pub(crate) idle: u64,
     pub(crate) total: u64,
@@ -162,6 +171,7 @@ impl CoreUsage {
         );
         let percent = 100.0 * (1.0 - idle_d / total_d);
 
+        #[expect(clippy::cast_possible_truncation)]
         let percent = percent as i64;
 
         u8::try_from(percent).map_err(|_| CpuError::PercentageIsTooBig)
@@ -169,7 +179,7 @@ impl CoreUsage {
 }
 
 #[derive(Debug, Error, Clone, Copy)]
-pub(crate) enum CpuError {
+pub enum CpuError {
     #[error("non-utf8 CPU data")]
     MalformedInput(core::str::Utf8Error),
     #[error("too many CPU cores")]

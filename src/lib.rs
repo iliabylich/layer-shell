@@ -9,17 +9,11 @@
 #![warn(clippy::expect_used)]
 #![warn(clippy::panic)]
 #![warn(clippy::indexing_slicing)]
-#![warn(clippy::arithmetic_side_effects)]
+// #![warn(clippy::arithmetic_side_effects)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::std_instead_of_alloc)]
 #![warn(clippy::std_instead_of_core)]
-#![allow(clippy::map_unwrap_or)]
-#![allow(clippy::option_if_let_else)]
-#![expect(clippy::redundant_pub_crate)]
-#![expect(clippy::cast_possible_truncation)]
-#![expect(clippy::arithmetic_side_effects)]
-#![expect(clippy::missing_safety_doc)]
 
 mod command;
 mod config;
@@ -37,7 +31,9 @@ mod event;
     clippy::ptr_as_ptr,
     clippy::ref_as_ptr,
     clippy::missing_const_for_fn,
-    clippy::use_self
+    clippy::use_self,
+    clippy::redundant_pub_crate,
+    clippy::arithmetic_side_effects
 )]
 mod external;
 mod io;
@@ -50,114 +46,106 @@ mod sansio;
 mod user_data;
 mod utils;
 
-use core::ptr::NonNull;
-
-use command::Command;
 pub use event::IoEvent;
+pub use modules::{
+    DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind, MAX_CPU_COUNT,
+    MaybeRootTrayElement, TrayElement, TrayLabel, TrayMenu, WeatherCode, WeatherOnDay,
+    WeatherOnHour,
+};
+pub use utils::{FixedSizeArrray, StringRef};
 
-use crate::{io::IO, utils::StringRef};
-pub use modules::{TrayElement, TrayLabel, TrayMenu};
-pub use utils::FixedSizeArrray;
+use crate::{io::IO, logger::Logger, utils::log_err_and_exit};
+use command::Command;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn io_init(
     callback: extern "C" fn(event: &IoEvent, *mut core::ffi::c_void),
     data: *mut core::ffi::c_void,
-) -> NonNull<IO> {
-    logger::init();
+) -> *mut IO {
+    Logger::init();
 
     unsafe {
-        let mut ptr = NonNull::new(libc::malloc(size_of::<IO>()))
-            .unwrap_or_else(|| {
-                log::error!("failed to malloc()");
-                libc::exit(1);
-            })
-            .cast::<IO>();
-        let io = match IO::new(callback, data) {
-            Ok(io) => io,
-            Err(err) => {
-                log::error!("failed to build IO: {err:?}");
-                libc::exit(1);
-            }
-        };
-        ptr.write(io);
-        ptr.as_mut().start();
+        let ptr = libc::malloc(size_of::<IO>()).cast::<IO>();
+        if ptr.is_null() {
+            log_err_and_exit!("failed to malloc()");
+        }
+        ptr.write(IO::new(callback, data));
+        (&mut *ptr).start();
         ptr
     }
 }
 
+fn with_io<T>(io: *mut IO, f: impl FnOnce(&mut IO) -> T) -> T {
+    let Some(mut io) = core::ptr::NonNull::new(io) else {
+        log_err_and_exit!("IO pointer is null");
+    };
+
+    unsafe { f(io.as_mut()) }
+}
+
+#[expect(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_deinit(mut io: NonNull<IO>) {
+pub extern "C" fn io_deinit(io: *mut IO) {
+    with_io(io, IO::stop);
+
     unsafe {
-        io.as_mut().stop();
-        core::ptr::drop_in_place(io.as_mut());
-        libc::free(io.as_ptr().cast());
+        core::ptr::drop_in_place(io);
+        libc::free(io.cast());
     }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_handle_readable(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.handle_readable();
+pub extern "C" fn io_handle_readable(io: *mut IO) {
+    with_io(io, IO::handle_readable);
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_wait_readable(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.wait_readable();
+pub extern "C" fn io_wait_readable(io: *mut IO) {
+    with_io(io, IO::wait_readable);
 }
 
 #[unsafe(no_mangle)]
-pub const unsafe extern "C" fn io_as_raw_fd(io: NonNull<IO>) -> i32 {
-    let io = unsafe { io.as_ref() };
-    io.fd()
+pub extern "C" fn io_as_raw_fd(io: *mut IO) -> i32 {
+    with_io(io, |io| io.fd())
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_lock(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::Lock);
+pub extern "C" fn io_lock(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::Lock));
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_reboot(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::Reboot);
+pub extern "C" fn io_reboot(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::Reboot));
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_shutdown(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::Shutdown);
+pub extern "C" fn io_shutdown(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::Shutdown));
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_logout(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::Logout);
+pub extern "C" fn io_logout(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::Logout));
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_trigger_tray(mut io: NonNull<IO>, service: u32, id: i32) {
-    let io = unsafe { io.as_mut() };
-
-    io.process_command(Command::TriggerTray { service, id });
+pub extern "C" fn io_trigger_tray(io: *mut IO, service: u32, id: i32) {
+    with_io(io, |io| {
+        io.process_command(Command::TriggerTray { service, id });
+    });
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_spawn_wifi_editor(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::SpawnWiFiEditor);
+pub extern "C" fn io_spawn_wifi_editor(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::SpawnWiFiEditor));
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_spawn_bluetooh_editor(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::SpawnBluetoothEditor);
+pub extern "C" fn io_spawn_bluetooh_editor(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::SpawnBluetoothEditor));
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_spawn_system_monitor(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::SpawnSystemMonitor);
+pub extern "C" fn io_spawn_system_monitor(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::SpawnSystemMonitor));
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_change_wallpaper(mut io: NonNull<IO>) {
-    let io = unsafe { io.as_mut() };
-    io.process_command(Command::ChangeWallpaper);
+pub extern "C" fn io_change_wallpaper(io: *mut IO) {
+    with_io(io, |io| io.process_command(Command::ChangeWallpaper));
 }
 
 #[repr(C)]
@@ -167,21 +155,22 @@ pub struct CommandToExec {
 }
 
 #[unsafe(no_mangle)]
-pub const unsafe extern "C" fn io_get_ping_cmd(mut io: NonNull<IO>) -> CommandToExec {
-    let io = unsafe { io.as_mut() };
-    let ptr = io.config.ping.as_ptr();
-    let len = io.config.ping.len();
-    CommandToExec { ptr, len }
+pub extern "C" fn io_get_ping_cmd(io: *mut IO) -> CommandToExec {
+    with_io(io, |io| {
+        let ptr = io.config.ping.as_ptr();
+        let len = io.config.ping.len();
+        CommandToExec { ptr, len }
+    })
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn io_get_terminal_label(mut io: NonNull<IO>) -> StringRef {
-    let io = unsafe { io.as_mut() };
-    io.config.terminal.label.clone()
+pub extern "C" fn io_get_terminal_label(io: *mut IO) -> StringRef {
+    with_io(io, |io| io.config.terminal.label.clone())
 }
 #[unsafe(no_mangle)]
-pub const unsafe extern "C" fn io_get_terminal_cmd(mut io: NonNull<IO>) -> CommandToExec {
-    let io = unsafe { io.as_mut() };
-    let ptr = io.config.terminal.command.as_ptr();
-    let len = io.config.terminal.command.len();
-    CommandToExec { ptr, len }
+pub extern "C" fn io_get_terminal_cmd(io: *mut IO) -> CommandToExec {
+    with_io(io, |io| {
+        let ptr = io.config.terminal.command.as_ptr();
+        let len = io.config.terminal.command.len();
+        CommandToExec { ptr, len }
+    })
 }

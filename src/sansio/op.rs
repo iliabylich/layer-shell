@@ -1,6 +1,8 @@
+use crate::utils::log_err_and_exit;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u8)]
-pub(crate) enum Op {
+pub enum Op {
     Socket,
     Connect,
     Write,
@@ -9,7 +11,7 @@ pub(crate) enum Op {
 }
 
 impl Op {
-    pub(crate) const fn new(op: u8) -> Self {
+    pub(crate) fn new(op: u8) -> Self {
         if op == Self::Socket as u8 {
             Self::Socket
         } else if op == Self::Connect as u8 {
@@ -21,7 +23,7 @@ impl Op {
         } else if op == Self::Accept as u8 {
             Self::Accept
         } else {
-            unreachable!()
+            log_err_and_exit!("unknown op {op}")
         }
     }
 }

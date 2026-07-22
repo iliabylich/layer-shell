@@ -1,13 +1,14 @@
 use crate::{
     error::IoError,
     sansio::{Satisfy, Wants},
+    utils::log_err_and_exit,
 };
 use core::mem::size_of;
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 use rustix::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum UnixSocketReader {
+pub enum UnixSocketReader {
     ReadyToSocket,
     WaitingForSocket,
 
@@ -27,7 +28,7 @@ impl UnixSocketReader {
         Self::ReadyToRead { fd }
     }
 
-    pub(crate) const fn wants(&mut self, addr: &sockaddr_un, buf: &mut [u8]) -> Option<Wants> {
+    pub(crate) fn wants(&mut self, addr: &sockaddr_un, buf: &mut [u8]) -> Option<Wants> {
         match *self {
             Self::ReadyToSocket => {
                 *self = Self::WaitingForSocket;
@@ -42,7 +43,9 @@ impl UnixSocketReader {
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<sockaddr_un>() as u32,
+                    addrlen: u32::try_from(size_of::<sockaddr_un>()).unwrap_or_else(|_| {
+                        log_err_and_exit!("sockadd_un size doesn't fit into u32")
+                    }),
                 })
             }
 

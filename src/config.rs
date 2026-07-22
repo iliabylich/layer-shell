@@ -1,13 +1,13 @@
 use crate::{
     FixedSizeArrray,
     error::IoError,
-    utils::{StringRef, StringRefExt as _, write_in_place},
+    utils::{StringRef, StringRefExt as _, log_err_and_exit, write_in_place},
 };
 use rustix::fs::{Mode, OFlags};
 use thiserror::Error;
 
 #[derive(Debug)]
-pub(crate) struct Config {
+pub struct Config {
     pub(crate) lock: StringRef,
     pub(crate) reboot: StringRef,
     pub(crate) shutdown: StringRef,
@@ -21,13 +21,20 @@ pub(crate) struct Config {
     pub(crate) terminal: Terminal,
 }
 #[derive(Debug)]
-pub(crate) struct Terminal {
+pub struct Terminal {
     pub(crate) label: StringRef,
     pub(crate) command: FixedSizeArrray<10, StringRef>,
 }
 
 impl Config {
-    pub(crate) fn read(xdg_config_dir: Option<&str>, home: &str) -> Result<Self, IoError> {
+    pub(crate) fn read(xdg_config_dir: Option<&str>, home: &str) -> Self {
+        match Self::try_read(xdg_config_dir, home) {
+            Ok(config) => config,
+            Err(err) => log_err_and_exit!("{err:?}"),
+        }
+    }
+
+    fn try_read(xdg_config_dir: Option<&str>, home: &str) -> Result<Self, IoError> {
         let mut buf = [0; 256];
         let path = if let Some(xdg_config_dir) = xdg_config_dir {
             write_in_place!(&mut buf, "{xdg_config_dir}/layer-shell/config.toml")
@@ -43,7 +50,7 @@ impl Config {
             .map_err(|errno| IoError::FailedTo { op: "read", errno })?;
         let buf = buf
             .get(..len)
-            .unwrap_or_else(|| unreachable!("read failed"));
+            .unwrap_or_else(|| log_err_and_exit!("read failed"));
 
         let contents = core::str::from_utf8(buf).map_err(ConfigError::NonUtf8Config)?;
         let config = Self::from_toml(contents)?;
@@ -119,7 +126,7 @@ impl Config {
             open_system_monitor: StringRef::new(open_system_monitor),
             change_wallpaper: StringRef::new(change_wallpaper),
             ping: {
-                let mut out = FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
+                let mut out = FixedSizeArrray::empty_with_default_fn(StringRef::empty);
                 for part in ping.split_whitespace() {
                     let part = StringRef::new(part);
                     out.push(part).ok_or(ConfigError::PingCommandIsTooLong)?;
@@ -129,7 +136,7 @@ impl Config {
             terminal: Terminal {
                 label: StringRef::new(terminal_label),
                 command: {
-                    let mut out = FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
+                    let mut out = FixedSizeArrray::empty_with_default_fn(StringRef::empty);
                     for part in terminal_command.split_whitespace() {
                         let part = StringRef::new(part);
                         out.push(part)
@@ -143,7 +150,7 @@ impl Config {
 }
 
 #[derive(Debug, Error, Clone, Copy)]
-pub(crate) enum ConfigError {
+pub enum ConfigError {
     #[error("non-utf8 config")]
     NonUtf8Config(core::str::Utf8Error),
 

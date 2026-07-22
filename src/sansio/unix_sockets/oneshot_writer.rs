@@ -1,12 +1,13 @@
 use crate::{
     error::IoError,
     sansio::{Satisfy, Wants},
+    utils::log_err_and_exit,
 };
 use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
 use rustix::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct UnixSocketOneshotWriter {
+pub struct UnixSocketOneshotWriter {
     data: &'static [u8],
     offset: usize,
     state: State,
@@ -60,7 +61,9 @@ impl UnixSocketOneshotWriter {
                 Some(Wants::Connect {
                     fd,
                     addr: core::ptr::from_ref(addr).cast(),
-                    addrlen: size_of::<sockaddr_un>() as u32,
+                    addrlen: u32::try_from(size_of::<sockaddr_un>()).unwrap_or_else(|_| {
+                        log_err_and_exit!("sockaddr_un size doesn't fit into u32")
+                    }),
                 })
             }
 
@@ -69,7 +72,7 @@ impl UnixSocketOneshotWriter {
                 let buf = self
                     .data
                     .get(self.offset..)
-                    .unwrap_or_else(|| unreachable!());
+                    .unwrap_or_else(|| log_err_and_exit!("malformed state"));
 
                 Some(Wants::Write {
                     fd,

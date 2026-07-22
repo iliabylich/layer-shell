@@ -1,10 +1,6 @@
 use crate::{
-    FixedSizeArrray,
-    modules::{
-        DAILY_WEATHER_FORECAST_LENGTH, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind, MAX_CPU_COUNT,
-        TrayMenu, WeatherCode, WeatherOnDay, WeatherOnHour,
-    },
-    utils::StringRef,
+    DAILY_WEATHER_FORECAST_LENGTH, FixedSizeArrray, HOURLY_WEATHER_FORECAST_LENGTH, KbModKind,
+    MAX_CPU_COUNT, StringRef, TrayMenu, WeatherCode, WeatherOnDay, WeatherOnHour,
 };
 
 #[derive(Debug)]

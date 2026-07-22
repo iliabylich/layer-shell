@@ -12,17 +12,22 @@ use rustix::{
     net::{AddressFamily, SocketAddrUnix, SocketType},
 };
 
-pub(crate) struct Control {
+pub struct Control {
     fd: BorrowedFd<'static>,
     emitter: Emitter,
 }
 
 impl Control {
-    pub(crate) fn new(xdg_runtime_dir: &str, emitter: Emitter) -> Result<Self, IoError> {
+    pub(crate) fn new(xdg_runtime_dir: &str, emitter: Emitter) -> Option<Self> {
         let mut buf = [0; 200];
         let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/layer-shell.sock");
-        let fd = socket_at(path)?;
-        Ok(Self { fd, emitter })
+        match socket_at(path) {
+            Ok(fd) => Some(Self { fd, emitter }),
+            Err(err) => {
+                log::error!(target: "Control", "{err:?}");
+                None
+            }
+        }
     }
 
     pub(crate) const fn wants(&self) -> Wants {

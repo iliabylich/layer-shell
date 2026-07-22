@@ -2,7 +2,7 @@ use crate::{error::IoError, sansio::Op};
 use rustix::{fd::BorrowedFd, io::Errno};
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Satisfy {
+pub enum Satisfy {
     Socket(Result<BorrowedFd<'static>, IoError>),
     Connect(Result<(), IoError>),
     Write(Result<usize, IoError>),

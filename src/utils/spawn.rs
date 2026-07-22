@@ -1,16 +1,25 @@
 use crate::{
     FixedSizeArrray,
-    utils::{ArrayWriter, StringRef, StringRefExt as _},
+    utils::{ArrayWriter, StringRef, StringRefExt as _, log_err_and_exit},
 };
 use core::fmt::Write;
 use libc::{_exit, O_WRONLY, STDERR_FILENO, STDOUT_FILENO, close, dup2, execvp, fork, open};
+
+pub struct SpawnHelper;
+
+impl SpawnHelper {
+    pub(crate) fn spawn(cmd: &str, home: &str) {
+        if let Err(err) = try_spawn(cmd, home) {
+            log::error!("{err:?}");
+        }
+    }
+}
 
 fn try_spawn(cmd: &str, home: &str) -> Result<(), Error> {
     let mut cmd = cmd.split_whitespace();
     let exe = StringRef::new(cmd.next().ok_or(Error::EmptyCommand)?);
 
-    let mut argv: FixedSizeArrray<10, StringRef> =
-        FixedSizeArrray::empty_with_default_fn(|| StringRef::new(""));
+    let mut argv = FixedSizeArrray::<10, _>::empty_with_default_fn(StringRef::empty);
     argv.push(exe.clone()).ok_or(Error::TooManyArguments)?;
     for arg in cmd {
         let arg = expand_home(arg, home);
@@ -63,25 +72,21 @@ fn expand_home(arg: &str, home: &str) -> StringRef {
     let mut writer = ArrayWriter::new(&mut buf);
     let mut parts = arg.split('~');
     if let Some(part) = parts.next() {
-        write!(&mut writer, "{part}").unwrap_or_else(|_| unreachable!());
+        write!(&mut writer, "{part}")
+            .unwrap_or_else(|_| log_err_and_exit!("command is too long for 256 bytes long buffer"));
     }
     for part in parts {
-        write!(&mut writer, "{home}{part}").unwrap_or_else(|_| unreachable!());
+        write!(&mut writer, "{home}{part}")
+            .unwrap_or_else(|_| log_err_and_exit!("command is too long for 256 bytes long buffer"));
     }
     let s = core::str::from_utf8(writer.as_bytes()).unwrap_or_else(|_| {
-        unreachable!("replacement of UTF-8 substrings can't make a string invalid")
+        log_err_and_exit!("replacement of UTF-8 substrings can't make a string invalid")
     });
     StringRef::new(s)
 }
 
-pub(crate) fn spawn(cmd: &str, home: &str) {
-    if let Err(err) = try_spawn(cmd, home) {
-        log::error!("{err:?}");
-    }
-}
-
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("command can't be parsed")]
     EmptyCommand,
     #[error("too many arguments")]

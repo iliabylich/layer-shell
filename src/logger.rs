@@ -1,20 +1,22 @@
-use crate::utils::{ArrayWriter, getenv};
+use crate::utils::{ArrayWriter, EnvHelper};
 use core::{fmt::Write as _, str::FromStr as _};
 use libc::{STDERR_FILENO, exit, write};
 use log::{LevelFilter, Metadata, Record};
 
 static LOGGER: Logger = Logger;
 
-pub(crate) fn init() {
-    if log::set_logger(&LOGGER).is_ok() {
-        log::set_max_level(level_from_env());
-    } else {
-        eprint(b"failed to set logger\n");
-        unsafe { exit(1) }
+pub struct Logger;
+
+impl Logger {
+    pub(crate) fn init() {
+        if log::set_logger(&LOGGER).is_ok() {
+            log::set_max_level(level_from_env());
+        } else {
+            eprint(b"failed to set logger\n");
+            unsafe { exit(1) }
+        }
     }
 }
-
-struct Logger;
 
 impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
@@ -54,7 +56,7 @@ impl log::Log for Logger {
 }
 
 fn level_from_env() -> LevelFilter {
-    let Some(level) = getenv(c"RUST_LOG") else {
+    let Some(level) = EnvHelper::rust_log() else {
         return LevelFilter::Error;
     };
 
@@ -62,12 +64,10 @@ fn level_from_env() -> LevelFilter {
         eprint(b"non-utf8 $RUST_LOG\n");
         unsafe { exit(1) }
     };
-    if let Ok(v) = LevelFilter::from_str(level) {
-        v
-    } else {
+    LevelFilter::from_str(level).unwrap_or_else(|_| {
         eprint(b"unsupported $RUST_LOG value\n");
         unsafe { exit(1) }
-    }
+    })
 }
 
 const RESET: &str = "\x1b[0m";

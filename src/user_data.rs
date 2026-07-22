@@ -1,10 +1,10 @@
 use core::sync::atomic::{AtomicU32, Ordering};
 
-use crate::sansio::Op;
+use crate::{sansio::Op, utils::log_err_and_exit};
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum ModuleId {
+pub enum ModuleId {
     KbMod,
     NM,
     PW,
@@ -55,14 +55,14 @@ impl ModuleId {
         } else if value == Self::Timer as u8 {
             Self::Timer
         } else {
-            unreachable!("can't build ModuleId from {value}")
+            log_err_and_exit!("can't build ModuleId from {value}")
         }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(C, align(8))]
-pub(crate) struct UserData {
+pub struct UserData {
     pub(crate) module_id: ModuleId,
     pub(crate) op: Op,
     pub(crate) req: u32,

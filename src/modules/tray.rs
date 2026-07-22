@@ -3,13 +3,15 @@ use crate::{
     emitter::Emitter,
     error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, StringRef, StringRefExt, new_sockaddr_un, write_in_place},
+    utils::{
+        FixedSizeBuffer, SockaddrUn, StringRef, StringRefExt, log_err_and_exit, write_in_place,
+    },
 };
 use libc::sockaddr_un;
 use thiserror::Error;
 
 #[derive(Clone, Copy)]
-pub(crate) struct Tray {
+pub struct Tray {
     reader: UnixSocketReader,
     writebuf: [u8; 8],
     emitter: Emitter,
@@ -21,7 +23,7 @@ impl Tray {
     pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
         let mut buf = [0; 200];
         let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/tray-mon.sock");
-        new_sockaddr_un(path)
+        SockaddrUn::from_bytes(path)
     }
 
     pub(crate) const fn new(emitter: Emitter) -> Self {
@@ -92,7 +94,7 @@ impl Tray {
 }
 
 #[derive(Debug, Error, Clone, Copy)]
-pub(crate) enum TrayError {
+pub enum TrayError {
     #[error("failed to deserialize tray event")]
     FailedToDeserialize,
 }
@@ -346,7 +348,7 @@ impl core::fmt::Debug for TrayLabel {
 
 #[derive(Clone, Copy)]
 #[must_use]
-pub(crate) struct TrayFixedSizeString {
+pub struct TrayFixedSizeString {
     buf: [u8; Self::STR_BYTESIZE],
     len: u32,
 }
@@ -433,7 +435,7 @@ fn read_menu(buf: &mut &[u8]) -> Option<TrayMenu> {
             break;
         }
         menu.push(MaybeRootTrayElement { root, element })
-            .ok_or_else(|| unreachable!("constants don't match"));
+            .ok_or_else(|| log_err_and_exit!("constants don't match"));
     }
     Some(TrayMenu(menu))
 }

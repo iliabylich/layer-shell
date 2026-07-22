@@ -1,7 +1,7 @@
 use crate::IoEvent;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Emitter {
+pub struct Emitter {
     callback: extern "C" fn(event: &IoEvent, *mut core::ffi::c_void),
     data: *mut core::ffi::c_void,
 }

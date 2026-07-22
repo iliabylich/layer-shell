@@ -3,13 +3,13 @@ use crate::{
     emitter::Emitter,
     error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, new_sockaddr_un, write_in_place},
+    utils::{FixedSizeBuffer, SockaddrUn, write_in_place},
 };
 use libc::sockaddr_un;
 use thiserror::Error;
 
 #[derive(Clone, Copy)]
-pub(crate) struct PW {
+pub struct PW {
     reader: UnixSocketReader,
     volume: Option<u8>,
     muted: Option<bool>,
@@ -23,7 +23,7 @@ impl PW {
     pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
         let mut buf = [0; 200];
         let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/pipewire-mon.sock");
-        new_sockaddr_un(path)
+        SockaddrUn::from_bytes(path)
     }
 
     pub(crate) const fn new(emitter: Emitter) -> Self {
@@ -97,7 +97,7 @@ impl PWEvent {
 }
 
 #[derive(Debug, Error, Clone, Copy)]
-pub(crate) enum PWError {
+pub enum PWError {
     #[error("failed to deserialize PW event")]
     FailedToDeserialize,
 }

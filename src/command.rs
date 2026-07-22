@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, Copy)]
 #[must_use]
-pub(crate) enum Command {
+pub enum Command {
     Lock,
     Reboot,
     Shutdown,

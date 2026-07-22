@@ -1,7 +1,7 @@
 use crate::liburing::io_uring_cqe;
 
 #[derive(Clone, Copy)]
-pub(crate) struct Cqe {
+pub struct Cqe {
     pub(crate) cqe: *mut io_uring_cqe,
 }
 

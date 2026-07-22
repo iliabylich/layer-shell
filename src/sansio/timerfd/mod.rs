@@ -1,6 +1,7 @@
 use crate::{
     error::IoError,
     sansio::{Satisfy, Wants},
+    utils::log_err_and_exit,
 };
 use rustix::{
     fd::{BorrowedFd, IntoRawFd},
@@ -12,7 +13,7 @@ use rustix::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct TimerFd {
+pub struct TimerFd {
     fd: BorrowedFd<'static>,
     ticks: u64,
     state: State,
@@ -65,9 +66,8 @@ impl TimerFd {
             (State::WaitingForRead, Satisfy::Read(res)) => {
                 let bytes_read = res?;
                 if bytes_read != buf.len() {
-                    unreachable!(
-                        "Timerfd: buffer is too short: {} vs {}",
-                        bytes_read,
+                    log_err_and_exit!(
+                        "Timerfd: buffer is too short: {bytes_read} vs {}",
                         buf.len()
                     );
                 }

@@ -7,11 +7,23 @@ mod sockaddr;
 mod spawn;
 mod string_pool;
 
-pub(crate) use array_writer::{ArrayWriter, write_in_place};
+pub use array_writer::ArrayWriter;
 pub use fixed_size_array::FixedSizeArrray;
-pub(crate) use fixed_size_buffer::FixedSizeBuffer;
-pub(crate) use getenv::getenv;
-pub(crate) use nl_separated_buffer::NlSeparatedBuffer;
-pub(crate) use sockaddr::new_sockaddr_un;
-pub(crate) use spawn::spawn;
-pub(crate) use string_pool::{StringRef, StringRefExt};
+pub use fixed_size_buffer::FixedSizeBuffer;
+pub use getenv::EnvHelper;
+pub use nl_separated_buffer::NlSeparatedBuffer;
+pub use sockaddr::SockaddrUn;
+pub use spawn::SpawnHelper;
+pub use string_pool::{StringRef, StringRefExt};
+
+pub(crate) use array_writer::write_in_place;
+
+macro_rules! log_err_and_exit {
+    ($($arg:tt)*) => {{
+        log::error!("Fatal error at {}:{}", file!(), line!());
+        log::error!($($arg)+);
+        #[allow(unused_unsafe)]
+        unsafe { libc::exit(1) }
+    }};
+}
+pub(crate) use log_err_and_exit;

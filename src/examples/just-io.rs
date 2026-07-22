@@ -20,15 +20,18 @@ extern "C" fn main() {
 
     while !SHOULD_EXIT.load(Ordering::Relaxed) {
         // log::info!("Waiting...");
-        unsafe { io_wait_readable(io) };
+        io_wait_readable(io);
         // log::info!("Wait finished...");
 
         // log::info!("Processing...");
-        unsafe { io_handle_readable(io) };
+        io_handle_readable(io);
     }
 
     log::info!("Exiting...");
-    unsafe { io_deinit(io) };
+    unsafe {
+        io_deinit(io);
+        libc::exit(0);
+    }
 }
 
 include!("../panic_handler.rs");

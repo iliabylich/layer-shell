@@ -3,12 +3,11 @@ use crate::{
     command::Command,
     config::Config,
     emitter::Emitter,
-    error::IoError,
     liburing::IoUring,
     modules::{Clock, Control, Cpu, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
     sansio::Satisfy,
     user_data::{ModuleId, UserData},
-    utils::{FixedSizeBuffer, NlSeparatedBuffer, getenv, spawn},
+    utils::{EnvHelper, FixedSizeBuffer, NlSeparatedBuffer, SpawnHelper},
 };
 use libc::sockaddr_un;
 
@@ -20,7 +19,7 @@ pub struct IO {
     timer: Option<Timer>,
     timerbuf: [u8; 8],
 
-    clock: Option<Clock>,
+    clock: Clock,
 
     pw: Option<PW>,
     pw_buf: FixedSizeBuffer<{ PW::BUFFER_SIZE }>,
@@ -46,7 +45,7 @@ pub struct IO {
 
     niri: Option<Niri>,
     niri_buf: NlSeparatedBuffer,
-    niri_addr: sockaddr_un,
+    niri_addr: Option<sockaddr_un>,
 
     tray: Option<Tray>,
     tray_buf: FixedSizeBuffer<{ Tray::BUFFER_SIZE }>,
@@ -71,31 +70,17 @@ impl IO {
     pub(crate) fn new(
         callback: extern "C" fn(event: &IoEvent, *mut core::ffi::c_void),
         data: *mut core::ffi::c_void,
-    ) -> Result<Self, IoError> {
-        let Some(home) = getenv(c"HOME") else {
-            unreachable!("no $HOME")
-        };
-        let Ok(home) = core::str::from_utf8(home) else {
-            unreachable!("non-utf8 $HOME")
-        };
+    ) -> Self {
+        let home = EnvHelper::home();
+        let xdg_runtime_dir = EnvHelper::xdg_runtime_dir();
+        let xdg_config_dir = EnvHelper::xdg_config_dir();
 
-        let Some(xdg_runtime_dir) = getenv(c"XDG_RUNTIME_DIR") else {
-            unreachable!("no $XDG_RUNTIME_DIR")
-        };
-        let Ok(xdg_runtime_dir) = core::str::from_utf8(xdg_runtime_dir) else {
-            unreachable!("non-utf8 $XDG_RUNTIME_DIR")
-        };
-
-        let xdg_config_dir = getenv(c"XDG_CONFIG_DIR").map(|var| {
-            core::str::from_utf8(var).unwrap_or_else(|_| unreachable!("non-utf8 $XDG_CONFIG_DIR"))
-        });
-
-        let config = Config::read(xdg_config_dir, home)?;
+        let config = Config::read(xdg_config_dir, home);
         let emitter = Emitter::new(callback, data);
 
         let ring = IoUring::new(10, 0);
 
-        let timer = Timer::new()?;
+        let timer = Timer::new();
         let timerbuf = [0; 8];
 
         let clock = Clock::new(emitter);
@@ -103,15 +88,15 @@ impl IO {
         let nm = NM::new(emitter);
         let nm_addr = NM::ADDRESS;
 
-        let cpu = Cpu::new(emitter)?;
+        let cpu = Cpu::new(emitter);
 
-        let memory = Memory::new(emitter)?;
+        let memory = Memory::new(emitter);
 
         let kb_mod = KbMod::new(emitter);
         let kb_mod_addr = KbMod::ADDRESS;
 
         let niri = Niri::new(emitter);
-        let niri_addr = Niri::address()?;
+        let niri_addr = Niri::address();
 
         let pw = PW::new(emitter);
         let pw_addr = PW::address(xdg_runtime_dir);
@@ -122,17 +107,17 @@ impl IO {
         let tray = Tray::new(emitter);
         let tray_addr = Tray::address(xdg_runtime_dir);
 
-        let control = Control::new(xdg_runtime_dir, emitter)?;
+        let control = Control::new(xdg_runtime_dir, emitter);
 
-        Ok(Self {
+        Self {
             ring,
 
             config,
 
-            timer: Some(timer),
+            timer,
             timerbuf,
 
-            clock: Some(clock),
+            clock,
 
             pw: Some(pw),
             pw_buf: FixedSizeBuffer::new(),
@@ -146,10 +131,10 @@ impl IO {
             weather_buf: FixedSizeBuffer::new(),
             weather_addr,
 
-            cpu: Some(cpu),
+            cpu,
             cpu_buf: [0; _],
 
-            memory: Some(memory),
+            memory,
             memory_buf: [0; _],
 
             kb_mod: Some(kb_mod),
@@ -164,13 +149,13 @@ impl IO {
             tray_buf: FixedSizeBuffer::new(),
             tray_addr,
 
-            control: Some(control),
+            control,
             running: true,
 
             home,
             xdg_runtime_dir,
             xdg_config_dir,
-        })
+        }
     }
 
     pub(crate) fn start(&mut self) {
@@ -252,7 +237,7 @@ impl IO {
     }
 
     pub(crate) fn spawn(&self, cmd: &str) {
-        spawn(cmd, self.home);
+        SpawnHelper::spawn(cmd, self.home);
     }
 
     pub(crate) const fn fd(&self) -> i32 {
@@ -415,10 +400,11 @@ impl IoSlice<PW> for IO {
 impl IoSlice<Niri> for IO {
     fn schedule(&mut self) {
         if let Some(niri) = &mut self.niri
-            && let Some(wants) = niri.wants(&self.niri_addr, &mut self.niri_buf)
+            && let Some(niri_addr) = &self.niri_addr
+            && let Some(wants) = niri.wants(niri_addr, &mut self.niri_buf)
         {
             log::trace!(target: "Niri", "{wants:?}");
-            core::assert_matches!(niri.wants(&self.niri_addr, &mut self.niri_buf), None);
+            core::assert_matches!(niri.wants(niri_addr, &mut self.niri_buf), None);
             self.ring.schedule(ModuleId::Niri, wants);
         }
     }
@@ -502,12 +488,7 @@ impl IoSlice<Timer> for IO {
             Ok(Some(_tick)) => {
                 IoSlice::<Timer>::schedule(self);
 
-                if let Some(clock) = &self.clock
-                    && let Err(err) = clock.tick()
-                {
-                    log::error!(target: "Clock" , "{err:?}");
-                    self.clock = None;
-                }
+                self.clock.tick();
 
                 if let Some(cpu) = &mut self.cpu {
                     cpu.tick();

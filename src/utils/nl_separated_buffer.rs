@@ -1,4 +1,4 @@
-pub(crate) struct NlSeparatedBuffer {
+pub struct NlSeparatedBuffer {
     buf: [u8; 1_024 * 5],
     pos: usize,
 }
@@ -21,13 +21,13 @@ impl NlSeparatedBuffer {
     }
 
     pub(crate) fn pre_nl(&self) -> Option<&[u8]> {
-        let nl_idx = self.buf.iter().position(|b| *b == b'\n')?;
+        let nl_idx = self.buf[..self.pos].iter().position(|b| *b == b'\n')?;
         let (head, _) = self.buf.split_at_checked(nl_idx)?;
         Some(head)
     }
 
     pub(crate) fn drop_pre_nl(&mut self) {
-        let Some(nl_idx) = self.buf.iter().position(|b| *b == b'\n') else {
+        let Some(nl_idx) = self.buf[..self.pos].iter().position(|b| *b == b'\n') else {
             return;
         };
         self.buf.copy_within((nl_idx + 1).., 0);

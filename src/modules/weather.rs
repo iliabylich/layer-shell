@@ -3,12 +3,12 @@ use crate::{
     emitter::Emitter,
     error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, new_sockaddr_un, write_in_place},
+    utils::{FixedSizeBuffer, SockaddrUn, write_in_place},
 };
 use libc::sockaddr_un;
 
 #[derive(Clone, Copy)]
-pub(crate) struct Weather {
+pub struct Weather {
     reader: UnixSocketReader,
     emitter: Emitter,
 }
@@ -22,7 +22,7 @@ impl Weather {
     pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
         let mut buf = [0; 200];
         let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/weather-mon.sock");
-        new_sockaddr_un(path)
+        SockaddrUn::from_bytes(path)
     }
 
     pub(crate) const fn new(emitter: Emitter) -> Self {

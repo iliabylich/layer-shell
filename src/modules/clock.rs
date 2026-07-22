@@ -1,13 +1,12 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    error::IoError,
-    utils::{StringRef, StringRefExt},
+    utils::{StringRef, StringRefExt, log_err_and_exit},
 };
 use libc::{localtime_r, strftime, time, tm};
 
 #[derive(Clone, Copy)]
-pub(crate) struct Clock {
+pub struct Clock {
     emitter: Emitter,
 }
 
@@ -16,14 +15,13 @@ impl Clock {
         Self { emitter }
     }
 
-    pub(crate) fn tick(&self) -> Result<(), IoError> {
-        let now = local_time_string()?;
+    pub(crate) fn tick(&self) {
+        let now = local_time_string();
         self.emitter.emit(&IoEvent::Time { now });
-        Ok(())
     }
 }
 
-fn local_time_string() -> Result<StringRef, IoError> {
+fn local_time_string() -> StringRef {
     unsafe {
         let mut now = 0;
         time(&raw mut now);
@@ -31,7 +29,7 @@ fn local_time_string() -> Result<StringRef, IoError> {
         let mut tm: tm = core::mem::zeroed();
 
         if localtime_r(&raw const now, &raw mut tm).is_null() {
-            return Err(IoError::new_failed_to("localtime"));
+            log_err_and_exit!("failed to localtime()");
         }
 
         let fmt = c"%H:%M:%S | %b %d | %a";
@@ -45,15 +43,15 @@ fn local_time_string() -> Result<StringRef, IoError> {
         );
 
         if n == 0 {
-            return Err(IoError::new_failed_to("strftime"));
+            log_err_and_exit!("failed to strftime()");
         }
 
         let Some(buf) = buf.get(..n) else {
-            unreachable!("buffer is too short: {} vs {}", buf.len(), n);
+            log_err_and_exit!("buffer is too short: {} vs {}", buf.len(), n);
         };
         let Ok(time) = core::str::from_utf8(buf) else {
-            unreachable!("non-utf8 strftime result")
+            log_err_and_exit!("non-utf8 strftime result")
         };
-        Ok(StringRef::new(time))
+        StringRef::new(time)
     }
 }

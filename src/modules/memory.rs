@@ -8,17 +8,20 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Memory {
+pub struct Memory {
     reader: FileReader,
     emitter: Emitter,
 }
 
 impl Memory {
-    pub(crate) fn new(emitter: Emitter) -> Result<Self, IoError> {
-        Ok(Self {
-            reader: FileReader::new(c"/proc/meminfo")?,
-            emitter,
-        })
+    pub(crate) fn new(emitter: Emitter) -> Option<Self> {
+        match FileReader::new(c"/proc/meminfo") {
+            Ok(reader) => Some(Self { reader, emitter }),
+            Err(err) => {
+                log::error!(target: "Memory", "{err:?}");
+                None
+            }
+        }
     }
 
     pub(crate) const fn tick(&mut self) {
@@ -40,7 +43,7 @@ impl Memory {
     }
 }
 
-pub(crate) fn parse(buf: &[u8]) -> Result<(f64, f64), MemoryError> {
+fn parse(buf: &[u8]) -> Result<(f64, f64), MemoryError> {
     let s = core::str::from_utf8(buf).map_err(MemoryError::Decode)?;
     let mut lines = s.lines();
 
@@ -73,7 +76,7 @@ pub(crate) fn parse(buf: &[u8]) -> Result<(f64, f64), MemoryError> {
 }
 
 #[derive(Debug, Error, Clone, Copy)]
-pub(crate) enum MemoryError {
+pub enum MemoryError {
     #[error("non-utf8 memory data")]
     Decode(core::str::Utf8Error),
     #[error("missing memory line {line}")]

@@ -1,32 +1,36 @@
-pub(crate) use self::{cqe::Cqe, sqe::Sqe};
-use crate::external::{
-    __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
-    __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait,
-    __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
+use crate::{
+    external::{
+        __kernel_timespec, __liburing_cqe_seen, __liburing_get_sqe, __liburing_queue_exit,
+        __liburing_queue_init, __liburing_submit, __liburing_submit_and_wait,
+        __liburing_wait_cqe_timeout, io_uring, io_uring_cqe,
+    },
+    utils::log_err_and_exit,
 };
 use crate::{
     sansio::{Op, Wants},
     user_data::{ModuleId, UserData},
 };
 use core::mem::MaybeUninit;
-use libc::{ETIME, exit, strerror};
+use libc::{ETIME, strerror};
 use rustix::fd::AsRawFd;
 
 mod cqe;
+pub use cqe::Cqe;
+
 mod sqe;
+pub use sqe::Sqe;
 
 fn checkerr(errno: i32) {
     if errno < 0 {
-        let str = unsafe { strerror(errno) };
+        let str = unsafe { strerror(-errno) };
         let str = unsafe { core::ffi::CStr::from_ptr(str) }
             .to_str()
             .unwrap_or("<non-utf8 strerror>");
-        log::error!("IoUring error: {str:?}");
-        unsafe { exit(1) }
+        log_err_and_exit!("IoUring error: {str:?}");
     }
 }
 
-pub(crate) struct IoUring {
+pub struct IoUring {
     ring: io_uring,
     dirty: bool,
 }
@@ -42,8 +46,7 @@ impl IoUring {
     fn get_sqe(&mut self) -> Sqe {
         let sqe = unsafe { __liburing_get_sqe(&raw mut self.ring) };
         if sqe.is_null() {
-            log::error!("got NULL from io_uring_get_sqe");
-            unsafe { exit(1) }
+            log_err_and_exit!("got NULL from io_uring_get_sqe");
         }
         self.dirty = true;
         Sqe { sqe }
@@ -61,8 +64,8 @@ impl IoUring {
         }
     }
 
-    pub(crate) fn submit_and_wait(&mut self, n: usize) {
-        let errno = unsafe { __liburing_submit_and_wait(&raw mut self.ring, n as u32) };
+    pub(crate) fn submit_and_wait(&mut self, n: u32) {
+        let errno = unsafe { __liburing_submit_and_wait(&raw mut self.ring, n) };
         checkerr(errno);
         self.dirty = false;
     }
@@ -81,8 +84,7 @@ impl IoUring {
         }
         checkerr(errno);
         if cqe.is_null() {
-            log::error!("got NULL from io_uring_wait_cqe_timeout");
-            unsafe { exit(1) };
+            log_err_and_exit!("got NULL from io_uring_wait_cqe_timeout");
         }
         Some(Cqe { cqe })
     }
@@ -113,12 +115,16 @@ impl IoUring {
             }
             Wants::Read { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_read(fd.as_raw_fd(), buf, len);
+                let len = u32::try_from(len)
+                    .unwrap_or_else(|_| log_err_and_exit!("wantsread->len is too large for u32"));
+                sqe.prep_read(fd.as_raw_fd(), buf.cast(), len);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
             }
             Wants::Write { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_write(fd.as_raw_fd(), buf, len);
+                let len = u32::try_from(len)
+                    .unwrap_or_else(|_| log_err_and_exit!("wantswrite->len is too large for u32"));
+                sqe.prep_write(fd.as_raw_fd(), buf.cast(), len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }
             Wants::Accept { fd } => {

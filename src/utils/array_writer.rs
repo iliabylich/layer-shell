@@ -1,4 +1,4 @@
-pub(crate) struct ArrayWriter<'a> {
+pub struct ArrayWriter<'a> {
     buf: &'a mut [u8],
     offset: usize,
 }
@@ -38,9 +38,13 @@ macro_rules! write_in_place {
     ($buf:expr, $($arg:tt)*) => {{
         use core::fmt::Write;
         let mut writer = $crate::utils::ArrayWriter::new($buf);
-        write!(&mut writer, $($arg)+).unwrap_or_else(|_| unreachable!());
+        write!(&mut writer, $($arg)+).unwrap_or_else(|_| {
+            $crate::utils::log_err_and_exit!("formatted data doesn't fit into fixed size array");
+        });
         let offset = writer.offset();
-        let (head, _tail) = $buf.split_at_checked(offset).unwrap_or_else(|| unreachable!("Write for ArrayWriter has a bug"));
+        let (head, _tail) = $buf.split_at_checked(offset).unwrap_or_else(|| {
+            $crate::utils::log_err_and_exit!("impl Write for ArrayWriter has a bug, computed offset is too large");
+        });
         head
     }};
 }

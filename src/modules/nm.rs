@@ -3,13 +3,13 @@ use crate::{
     emitter::Emitter,
     error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, StringRef, StringRefExt, new_sockaddr_un},
+    utils::{FixedSizeBuffer, SockaddrUn, StringRef, StringRefExt},
 };
 use libc::sockaddr_un;
 use thiserror::Error;
 
 #[derive(Clone, Copy)]
-pub(crate) struct NM {
+pub struct NM {
     reader: UnixSocketReader,
     emitter: Emitter,
 }
@@ -17,7 +17,7 @@ pub(crate) struct NM {
 impl NM {
     pub(crate) const BUFFER_SIZE: usize = NMEvent::SERIALIZED_LENGTH;
     const SPEED_THRESHOLD: u64 = 5_000;
-    pub(crate) const ADDRESS: sockaddr_un = new_sockaddr_un(b"/run/nm-mon-systemd.sock");
+    pub(crate) const ADDRESS: sockaddr_un = SockaddrUn::from_bytes(b"/run/nm-mon-systemd.sock");
 
     pub(crate) const fn new(emitter: Emitter) -> Self {
         Self {
@@ -107,7 +107,7 @@ impl NMEvent {
 }
 
 #[derive(Debug, Error, Clone, Copy)]
-pub(crate) enum NMError {
+pub enum NMError {
     #[error("message length too big: {len}")]
     SsidIsTooLong { len: usize },
     #[error("non-utf8 SSID")]

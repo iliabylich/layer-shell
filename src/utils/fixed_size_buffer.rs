@@ -1,4 +1,4 @@
-pub(crate) struct FixedSizeBuffer<const N: usize> {
+pub struct FixedSizeBuffer<const N: usize> {
     buf: [u8; N],
     pos: usize,
 }

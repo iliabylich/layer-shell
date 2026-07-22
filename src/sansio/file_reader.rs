@@ -1,6 +1,7 @@
 use crate::{
     error::IoError,
     sansio::{Satisfy, Wants},
+    utils::log_err_and_exit,
 };
 use core::ffi::CStr;
 use rustix::{
@@ -9,7 +10,7 @@ use rustix::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct FileReader {
+pub struct FileReader {
     fd: BorrowedFd<'static>,
     state: State,
 }
@@ -66,7 +67,7 @@ impl FileReader {
             (State::WaitingForRead, Satisfy::Read(res)) => {
                 let bytes_read = res?;
                 let Some(out) = buf.get(..bytes_read) else {
-                    unreachable!(
+                    log_err_and_exit!(
                         "FileReader: buffer is too short: {} vs {}",
                         bytes_read,
                         buf.len()

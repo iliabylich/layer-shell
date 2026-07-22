@@ -1,8 +1,8 @@
-use libc::sockaddr;
+use crate::external::sockaddr;
 use rustix::fd::BorrowedFd;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Wants {
+pub enum Wants {
     Socket {
         domain: i32,
         type_: i32,
