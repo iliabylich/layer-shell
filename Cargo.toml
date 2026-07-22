@@ -11,7 +11,11 @@ cc = "1"
 libc = { version = "0.2", default-features = false }
 log = { version = "0.4", default-features = false }
 microjson = { version = "0.1", default-features = false }
-rustix = { version = "1.1", default-features = false, features = ["net", "fs"] }
+rustix = { version = "1.1", default-features = false, features = [
+    "net",
+    "fs",
+    "time",
+] }
 string-bath = { version = "0.2.4" }
 thiserror = { version = "2", default-features = false }
 

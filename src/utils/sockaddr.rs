@@ -1,7 +1,10 @@
 use libc::{AF_UNIX, sa_family_t, sockaddr_un};
 
 pub(crate) const fn new_sockaddr_un(path: &[u8]) -> sockaddr_un {
-    let mut addr: sockaddr_un = unsafe { core::mem::zeroed() };
+    let mut addr = sockaddr_un {
+        sun_family: 0,
+        sun_path: [0; _],
+    };
     addr.sun_family = AF_UNIX as sa_family_t;
 
     assert!(path.len() < addr.sun_path.len(), "path is too long");

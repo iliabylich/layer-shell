@@ -9,8 +9,7 @@ impl<'a> ArrayWriter<'a> {
     }
 
     pub(crate) const fn as_bytes(&self) -> &[u8] {
-        // SAFETY: self.offset is changed in `impl Write` so it's guaranteed to be valid
-        let (head, _tail) = unsafe { self.buf.split_at_unchecked(self.offset) };
+        let (head, _tail) = self.buf.split_at(self.offset);
         head
     }
 

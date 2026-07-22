@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicU32, Ordering};
+
 use crate::sansio::Op;
 
 #[repr(u8)]
@@ -67,11 +69,9 @@ pub(crate) struct UserData {
 }
 const _: [u8; 8] = [0; size_of::<UserData>()];
 
-static mut NEXT_REQUEST_ID: u32 = 1;
 fn next_request_id() -> u32 {
-    let request_id = unsafe { NEXT_REQUEST_ID };
-    unsafe { NEXT_REQUEST_ID = NEXT_REQUEST_ID.wrapping_add(1) };
-    request_id
+    static NEXT_REQUEST_ID: AtomicU32 = AtomicU32::new(1);
+    NEXT_REQUEST_ID.fetch_add(1, Ordering::Relaxed)
 }
 
 impl UserData {

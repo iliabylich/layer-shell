@@ -2,8 +2,14 @@ use crate::{
     error::IoError,
     sansio::{Satisfy, Wants},
 };
-use libc::{CLOCK_MONOTONIC, itimerspec, timerfd_create, timerfd_settime, timespec};
-use rustix::fd::BorrowedFd;
+use rustix::{
+    fd::{BorrowedFd, IntoRawFd},
+    fs::Timespec,
+    time::{
+        Itimerspec, TimerfdClockId, TimerfdFlags, TimerfdTimerFlags, timerfd_create,
+        timerfd_settime,
+    },
+};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct TimerFd {
@@ -83,29 +89,32 @@ impl TimerFd {
 }
 
 fn create_timer() -> Result<BorrowedFd<'static>, IoError> {
-    let res = unsafe { timerfd_create(CLOCK_MONOTONIC, 0) };
+    let fd = timerfd_create(TimerfdClockId::Monotonic, TimerfdFlags::empty()).map_err(|errno| {
+        IoError::FailedTo {
+            op: "timerfd_create",
+            errno,
+        }
+    })?;
+    let fd = unsafe { BorrowedFd::borrow_raw(fd.into_raw_fd()) };
 
-    if res < 0 {
-        return Err(IoError::new_failed_to("timerfd_create"));
-    }
-    let fd = res;
-
-    let timer_spec = itimerspec {
-        it_interval: timespec {
-            tv_sec: 1,
-            tv_nsec: 0,
+    timerfd_settime(
+        fd,
+        TimerfdTimerFlags::empty(),
+        &Itimerspec {
+            it_interval: Timespec {
+                tv_sec: 1,
+                tv_nsec: 0,
+            },
+            it_value: Timespec {
+                tv_sec: 0,
+                tv_nsec: 1,
+            },
         },
-        it_value: timespec {
-            tv_sec: 0,
-            tv_nsec: 1,
-        },
-    };
+    )
+    .map_err(|errno| IoError::FailedTo {
+        op: "timerfd_settime",
+        errno,
+    })?;
 
-    let res = unsafe { timerfd_settime(fd, 0, &raw const timer_spec, core::ptr::null_mut()) };
-
-    if res < 0 {
-        return Err(IoError::new_failed_to("timerfd_settime"));
-    }
-
-    Ok(unsafe { BorrowedFd::borrow_raw(fd) })
+    Ok(fd)
 }
