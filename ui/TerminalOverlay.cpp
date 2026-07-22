@@ -5,6 +5,8 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QShowEvent>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
 #include <qtermwidget.h>
@@ -13,13 +15,23 @@ class TerminalWidget : public QTermWidget {
 public:
   TerminalWidget(QWidget *parent, QStringList command)
       : QTermWidget(0, parent) {
-    setTerminalFont(QFont("AdwaitaMono Nerd Font Mono", 12));
-    setScrollBarPosition(QTermWidget::ScrollBarRight);
+    setTerminalFont(terminalFont());
     setHistorySize(-1);
     setAutoClose(false);
-    setColorScheme("Linux");
+    setColorScheme("WhiteOnBlack");
+    setScrollBarPosition(QTermWidget::NoScrollBar);
     setShellProgram(command.first());
     setArgs(command.sliced(1));
+  }
+
+private:
+  static QFont terminalFont() {
+    return QFont("AdwaitaMono Nerd Font Mono", 12);
+  }
+
+  void showEvent(QShowEvent *event) override {
+    QTermWidget::showEvent(event);
+    QTimer::singleShot(0, this, [this] { setTerminalFont(terminalFont()); });
   }
 };
 
