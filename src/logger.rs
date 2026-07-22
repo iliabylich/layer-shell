@@ -1,7 +1,7 @@
 use crate::utils::{ArrayWriter, EnvHelper};
 use core::{fmt::Write as _, str::FromStr as _};
 use libc::{STDERR_FILENO, exit};
-use log::{LevelFilter, Metadata, Record};
+use log::{LevelFilter, Metadata, ParseLevelError, Record};
 use rustix::fd::BorrowedFd;
 
 static LOGGER: Logger = Logger;
@@ -39,7 +39,7 @@ impl log::Log for Logger {
             record.level(),
             RESET,
             GRAY,
-            record.target(),
+            pretty_target(record.target()),
             RESET,
             record.args()
         );
@@ -65,7 +65,7 @@ fn level_from_env() -> LevelFilter {
         eprint(b"non-utf8 $RUST_LOG\n");
         unsafe { exit(1) }
     };
-    LevelFilter::from_str(level).unwrap_or_else(|_| {
+    LevelFilter::from_str(level).unwrap_or_else(|_empty_err: ParseLevelError| {
         eprint(b"unsupported $RUST_LOG value\n");
         unsafe { exit(1) }
     })
@@ -92,4 +92,35 @@ const fn color_for_level(level: log::Level) -> &'static str {
 fn eprint(buf: &[u8]) {
     let stderr = unsafe { BorrowedFd::borrow_raw(STDERR_FILENO) };
     let _ = rustix::io::write(stderr, buf);
+}
+
+fn pretty_target(target: &str) -> &str {
+    macro_rules! map {
+        ($suffix:expr, $output:expr) => {
+            if target.ends_with($suffix) {
+                return $output;
+            }
+        };
+    }
+
+    map!("::timer", "Timer");
+    map!("::timerfd", "TimerFd");
+    map!("::clock", "Clock");
+    map!("::control", "Control");
+    map!("::cpu", "Cpu");
+    map!("::kb_mod", "KbMod");
+    map!("::memory", "Memory");
+    map!("::niri", "Niri");
+    map!("::nm", "NM");
+    map!("::pw", "PW");
+    map!("::tray", "Tray");
+    map!("::weather", "Weather");
+    map!("::file_reader", "FileReader");
+    map!("::satisfy", "Satisfy");
+    map!("::oneshot_writer", "UnixSocketOneshotWriter");
+    map!("::reader", "UnixSocketReader");
+    map!("::config", "Config");
+    map!("::io", "IO");
+    map!("::emitter", "IO");
+    target
 }

@@ -17,7 +17,6 @@ rustix = { version = "1.1", default-features = false, features = [
     "time",
 ] }
 string-bath = { version = "0.2.4" }
-thiserror = { version = "2", default-features = false }
 
 [lib]
 name = "layer_shell_io"
@@ -28,7 +27,6 @@ log = { workspace = true }
 microjson = { workspace = true }
 rustix = { workspace = true }
 string-bath = { workspace = true }
-thiserror = { workspace = true }
 
 [features]
 standalone-staticlib = []

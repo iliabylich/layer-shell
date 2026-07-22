@@ -1,7 +1,6 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{FixedSizeBuffer, SockaddrUn, write_in_place},
 };
@@ -25,7 +24,9 @@ impl Weather {
         SockaddrUn::from_bytes(path)
     }
 
-    pub(crate) const fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
+        log::trace!("Creating Weather");
+
         Self {
             reader: UnixSocketReader::new(),
             emitter,
@@ -37,14 +38,16 @@ impl Weather {
         addr: &sockaddr_un,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
     ) -> Option<Wants> {
-        self.reader.wants(addr, buf.remainder())
+        let wants = self.reader.wants(addr, buf.remainder())?;
+        log::trace!("{wants:?}");
+        Some(wants)
     }
 
     pub(crate) fn satisfy(
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), IoError> {
+    ) -> Result<(), ()> {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {

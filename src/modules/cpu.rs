@@ -1,11 +1,9 @@
 use crate::{
     FixedSizeArrray, IoEvent,
     emitter::Emitter,
-    error::IoError,
     sansio::{FileReader, Satisfy, Wants},
     utils::log_err_and_exit,
 };
-use thiserror::Error;
 
 pub struct Cpu {
     reader: FileReader,
@@ -17,6 +15,8 @@ pub const MAX_CPU_COUNT: usize = 32;
 
 impl Cpu {
     pub(crate) fn new(emitter: Emitter) -> Option<Self> {
+        log::trace!("Creating Cpu");
+
         match FileReader::new(c"/proc/stat") {
             Ok(reader) => Some(Self {
                 reader,
@@ -24,7 +24,7 @@ impl Cpu {
                 emitter,
             }),
             Err(err) => {
-                log::error!(target: "CPU", "{err:?}");
+                log::error!("{err:?}");
                 None
             }
         }
@@ -34,11 +34,13 @@ impl Cpu {
         self.reader.tick();
     }
 
-    pub(crate) const fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
-        self.reader.wants(buf)
+    pub(crate) fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
+        let wants = self.reader.wants(buf)?;
+        log::trace!("{wants:?}");
+        Some(wants)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: &[u8]) -> Result<(), IoError> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: &[u8]) -> Result<(), ()> {
         let Some(buf) = self.reader.try_satisfy(satisfy, buf)? else {
             return Ok(());
         };
@@ -56,7 +58,7 @@ impl Cpu {
 fn diff(
     prev: Option<&FixedSizeArrray<MAX_CPU_COUNT, CoreUsage>>,
     next: &FixedSizeArrray<MAX_CPU_COUNT, CoreUsage>,
-) -> Result<FixedSizeArrray<MAX_CPU_COUNT, u8>, CpuError> {
+) -> Result<FixedSizeArrray<MAX_CPU_COUNT, u8>, ()> {
     let Some(prev) = prev else {
         return Ok(FixedSizeArrray::filled(0, next.len()));
     };
@@ -86,8 +88,10 @@ pub struct CoreUsage {
 }
 
 impl CoreUsage {
-    pub(crate) fn parse_many(buf: &[u8]) -> Result<FixedSizeArrray<MAX_CPU_COUNT, Self>, CpuError> {
-        let s = core::str::from_utf8(buf).map_err(CpuError::MalformedInput)?;
+    pub(crate) fn parse_many(buf: &[u8]) -> Result<FixedSizeArrray<MAX_CPU_COUNT, Self>, ()> {
+        let s = core::str::from_utf8(buf).map_err(|err| {
+            log::error!("non-utf8 input: {err:?}");
+        })?;
 
         let mut out = FixedSizeArrray::new();
 
@@ -95,50 +99,32 @@ impl CoreUsage {
             if let Some(line) = line.strip_prefix("cpu")
                 && line.as_bytes().first().is_some_and(u8::is_ascii_digit)
             {
-                out.push(Self::parse(line)?)
-                    .ok_or(CpuError::TooManyCpuCores)?;
+                out.push(Self::parse(line)?).ok_or_else(|| {
+                    log::error!("too many CPU cores");
+                })?;
             }
         }
 
         Ok(out)
     }
 
-    fn parse(line: &str) -> Result<Self, CpuError> {
+    fn parse(line: &str) -> Result<Self, ()> {
         let mut parts = line.split(' ');
 
-        macro_rules! cut_str {
-            ($field:expr) => {
-                parts.next().ok_or(CpuError::NoField { field: $field })
-            };
-        }
-        macro_rules! cut_u64 {
-            ($field:expr) => {
-                cut_str!($field)?
-                    .parse::<u64>()
-                    .map_err(|err| CpuError::NonIntegerField {
-                        field: $field,
-                        kind: *err.kind(),
-                    })
-            };
-        }
+        let id = cut_str(&mut parts, "cpuN")?.parse::<u8>().map_err(|err| {
+            log::error!("non integer field CPU id: {err:?}");
+        })?;
 
-        let id = cut_str!("cpuN")?
-            .parse::<u8>()
-            .map_err(|err| CpuError::NonIntegerField {
-                field: "id",
-                kind: *err.kind(),
-            })?;
-
-        let user_n = cut_u64!("user")?;
-        let nice_n = cut_u64!("nice")?;
-        let system_n = cut_u64!("system")?;
-        let idle_n = cut_u64!("idle")?;
-        let iowait_n = cut_u64!("iowait")?;
-        let irq_n = cut_u64!("irq")?;
-        let softirq_n = cut_u64!("softirq")?;
-        let steal_n = cut_u64!("steal")?;
-        let guest_n = cut_u64!("guest")?;
-        let guest_nice_n = cut_u64!("guestnice")?;
+        let user_n = cut_u64(&mut parts, "user")?;
+        let nice_n = cut_u64(&mut parts, "nice")?;
+        let system_n = cut_u64(&mut parts, "system")?;
+        let idle_n = cut_u64(&mut parts, "idle")?;
+        let iowait_n = cut_u64(&mut parts, "iowait")?;
+        let irq_n = cut_u64(&mut parts, "irq")?;
+        let softirq_n = cut_u64(&mut parts, "softirq")?;
+        let steal_n = cut_u64(&mut parts, "steal")?;
+        let guest_n = cut_u64(&mut parts, "guest")?;
+        let guest_nice_n = cut_u64(&mut parts, "guestnice")?;
 
         let idle = idle_n + iowait_n;
         let total = user_n
@@ -155,48 +141,38 @@ impl CoreUsage {
         Ok(Self { id, idle, total })
     }
 
-    pub(crate) fn load_comparing_to(&self, prev: Self) -> Result<u8, CpuError> {
+    pub(crate) fn load_comparing_to(&self, prev: Self) -> Result<u8, ()> {
         if self.id != prev.id {
-            return Err(CpuError::CpuIdMismatch {
-                next: self.id,
-                prev: prev.id,
-            });
+            log::error!("CPU ids mismatch: {} vs {}", self.id, prev.id);
+            return Err(());
         }
 
-        let idle_d = f64::from(
-            u32::try_from(self.idle - prev.idle).map_err(|_| CpuError::IdleDiffIsTooBig)?,
-        );
-        let total_d = f64::from(
-            u32::try_from(self.total - prev.total).map_err(|_| CpuError::TotalDiffIsTooBig)?,
-        );
+        let idle_d = f64::from(u32::try_from(self.idle - prev.idle).map_err(|err| {
+            log::error!("failed to calculate idle_d: {err:?}");
+        })?);
+        let total_d = f64::from(u32::try_from(self.total - prev.total).map_err(|err| {
+            log::error!("failed to calculate total_d: {err:?}");
+        })?);
         let percent = 100.0 * (1.0 - idle_d / total_d);
 
         #[expect(clippy::cast_possible_truncation)]
         let percent = percent as i64;
 
-        u8::try_from(percent).map_err(|_| CpuError::PercentageIsTooBig)
+        u8::try_from(percent).map_err(|err| {
+            log::error!("failed to calculate load_comparing_to final percentage: {err:?}");
+        })
     }
 }
 
-#[derive(Debug, Error, Clone, Copy)]
-pub enum CpuError {
-    #[error("non-utf8 CPU data")]
-    MalformedInput(core::str::Utf8Error),
-    #[error("too many CPU cores")]
-    TooManyCpuCores,
-    #[error("missing CPU field {field:?}")]
-    NoField { field: &'static str },
-    #[error("failed to parse CPU field {field:?}")]
-    NonIntegerField {
-        field: &'static str,
-        kind: core::num::IntErrorKind,
-    },
-    #[error("CPU id mismatch: next {next}, prev {prev}")]
-    CpuIdMismatch { next: u8, prev: u8 },
-    #[error("CPU idle diff is too big")]
-    IdleDiffIsTooBig,
-    #[error("CPU total diff is too big")]
-    TotalDiffIsTooBig,
-    #[error("CPU percent is too big")]
-    PercentageIsTooBig,
+fn cut_str<'a>(parts: &mut impl Iterator<Item = &'a str>, field: &str) -> Result<&'a str, ()> {
+    parts.next().ok_or_else(|| {
+        log::error!("no field {field:?}");
+    })
+}
+
+fn cut_u64<'a>(parts: &mut impl Iterator<Item = &'a str>, field: &str) -> Result<u64, ()> {
+    let s = cut_str(parts, field)?;
+    s.parse::<u64>().map_err(|err| {
+        log::error!("non integer field {field:?}: {err:?}");
+    })
 }

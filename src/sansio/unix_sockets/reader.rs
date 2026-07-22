@@ -1,5 +1,4 @@
 use crate::{
-    error::IoError,
     sansio::{Satisfy, Wants},
     utils::log_err_and_exit,
 };
@@ -23,7 +22,9 @@ pub enum UnixSocketReader {
 }
 
 impl UnixSocketReader {
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn new() -> Self {
+        log::trace!("Creating UnixSocketReader");
+
         Self::ReadyToSocket
     }
 
@@ -65,7 +66,7 @@ impl UnixSocketReader {
         }
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<usize>, IoError> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<usize>, ()> {
         match (*self, satisfy) {
             (Self::WaitingForSocket, Satisfy::Socket(res)) => {
                 let fd = res?;
@@ -82,17 +83,18 @@ impl UnixSocketReader {
             (Self::WaitingForRead { fd }, Satisfy::Read(res)) => {
                 let bytes_read = res?;
                 if bytes_read == 0 {
-                    return Err(IoError::EofError);
+                    log::error!("EOF");
+                    return Err(());
                 }
                 *self = Self::ReadyToRead { fd };
 
                 Ok(Some(bytes_read))
             }
 
-            _ => Err(IoError::WrongSatisfy {
-                state: self.as_str(),
-                satisfy: satisfy.as_str(),
-            }),
+            _ => {
+                log::error!("wrong satisfy {satisfy:?} for {self:?}");
+                Err(())
+            }
         }
     }
 
@@ -104,17 +106,6 @@ impl UnixSocketReader {
             | Self::WaitingForConnect { fd }
             | Self::ReadyToRead { fd }
             | Self::WaitingForRead { fd } => Some(fd),
-        }
-    }
-
-    const fn as_str(self) -> &'static str {
-        match self {
-            Self::ReadyToSocket => "ReadyToSocket",
-            Self::WaitingForSocket => "WaitingForSocket",
-            Self::ReadyToConnect { .. } => "ReadyToConnect",
-            Self::WaitingForConnect { .. } => "WaitingForConnect",
-            Self::ReadyToRead { .. } => "ReadyToRead",
-            Self::WaitingForRead { .. } => "WaitingForRead",
         }
     }
 }

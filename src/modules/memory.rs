@@ -1,9 +1,6 @@
-use thiserror::Error;
-
 use crate::{
     IoEvent,
     emitter::Emitter,
-    error::IoError,
     sansio::{FileReader, Satisfy, Wants},
 };
 
@@ -15,10 +12,12 @@ pub struct Memory {
 
 impl Memory {
     pub(crate) fn new(emitter: Emitter) -> Option<Self> {
+        log::trace!("Creating Memory");
+
         match FileReader::new(c"/proc/meminfo") {
             Ok(reader) => Some(Self { reader, emitter }),
             Err(err) => {
-                log::error!(target: "Memory", "{err:?}");
+                log::error!("{err:?}");
                 None
             }
         }
@@ -28,11 +27,13 @@ impl Memory {
         self.reader.tick();
     }
 
-    pub(crate) const fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
-        self.reader.wants(buf)
+    pub(crate) fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
+        let wants = self.reader.wants(buf)?;
+        log::trace!("{wants:?}");
+        Some(wants)
     }
 
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: &[u8]) -> Result<(), IoError> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: &[u8]) -> Result<(), ()> {
         let Some(buf) = self.reader.try_satisfy(satisfy, buf)? else {
             return Ok(());
         };
@@ -43,48 +44,44 @@ impl Memory {
     }
 }
 
-fn parse(buf: &[u8]) -> Result<(f64, f64), MemoryError> {
-    let s = core::str::from_utf8(buf).map_err(MemoryError::Decode)?;
-    let mut lines = s.lines();
+fn parse(buf: &[u8]) -> Result<(f64, f64), ()> {
+    let text = core::str::from_utf8(buf).map_err(|err| {
+        log::error!("non-utf8 input: {err:?}");
+    })?;
+    let mut lines = text.lines();
 
-    macro_rules! parse_mem_in_gb {
-        ($line:expr, $prefix:expr) => {{
-            let in_bytes = $line
-                .trim_ascii_end()
-                .strip_prefix($prefix)
-                .ok_or(MemoryError::MissingPrefix { prefix: $prefix })?
-                .strip_suffix("kB")
-                .ok_or(MemoryError::MissingKbSuffix { prefix: $prefix })?
-                .trim_ascii()
-                .parse::<f64>()
-                .map_err(|_| MemoryError::ParseFloat { prefix: $prefix })?;
-            in_bytes / 1_024.0 / 1_024.0
-        }};
-    }
+    let mem_total = nextline(&mut lines, text)?;
+    let _ = nextline(&mut lines, text)?;
+    let mem_available = nextline(&mut lines, text)?;
 
-    let mem_total = lines.next().ok_or(MemoryError::MissingLine { line: 1 })?;
-    let total_gb = parse_mem_in_gb!(mem_total, "MemTotal:");
+    let mem_total = parse_mem_in_gb(mem_total, "MemTotal:")?;
+    let mem_available = parse_mem_in_gb(mem_available, "MemAvailable:")?;
+    let mem_used = mem_total - mem_available;
 
-    let _skip = lines.next().ok_or(MemoryError::MissingLine { line: 2 })?;
-
-    let mem_available = lines.next().ok_or(MemoryError::MissingLine { line: 3 })?;
-    let available_gb = parse_mem_in_gb!(mem_available, "MemAvailable:");
-
-    let used_gb = total_gb - available_gb;
-
-    Ok((used_gb, total_gb))
+    Ok((mem_used, mem_total))
 }
 
-#[derive(Debug, Error, Clone, Copy)]
-pub enum MemoryError {
-    #[error("non-utf8 memory data")]
-    Decode(core::str::Utf8Error),
-    #[error("missing memory line {line}")]
-    MissingLine { line: usize },
-    #[error("missing memory prefix {prefix}")]
-    MissingPrefix { prefix: &'static str },
-    #[error("missing kB suffix for {prefix}")]
-    MissingKbSuffix { prefix: &'static str },
-    #[error("failed to parse memory value for {prefix}")]
-    ParseFloat { prefix: &'static str },
+fn parse_mem_in_gb(line: &str, prefix: &'static str) -> Result<f64, ()> {
+    let mem_in_bytes = line
+        .trim_ascii_end()
+        .strip_prefix(prefix)
+        .ok_or_else(|| {
+            log::error!("missing prefix {prefix:?} in line {line:?}");
+        })?
+        .strip_suffix("kB")
+        .ok_or_else(|| {
+            log::error!("missing kb suffix in line {line:?}");
+        })?
+        .trim_ascii()
+        .parse::<f64>()
+        .map_err(|err| {
+            log::error!("failed to parse value in line {line:?} as float: {err:?}");
+        })?;
+    Ok(mem_in_bytes / 1_024.0 / 1_024.0)
+}
+
+fn nextline<'a>(lines: &mut impl Iterator<Item = &'a str>, text: &str) -> Result<&'a str, ()> {
+    lines.next().ok_or_else(|| {
+        log::error!("no line 3 in {text:?}");
+    })
 }

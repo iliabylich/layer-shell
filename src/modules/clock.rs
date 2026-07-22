@@ -11,7 +11,9 @@ pub struct Clock {
 }
 
 impl Clock {
-    pub(crate) const fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
+        log::trace!("Creating Clock");
+
         Self { emitter }
     }
 

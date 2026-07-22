@@ -18,9 +18,7 @@
 mod command;
 mod config;
 mod emitter;
-mod error;
 mod event;
-
 /// cbindgen:ignore
 #[expect(
     dead_code,

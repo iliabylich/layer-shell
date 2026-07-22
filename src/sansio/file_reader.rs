@@ -1,5 +1,4 @@
 use crate::{
-    error::IoError,
     sansio::{Satisfy, Wants},
     utils::log_err_and_exit,
 };
@@ -21,20 +20,14 @@ enum State {
     WaitingForRead,
     Sleeping,
 }
-impl State {
-    const fn as_str(self) -> &'static str {
-        match self {
-            Self::CanRead => "CanRead",
-            Self::WaitingForRead => "WaitingForRead",
-            Self::Sleeping => "Sleeping",
-        }
-    }
-}
 
 impl FileReader {
-    pub(crate) fn new(path: &'static CStr) -> Result<Self, IoError> {
-        let fd = rustix::fs::open(path, OFlags::RDONLY, Mode::empty())
-            .map_err(|errno| IoError::FailedTo { op: "open", errno })?;
+    pub(crate) fn new(path: &'static CStr) -> Result<Self, ()> {
+        log::trace!("Creating FileReader");
+
+        let fd = rustix::fs::open(path, OFlags::RDONLY, Mode::empty()).map_err(|errno| {
+            log::error!("failed to open: {errno:?}");
+        })?;
         let fd = unsafe { BorrowedFd::borrow_raw(fd.into_raw_fd()) };
 
         Ok(Self {
@@ -62,25 +55,20 @@ impl FileReader {
         &mut self,
         satisfy: Satisfy,
         buf: &'a [u8],
-    ) -> Result<Option<&'a [u8]>, IoError> {
-        match (self.state, satisfy) {
-            (State::WaitingForRead, Satisfy::Read(res)) => {
-                let bytes_read = res?;
-                let Some(out) = buf.get(..bytes_read) else {
-                    log_err_and_exit!(
-                        "FileReader: buffer is too short: {} vs {}",
-                        bytes_read,
-                        buf.len()
-                    )
-                };
-                self.state = State::Sleeping;
-                Ok(Some(out))
-            }
-
-            _ => Err(IoError::WrongSatisfy {
-                state: self.state.as_str(),
-                satisfy: satisfy.as_str(),
-            }),
+    ) -> Result<Option<&'a [u8]>, ()> {
+        if let (State::WaitingForRead, Satisfy::Read(res)) = (self.state, satisfy) {
+            let bytes_read = res?;
+            let Some(out) = buf.get(..bytes_read) else {
+                log_err_and_exit!(
+                    "FileReader: buffer is too short: {bytes_read} vs {}",
+                    buf.len()
+                )
+            };
+            self.state = State::Sleeping;
+            Ok(Some(out))
+        } else {
+            log::error!("wrong satisfy {satisfy:?} for {self:?}");
+            Err(())
         }
     }
 

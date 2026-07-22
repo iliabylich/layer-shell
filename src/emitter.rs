@@ -15,7 +15,7 @@ impl Emitter {
     }
 
     pub(crate) fn emit(&self, event: &IoEvent) {
-        log::info!(target: "IO", "{event:?}");
+        log::info!("{event:?}");
         (self.callback)(event, self.data);
     }
 }

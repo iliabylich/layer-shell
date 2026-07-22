@@ -1,5 +1,4 @@
 use crate::{
-    error::IoError,
     sansio::{Satisfy, Wants},
     utils::log_err_and_exit,
 };
@@ -24,17 +23,11 @@ enum State {
     CanRead,
     WaitingForRead,
 }
-impl State {
-    const fn as_str(self) -> &'static str {
-        match self {
-            Self::CanRead => "CanRead",
-            Self::WaitingForRead => "WaitingForRead",
-        }
-    }
-}
 
 impl TimerFd {
-    pub(crate) fn new() -> Result<Self, IoError> {
+    pub(crate) fn new() -> Result<Self, ()> {
+        log::trace!("Creating TimerFd");
+
         Ok(Self {
             fd: create_timer()?,
             ticks: 0,
@@ -61,39 +54,32 @@ impl TimerFd {
         &mut self,
         satisfy: Satisfy,
         buf: [u8; 8],
-    ) -> Result<Option<u64>, IoError> {
-        match (self.state, satisfy) {
-            (State::WaitingForRead, Satisfy::Read(res)) => {
-                let bytes_read = res?;
-                if bytes_read != buf.len() {
-                    log_err_and_exit!(
-                        "Timerfd: buffer is too short: {bytes_read} vs {}",
-                        buf.len()
-                    );
-                }
-                let expirations = u64::from_ne_bytes(buf);
-
-                let ticks = self.ticks;
-                self.ticks = self.ticks.saturating_add(expirations);
-                self.state = State::CanRead;
-
-                Ok(Some(ticks))
+    ) -> Result<Option<u64>, ()> {
+        if let (State::WaitingForRead, Satisfy::Read(res)) = (self.state, satisfy) {
+            let bytes_read = res?;
+            if bytes_read != buf.len() {
+                log_err_and_exit!(
+                    "Timerfd: buffer is too short: {bytes_read} vs {}",
+                    buf.len()
+                );
             }
+            let expirations = u64::from_ne_bytes(buf);
 
-            _ => Err(IoError::WrongSatisfy {
-                satisfy: satisfy.as_str(),
-                state: self.state.as_str(),
-            }),
+            let ticks = self.ticks;
+            self.ticks = self.ticks.saturating_add(expirations);
+            self.state = State::CanRead;
+
+            Ok(Some(ticks))
+        } else {
+            log::error!("wrong satisfy {satisfy:?} for {self:?}");
+            Err(())
         }
     }
 }
 
-fn create_timer() -> Result<BorrowedFd<'static>, IoError> {
+fn create_timer() -> Result<BorrowedFd<'static>, ()> {
     let fd = timerfd_create(TimerfdClockId::Monotonic, TimerfdFlags::empty()).map_err(|errno| {
-        IoError::FailedTo {
-            op: "timerfd_create",
-            errno,
-        }
+        log::error!("failed to timerfd_create: {errno:?}");
     })?;
     let fd = unsafe { BorrowedFd::borrow_raw(fd.into_raw_fd()) };
 
@@ -111,9 +97,8 @@ fn create_timer() -> Result<BorrowedFd<'static>, IoError> {
             },
         },
     )
-    .map_err(|errno| IoError::FailedTo {
-        op: "timerfd_settime",
-        errno,
+    .map_err(|errno| {
+        log::error!("failed to timerfd_settime: {errno:?}");
     })?;
 
     Ok(fd)

@@ -9,42 +9,56 @@ pub struct SpawnHelper;
 
 impl SpawnHelper {
     pub(crate) fn spawn(cmd: &str, home: &str) {
-        if let Err(err) = try_spawn(cmd, home) {
-            log::error!("{err:?}");
-        }
+        let _ = try_spawn(cmd, home);
     }
 }
 
-fn try_spawn(cmd: &str, home: &str) -> Result<(), Error> {
+macro_rules! error {
+    ($($arg:tt)*) => {
+        log::error!(target: "Spawn", $($arg)+);
+    };
+}
+
+fn try_spawn(cmd: &str, home: &str) -> Result<(), ()> {
     let mut cmd = cmd.split_whitespace();
-    let exe = StringRef::new(cmd.next().ok_or(Error::EmptyCommand)?);
+    let exe = StringRef::new(cmd.next().ok_or_else(|| {
+        error!("empty command");
+    })?);
 
     let mut argv = FixedSizeArrray::<10, _>::empty_with_default_fn(StringRef::empty);
-    argv.push(exe.clone()).ok_or(Error::TooManyArguments)?;
+    argv.push(exe.clone()).ok_or_else(|| {
+        error!("command is too long");
+    })?;
     for arg in cmd {
         let arg = expand_home(arg, home);
-        argv.push(arg).ok_or(Error::TooManyArguments)?;
+        argv.push(arg).ok_or_else(|| {
+            error!("command is too long");
+        })?;
     }
 
     let mut c_argv = FixedSizeArrray::<10, *mut i8>::new();
     for idx in 0..argv.len() {
-        let arg = argv.get(idx).ok_or(Error::MalformedState { idx })?;
-        c_argv
-            .push(arg.as_const_ptr().cast_mut())
-            .ok_or(Error::TooManyArguments)?;
+        let Some(arg) = argv.get(idx) else {
+            error!("malformed state: failed to get index {idx}");
+            return Err(());
+        };
+        c_argv.push(arg.as_const_ptr().cast_mut()).ok_or_else(|| {
+            error!("command is too long");
+        })?;
     }
-    c_argv
-        .push(core::ptr::null_mut())
-        .ok_or(Error::TooManyArguments)?;
+    c_argv.push(core::ptr::null_mut()).ok_or_else(|| {
+        error!("command is too long");
+    })?;
 
     unsafe {
-        let childpid = fork();
+        let res = fork();
 
-        if childpid < 0 {
-            return Err(Error::Fork);
+        if res < 0 {
+            error!("failed to fork: {res}");
+            return Err(());
         }
 
-        if childpid == 0 {
+        if res == 0 {
             let dev_null = c"/dev/null";
             let fd = open(dev_null.as_ptr(), O_WRONLY);
             if fd >= 0 {
@@ -83,16 +97,4 @@ fn expand_home(arg: &str, home: &str) -> StringRef {
         log_err_and_exit!("replacement of UTF-8 substrings can't make a string invalid")
     });
     StringRef::new(s)
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("command can't be parsed")]
-    EmptyCommand,
-    #[error("too many arguments")]
-    TooManyArguments,
-    #[error("malformed argv state at index {idx}")]
-    MalformedState { idx: usize },
-    #[error("failed to fork")]
-    Fork,
 }

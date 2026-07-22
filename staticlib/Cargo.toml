@@ -15,7 +15,6 @@ log = { workspace = true }
 microjson = { workspace = true }
 rustix = { workspace = true }
 string-bath = { workspace = true }
-thiserror = { workspace = true }
 
 [features]
 standalone-staticlib = []

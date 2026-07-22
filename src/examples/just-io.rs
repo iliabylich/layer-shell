@@ -7,7 +7,7 @@ use layer_shell_io::{IoEvent, io_deinit, io_handle_readable, io_init, io_wait_re
 static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
 
 extern "C" fn on_event(event: &IoEvent, _data: *mut core::ffi::c_void) {
-    log::trace!(target: "just-io", "{event:?}");
+    log::trace!("{event:?}");
 
     if matches!(event, IoEvent::Exit) {
         SHOULD_EXIT.store(true, Ordering::Relaxed);

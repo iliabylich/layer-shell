@@ -1,5 +1,4 @@
 use crate::{
-    error::IoError,
     sansio::{Satisfy, Wants},
     utils::log_err_and_exit,
 };
@@ -27,21 +26,11 @@ enum State {
     ReadyToWrite { fd: BorrowedFd<'static> },
     WaitingForWrite { fd: BorrowedFd<'static> },
 }
-impl State {
-    const fn as_str(self) -> &'static str {
-        match self {
-            Self::ReadyToSocket => "ReadyToSocket",
-            Self::WaitingForSocket => "WaitingForSocket",
-            Self::ReadyToConnect { .. } => "ReadyToConnect",
-            Self::WaitingForConnect { .. } => "WaitingForConnect",
-            Self::ReadyToWrite { .. } => "ReadyToWrite",
-            Self::WaitingForWrite { .. } => "WaitingForWrite",
-        }
-    }
-}
 
 impl UnixSocketOneshotWriter {
-    pub(crate) const fn new(data: &'static [u8]) -> Self {
+    pub(crate) fn new(data: &'static [u8]) -> Self {
+        log::trace!("Creating UnixSocketOneshotWriter");
+
         Self {
             data,
             offset: 0,
@@ -88,10 +77,7 @@ impl UnixSocketOneshotWriter {
         }
     }
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-    ) -> Result<Option<BorrowedFd<'static>>, IoError> {
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy) -> Result<Option<BorrowedFd<'static>>, ()> {
         match (self.state, satisfy) {
             (State::WaitingForSocket, Satisfy::Socket(res)) => {
                 let fd = res?;
@@ -114,10 +100,10 @@ impl UnixSocketOneshotWriter {
                 }
             }
 
-            _ => Err(IoError::WrongSatisfy {
-                state: self.state.as_str(),
-                satisfy: satisfy.as_str(),
-            }),
+            _ => {
+                log::error!("wrong satisfy {satisfy:?} for {self:?}");
+                Err(())
+            }
         }
     }
 }

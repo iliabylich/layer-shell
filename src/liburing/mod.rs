@@ -120,15 +120,17 @@ impl IoUring {
             }
             Wants::Read { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                let len = u32::try_from(len)
-                    .unwrap_or_else(|_| log_err_and_exit!("wantsread->len is too large for u32"));
+                let len = u32::try_from(len).unwrap_or_else(|err| {
+                    log_err_and_exit!("wantsread->len is too large for u32: {err:?}")
+                });
                 sqe.prep_read(fd.as_raw_fd(), buf.cast(), len);
                 sqe.set_user_data(UserData::new(module_id, Op::Read));
             }
             Wants::Write { fd, buf, len, .. } => {
                 let mut sqe = self.get_sqe();
-                let len = u32::try_from(len)
-                    .unwrap_or_else(|_| log_err_and_exit!("wantswrite->len is too large for u32"));
+                let len = u32::try_from(len).unwrap_or_else(|err| {
+                    log_err_and_exit!("wantswrite->len is too large for u32: {err:?}")
+                });
                 sqe.prep_write(fd.as_raw_fd(), buf.cast(), len);
                 sqe.set_user_data(UserData::new(module_id, Op::Write));
             }

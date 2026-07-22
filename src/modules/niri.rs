@@ -1,13 +1,11 @@
 use crate::{
     FixedSizeArrray, IoEvent,
     emitter::Emitter,
-    error::IoError,
     sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
-    utils::{EnvHelper, NlSeparatedBuffer, SockaddrUn, StringRef, StringRefExt as _},
+    utils::{EnvHelper, NlSeparatedBuffer, SockaddrUn, StringRef, StringRefExt},
 };
 use libc::sockaddr_un;
 use microjson::{JSONParsingError, JSONValue};
-use thiserror::Error;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -29,6 +27,8 @@ impl Niri {
     }
 
     pub(crate) fn new(emitter: Emitter) -> Self {
+        log::trace!("Creating Niri");
+
         Self {
             state: State::Writer(UnixSocketOneshotWriter::new(b"\"EventStream\"\n")),
             layouts: FixedSizeArrray::empty_with_default_fn(StringRef::empty),
@@ -41,17 +41,19 @@ impl Niri {
         addr: &sockaddr_un,
         buf: &mut NlSeparatedBuffer,
     ) -> Option<Wants> {
-        match &mut self.state {
-            State::Writer(writer) => writer.wants(addr),
-            State::Reader(reader) => reader.wants(addr, buf.remainder()),
-        }
+        let wants = match &mut self.state {
+            State::Writer(writer) => writer.wants(addr)?,
+            State::Reader(reader) => reader.wants(addr, buf.remainder())?,
+        };
+        log::trace!("{wants:?}");
+        Some(wants)
     }
 
     pub(crate) fn satisfy(
         &mut self,
         satisfy: Satisfy,
         buf: &mut NlSeparatedBuffer,
-    ) -> Result<(), IoError> {
+    ) -> Result<(), ()> {
         match &mut self.state {
             State::Writer(writer) => {
                 if let Some(fd) = writer.satisfy(satisfy)? {
@@ -75,7 +77,7 @@ impl Niri {
         Ok(())
     }
 
-    fn process(&mut self, event: NiriEvent) -> Result<(), NiriError> {
+    fn process(&mut self, event: NiriEvent) -> Result<(), ()> {
         let idx = match event {
             NiriEvent::KeyboardLayoutsChanged {
                 layout_names,
@@ -90,7 +92,9 @@ impl Niri {
         let lang = self
             .layouts
             .get(idx)
-            .ok_or(NiriError::NoLayoutIdx(idx))?
+            .ok_or_else(|| {
+                log::error!("no layout with idx {idx}: {:?}", self.layouts);
+            })?
             .as_str();
 
         let lang = match lang {
@@ -118,13 +122,11 @@ pub enum NiriEvent {
     },
 }
 
-fn jsonerr(message: &'static str) -> impl Fn(JSONParsingError) -> NiriError {
-    move |err: JSONParsingError| NiriError::JSONError { message, err }
-}
-
 impl NiriEvent {
-    pub(crate) fn from_json(bytes: &[u8]) -> Result<Option<Self>, NiriError> {
-        let s = core::str::from_utf8(bytes).map_err(NiriError::NonUtf8Json)?;
+    pub(crate) fn from_json(bytes: &[u8]) -> Result<Option<Self>, ()> {
+        let s = core::str::from_utf8(bytes).map_err(|err| {
+            log::error!("non-utf8 source: {err:?}");
+        })?;
         let json = JSONValue::load(s);
 
         match json.get_key_value("KeyboardLayoutsChanged") {
@@ -133,7 +135,10 @@ impl NiriEvent {
                 return Ok(Some(event));
             }
             Err(JSONParsingError::KeyNotFound) => {}
-            Err(err) => return Err(jsonerr("failed to get KeyboardLayoutsChanged")(err)),
+            Err(err) => {
+                log::error!("failed to get KeyboardLayoutsChanged: {err:?}");
+                return Err(());
+            }
         }
 
         match json.get_key_value("KeyboardLayoutSwitched") {
@@ -142,73 +147,70 @@ impl NiriEvent {
                 return Ok(Some(event));
             }
             Err(JSONParsingError::KeyNotFound) => {}
-            Err(err) => return Err(jsonerr("failed to get KeyboardLayoutSwitched")(err)),
+            Err(err) => {
+                log::error!("failed to get KeyboardLayoutSwitched: {err:?}");
+                return Err(());
+            }
         }
 
         Ok(None)
     }
 
-    fn parse_keyboard_layouts_changed(json: &JSONValue) -> Result<Self, NiriError> {
-        let keyboard_layouts = json
-            .get_key_value("keyboard_layouts")
-            .map_err(jsonerr("failed to get keyboard_layouts"))?;
+    fn parse_keyboard_layouts_changed(json: &JSONValue) -> Result<Self, ()> {
+        let keyboard_layouts = json.get_key_value("keyboard_layouts").map_err(|err| {
+            log::error!("failed to get keyboard_layouts: {err:?}");
+        })?;
         let names = keyboard_layouts
             .get_key_value("names")
-            .map_err(jsonerr("failed to get names"))?
+            .map_err(|err| {
+                log::error!("failed to get names: {err:?}");
+            })?
             .iter_array()
-            .map_err(jsonerr("names is not an array"))?;
+            .map_err(|err| {
+                log::error!("names is not an array: {err:?}");
+            })?;
 
         let mut layout_names = FixedSizeArrray::empty_with_default_fn(StringRef::empty);
         for name in names {
-            let name = name
-                .read_string()
-                .map_err(jsonerr("failed to get layout name as a string"))?;
-            layout_names
-                .push(StringRef::new(name))
-                .ok_or(NiriError::TooManyLayouts)?;
+            let name = name.read_string().map_err(|err| {
+                log::error!("failed to get layout name as a string: {err:?}");
+            })?;
+            layout_names.push(StringRef::new(name)).ok_or_else(|| {
+                log::error!("too many layouts");
+            })?;
         }
 
         let current_idx = keyboard_layouts
             .get_key_value("current_idx")
-            .map_err(jsonerr("failed to get current_idx"))?
+            .map_err(|err| {
+                log::error!("failed to get current_idx: {err:?}");
+            })?
             .read_integer()
-            .map_err(jsonerr("current_idx is not an integer"))?;
-        let current_idx = usize::try_from(current_idx).map_err(NiriError::NegativeCurrentIdx)?;
+            .map_err(|err| {
+                log::error!("current_idx is not an integer: {err:?}");
+            })?;
+        let current_idx = usize::try_from(current_idx).map_err(|err| {
+            log::error!("negative current idx: {err:?}");
+        })?;
         Ok(Self::KeyboardLayoutsChanged {
             layout_names,
             current_idx,
         })
     }
 
-    fn parse_keyword_layout_switched(json: &JSONValue) -> Result<Self, NiriError> {
+    fn parse_keyword_layout_switched(json: &JSONValue) -> Result<Self, ()> {
         let idx = json
             .get_key_value("idx")
-            .map_err(jsonerr("failed to get idx"))?
+            .map_err(|err| {
+                log::error!("failed to get idx: {err:?}");
+            })?
             .read_integer()
-            .map_err(jsonerr("idx is not an integer"))?;
-        let idx = usize::try_from(idx).map_err(NiriError::NegativeIdx)?;
+            .map_err(|err| {
+                log::error!("idx is not an integer: {err:?}");
+            })?;
+        let idx = usize::try_from(idx).map_err(|err| {
+            log::error!("negative idx: {err:?}");
+        })?;
         Ok(Self::KeyboardLayoutSwitched { idx })
     }
-}
-
-#[derive(Debug, Error, Clone, Copy)]
-pub enum NiriError {
-    #[error("no such layout index: {0}")]
-    NoLayoutIdx(usize),
-    #[error("non-utf8 niri json")]
-    NonUtf8Json(core::str::Utf8Error),
-
-    #[error("JSON error: {message}, {err}")]
-    JSONError {
-        message: &'static str,
-        err: JSONParsingError,
-    },
-
-    #[error("too many layouts")]
-    TooManyLayouts,
-
-    #[error("current_idx is negative")]
-    NegativeCurrentIdx(core::num::TryFromIntError),
-    #[error("idx is negative")]
-    NegativeIdx(core::num::TryFromIntError),
 }

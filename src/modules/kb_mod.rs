@@ -1,7 +1,6 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{FixedSizeBuffer, SockaddrUn},
 };
@@ -19,7 +18,9 @@ impl KbMod {
     pub(crate) const ADDRESS: sockaddr_un =
         SockaddrUn::from_bytes(b"/run/kb-mod-monitor-systemd.sock");
 
-    pub(crate) const fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
+        log::trace!("Creating KbMod");
+
         Self {
             reader: UnixSocketReader::new(),
             events_left_to_drop: 2,
@@ -32,14 +33,16 @@ impl KbMod {
         addr: &sockaddr_un,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
     ) -> Option<Wants> {
-        self.reader.wants(addr, buf.remainder())
+        let wants = self.reader.wants(addr, buf.remainder())?;
+        log::trace!("{wants:?}");
+        Some(wants)
     }
 
     pub(crate) fn satisfy(
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), IoError> {
+    ) -> Result<(), ()> {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {

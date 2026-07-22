@@ -1,12 +1,10 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{FixedSizeBuffer, SockaddrUn, write_in_place},
 };
 use libc::sockaddr_un;
-use thiserror::Error;
 
 #[derive(Clone, Copy)]
 pub struct PW {
@@ -26,7 +24,9 @@ impl PW {
         SockaddrUn::from_bytes(path)
     }
 
-    pub(crate) const fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
+        log::trace!("Creating PW");
+
         Self {
             reader: UnixSocketReader::new(),
             volume: None,
@@ -41,18 +41,20 @@ impl PW {
         addr: &sockaddr_un,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
     ) -> Option<Wants> {
-        self.reader.wants(addr, buf.remainder())
+        let wants = self.reader.wants(addr, buf.remainder())?;
+        log::trace!("{wants:?}");
+        Some(wants)
     }
 
     pub(crate) fn satisfy(
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), IoError> {
+    ) -> Result<(), ()> {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {
-            let event = PWEvent::deserialize(buf).ok_or(PWError::FailedToDeserialize)?;
+            let event = PWEvent::deserialize(buf)?;
             match event {
                 PWEvent::Volume(volume) => self.volume = Some(volume),
                 PWEvent::Mute(muted) => self.muted = Some(muted),
@@ -80,24 +82,23 @@ enum PWEvent {
 impl PWEvent {
     const SERIALIZED_LENGTH: usize = 2;
 
-    fn deserialize(buf: [u8; Self::SERIALIZED_LENGTH]) -> Option<Self> {
+    fn deserialize(buf: [u8; Self::SERIALIZED_LENGTH]) -> Result<Self, ()> {
         match buf[0] {
             1 => {
                 let volume = buf[1];
-                Some(Self::Volume(volume))
+                Ok(Self::Volume(volume))
             }
             2 => {
-                let muted = bool::try_from(buf[1]).ok()?;
-                Some(Self::Mute(muted))
+                let muted = bool::try_from(buf[1]).map_err(|err| {
+                    log::error!("can't convert {} into bool: {err:?}", buf[1]);
+                })?;
+                Ok(Self::Mute(muted))
             }
 
-            _kind => None,
+            kind => {
+                log::error!("malformed byte sequence, starts with {kind}");
+                Err(())
+            }
         }
     }
-}
-
-#[derive(Debug, Error, Clone, Copy)]
-pub enum PWError {
-    #[error("failed to deserialize PW event")]
-    FailedToDeserialize,
 }

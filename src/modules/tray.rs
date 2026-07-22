@@ -1,14 +1,12 @@
 use crate::{
     FixedSizeArrray, IoEvent,
     emitter::Emitter,
-    error::IoError,
     sansio::{Satisfy, UnixSocketReader, Wants},
     utils::{
         FixedSizeBuffer, SockaddrUn, StringRef, StringRefExt, log_err_and_exit, write_in_place,
     },
 };
 use libc::sockaddr_un;
-use thiserror::Error;
 
 #[derive(Clone, Copy)]
 pub struct Tray {
@@ -26,7 +24,9 @@ impl Tray {
         SockaddrUn::from_bytes(path)
     }
 
-    pub(crate) const fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(emitter: Emitter) -> Self {
+        log::trace!("Creating Tray");
+
         Self {
             reader: UnixSocketReader::new(),
             writebuf: [0; _],
@@ -39,14 +39,16 @@ impl Tray {
         addr: &sockaddr_un,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
     ) -> Option<Wants> {
-        self.reader.wants(addr, buf.remainder())
+        let wants = self.reader.wants(addr, buf.remainder())?;
+        log::trace!("{wants:?}");
+        Some(wants)
     }
 
     pub(crate) fn satisfy(
         &mut self,
         satisfy: Satisfy,
         buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), IoError> {
+    ) -> Result<(), ()> {
         if matches!(satisfy, Satisfy::Write { .. }) {
             return Ok(());
         }
@@ -54,7 +56,9 @@ impl Tray {
         if let Some(written) = self.reader.satisfy(satisfy)?
             && let Some(buf) = buf.written(written)
         {
-            let event = TrayEvent::deserialize(&buf).ok_or(TrayError::FailedToDeserialize)?;
+            let event = TrayEvent::deserialize(&buf).ok_or_else(|| {
+                log::error!("failed to deserialize tray event");
+            })?;
 
             let event = match event {
                 TrayEvent::AppAdded {
@@ -64,7 +68,7 @@ impl Tray {
                 } => IoEvent::TrayAppAdded {
                     service,
                     menu,
-                    icon: StringRef::new(icon.as_str().ok_or(TrayError::FailedToDeserialize)?),
+                    icon: StringRef::new(icon.as_str()?),
                 },
                 TrayEvent::AppRemoved { service } => IoEvent::TrayAppRemoved { service },
                 TrayEvent::MenuUpdated { service, menu } => {
@@ -72,7 +76,7 @@ impl Tray {
                 }
                 TrayEvent::IconUpdated { service, icon } => IoEvent::TrayAppIconUpdated {
                     service,
-                    icon: StringRef::new(icon.as_str().ok_or(TrayError::FailedToDeserialize)?),
+                    icon: StringRef::new(icon.as_str()?),
                 },
             };
 
@@ -91,12 +95,6 @@ impl Tray {
             len: self.writebuf.len(),
         })
     }
-}
-
-#[derive(Debug, Error, Clone, Copy)]
-pub enum TrayError {
-    #[error("failed to deserialize tray event")]
-    FailedToDeserialize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -332,12 +330,16 @@ impl TrayLabel {
         Self { len, buf: s }
     }
 
-    fn as_bytes(&self) -> Option<&[u8]> {
-        self.buf.get(..self.len as usize)
+    fn as_bytes(&self) -> Result<&[u8], ()> {
+        self.buf.get(..self.len as usize).ok_or_else(|| {
+            log::error!("malformed label");
+        })
     }
 
-    fn as_str(&self) -> Option<&str> {
-        core::str::from_utf8(self.as_bytes()?).ok()
+    fn as_str(&self) -> Result<&str, ()> {
+        core::str::from_utf8(self.as_bytes()?).map_err(|err| {
+            log::error!("non-utf8 label: {err:?}");
+        })
     }
 }
 impl core::fmt::Debug for TrayLabel {
@@ -363,12 +365,16 @@ impl TrayFixedSizeString {
         Self { len, buf: s }
     }
 
-    fn as_bytes(&self) -> Option<&[u8]> {
-        self.buf.get(..self.len as usize)
+    fn as_bytes(&self) -> Result<&[u8], ()> {
+        self.buf.get(..self.len as usize).ok_or_else(|| {
+            log::error!("malformed fixed-size string");
+        })
     }
 
-    fn as_str(&self) -> Option<&str> {
-        core::str::from_utf8(self.as_bytes()?).ok()
+    fn as_str(&self) -> Result<&str, ()> {
+        core::str::from_utf8(self.as_bytes()?).map_err(|err| {
+            log::error!("non-utf8 fixed-size string: {err:?}");
+        })
     }
 }
 impl core::fmt::Debug for TrayFixedSizeString {
