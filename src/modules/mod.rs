@@ -6,7 +6,6 @@ mod memory;
 mod niri;
 mod nm;
 mod pw;
-mod timer;
 mod tray;
 mod weather;
 
@@ -18,7 +17,6 @@ pub use memory::Memory;
 pub use niri::Niri;
 pub use nm::NM;
 pub use pw::PW;
-pub use timer::Timer;
 pub use tray::Tray;
 pub use weather::Weather;
 

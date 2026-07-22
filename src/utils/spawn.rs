@@ -9,52 +9,48 @@ pub struct SpawnHelper;
 
 impl SpawnHelper {
     pub(crate) fn spawn(cmd: &str, home: &str) {
+        log::trace!("Spawning {cmd:?}");
+
         let _ = try_spawn(cmd, home);
     }
-}
-
-macro_rules! error {
-    ($($arg:tt)*) => {
-        log::error!(target: "Spawn", $($arg)+);
-    };
 }
 
 fn try_spawn(cmd: &str, home: &str) -> Result<(), ()> {
     let mut cmd = cmd.split_whitespace();
     let exe = StringRef::new(cmd.next().ok_or_else(|| {
-        error!("empty command");
+        log::error!("empty command");
     })?);
 
     let mut argv = FixedSizeArrray::<10, _>::empty_with_default_fn(StringRef::empty);
     argv.push(exe.clone()).ok_or_else(|| {
-        error!("command is too long");
+        log::error!("command is too long");
     })?;
     for arg in cmd {
         let arg = expand_home(arg, home);
         argv.push(arg).ok_or_else(|| {
-            error!("command is too long");
+            log::error!("command is too long");
         })?;
     }
 
     let mut c_argv = FixedSizeArrray::<10, *mut i8>::new();
     for idx in 0..argv.len() {
         let Some(arg) = argv.get(idx) else {
-            error!("malformed state: failed to get index {idx}");
+            log::error!("malformed state: failed to get index {idx}");
             return Err(());
         };
         c_argv.push(arg.as_const_ptr().cast_mut()).ok_or_else(|| {
-            error!("command is too long");
+            log::error!("command is too long");
         })?;
     }
     c_argv.push(core::ptr::null_mut()).ok_or_else(|| {
-        error!("command is too long");
+        log::error!("command is too long");
     })?;
 
     unsafe {
         let res = fork();
 
         if res < 0 {
-            error!("failed to fork: {res}");
+            log::error!("failed to fork: {res}");
             return Err(());
         }
 

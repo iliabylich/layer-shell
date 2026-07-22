@@ -4,8 +4,8 @@ use crate::{
     config::Config,
     emitter::Emitter,
     liburing::IoUring,
-    modules::{Clock, Control, Cpu, KbMod, Memory, NM, Niri, PW, Timer, Tray, Weather},
-    sansio::Satisfy,
+    modules::{Clock, Control, Cpu, KbMod, Memory, NM, Niri, PW, Tray, Weather},
+    sansio::{Satisfy, TimerFd},
     user_data::{ModuleId, UserData},
     utils::{EnvHelper, FixedSizeBuffer, NlSeparatedBuffer, SpawnHelper},
 };
@@ -16,7 +16,7 @@ pub struct IO {
 
     pub(crate) config: Config,
 
-    timer: Option<Timer>,
+    timer: Option<TimerFd>,
     timerbuf: [u8; 8],
 
     clock: Clock,
@@ -81,7 +81,7 @@ impl IO {
 
         let ring = IoUring::new(10, 0);
 
-        let timer = Timer::new();
+        let timer = TimerFd::new();
         let timerbuf = [0; 8];
 
         let clock = Clock::new(emitter);
@@ -160,7 +160,7 @@ impl IO {
     }
 
     pub(crate) fn start(&mut self) {
-        IoSlice::<Timer>::schedule(self);
+        IoSlice::<TimerFd>::schedule(self);
         IoSlice::<NM>::schedule(self);
         IoSlice::<PW>::schedule(self);
         IoSlice::<Cpu>::schedule(self);
@@ -197,7 +197,7 @@ impl IO {
                 ModuleId::Control => IoSlice::<Control>::satisfy(self, satisfy),
                 ModuleId::Cpu => IoSlice::<Cpu>::satisfy(self, satisfy),
                 ModuleId::Memory => IoSlice::<Memory>::satisfy(self, satisfy),
-                ModuleId::Timer => IoSlice::<Timer>::satisfy(self, satisfy),
+                ModuleId::Timer => IoSlice::<TimerFd>::satisfy(self, satisfy),
             }
 
             self.ring.cqe_seen(cqe);
@@ -440,7 +440,7 @@ impl IoSlice<Control> for IO {
     }
 }
 
-impl IoSlice<Timer> for IO {
+impl IoSlice<TimerFd> for IO {
     fn schedule(&mut self) {
         if let Some(timer) = &mut self.timer
             && let Some(wants) = timer.wants(&mut self.timerbuf)
@@ -456,7 +456,7 @@ impl IoSlice<Timer> for IO {
 
         match timer.satisfy(satisfy, self.timerbuf) {
             Ok(Some(_tick)) => {
-                IoSlice::<Timer>::schedule(self);
+                IoSlice::<TimerFd>::schedule(self);
 
                 self.clock.tick();
 

@@ -15,7 +15,10 @@ impl Satisfy {
         log::trace!("Creating Satisfy");
 
         let log_error = |op: &str| {
-            log::error!(target: scope.as_str(), "failed to {op}: {:?}", Errno::from_raw_os_error(-res));
+            log::error!(
+                "failed to {op} at {scope:?}: {:?}",
+                Errno::from_raw_os_error(-res)
+            );
         };
 
         match op {

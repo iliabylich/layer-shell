@@ -25,36 +25,37 @@ enum State {
 }
 
 impl TimerFd {
-    pub(crate) fn new() -> Result<Self, ()> {
+    pub(crate) fn new() -> Option<Self> {
         log::trace!("Creating TimerFd");
 
-        Ok(Self {
-            fd: create_timer()?,
-            ticks: 0,
-            state: State::CanRead,
-        })
-    }
-
-    pub(crate) const fn wants(&mut self, buf: &mut [u8; 8]) -> Option<Wants> {
-        match self.state {
-            State::CanRead => {
-                self.state = State::WaitingForRead;
-
-                Some(Wants::Read {
-                    fd: self.fd,
-                    buf: buf.as_mut_ptr(),
-                    len: buf.len(),
-                })
-            }
-            State::WaitingForRead => None,
+        match create_timer() {
+            Ok(fd) => Some(Self {
+                fd,
+                ticks: 0,
+                state: State::CanRead,
+            }),
+            Err(()) => None,
         }
     }
 
-    pub(crate) fn try_satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        buf: [u8; 8],
-    ) -> Result<Option<u64>, ()> {
+    pub(crate) fn wants(&mut self, buf: &mut [u8; 8]) -> Option<Wants> {
+        let wants = match self.state {
+            State::CanRead => {
+                self.state = State::WaitingForRead;
+
+                Wants::Read {
+                    fd: self.fd,
+                    buf: buf.as_mut_ptr(),
+                    len: buf.len(),
+                }
+            }
+            State::WaitingForRead => return None,
+        };
+        log::trace!("{wants:?}");
+        Some(wants)
+    }
+
+    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: [u8; 8]) -> Result<Option<u64>, ()> {
         if let (State::WaitingForRead, Satisfy::Read(res)) = (self.state, satisfy) {
             let bytes_read = res?;
             if bytes_read != buf.len() {

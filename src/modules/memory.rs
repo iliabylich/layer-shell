@@ -62,7 +62,7 @@ fn parse(buf: &[u8]) -> Result<(f64, f64), ()> {
 }
 
 fn parse_mem_in_gb(line: &str, prefix: &'static str) -> Result<f64, ()> {
-    let mem_in_bytes = line
+    let mem_in_kb = line
         .trim_ascii_end()
         .strip_prefix(prefix)
         .ok_or_else(|| {
@@ -70,14 +70,14 @@ fn parse_mem_in_gb(line: &str, prefix: &'static str) -> Result<f64, ()> {
         })?
         .strip_suffix("kB")
         .ok_or_else(|| {
-            log::error!("missing kb suffix in line {line:?}");
+            log::error!("missing kB suffix in line {line:?}");
         })?
         .trim_ascii()
         .parse::<f64>()
         .map_err(|err| {
             log::error!("failed to parse value in line {line:?} as float: {err:?}");
         })?;
-    Ok(mem_in_bytes / 1_024.0 / 1_024.0)
+    Ok(mem_in_kb / 1_024.0 / 1_024.0)
 }
 
 fn nextline<'a>(lines: &mut impl Iterator<Item = &'a str>, text: &str) -> Result<&'a str, ()> {

@@ -103,8 +103,8 @@ fn pretty_target(target: &str) -> &str {
         };
     }
 
-    map!("::timer", "Timer");
-    map!("::timerfd", "TimerFd");
+    map!("::io", "IO");
+
     map!("::clock", "Clock");
     map!("::control", "Control");
     map!("::cpu", "Cpu");
@@ -115,12 +115,14 @@ fn pretty_target(target: &str) -> &str {
     map!("::pw", "PW");
     map!("::tray", "Tray");
     map!("::weather", "Weather");
+
+    map!("::timerfd", "TimerFd");
+    map!("::unix_socket_oneshot_writer", "UnixSocketOneshotWriter");
+    map!("::unix_socket_reader", "UnixSocketReader");
     map!("::file_reader", "FileReader");
-    map!("::satisfy", "Satisfy");
-    map!("::oneshot_writer", "UnixSocketOneshotWriter");
-    map!("::reader", "UnixSocketReader");
+
     map!("::config", "Config");
-    map!("::io", "IO");
+    map!("::satisfy", "Satisfy");
     map!("::emitter", "IO");
     target
 }

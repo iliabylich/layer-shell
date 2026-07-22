@@ -18,21 +18,6 @@ pub enum ModuleId {
 }
 
 impl ModuleId {
-    pub(crate) const fn as_str(self) -> &'static str {
-        match self {
-            Self::Weather => "Weather",
-            Self::KbMod => "KbMod",
-            Self::NM => "NM",
-            Self::PW => "PW",
-            Self::Niri => "Niri",
-            Self::Tray => "Tray",
-            Self::Control => "Control",
-            Self::Cpu => "Cpu",
-            Self::Memory => "Memory",
-            Self::Timer => "Timer",
-        }
-    }
-
     fn new(value: u8) -> Self {
         if value == Self::Weather as u8 {
             Self::Weather
