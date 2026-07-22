@@ -3,8 +3,11 @@ use crate::{
     sansio::{Satisfy, Wants},
     utils::log_err_and_exit,
 };
-use libc::{AF_UNIX, SOCK_STREAM, sockaddr_un};
-use rustix::fd::BorrowedFd;
+use libc::sockaddr_un;
+use rustix::{
+    fd::BorrowedFd,
+    net::{AddressFamily, SocketType},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct UnixSocketOneshotWriter {
@@ -51,8 +54,8 @@ impl UnixSocketOneshotWriter {
             State::ReadyToSocket => {
                 self.state = State::WaitingForSocket;
                 Some(Wants::Socket {
-                    domain: AF_UNIX,
-                    type_: SOCK_STREAM,
+                    domain: AddressFamily::UNIX,
+                    type_: SocketType::STREAM,
                 })
             }
 

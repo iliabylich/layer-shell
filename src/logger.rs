@@ -1,7 +1,8 @@
 use crate::utils::{ArrayWriter, EnvHelper};
 use core::{fmt::Write as _, str::FromStr as _};
-use libc::{STDERR_FILENO, exit, write};
+use libc::{STDERR_FILENO, exit};
 use log::{LevelFilter, Metadata, Record};
+use rustix::fd::BorrowedFd;
 
 static LOGGER: Logger = Logger;
 
@@ -88,8 +89,7 @@ const fn color_for_level(level: log::Level) -> &'static str {
     }
 }
 
-fn eprint(bytes: &[u8]) {
-    unsafe {
-        write(STDERR_FILENO, bytes.as_ptr().cast(), bytes.len());
-    }
+fn eprint(buf: &[u8]) {
+    let stderr = unsafe { BorrowedFd::borrow_raw(STDERR_FILENO) };
+    let _ = rustix::io::write(stderr, buf);
 }

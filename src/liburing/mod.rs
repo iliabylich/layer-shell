@@ -105,7 +105,12 @@ impl IoUring {
         match wants {
             Wants::Socket { domain, type_, .. } => {
                 let mut sqe = self.get_sqe();
-                sqe.prep_socket(domain, type_, 0, 0);
+                sqe.prep_socket(
+                    i32::from(domain.as_raw()),
+                    type_.as_raw().cast_signed(),
+                    0,
+                    0,
+                );
                 sqe.set_user_data(UserData::new(module_id, Op::Socket));
             }
             Wants::Connect { fd, addr, addrlen } => {

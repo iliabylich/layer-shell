@@ -1,11 +1,14 @@
 use crate::external::sockaddr;
-use rustix::fd::BorrowedFd;
+use rustix::{
+    fd::BorrowedFd,
+    net::{AddressFamily, SocketType},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Wants {
     Socket {
-        domain: i32,
-        type_: i32,
+        domain: AddressFamily,
+        type_: SocketType,
     },
     Connect {
         fd: BorrowedFd<'static>,
