@@ -1,6 +1,6 @@
 use crate::{
     FixedSizeArrray,
-    utils::{ArrayWriter, StringRef, StringRefExt as _, log_err_and_exit},
+    utils::{ArrayWriter, StringRef, StringRefExt},
 };
 use core::fmt::Write;
 use libc::{_exit, O_WRONLY, STDERR_FILENO, STDOUT_FILENO, close, dup2, execvp, fork, open};
@@ -83,14 +83,13 @@ fn expand_home(arg: &str, home: &str) -> StringRef {
     let mut parts = arg.split('~');
     if let Some(part) = parts.next() {
         write!(&mut writer, "{part}")
-            .unwrap_or_else(|_| log_err_and_exit!("command is too long for 256 bytes long buffer"));
+            .unwrap_or_else(|_| panic!("command is too long for 256 bytes long buffer"));
     }
     for part in parts {
         write!(&mut writer, "{home}{part}")
-            .unwrap_or_else(|_| log_err_and_exit!("command is too long for 256 bytes long buffer"));
+            .unwrap_or_else(|_| panic!("command is too long for 256 bytes long buffer"));
     }
-    let s = core::str::from_utf8(writer.as_bytes()).unwrap_or_else(|_| {
-        log_err_and_exit!("replacement of UTF-8 substrings can't make a string invalid")
-    });
+    let s = core::str::from_utf8(writer.as_bytes())
+        .unwrap_or_else(|_| panic!("replacement of UTF-8 substrings can't make a string invalid"));
     StringRef::new(s)
 }

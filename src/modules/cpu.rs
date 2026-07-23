@@ -1,48 +1,40 @@
-use crate::{
-    FixedSizeArrray, IoEvent,
-    emitter::Emitter,
-    sansio::{FileReader, Satisfy, Wants},
-    utils::log_err_and_exit,
+use crate::{FixedSizeArrray, IoEvent, emitter::Emitter, module_id::ModuleId, modules::Module};
+use rustix::{
+    fd::OwnedFd,
+    fs::{Mode, OFlags},
 };
 
 pub struct Cpu {
-    reader: FileReader,
+    fd: OwnedFd,
     state: Option<FixedSizeArrray<MAX_CPU_COUNT, CoreUsage>>,
-    emitter: Emitter,
 }
 
 pub const MAX_CPU_COUNT: usize = 32;
 
 impl Cpu {
-    pub(crate) fn new(emitter: Emitter) -> Option<Self> {
+    pub(crate) fn new() -> Option<Self> {
         log::trace!("Creating Cpu");
 
-        match FileReader::new(c"/proc/stat") {
-            Ok(reader) => Some(Self {
-                reader,
-                state: None,
-                emitter,
-            }),
+        let fd = match rustix::fs::open("/proc/stat", OFlags::RDONLY, Mode::empty()) {
+            Ok(fd) => fd,
             Err(err) => {
-                log::error!("{err:?}");
-                None
+                log::error!("failed to open /proc/stat: {err:?}");
+                return None;
             }
-        }
-    }
+        };
 
-    pub(crate) const fn tick(&mut self) {
-        self.reader.tick();
+        Some(Self { fd, state: None })
     }
+}
 
-    pub(crate) fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
-        let wants = self.reader.wants(buf)?;
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: &[u8]) -> Result<(), ()> {
-        let Some(buf) = self.reader.try_satisfy(satisfy, buf)? else {
-            return Ok(());
+impl Module for Cpu {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let mut buf = [0; 1_024];
+        let len = rustix::io::pread(&self.fd, &mut buf, 0)
+            .map_err(|err| log::error!("failed to read /proc/stat: {err:?}"))?;
+        let Some(buf) = buf.get(..len) else {
+            log::error!("read() returned more than asked: {len}");
+            return Err(());
         };
 
         let prev = self.state.take();
@@ -50,9 +42,15 @@ impl Cpu {
 
         let usage_per_core = diff(prev.as_ref(), &next)?;
         self.state = Some(next);
-        self.emitter.emit(&IoEvent::CpuUsage { usage_per_core });
+        emitter.emit(&IoEvent::CpuUsage { usage_per_core });
         Ok(())
     }
+
+    fn id(&self) -> ModuleId {
+        ModuleId::Cpu
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::Cpu;
 }
 
 fn diff(
@@ -63,18 +61,16 @@ fn diff(
         return Ok(FixedSizeArrray::filled(0, next.len()));
     };
 
-    if prev.len() != next.len() {
-        log_err_and_exit!("dynamic number of CPU cores");
-    }
+    assert_eq!(prev.len(), next.len(), "dynamic number of CPU cores");
     let len = next.len();
 
     let mut out = FixedSizeArrray::new();
 
     for idx in 0..len {
-        let prev_per_core = prev.get(idx).unwrap_or_else(|| log_err_and_exit!("bug"));
-        let next_per_core = next.get(idx).unwrap_or_else(|| log_err_and_exit!("bug"));
+        let prev_per_core = prev.get(idx).unwrap_or_else(|| panic!("bug"));
+        let next_per_core = next.get(idx).unwrap_or_else(|| panic!("bug"));
         let diff = next_per_core.load_comparing_to(*prev_per_core)?;
-        out.push(diff).unwrap_or_else(|| log_err_and_exit!("bug"));
+        out.push(diff).unwrap_or_else(|| panic!("bug"));
     }
 
     Ok(out)

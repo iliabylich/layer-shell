@@ -1,4 +1,3 @@
-use crate::utils::log_err_and_exit;
 use string_bath::StringPool;
 
 const SLOTS_COUNT: usize = 100;
@@ -20,7 +19,7 @@ impl StringRefExt for StringRef {
         unsafe {
             STRING_POOL
                 .alloc(s)
-                .unwrap_or_else(|err| log_err_and_exit!("{err}"))
+                .unwrap_or_else(|err| panic!("failed to allocate StringRef: {err:?}"))
         }
     }
 

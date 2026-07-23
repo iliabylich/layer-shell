@@ -1,47 +1,50 @@
-use crate::{
-    IoEvent,
-    emitter::Emitter,
-    sansio::{FileReader, Satisfy, Wants},
+use crate::{IoEvent, emitter::Emitter, module_id::ModuleId, modules::Module};
+use rustix::{
+    fd::OwnedFd,
+    fs::{Mode, OFlags},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Memory {
-    reader: FileReader,
-    emitter: Emitter,
+    fd: OwnedFd,
 }
 
 impl Memory {
-    pub(crate) fn new(emitter: Emitter) -> Option<Self> {
+    pub(crate) fn new() -> Option<Self> {
         log::trace!("Creating Memory");
 
-        match FileReader::new(c"/proc/meminfo") {
-            Ok(reader) => Some(Self { reader, emitter }),
+        let fd = match rustix::fs::open("/proc/meminfo", OFlags::RDONLY, Mode::empty()) {
+            Ok(fd) => fd,
             Err(err) => {
-                log::error!("{err:?}");
-                None
+                log::error!("failed to open /proc/meminfo: {err:?}");
+                return None;
             }
-        }
-    }
+        };
 
-    pub(crate) const fn tick(&mut self) {
-        self.reader.tick();
+        Some(Self { fd })
     }
+}
 
-    pub(crate) fn wants(&mut self, buf: &mut [u8]) -> Option<Wants> {
-        let wants = self.reader.wants(buf)?;
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
-
-    pub(crate) fn satisfy(&mut self, satisfy: Satisfy, buf: &[u8]) -> Result<(), ()> {
-        let Some(buf) = self.reader.try_satisfy(satisfy, buf)? else {
-            return Ok(());
+impl Module for Memory {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let mut buf = [0; 1_024];
+        let len = rustix::io::pread(&self.fd, &mut buf, 0)
+            .map_err(|err| log::error!("failed to read /proc/meminfo: {err:?}"))?;
+        let Some(buf) = buf.get(..len) else {
+            log::error!("read() returned more than asked: {len}");
+            return Err(());
         };
 
         let (used, total) = parse(buf)?;
-        self.emitter.emit(&IoEvent::Memory { used, total });
+        emitter.emit(&IoEvent::Memory { used, total });
         Ok(())
     }
+
+    fn id(&self) -> ModuleId {
+        ModuleId::Memory
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::Memory;
 }
 
 fn parse(buf: &[u8]) -> Result<(f64, f64), ()> {

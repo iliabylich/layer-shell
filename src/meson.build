@@ -1,4 +1,3 @@
-cargo = find_program('cargo')
 cargo_args = [
     '--manifest-path', meson.project_source_root() / 'Cargo.toml',
     '-p', 'layer-shell-io-staticlib',

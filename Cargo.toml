@@ -15,6 +15,7 @@ rustix = { version = "1.1", default-features = false, features = [
     "net",
     "fs",
     "time",
+    "event",
 ] }
 string-bath = { version = "0.2.4" }
 

@@ -1,99 +1,98 @@
 use crate::{
     FixedSizeArrray, IoEvent,
     emitter::Emitter,
-    sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{
-        FixedSizeBuffer, SockaddrUn, StringRef, StringRefExt, log_err_and_exit, write_in_place,
-    },
+    module_id::ModuleId,
+    modules::Module,
+    utils::{FixedSizeBuffer, StringRef, StringRefExt, unix_socket, unix_socket_addr},
 };
-use libc::sockaddr_un;
+use rustix::fd::{AsFd, BorrowedFd, OwnedFd};
 
-#[derive(Clone, Copy)]
 pub struct Tray {
-    reader: UnixSocketReader,
-    writebuf: [u8; 8],
-    emitter: Emitter,
+    fd: OwnedFd,
+    buf: FixedSizeBuffer<{ TrayEvent::SERIALIZED_BYTESIZE }>,
 }
 
 impl Tray {
-    pub(crate) const BUFFER_SIZE: usize = TrayEvent::SERIALIZED_BYTESIZE;
-
-    pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
-        let mut buf = [0; 200];
-        let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/tray-mon.sock");
-        SockaddrUn::from_bytes(path)
-    }
-
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(xdg_runtime_dir: &str) -> Option<Self> {
         log::trace!("Creating Tray");
 
-        Self {
-            reader: UnixSocketReader::new(),
-            writebuf: [0; _],
-            emitter,
+        let addr = unix_socket_addr!("{xdg_runtime_dir}/tray-mon.sock").ok()?;
+        let fd = unix_socket!().ok()?;
+
+        if let Err(err) = rustix::net::connect(&fd, &addr) {
+            log::error!("failed to connect(): {err:?}");
+            return None;
+        }
+
+        Some(Self {
+            fd,
+            buf: FixedSizeBuffer::new(),
+        })
+    }
+
+    pub(crate) fn trigger(&self, service: u32, id: i32) {
+        let mut buf = [0; 8];
+        buf[0..4].copy_from_slice(&service.to_be_bytes());
+        buf[4..8].copy_from_slice(&id.to_be_bytes());
+        match rustix::io::write(&self.fd, &buf) {
+            Ok(8) => {}
+            Ok(len) => {
+                log::error!("failed to write, len={len}");
+            }
+            Err(err) => {
+                log::error!("failed to write(): {err:?}");
+            }
         }
     }
+}
 
-    pub(crate) fn wants(
-        &mut self,
-        addr: &sockaddr_un,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Option<Wants> {
-        let wants = self.reader.wants(addr, buf.remainder())?;
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
-
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), ()> {
-        if matches!(satisfy, Satisfy::Write { .. }) {
+impl Module for Tray {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let count = rustix::io::read(&self.fd, self.buf.remainder())
+            .map_err(|err| log::error!("failed to read(): {err:?}"))?;
+        let Some(buf) = self.buf.written(count) else {
             return Ok(());
-        }
+        };
 
-        if let Some(written) = self.reader.satisfy(satisfy)?
-            && let Some(buf) = buf.written(written)
-        {
-            let event = TrayEvent::deserialize(&buf).ok_or_else(|| {
-                log::error!("failed to deserialize tray event");
-            })?;
+        let event = TrayEvent::deserialize(&buf).ok_or_else(|| {
+            log::error!("failed to deserialize tray event");
+        })?;
 
-            let event = match event {
-                TrayEvent::AppAdded {
-                    service,
-                    icon,
-                    menu,
-                } => IoEvent::TrayAppAdded {
-                    service,
-                    menu,
-                    icon: StringRef::new(icon.as_str()?),
-                },
-                TrayEvent::AppRemoved { service } => IoEvent::TrayAppRemoved { service },
-                TrayEvent::MenuUpdated { service, menu } => {
-                    IoEvent::TrayAppMenuUpdated { service, menu }
-                }
-                TrayEvent::IconUpdated { service, icon } => IoEvent::TrayAppIconUpdated {
-                    service,
-                    icon: StringRef::new(icon.as_str()?),
-                },
-            };
+        let event = match event {
+            TrayEvent::AppAdded {
+                service,
+                icon,
+                menu,
+            } => IoEvent::TrayAppAdded {
+                service,
+                menu,
+                icon: StringRef::new(icon.as_str()?),
+            },
+            TrayEvent::AppRemoved { service } => IoEvent::TrayAppRemoved { service },
+            TrayEvent::MenuUpdated { service, menu } => {
+                IoEvent::TrayAppMenuUpdated { service, menu }
+            }
+            TrayEvent::IconUpdated { service, icon } => IoEvent::TrayAppIconUpdated {
+                service,
+                icon: StringRef::new(icon.as_str()?),
+            },
+        };
 
-            self.emitter.emit(&event);
-        }
+        emitter.emit(&event);
 
         Ok(())
     }
 
-    pub(crate) fn wants_trigger(&mut self, service: u32, id: i32) -> Option<Wants> {
-        self.writebuf[0..4].copy_from_slice(&service.to_be_bytes());
-        self.writebuf[4..8].copy_from_slice(&id.to_be_bytes());
-        Some(Wants::Write {
-            fd: self.reader.fd()?,
-            buf: self.writebuf.as_ptr(),
-            len: self.writebuf.len(),
-        })
+    fn id(&self) -> ModuleId {
+        ModuleId::Tray
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::Tray;
+}
+
+impl AsFd for Tray {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
     }
 }
 
@@ -441,7 +440,7 @@ fn read_menu(buf: &mut &[u8]) -> Option<TrayMenu> {
             break;
         }
         menu.push(MaybeRootTrayElement { root, element })
-            .ok_or_else(|| log_err_and_exit!("constants don't match"));
+            .ok_or_else(|| panic!("constants don't match"));
     }
     Some(TrayMenu(menu))
 }

@@ -79,7 +79,6 @@ executable(
         qt6_dep,
         layershellqt_dep,
         qtermwidget_dep,
-        dependency('liburing'),
     ],
     include_directories: include_directories('..'),
     install: true,

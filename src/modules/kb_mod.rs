@@ -1,65 +1,75 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, SockaddrUn},
+    module_id::ModuleId,
+    modules::Module,
+    utils::{FixedSizeBuffer, unix_socket, unix_socket_addr},
 };
-use libc::sockaddr_un;
+use rustix::fd::{AsFd, BorrowedFd, OwnedFd};
 
-#[derive(Clone, Copy)]
 pub struct KbMod {
-    reader: UnixSocketReader,
+    fd: OwnedFd,
+    buf: FixedSizeBuffer<1>,
     events_left_to_drop: u8,
-    emitter: Emitter,
 }
 
 impl KbMod {
-    pub(crate) const BUFFER_SIZE: usize = 1;
-    pub(crate) const ADDRESS: sockaddr_un =
-        SockaddrUn::from_bytes(b"/run/kb-mod-monitor-systemd.sock");
-
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new() -> Option<Self> {
         log::trace!("Creating KbMod");
 
-        Self {
-            reader: UnixSocketReader::new(),
+        let addr = unix_socket_addr!("/run/kb-mod-monitor-systemd.sock").ok()?;
+        let fd = unix_socket!().ok()?;
+
+        if let Err(err) = rustix::net::connect(&fd, &addr) {
+            log::error!("failed to connect(): {err:?}");
+            return None;
+        }
+
+        Some(Self {
+            fd,
+            buf: FixedSizeBuffer::new(),
             events_left_to_drop: 2,
-            emitter,
-        }
+        })
     }
+}
 
-    pub(crate) fn wants(
-        &mut self,
-        addr: &sockaddr_un,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Option<Wants> {
-        let wants = self.reader.wants(addr, buf.remainder())?;
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
+impl Module for KbMod {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let count = rustix::io::read(&self.fd, self.buf.remainder())
+            .map_err(|err| log::error!("failed to read(): {err:?}"))?;
+        let Some(buf) = self.buf.written(count) else {
+            return Ok(());
+        };
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), ()> {
-        if let Some(written) = self.reader.satisfy(satisfy)?
-            && let Some(buf) = buf.written(written)
-        {
-            let (kind, enabled) = match buf[0] {
-                b'0' => (KbModKind::CapsLock, false),
-                b'1' => (KbModKind::CapsLock, true),
-                b'2' => (KbModKind::NumLock, false),
-                b'3' => (KbModKind::NumLock, true),
-                _ => return Ok(()),
-            };
-
-            if self.events_left_to_drop == 0 {
-                self.emitter.emit(&IoEvent::KbModToggled { kind, enabled });
+        let (kind, enabled) = match buf[0] {
+            b'0' => (KbModKind::CapsLock, false),
+            b'1' => (KbModKind::CapsLock, true),
+            b'2' => (KbModKind::NumLock, false),
+            b'3' => (KbModKind::NumLock, true),
+            byte => {
+                log::error!("Unknown byte: {byte:?}");
+                return Err(());
             }
-            self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
+        };
+
+        if self.events_left_to_drop == 0 {
+            emitter.emit(&IoEvent::KbModToggled { kind, enabled });
         }
+        self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
+
         Ok(())
+    }
+
+    fn id(&self) -> ModuleId {
+        ModuleId::KbMod
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::KbMod;
+}
+
+impl AsFd for KbMod {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
     }
 }
 

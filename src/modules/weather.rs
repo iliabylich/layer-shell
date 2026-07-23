@@ -1,66 +1,68 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, SockaddrUn, write_in_place},
+    module_id::ModuleId,
+    modules::Module,
+    utils::{FixedSizeBuffer, unix_socket, unix_socket_addr},
 };
-use libc::sockaddr_un;
+use rustix::fd::{AsFd, BorrowedFd, OwnedFd};
 
-#[derive(Clone, Copy)]
 pub struct Weather {
-    reader: UnixSocketReader,
-    emitter: Emitter,
+    fd: OwnedFd,
+    buf: FixedSizeBuffer<{ WeatherData::BYTESIZE }>,
 }
 
 pub const HOURLY_WEATHER_FORECAST_LENGTH: usize = 10;
 pub const DAILY_WEATHER_FORECAST_LENGTH: usize = 6;
 
 impl Weather {
-    pub(crate) const BUFFER_SIZE: usize = WeatherData::BYTESIZE;
-
-    pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
-        let mut buf = [0; 200];
-        let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/weather-mon.sock");
-        SockaddrUn::from_bytes(path)
-    }
-
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(xdg_runtime_dir: &str) -> Option<Self> {
         log::trace!("Creating Weather");
 
-        Self {
-            reader: UnixSocketReader::new(),
-            emitter,
-        }
-    }
+        let addr = unix_socket_addr!("{xdg_runtime_dir}/weather-mon.sock").ok()?;
+        let fd = unix_socket!().ok()?;
 
-    pub(crate) fn wants(
-        &mut self,
-        addr: &sockaddr_un,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Option<Wants> {
-        let wants = self.reader.wants(addr, buf.remainder())?;
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
-
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), ()> {
-        if let Some(written) = self.reader.satisfy(satisfy)?
-            && let Some(buf) = buf.written(written)
-        {
-            let event = WeatherData::deserialize(&buf);
-            self.emitter.emit(&IoEvent::Weather {
-                temperature: event.current.t,
-                code: event.current.code,
-                hourly_forecast: event.hourly,
-                daily_forecast: event.daily,
-            });
+        if let Err(err) = rustix::net::connect(&fd, &addr) {
+            log::error!("failed to connect(): {err:?}");
+            return None;
         }
+
+        Some(Self {
+            fd,
+            buf: FixedSizeBuffer::new(),
+        })
+    }
+}
+
+impl Module for Weather {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let count = rustix::io::read(&self.fd, self.buf.remainder())
+            .map_err(|err| log::error!("failed to read(): {err:?}"))?;
+        let Some(buf) = self.buf.written(count) else {
+            return Ok(());
+        };
+
+        let event = WeatherData::deserialize(&buf);
+        emitter.emit(&IoEvent::Weather {
+            temperature: event.current.t,
+            code: event.current.code,
+            hourly_forecast: event.hourly,
+            daily_forecast: event.daily,
+        });
 
         Ok(())
+    }
+
+    fn id(&self) -> ModuleId {
+        ModuleId::Weather
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::Weather;
+}
+
+impl AsFd for Weather {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
     }
 }
 

@@ -1,72 +1,83 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, SockaddrUn, StringRef, StringRefExt},
+    module_id::ModuleId,
+    modules::Module,
+    utils::{FixedSizeBuffer, StringRef, StringRefExt, unix_socket, unix_socket_addr},
 };
-use libc::sockaddr_un;
+use rustix::fd::{AsFd, BorrowedFd, OwnedFd};
 
-#[derive(Clone, Copy)]
 pub struct NM {
-    reader: UnixSocketReader,
-    emitter: Emitter,
+    fd: OwnedFd,
+    buf: FixedSizeBuffer<{ NMEvent::SERIALIZED_LENGTH }>,
 }
 
 impl NM {
-    pub(crate) const BUFFER_SIZE: usize = NMEvent::SERIALIZED_LENGTH;
     const SPEED_THRESHOLD: u64 = 5_000;
-    pub(crate) const ADDRESS: sockaddr_un = SockaddrUn::from_bytes(b"/run/nm-mon-systemd.sock");
 
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new() -> Option<Self> {
         log::trace!("Creating NM");
 
-        Self {
-            reader: UnixSocketReader::new(),
-            emitter,
+        let addr = unix_socket_addr!("/run/nm-mon-systemd.sock")
+            .unwrap_or_else(|err| panic!("failed to create UNIX socket: {err:?}"));
+
+        let fd = unix_socket!().ok()?;
+
+        if let Err(err) = rustix::net::connect(&fd, &addr) {
+            log::error!("failed to connect(): {err:?}");
+            return None;
         }
+
+        Some(Self {
+            fd,
+            buf: FixedSizeBuffer::new(),
+        })
     }
+}
 
-    pub(crate) fn wants(
-        &mut self,
-        addr: &sockaddr_un,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Option<Wants> {
-        let wants = self.reader.wants(addr, buf.remainder())?;
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
+impl Module for NM {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let count = rustix::io::read(&self.fd, self.buf.remainder())
+            .map_err(|err| log::error!("failed to read(): {err:?}"))?;
+        let Some(buf) = self.buf.written(count) else {
+            return Ok(());
+        };
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), ()> {
-        if let Some(written) = self.reader.satisfy(satisfy)?
-            && let Some(buf) = buf.written(written)
-        {
-            let event = NMEvent::deserialize(buf)?;
-            let event = match event {
-                NMEvent::UploadSpeed { mut bytes_per_sec } => {
-                    if bytes_per_sec < Self::SPEED_THRESHOLD {
-                        bytes_per_sec = 0;
-                    }
-                    IoEvent::UploadSpeed { bytes_per_sec }
+        let event = NMEvent::deserialize(buf)?;
+        let event = match event {
+            NMEvent::UploadSpeed { mut bytes_per_sec } => {
+                if bytes_per_sec < Self::SPEED_THRESHOLD {
+                    bytes_per_sec = 0;
                 }
-                NMEvent::DownloadSpeed { mut bytes_per_sec } => {
-                    if bytes_per_sec < Self::SPEED_THRESHOLD {
-                        bytes_per_sec = 0;
-                    }
-                    IoEvent::DownloadSpeed { bytes_per_sec }
+                IoEvent::UploadSpeed { bytes_per_sec }
+            }
+            NMEvent::DownloadSpeed { mut bytes_per_sec } => {
+                if bytes_per_sec < Self::SPEED_THRESHOLD {
+                    bytes_per_sec = 0;
                 }
-                NMEvent::SsidAndStrength { ssid, strength } => IoEvent::NetworkSsidAndStrength {
-                    ssid: ssid.clone(),
-                    strength,
-                },
-            };
+                IoEvent::DownloadSpeed { bytes_per_sec }
+            }
+            NMEvent::SsidAndStrength { ssid, strength } => IoEvent::NetworkSsidAndStrength {
+                ssid: ssid.clone(),
+                strength,
+            },
+        };
 
-            self.emitter.emit(&event);
-        }
+        emitter.emit(&event);
+
         Ok(())
+    }
+
+    fn id(&self) -> ModuleId {
+        ModuleId::NM
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::NM;
+}
+
+impl AsFd for NM {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
     }
 }
 

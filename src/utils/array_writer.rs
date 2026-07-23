@@ -39,13 +39,15 @@ macro_rules! write_in_place {
         use core::fmt::Write;
         let mut writer = $crate::utils::ArrayWriter::new($buf);
         write!(&mut writer, $($arg)+).unwrap_or_else(|_| {
-            $crate::utils::log_err_and_exit!("formatted data doesn't fit into fixed size array");
+            panic!("formatted data doesn't fit into fixed size array");
         });
         let offset = writer.offset();
         let (head, _tail) = $buf.split_at_checked(offset).unwrap_or_else(|| {
-            $crate::utils::log_err_and_exit!("impl Write for ArrayWriter has a bug, computed offset is too large");
+            panic!("impl Write for ArrayWriter has a bug, computed offset is too large");
         });
-        head
+        core::str::from_utf8(head).unwrap_or_else(|err| {
+            panic!("non-utf8 in-place formatter string: {err:?}")
+        })
     }};
 }
 pub(crate) use write_in_place;

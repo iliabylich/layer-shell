@@ -1,83 +1,56 @@
 use crate::{
     FixedSizeArrray, IoEvent,
     emitter::Emitter,
-    sansio::{Satisfy, UnixSocketOneshotWriter, UnixSocketReader, Wants},
-    utils::{EnvHelper, NlSeparatedBuffer, SockaddrUn, StringRef, StringRefExt},
+    module_id::ModuleId,
+    modules::Module,
+    utils::{EnvHelper, NlSeparatedBuffer, StringRef, StringRefExt, unix_socket, unix_socket_addr},
 };
-use libc::sockaddr_un;
 use microjson::{JSONParsingError, JSONValue};
-
-#[derive(Debug, Clone, Copy)]
-enum State {
-    Writer(UnixSocketOneshotWriter),
-    Reader(UnixSocketReader),
-}
+use rustix::fd::{AsFd, BorrowedFd, OwnedFd};
 
 pub struct Niri {
-    state: State,
+    fd: OwnedFd,
+    buf: NlSeparatedBuffer,
     layouts: FixedSizeArrray<10, StringRef>,
-    emitter: Emitter,
 }
 
 impl Niri {
-    pub(crate) fn address() -> Option<sockaddr_un> {
-        let path = EnvHelper::niri_socket()?;
-        let addr = SockaddrUn::from_bytes(path);
-        Some(addr)
-    }
-
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new() -> Option<Self> {
         log::trace!("Creating Niri");
 
-        Self {
-            state: State::Writer(UnixSocketOneshotWriter::new(b"\"EventStream\"\n")),
-            layouts: FixedSizeArrray::empty_with_default_fn(StringRef::empty),
-            emitter,
-        }
-    }
-
-    pub(crate) fn wants(
-        &mut self,
-        addr: &sockaddr_un,
-        buf: &mut NlSeparatedBuffer,
-    ) -> Option<Wants> {
-        let wants = match &mut self.state {
-            State::Writer(writer) => writer.wants(addr)?,
-            State::Reader(reader) => reader.wants(addr, buf.remainder())?,
+        let Some(path) = EnvHelper::niri_socket() else {
+            log::error!("no $NIRI_SOCKET");
+            return None;
         };
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
+        let addr = unix_socket_addr!("{path}").ok()?;
+        let fd = unix_socket!().ok()?;
 
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        buf: &mut NlSeparatedBuffer,
-    ) -> Result<(), ()> {
-        match &mut self.state {
-            State::Writer(writer) => {
-                if let Some(fd) = writer.satisfy(satisfy)? {
-                    self.state = State::Reader(UnixSocketReader::new_connected_from_fd(fd));
-                }
+        if let Err(err) = rustix::net::connect(&fd, &addr) {
+            log::error!("failed to connect(): {err:?}");
+            return None;
+        }
+
+        let buf = b"\"EventStream\"\n";
+        match rustix::io::write(&fd, buf) {
+            Ok(len) if buf.len() == len => {}
+            Ok(len) => {
+                log::error!("failed to write initial message: written {len}");
+                return None;
             }
-
-            State::Reader(reader) => {
-                if let Some(written) = reader.satisfy(satisfy)? {
-                    buf.written(written);
-                    while let Some(bytes) = buf.pre_nl() {
-                        if let Some(event) = NiriEvent::from_json(bytes)? {
-                            self.process(event)?;
-                        }
-                        buf.drop_pre_nl();
-                    }
-                }
+            Err(err) => {
+                log::error!("failed to write: {err:?}");
+                return None;
             }
         }
 
-        Ok(())
+        Some(Self {
+            fd,
+            buf: NlSeparatedBuffer::new(),
+            layouts: FixedSizeArrray::empty_with_default_fn(StringRef::empty),
+        })
     }
 
-    fn process(&mut self, event: NiriEvent) -> Result<(), ()> {
+    fn process(&mut self, event: NiriEvent, emitter: Emitter) -> Result<(), ()> {
         let idx = match event {
             NiriEvent::KeyboardLayoutsChanged {
                 layout_names,
@@ -103,11 +76,40 @@ impl Niri {
             _ => lang,
         };
 
-        self.emitter.emit(&IoEvent::Language {
+        emitter.emit(&IoEvent::Language {
             lang: StringRef::new(lang),
         });
 
         Ok(())
+    }
+}
+
+impl Module for Niri {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let count = rustix::io::read(&self.fd, self.buf.remainder())
+            .map_err(|err| log::error!("failed to read(): {err:?}"))?;
+
+        self.buf.written(count);
+        while let Some(bytes) = self.buf.pre_nl() {
+            if let Some(event) = NiriEvent::from_json(bytes)? {
+                self.process(event, emitter)?;
+            }
+            self.buf.drop_pre_nl();
+        }
+
+        Ok(())
+    }
+
+    fn id(&self) -> ModuleId {
+        ModuleId::Niri
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::Niri;
+}
+
+impl AsFd for Niri {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
     }
 }
 

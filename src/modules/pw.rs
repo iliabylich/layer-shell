@@ -1,75 +1,79 @@
 use crate::{
     IoEvent,
     emitter::Emitter,
-    sansio::{Satisfy, UnixSocketReader, Wants},
-    utils::{FixedSizeBuffer, SockaddrUn, write_in_place},
+    module_id::ModuleId,
+    modules::Module,
+    utils::{FixedSizeBuffer, unix_socket, unix_socket_addr},
 };
-use libc::sockaddr_un;
+use rustix::fd::{AsFd, BorrowedFd, OwnedFd};
 
-#[derive(Clone, Copy)]
 pub struct PW {
-    reader: UnixSocketReader,
+    fd: OwnedFd,
+    buf: FixedSizeBuffer<{ PWEvent::SERIALIZED_LENGTH }>,
+
     volume: Option<u8>,
     muted: Option<bool>,
     events_left_to_drop: u8,
-    emitter: Emitter,
 }
 
 impl PW {
-    pub(crate) const BUFFER_SIZE: usize = PWEvent::SERIALIZED_LENGTH;
-
-    pub(crate) fn address(xdg_runtime_dir: &str) -> sockaddr_un {
-        let mut buf = [0; 200];
-        let path = write_in_place!(&mut buf, "{xdg_runtime_dir}/pipewire-mon.sock");
-        SockaddrUn::from_bytes(path)
-    }
-
-    pub(crate) fn new(emitter: Emitter) -> Self {
+    pub(crate) fn new(xdg_runtime_dir: &str) -> Option<Self> {
         log::trace!("Creating PW");
 
-        Self {
-            reader: UnixSocketReader::new(),
+        let addr = unix_socket_addr!("{xdg_runtime_dir}/pipewire-mon.sock").ok()?;
+        let fd = unix_socket!().ok()?;
+
+        if let Err(err) = rustix::net::connect(&fd, &addr) {
+            log::error!("failed to connect(): {err:?}");
+            return None;
+        }
+
+        Some(Self {
+            fd,
+            buf: FixedSizeBuffer::new(),
+
             volume: None,
             muted: None,
             events_left_to_drop: 1,
-            emitter,
+        })
+    }
+}
+
+impl Module for PW {
+    fn read(&mut self, emitter: Emitter) -> Result<(), ()> {
+        let count = rustix::io::read(&self.fd, self.buf.remainder())
+            .map_err(|err| log::error!("failed to read(): {err:?}"))?;
+        let Some(buf) = self.buf.written(count) else {
+            return Ok(());
+        };
+
+        let event = PWEvent::deserialize(buf)?;
+        match event {
+            PWEvent::Volume(volume) => self.volume = Some(volume),
+            PWEvent::Mute(muted) => self.muted = Some(muted),
         }
-    }
-
-    pub(crate) fn wants(
-        &mut self,
-        addr: &sockaddr_un,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Option<Wants> {
-        let wants = self.reader.wants(addr, buf.remainder())?;
-        log::trace!("{wants:?}");
-        Some(wants)
-    }
-
-    pub(crate) fn satisfy(
-        &mut self,
-        satisfy: Satisfy,
-        buf: &mut FixedSizeBuffer<{ Self::BUFFER_SIZE }>,
-    ) -> Result<(), ()> {
-        if let Some(written) = self.reader.satisfy(satisfy)?
-            && let Some(buf) = buf.written(written)
+        if let Some(volume) = self.volume
+            && let Some(muted) = self.muted
         {
-            let event = PWEvent::deserialize(buf)?;
-            match event {
-                PWEvent::Volume(volume) => self.volume = Some(volume),
-                PWEvent::Mute(muted) => self.muted = Some(muted),
+            if self.events_left_to_drop == 0 {
+                emitter.emit(&IoEvent::Sound { volume, muted });
             }
-            if let Some(volume) = self.volume
-                && let Some(muted) = self.muted
-            {
-                if self.events_left_to_drop == 0 {
-                    self.emitter.emit(&IoEvent::Sound { volume, muted });
-                }
-                self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
-            }
+            self.events_left_to_drop = self.events_left_to_drop.saturating_sub(1);
         }
 
         Ok(())
+    }
+
+    fn id(&self) -> ModuleId {
+        ModuleId::PW
+    }
+
+    const MODULE_ID: ModuleId = ModuleId::PW;
+}
+
+impl AsFd for PW {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
     }
 }
 

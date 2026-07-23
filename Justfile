@@ -1,18 +1,3 @@
-external:
-    bindgen \
-        src/external.h \
-        \
-        --allowlist-function "__liburing_.*" \
-        --opaque-type "io_uring_sq" \
-        --opaque-type "io_uring_cq" \
-        --opaque-type ".*bindgen.*" \
-        --opaque-type "sockaddr" \
-        --default-macro-constant-type signed \
-        \
-        --use-core \
-        -o src/external.rs
-    sed -i 's/pub /pub(crate) /g' src/external.rs
-
 setup build:
     meson setup builddir --buildtype={{build}}
 

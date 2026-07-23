@@ -7,41 +7,24 @@
 #![warn(unused_lifetimes)]
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
-#![warn(clippy::panic)]
 #![warn(clippy::indexing_slicing)]
 // #![warn(clippy::arithmetic_side_effects)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::std_instead_of_alloc)]
 #![warn(clippy::std_instead_of_core)]
+#![expect(clippy::missing_panics_doc)]
 
 mod command;
 mod config;
 mod emitter;
 mod event;
-/// cbindgen:ignore
-#[expect(
-    dead_code,
-    unsafe_op_in_unsafe_fn,
-    trivial_casts,
-    non_camel_case_types,
-    clippy::indexing_slicing,
-    clippy::ptr_as_ptr,
-    clippy::ref_as_ptr,
-    clippy::missing_const_for_fn,
-    clippy::use_self,
-    clippy::redundant_pub_crate,
-    clippy::arithmetic_side_effects
-)]
-mod external;
 mod io;
-mod liburing;
 mod logger;
+mod module_id;
 mod modules;
 #[cfg(feature = "standalone-staticlib")]
 mod panic_handler;
-mod sansio;
-mod user_data;
 mod utils;
 
 pub use event::IoEvent;
@@ -52,7 +35,7 @@ pub use modules::{
 };
 pub use utils::{FixedSizeArrray, StringRef};
 
-use crate::{io::IO, logger::Logger, utils::log_err_and_exit};
+use crate::{io::IO, logger::Logger};
 use command::Command;
 
 #[unsafe(no_mangle)]
@@ -64,20 +47,15 @@ pub extern "C" fn io_init(
 
     unsafe {
         let ptr = libc::malloc(size_of::<IO>()).cast::<IO>();
-        if ptr.is_null() {
-            log_err_and_exit!("failed to malloc()");
-        }
+        assert!(!ptr.is_null());
         ptr.write(IO::new(callback, data));
-        (&mut *ptr).start();
+        (&*ptr).start();
         ptr
     }
 }
 
 fn with_io<T>(io: *mut IO, f: impl FnOnce(&mut IO) -> T) -> T {
-    let Some(mut io) = core::ptr::NonNull::new(io) else {
-        log_err_and_exit!("IO pointer is null");
-    };
-
+    let mut io = core::ptr::NonNull::new(io).unwrap_or_else(|| panic!("IO pointer is null"));
     unsafe { f(io.as_mut()) }
 }
 

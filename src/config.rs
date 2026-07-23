@@ -1,6 +1,6 @@
 use crate::{
     FixedSizeArrray,
-    utils::{StringRef, StringRefExt as _, log_err_and_exit, write_in_place},
+    utils::{StringRef, StringRefExt, write_in_place},
 };
 use rustix::fs::{Mode, OFlags};
 
@@ -34,17 +34,15 @@ impl Config {
         };
 
         let fd = rustix::fs::open(path, OFlags::RDONLY, Mode::empty())
-            .unwrap_or_else(|err| log_err_and_exit!("failed to open config: {err:?}"));
+            .unwrap_or_else(|err| panic!("failed to open config: {err:?}"));
 
         let mut buf = [0; 1_024];
         let len = rustix::io::read(&fd, &mut buf)
-            .unwrap_or_else(|err| log_err_and_exit!("failed to read config: {err:?}"));
-        let buf = buf
-            .get(..len)
-            .unwrap_or_else(|| log_err_and_exit!("read failed"));
+            .unwrap_or_else(|err| panic!("failed to read config: {err:?}"));
+        let buf = buf.get(..len).unwrap_or_else(|| panic!("read failed"));
 
-        let contents = core::str::from_utf8(buf)
-            .unwrap_or_else(|err| log_err_and_exit!("non-utf8 input: {err:?}"));
+        let contents =
+            core::str::from_utf8(buf).unwrap_or_else(|err| panic!("non-utf8 input: {err:?}"));
         let config = Self::from_toml(contents);
 
         log::info!("{config:#?}");
@@ -68,14 +66,14 @@ impl Config {
         for line in contents.lines() {
             let (key, value) = line
                 .split_once('=')
-                .unwrap_or_else(|| log_err_and_exit!("no '=' separator on line {line:?}"));
+                .unwrap_or_else(|| panic!("no '=' separator on line {line:?}"));
             let key = key.trim();
             let value = value
                 .trim()
                 .strip_prefix('"')
-                .unwrap_or_else(|| log_err_and_exit!("no leading quote on line {line:?}"))
+                .unwrap_or_else(|| panic!("no leading quote on line {line:?}"))
                 .strip_suffix('"')
-                .unwrap_or_else(|| log_err_and_exit!("no trailing quote on line {line:?}"));
+                .unwrap_or_else(|| panic!("no trailing quote on line {line:?}"));
 
             match key {
                 "lock" => lock = Some(value),
@@ -89,15 +87,13 @@ impl Config {
                 "ping" => ping = Some(value),
                 "terminal_label" => terminal_label = Some(value),
                 "terminal_command" => terminal_command = Some(value),
-                _ => log_err_and_exit!("unknown key {key}"),
+                _ => panic!("unknown key {key}"),
             }
         }
 
         macro_rules! expect_key {
             ($k:ident) => {
-                let $k = $k.unwrap_or_else(|| {
-                    log_err_and_exit!("no key {} in the config", stringify!($k))
-                });
+                let $k = $k.unwrap_or_else(|| panic!("no key {} in the config", stringify!($k)));
             };
         }
         expect_key!(lock);
@@ -135,7 +131,7 @@ fn split_command(command: &str) -> FixedSizeArrray<10, StringRef> {
     for part in command.split_whitespace() {
         let part = StringRef::new(part);
         out.push(part)
-            .unwrap_or_else(|| log_err_and_exit!("command is too long: {command:?}"));
+            .unwrap_or_else(|| panic!("command is too long: {command:?}"));
     }
     out
 }
