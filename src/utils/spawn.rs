@@ -80,12 +80,7 @@ fn expand_home(arg: &str, home: &str) -> StringRef {
 
     let mut buf = [0; 256];
     let mut writer = ArrayWriter::new(&mut buf);
-    let mut parts = arg.split('~');
-    if let Some(part) = parts.next() {
-        write!(&mut writer, "{part}")
-            .unwrap_or_else(|_| panic!("command is too long for 256 bytes long buffer"));
-    }
-    for part in parts {
+    for part in arg.split('~') {
         write!(&mut writer, "{home}{part}")
             .unwrap_or_else(|_| panic!("command is too long for 256 bytes long buffer"));
     }

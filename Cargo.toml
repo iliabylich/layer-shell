@@ -7,7 +7,6 @@ edition = "2024"
 members = [".", "staticlib"]
 
 [workspace.dependencies]
-cc = "1"
 libc = { version = "0.2", default-features = false }
 log = { version = "0.4", default-features = false }
 microjson = { version = "0.1", default-features = false }
@@ -31,9 +30,6 @@ string-bath = { workspace = true }
 
 [features]
 standalone-staticlib = []
-
-[build-dependencies]
-cc = { workspace = true }
 
 [profile.release]
 opt-level = "z"

@@ -17,6 +17,3 @@ string-bath = { workspace = true }
 
 [features]
 standalone-staticlib = []
-
-[build-dependencies]
-cc = { workspace = true }
