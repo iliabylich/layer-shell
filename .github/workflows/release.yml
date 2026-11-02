@@ -21,18 +21,24 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    container: debian:sid
     env:
       VERSION: ${{ inputs.version }}
     steps:
+      - run: apt-get update
+      - run: apt-get install -y git ca-certificates curl build-essential pkg-config
+
       - uses: actions/checkout@v7
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - uses: iliabylich/validate-release-version@v1
         with:
           version: ${{ inputs.version }}
 
-      - run: |
-          sudo apt update
-          sudo apt install -y sassc xxd qt6-base-dev liblayershellqtinterface-dev libqtermwidget6-2-dev
+      - run: apt-get install -y sassc xxd qt6-base-dev qt6-base-dev-tools liblayershellqtinterface-dev libqtermwidget-dev libutf8proc-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
       - uses: jdx/mise-action@v5
       - run: mise run release
 
