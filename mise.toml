@@ -1,0 +1,60 @@
+[tools]
+uv = "latest"
+meson = "latest"
+ninja = "latest"
+
+[tasks.setup]
+usage = 'arg "<build>" help="meson buildtype, e.g. debug or release"'
+run = 'meson setup builddir --buildtype={{usage.build}}'
+
+[tasks.compile]
+run = 'meson compile -C builddir'
+
+[tasks.dev]
+depends = ['compile']
+env = { RUST_BACKTRACE = "1", ASAN_OPTIONS = "detect_leaks=1", LSAN_OPTIONS = "suppressions=lsan.supp" }
+run = './builddir/ui/layer-shell'
+
+[tasks.clean]
+run = 'rm -rf builddir'
+
+[tasks.perf-io]
+run = '''
+#!/usr/bin/env -S bash -x
+rm -f perf.data
+cargo build --bin just-io --release
+perf record -g --delay 2 target/release/just-io &
+perf_pid=$!
+echo "waiting for 5 seconds"
+sleep 5
+pkill just-io
+wait -n $perf_pid
+perf report
+'''
+
+[tasks.strace-io]
+run = [
+    'cargo build --example just-io',
+    'strace target/debug/examples/just-io',
+]
+
+[tasks.io]
+usage = 'arg "[log]" default="info"'
+run = 'RUST_LOG={{usage.log}} cargo run --example just-io'
+
+[tasks.test-install]
+depends = ['clean']
+run = [
+    'rm -rf test-install',
+    'meson setup builddir --buildtype=release --prefix=$PWD/test-install/usr',
+    'meson compile -C builddir',
+    'meson install -C builddir',
+    'tree -C test-install',
+]
+
+[tasks.format]
+run = [
+    'clang-format -i ui/*.cpp',
+    'clang-format -i ui/*.hpp',
+    'cargo fmt',
+]
