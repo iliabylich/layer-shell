@@ -1,7 +1,21 @@
+monorepo_root = true
+
+[monorepo]
+config_roots = [".github"]
+
 [tools]
 uv = "latest"
 meson = "latest"
 ninja = "latest"
+cargo-binstall = "latest"
+"cargo:cbindgen" = "latest"
+
+[settings]
+cargo.binstall_quickinstall = true
+cargo.binstall_only = true
+
+[task_config]
+shell = "bash -euo pipefail -c"
 
 [tasks.setup]
 usage = 'arg "<build>" help="meson buildtype, e.g. debug or release"'
@@ -57,4 +71,22 @@ run = [
     'clang-format -i ui/*.cpp',
     'clang-format -i ui/*.hpp',
     'cargo fmt',
+]
+
+[tasks.release]
+run = [
+    'rm -rf builddir',
+    'meson setup builddir --buildtype=release',
+    'meson compile -C builddir',
+]
+
+[tasks."cargo:outdated"]
+hide = true
+tools = { "cargo:cargo-outdated" = "latest" }
+run = "cargo outdated"
+
+[tasks.outdated]
+run = [
+    { task = "cargo:outdated" },
+    { task = "//.github:outdated" },
 ]
